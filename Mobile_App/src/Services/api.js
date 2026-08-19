@@ -3,7 +3,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // const BASE_URL = "http://192.168.1.19:5001/";                          // local WiFi only
-const BASE_URL = "http://192.168.1.16:5001/"; // local WiFi only
+const BASE_URL = "http://192.168.1.5:5001/"; // local WiFi only
 // const BASE_URL = "https://neat-lands-invent.loca.lt/";                  // localtunnel (unreliable)
 // const BASE_URL = "https://joint-independence-nokia-fly.trycloudflare.com/"; // Cloudflare tunnel ✅
 

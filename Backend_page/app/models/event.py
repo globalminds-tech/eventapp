@@ -1,0 +1,135 @@
+from typing import Optional
+from datetime import datetime, date, time
+from sqlalchemy import String, Text, Boolean, Integer, Date, Time, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.extensions.database import db
+
+class EventDetails(db.Model):
+    __tablename__ = 'event_details_table'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    event_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    amenities: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    visibility: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    include_program: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+
+    mail: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    whatsapp: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    print: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+
+    visitor_mail: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    visitor_name: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    visitor_photo: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    visitor_mobile: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    document_proof: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+
+    day_pass: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    is_international_include: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    aadhar: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    passport: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+
+    welcome_kit: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    food: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    vehicle_pass: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    vehicle_number: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+
+    event_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    occurrence: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    start_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+
+    venue: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    status: Mapped[Optional[str]] = mapped_column(String(50), default='PENDING')
+
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    rejected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class EventBookingDetails(db.Model):
+    __tablename__ = 'event_booking_details'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    booking_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    booking_end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    capacity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    pass_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    title_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    title_selection: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    designation: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    designation_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    designation_selection: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    company: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    company_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    company_selection: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    entry_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    charge_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    max_pass: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    razorpay_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    include_tax: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    price_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    currency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    early_bird_expire: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class EventLayout(db.Model):
+    __tablename__ = 'event_layout'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    floor_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    day_based: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    person_pass: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    include_tax: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    taxes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class EventFile(db.Model):
+    __tablename__ = 'event_files'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    file_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    file_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    file_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    doc_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    doc_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class EventTerm(db.Model):
+    __tablename__ = 'event_terms'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=False)
+    policy_group: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    policy_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    policy_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_default: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class EventGuest(db.Model):
+    __tablename__ = 'event_guests'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    guest_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    designation: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    contact: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
