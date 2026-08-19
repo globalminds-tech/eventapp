@@ -512,6 +512,12 @@ def create_tables():
                 cursor.execute("ALTER TABLE policies ADD COLUMN file_path TEXT;")
                 print("file_path added to policies")
 
+            # Check for organizer_id
+            cursor.execute("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'policies' AND COLUMN_NAME = 'organizer_id' AND TABLE_SCHEMA = DATABASE()")
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE policies ADD COLUMN organizer_id INT;")
+                print("organizer_id added to policies")
+
             # Check for audit columns
             audit_cols = [
                 ("created_by", "VARCHAR(150)"),
@@ -542,6 +548,18 @@ def create_tables():
                 cursor.execute("ALTER TABLE event_details_table ADD COLUMN user_id INT;")
                 print("user_id column added to event_details_table table")
             
+            # Add created_by column if missing
+            cursor.execute("""
+                SELECT COLUMN_NAME 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_NAME = 'event_details_table' 
+                AND COLUMN_NAME = 'created_by'
+                AND TABLE_SCHEMA = DATABASE()
+            """)
+            if not cursor.fetchone():
+                cursor.execute("ALTER TABLE event_details_table ADD COLUMN created_by VARCHAR(100);")
+                print("created_by column added to event_details_table table")
+
             # Add vehicle_pass column if missing
             cursor.execute("""
                 SELECT COLUMN_NAME 

@@ -1,0 +1,33 @@
+# Dependency directories
+**/node_modules/
+**/bower_components/
+
+# Python cache & virtual environments
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/myenv/
+**/.venv/
+**/env/
+**/venv/
+**/ENV/
+
+# Expo directories and files
+.expo/
+**/dist/
+**/build/
+.expo-shared/
+
+# Local/OS files
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.local
+.env.*.local
+
+# Backend uploads
+**/app/uploads/photos/*.jpg
+**/app/uploads/photos/*.png
+**/app/uploads/photos/*.jpeg

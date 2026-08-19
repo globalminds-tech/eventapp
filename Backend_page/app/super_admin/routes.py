@@ -1860,32 +1860,35 @@ def complete_event_creation():
         )
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
+        event_type = event_details.get("eventType")
+        occurrence = event_details.get("occurrence")
+
         event_values = (
             event_details.get("category"),
             event_details.get("eventName"),
             event_details.get("description"),
-            event_details.get("amenities", []),
-            event_details.get("tags", ""),
+            event_details.get("amenities") or "",       # was: list [] — MySQL can't accept Python list
+            event_details.get("tags") or "",
             event_details.get("visibility"),
-            str(event_details.get("includeProgram", False)),
-            event_details.get("mail", False),
-            event_details.get("whatsapp", False),
-            event_details.get("print", False),
-            event_details.get("visitorMail", False),
-            event_details.get("visitorName", False),
-            event_details.get("visitorPhoto", False),
-            event_details.get("visitorMobile", False),
-            event_details.get("documentProof", False),
-            event_details.get("dayPass", False),
-            event_details.get("isInternationalInclude", False),
-            event_details.get("aadhar", False),
-            event_details.get("passport", False),
-            event_details.get("welcomeKit", False),
-            event_details.get("food", False),
-            event_details.get("vehiclePass", False),
-            event_details.get("vehicleNumber", False),
-            event_type := event_details.get("eventType"),
-            occurrence := event_details.get("occurrence"),
+            bool(event_details.get("includeProgram", False)),
+            bool(event_details.get("mail", False)),
+            bool(event_details.get("whatsapp", False)),
+            bool(event_details.get("print", False)),
+            bool(event_details.get("visitorMail", False)),
+            bool(event_details.get("visitorName", False)),
+            bool(event_details.get("visitorPhoto", False)),
+            bool(event_details.get("visitorMobile", False)),
+            bool(event_details.get("documentProof", False)),
+            bool(event_details.get("dayPass", False)),
+            bool(event_details.get("isInternationalInclude", False)),
+            bool(event_details.get("aadhar", False)),
+            bool(event_details.get("passport", False)),
+            bool(event_details.get("welcomeKit", False)),
+            bool(event_details.get("food", False)),
+            bool(event_details.get("vehiclePass", False)),
+            bool(event_details.get("vehicleNumber", False)),
+            event_type,
+            occurrence,
             format_date(event_details.get("startDate")),
             format_time(event_details.get("startTime")),
             format_date(event_details.get("endDate")),
@@ -1894,7 +1897,7 @@ def complete_event_creation():
             event_details.get("address"),
             event_details.get("created_by"),
             event_details.get("user_id"),
-            "PENDING" # Final state
+            "PENDING"
         )
         cursor.execute(insert_event_query, event_values)
         event_id = cursor.lastrowid
@@ -2282,18 +2285,20 @@ def get_image_url(path):
     if not path:
         return None
     file_path = str(path).replace("\\", "/")
-    
-    # If it contains "uploads/", strip everything before it to make it relative
-    if "uploads/" in file_path:
-        relative_part = file_path.split("uploads/")[-1]
-        return f"https://eventsapi.sportalytics.in/uploads/{relative_part.lstrip('/')}"
-    
-    # Fallback for paths that don't have uploads/
+
     # If it starts with http or data URI, return it unmodified
     if file_path.startswith(("http://", "https://", "data:")):
         return file_path
-    
-    return f"https://eventsapi.sportalytics.in/{file_path.lstrip('/')}"
+
+    # Build base URL dynamically from the incoming request
+    base_url = request.host_url.rstrip("/")
+
+    # Strip to relative part after "uploads/"
+    if "uploads/" in file_path:
+        relative_part = file_path.split("uploads/")[-1].lstrip("/")
+        return f"{base_url}/superadmin/uploads/{relative_part}"
+
+    return f"{base_url}/superadmin/{file_path.lstrip('/')}"
 
 
 # =====================================================

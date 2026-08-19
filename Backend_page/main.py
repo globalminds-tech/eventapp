@@ -23,5 +23,5 @@ def home():
     return "Flask Running!"
 
 if __name__ == "__main__":
-    print("-> 5. Waitress server starting at 127.0.0.1:5001 ...")
-    app.run(debug=True)
+    print("-> 5. Server starting at 0.0.0.0:5001 ...")
+    app.run(host="0.0.0.0", port=5001, debug=True, threaded=True)
