@@ -31,4 +31,20 @@ def get_db_connection(db_name=None):
             config['ssl_ca'] = ssl_ca
             config['ssl_verify_cert'] = True
 
+    # Retry mechanism for establishing database connection
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            conn = mysql.connector.connect(**config)
+            if conn.is_connected():
+                conn.ping(reconnect=True, attempts=3, delay=1)
+                return conn
+        except mysql.connector.Error as err:
+            if attempt == max_retries - 1:
+                print(f"Database Connection Failed after {max_retries} attempts: {err}")
+                raise err
+            import time
+            time.sleep(1)
+
     return mysql.connector.connect(**config)
+

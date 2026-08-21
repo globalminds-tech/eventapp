@@ -29,6 +29,7 @@ Thumbs.db
 .env.*.local
 *.pem
 ca.pem
+.vscode/
 
 # Backend uploads
 **/app/uploads/photos/*.jpg

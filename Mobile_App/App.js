@@ -57,6 +57,8 @@ import Complaint_page from "./src/Organizer/Help&support/ComplaintFrom";
 import Feedback_page from "./src/Organizer/Help&support/Feedback";
 import Manage_Stall from "./src/Organizer/Stall/ManageStall";
 import EventReports from "./src/Organizer/Reports/EventReports";
+import OrganizerKYC from "./src/Organizer/OrganizerKYC";
+
 
 // Exhibitor
 import Exhibitor_Home from "./src/Exhibitor/Exhibitor_Home";
@@ -148,6 +150,8 @@ export default function App() {
             <Stack.Screen name="Feedback_page" component={Feedback_page} />
             <Stack.Screen name="Manage_Stall" component={Manage_Stall} />
             <Stack.Screen name="EventReports" component={EventReports} />
+            <Stack.Screen name="OrganizerKYC" component={OrganizerKYC} />
+
 
             {/* Exhibitor Routes */}
             <Stack.Screen name="Exhibitor_Home" component={Exhibitor_Home} />
