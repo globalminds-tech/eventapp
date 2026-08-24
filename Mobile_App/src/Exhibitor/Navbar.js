@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useDispatch } from "react-redux";
@@ -15,13 +15,13 @@ const ExhibitorNavbar = () => {
   const handleLogout = async () => {
     try {
       await AsyncStorage.multiRemove([
-        "token", "role", "id", "name", "userId", "userName"
+        "token", "role", "id", "name", "userId", "userName", "@organizer_step1_completed"
       ]);
     } catch(e) {
       console.error(e);
     }
     dispatch(clearUser());
-    navigation.navigate("Home"); // Equivalent to navigate("/")
+    navigation.replace("Login");
   };
 
   const isActive = (pathName) => route.name === pathName;

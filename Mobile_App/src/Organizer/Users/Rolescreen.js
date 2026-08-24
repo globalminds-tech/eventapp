@@ -1,203 +1,379 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  StatusBar,
+  FlatList,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Save, Trash2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native";
+import {
+  Save,
+  Trash2,
+  ChevronDown,
+  ChevronLeft,
+  Search,
+  Plus,
+  ShieldCheck,
+  CheckSquare,
+  Square,
+  Users,
+  Lock,
+  X,
+  CheckCircle,
+} from "lucide-react-native";
+import { COLORS } from "../../styles/theme";
 
-const roleOptions = ["Super Admin", "Event Manager", "Organizer", "Exhibitor"];
-const moduleOptions = ["Dashboard", "Event", "Program", "Approval", "Accounts", "Sponsership", "User settings", "User", "Master", "Help & Support", "Stall Management", "Report"];
+const ROLE_PRESETS = [
+  { id: "1", name: "Super Admin", count: 2, desc: "Full access to all system modules & settings" },
+  { id: "2", name: "Event Production Manager", count: 5, desc: "Can manage schedules, stalls, and ticketing" },
+  { id: "3", name: "Gate Scanner Staff", count: 12, desc: "Limited access to Gate Entry & QR Scanner hub" },
+  { id: "4", name: "Accounts & Payout Manager", count: 3, desc: "Financial reports, payouts, and billing" },
+];
 
-const RoleWiseScreenMapping = () => {
-  const [roleName, setRoleName] = useState("");
-  const [moduleName, setModuleName] = useState("");
+const MODULE_PERMISSIONS_DEFAULT = [
+  { module: "Event Creation & Wizard", view: true, create: true, edit: true, delete: false },
+  { module: "Gate QR Scanner Hub", view: true, create: true, edit: true, delete: false },
+  { module: "Food & Meal Vouchers", view: true, create: true, edit: true, delete: false },
+  { module: "Live Sales & Gate Analytics", view: true, create: false, edit: false, delete: false },
+  { module: "Master Data (Venues/Vendors)", view: true, create: true, edit: true, delete: true },
+  { module: "Accounts & KYC Payouts", view: false, create: false, edit: false, delete: false },
+  { module: "Staff Roles & Users", view: false, create: false, edit: false, delete: false },
+];
+
+export default function RoleWiseScreenMapping({ navigation }) {
+  const [selectedRole, setSelectedRole] = useState(ROLE_PRESETS[1]);
+  const [permissions, setPermissions] = useState(MODULE_PERMISSIONS_DEFAULT);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [pageSize, setPageSize] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [checkAll, setCheckAll] = useState(false);
-  const [checkedRows, setCheckedRows] = useState([]);
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  const [showModuleDropdown, setShowModuleDropdown] = useState(false);
-  const [showPageSizeDropdown, setShowPageSizeDropdown] = useState(false);
+  const [showAddRoleModal, setShowAddRoleModal] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDesc, setNewRoleDesc] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
 
-  const rows = [];
-  const filteredRows = rows.filter(
-    row =>
-      row.moduleName.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-      row.screenName.toLowerCase().includes(searchKeyword.toLowerCase())
+  const filteredPermissions = permissions.filter((p) =>
+    p.module.toLowerCase().includes(searchKeyword.toLowerCase())
   );
 
-  const handleCheckAll = (checked) => {
-    setCheckAll(checked);
-    setCheckedRows(checked ? filteredRows.map((_, i) => i) : []);
+  const togglePermission = (index, field) => {
+    setPermissions((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: !updated[index][field] };
+      return updated;
+    });
   };
 
-  const handleRowCheck = (index) => {
-    setCheckedRows(prev =>
-      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
-    );
+  const handleSave = () => {
+    showToast(`Permissions updated for role "${selectedRole.name}"!`);
   };
 
-  const Dropdown = ({ label, value, options, onSelect, visible, onToggle }) => (
-    <View style={s.inputGroup}>
-      <Text style={s.label}>{label} <Text style={{ color: "red" }}>*</Text></Text>
-      <TouchableOpacity style={s.dropdownTrigger} onPress={onToggle}>
-        <Text style={value ? s.dropdownValue : s.dropdownPlaceholder}>{value || label}</Text>
-        <ChevronDown size={18} color="#5b6472" />
-      </TouchableOpacity>
-      {visible && (
-        <View style={s.dropdownList}>
-          {options.map(opt => (
-            <TouchableOpacity key={opt} style={s.dropdownOption} onPress={() => onSelect(opt)}>
-              <Text style={s.dropdownOptionText}>{opt}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </View>
-  );
+  const handleCreateRole = () => {
+    if (!newRoleName.trim()) {
+      Alert.alert("Validation Error", "Please enter a role name.");
+      return;
+    }
+    const created = {
+      id: (ROLE_PRESETS.length + 1).toString(),
+      name: newRoleName,
+      count: 0,
+      desc: newRoleDesc || "Custom staff role",
+    };
+    ROLE_PRESETS.push(created);
+    setSelectedRole(created);
+    setShowAddRoleModal(false);
+    setNewRoleName("");
+    setNewRoleDesc("");
+    showToast(`Role "${created.name}" created successfully!`);
+  };
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(""), 3000);
+  };
 
   return (
-    <SafeAreaView style={s.container}>
-      <ScrollView contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* Header */}
-        <View style={s.headerRow}>
-          <Text style={s.pageTitle}>Role Wise Screen Mapping</Text>
-          <View style={s.headerBtns}>
-            <TouchableOpacity style={s.iconBtn} onPress={() => Alert.alert("Saved!")}>
-              <Save size={20} color="#5b6f8e" />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.iconBtn} onPress={() => Alert.alert("Deleted!")}>
-              <Trash2 size={20} color="#5b6f8e" />
-            </TouchableOpacity>
+    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+
+      {/* Header */}
+      <View style={s.header}>
+        <View style={s.flexRow}>
+          <TouchableOpacity style={s.backBtn} onPress={() => navigation && navigation.goBack ? navigation.goBack() : null}>
+            <ChevronLeft size={22} color={COLORS.dark} />
+          </TouchableOpacity>
+          <View style={{ marginLeft: 8 }}>
+            <Text style={s.headerBadge}>STAFF SECURITY HUB</Text>
+            <Text style={s.headerTitle}>Staff Roles & Permissions</Text>
           </View>
         </View>
 
-        {/* Left Panel - Role Details */}
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Role Details</Text>
-          <Dropdown
-            label="Role Name"
-            value={roleName}
-            options={roleOptions}
-            onSelect={v => { setRoleName(v); setShowRoleDropdown(false); }}
-            visible={showRoleDropdown}
-            onToggle={() => setShowRoleDropdown(!showRoleDropdown)}
-          />
-          <Dropdown
-            label="Module Name"
-            value={moduleName}
-            options={moduleOptions}
-            onSelect={v => { setModuleName(v); setShowModuleDropdown(false); }}
-            visible={showModuleDropdown}
-            onToggle={() => setShowModuleDropdown(!showModuleDropdown)}
-          />
+        <TouchableOpacity style={s.saveHeaderBtn} onPress={handleSave}>
+          <Save size={16} color="#ffffff" />
+          <Text style={s.saveHeaderBtnText}>Save</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Toast Notification Banner */}
+      {toastMessage.length > 0 && (
+        <View style={s.toastBanner}>
+          <CheckCircle size={18} color="#15803d" />
+          <Text style={s.toastText}>{toastMessage}</Text>
+        </View>
+      )}
+
+      <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Role Presets Section */}
+        <View style={s.sectionHeaderRow}>
+          <Text style={s.sectionTitle}>Role Presets</Text>
+          <TouchableOpacity style={s.addRoleBtn} onPress={() => setShowAddRoleModal(true)}>
+            <Plus size={16} color={COLORS.primary} />
+            <Text style={s.addRoleBtnText}>Create Role</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Right Panel - Table */}
-        <View style={[s.card, { marginTop: 16 }]}>
-          <TextInput
-            style={s.searchInput}
-            value={searchKeyword}
-            onChangeText={setSearchKeyword}
-            placeholder="Search Keyword"
-            placeholderTextColor="#9ca3af"
-          />
-
-          <ScrollView horizontal showsHorizontalScrollIndicator keyboardShouldPersistTaps="handled">
-            <View style={s.table}>
-              {/* Table Header */}
-              <View style={s.tableHeader}>
-                <TouchableOpacity
-                  style={[s.checkbox, checkAll && s.checkboxChecked]}
-                  onPress={() => handleCheckAll(!checkAll)}
-                >
-                  {checkAll && <Text style={s.checkmark}>?</Text>}
-                </TouchableOpacity>
-                <Text style={[s.th, { width: 160 }]}>Module Name ??</Text>
-                <Text style={[s.th, { width: 160 }]}>Screen Name ??</Text>
-              </View>
-
-              {/* Body */}
-              {filteredRows.length === 0 ? (
-                <View style={s.emptyRow}>
-                  <Text style={s.emptyText}>No Data Found</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.roleScroll}>
+          {ROLE_PRESETS.map((role) => (
+            <TouchableOpacity
+              key={role.id}
+              style={[s.rolePresetCard, selectedRole.id === role.id && s.rolePresetCardActive]}
+              onPress={() => setSelectedRole(role)}
+            >
+              <View style={s.roleCardHeader}>
+                <ShieldCheck size={18} color={selectedRole.id === role.id ? COLORS.primary : COLORS.subText} />
+                <View style={s.usersBadge}>
+                  <Users size={12} color={COLORS.subText} />
+                  <Text style={s.usersBadgeText}>{role.count}</Text>
                 </View>
-              ) : (
-                filteredRows
-                  .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                  .map((row, index) => {
-                    const absIndex = (currentPage - 1) * pageSize + index;
-                    return (
-                      <View key={index} style={s.tableRow}>
-                        <TouchableOpacity
-                          style={[s.checkbox, checkedRows.includes(absIndex) && s.checkboxChecked]}
-                          onPress={() => handleRowCheck(absIndex)}
-                        >
-                          {checkedRows.includes(absIndex) && <Text style={s.checkmark}>?</Text>}
-                        </TouchableOpacity>
-                        <Text style={[s.td, { width: 160 }]}>{row.moduleName}</Text>
-                        <Text style={[s.td, { width: 160 }]}>{row.screenName}</Text>
-                      </View>
-                    );
-                  })
-              )}
-            </View>
-          </ScrollView>
-
-          {/* Pagination */}
-          {filteredRows.length > 0 && (
-            <View style={s.paginationRow}>
-              <Text style={s.paginationText}>
-                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredRows.length)} of {filteredRows.length} entries
-              </Text>
-              <View style={s.paginationControls}>
-                <TouchableOpacity style={[s.pageBtn, currentPage === 1 && s.pageBtnDisabled]} disabled={currentPage === 1} onPress={() => setCurrentPage(p => Math.max(1, p - 1))}>
-                  <ChevronLeft size={18} color={currentPage === 1 ? "#cbd5e1" : "#475569"} />
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.pageBtn, currentPage === Math.ceil(filteredRows.length / pageSize) && s.pageBtnDisabled]} disabled={currentPage === Math.ceil(filteredRows.length / pageSize)} onPress={() => setCurrentPage(p => Math.min(Math.ceil(filteredRows.length / pageSize), p + 1))}>
-                  <ChevronRight size={18} color={currentPage === Math.ceil(filteredRows.length / pageSize) ? "#cbd5e1" : "#475569"} />
-                </TouchableOpacity>
               </View>
+              <Text style={s.rolePresetName}>{role.name}</Text>
+              <Text style={s.rolePresetDesc} numberOfLines={2}>{role.desc}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Selected Role Banner */}
+        <View style={s.roleBanner}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.roleBannerTitle}>{selectedRole.name}</Text>
+            <Text style={s.roleBannerSub}>Configure module-by-module permissions below</Text>
+          </View>
+          <Lock size={20} color={COLORS.primary} />
+        </View>
+
+        {/* Permission Matrix */}
+        <View style={s.matrixCard}>
+          <View style={s.matrixSearchRow}>
+            <Search size={16} color={COLORS.subText} />
+            <TextInput
+              style={s.matrixSearchInput}
+              placeholder="Search module permissions..."
+              placeholderTextColor={COLORS.subText}
+              value={searchKeyword}
+              onChangeText={setSearchKeyword}
+            />
+          </View>
+
+          <View style={s.tableHeaderRow}>
+            <Text style={[s.colHeader, { flex: 2 }]}>Module Name</Text>
+            <Text style={s.colHeader}>View</Text>
+            <Text style={s.colHeader}>Create</Text>
+            <Text style={s.colHeader}>Edit</Text>
+            <Text style={s.colHeader}>Delete</Text>
+          </View>
+
+          {filteredPermissions.map((row, idx) => (
+            <View key={row.module} style={s.tableDataRow}>
+              <Text style={s.moduleCell} numberOfLines={1}>{row.module}</Text>
+
+              {["view", "create", "edit", "delete"].map((field) => (
+                <TouchableOpacity
+                  key={field}
+                  style={s.checkCell}
+                  onPress={() => togglePermission(idx, field)}
+                >
+                  {row[field] ? (
+                    <CheckSquare size={20} color={COLORS.primary} />
+                  ) : (
+                    <Square size={20} color="#cbd5e1" />
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
+          ))}
         </View>
       </ScrollView>
+
+      {/* Create Role Modal */}
+      <Modal visible={showAddRoleModal} transparent animationType="slide">
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>Create Custom Staff Role</Text>
+              <TouchableOpacity onPress={() => setShowAddRoleModal(false)}>
+                <X size={20} color={COLORS.dark} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={s.label}>Role Name *</Text>
+            <TextInput
+              style={s.input}
+              placeholder="e.g. Catering Supervisor"
+              value={newRoleName}
+              onChangeText={setNewRoleName}
+            />
+
+            <Text style={s.label}>Role Description</Text>
+            <TextInput
+              style={[s.input, { height: 80 }]}
+              placeholder="Brief description of staff duties..."
+              multiline
+              value={newRoleDesc}
+              onChangeText={setNewRoleDesc}
+            />
+
+            <TouchableOpacity style={s.createSubmitBtn} onPress={handleCreateRole}>
+              <Text style={s.createSubmitBtnText}>Save Role Preset</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
-};
-
-export default RoleWiseScreenMapping;
+}
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f7fb" },
+  container: { flex: 1, backgroundColor: "#f8fafc" },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  headerBadge: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 1 },
+  headerTitle: { fontSize: 16, fontWeight: "900", color: COLORS.dark },
+  backBtn: { padding: 4 },
+  saveHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  saveHeaderBtnText: { color: "#ffffff", fontSize: 13, fontWeight: "bold" },
+
+  toastBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#dcfce7",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#bbf7d0",
+  },
+  toastText: { color: "#15803d", fontSize: 13, fontWeight: "bold" },
+
   scrollContent: { padding: 16, paddingBottom: 40 },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  pageTitle: { fontSize: 20, fontWeight: "600", color: "#4d6483" },
-  headerBtns: { flexDirection: "row", gap: 8 },
-  iconBtn: { borderWidth: 1, borderColor: "#d9e0ea", borderRadius: 8, padding: 10, backgroundColor: "#fff" },
-  card: { backgroundColor: "#fff", borderRadius: 8, borderWidth: 1, borderColor: "#d9e0ea", padding: 16 },
-  cardTitle: { fontSize: 18, fontWeight: "500", color: "#3b5cff", marginBottom: 16 },
-  inputGroup: { marginBottom: 16, position: "relative", zIndex: 10 },
-  label: { fontSize: 15, fontWeight: "600", color: "#111827", marginBottom: 6 },
-  dropdownTrigger: { height: 46, borderWidth: 1, borderColor: "#cfd7e3", borderRadius: 8, paddingHorizontal: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#fff" },
-  dropdownValue: { fontSize: 15, color: "#374151" },
-  dropdownPlaceholder: { fontSize: 15, color: "#6b7280" },
-  dropdownList: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#cfd7e3", borderRadius: 8, marginTop: 2, elevation: 5, maxHeight: 200 },
-  dropdownOption: { paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
-  dropdownOptionText: { fontSize: 14, color: "#374151" },
-  searchInput: { height: 48, borderWidth: 1, borderColor: "#cfd7e3", borderRadius: 8, paddingHorizontal: 14, fontSize: 15, color: "#6b7280", marginBottom: 16 },
-  table: { minWidth: 380 },
-  tableHeader: { flexDirection: "row", backgroundColor: "#0284c7", paddingVertical: 12, paddingHorizontal: 12, alignItems: "center", gap: 8 },
-  th: { color: "#fff", fontSize: 11, fontWeight: "bold", textTransform: "uppercase" },
-  checkbox: { width: 24, height: 24, borderWidth: 1.5, borderColor: "#c9d1db", borderRadius: 4, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
-  checkboxChecked: { backgroundColor: "#4b6cb7", borderColor: "#4b6cb7" },
-  checkmark: { color: "#fff", fontSize: 13, fontWeight: "bold" },
-  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", paddingVertical: 10, paddingHorizontal: 12, alignItems: "center", gap: 8 },
-  td: { fontSize: 14, color: "#4b5563" },
-  emptyRow: { paddingVertical: 20, paddingHorizontal: 12 },
-  emptyText: { fontSize: 14, color: "#4b5563" },
-  paginationRow: { marginTop: 16, gap: 10 },
-  paginationText: { fontSize: 13, color: "#64748b" },
-  paginationControls: { flexDirection: "row", gap: 8 },
-  pageBtn: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 8, padding: 6, backgroundColor: "#fff" },
-  pageBtnDisabled: { opacity: 0.4 },
+
+  sectionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: "800", color: COLORS.dark },
+  addRoleBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  addRoleBtnText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
+
+  roleScroll: { marginBottom: 16 },
+  rolePresetCard: {
+    width: 170,
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 14,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  rolePresetCardActive: { borderColor: COLORS.primary, borderWidth: 2, backgroundColor: "#f0f9ff" },
+  roleCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  usersBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#f1f5f9", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
+  usersBadgeText: { fontSize: 11, fontWeight: "700", color: COLORS.subText },
+  rolePresetName: { fontSize: 13, fontWeight: "800", color: COLORS.dark, marginBottom: 4 },
+  rolePresetDesc: { fontSize: 11, color: COLORS.subText, lineHeight: 15 },
+
+  roleBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  roleBannerTitle: { fontSize: 16, fontWeight: "900", color: COLORS.dark },
+  roleBannerSub: { fontSize: 12, color: COLORS.subText },
+
+  matrixCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
+  matrixSearchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 12,
+    height: 40,
+    gap: 8,
+    marginBottom: 14,
+  },
+  matrixSearchInput: { flex: 1, color: COLORS.dark, fontSize: 13 },
+
+  tableHeaderRow: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    backgroundColor: "#f8fafc",
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  colHeader: { flex: 1, fontSize: 11, fontWeight: "800", color: COLORS.subText, textAlign: "center" },
+
+  tableDataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f8fafc",
+    paddingHorizontal: 8,
+  },
+  moduleCell: { flex: 2, fontSize: 13, fontWeight: "700", color: COLORS.dark },
+  checkCell: { flex: 1, alignItems: "center" },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "center", padding: 20 },
+  modalCard: { backgroundColor: "#ffffff", borderRadius: 20, padding: 20 },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  modalTitle: { fontSize: 16, fontWeight: "900", color: COLORS.dark },
+  label: { fontSize: 12, fontWeight: "700", color: COLORS.dark, marginTop: 10, marginBottom: 4 },
+  input: { backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 13, color: COLORS.dark },
+  createSubmitBtn: { backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 16 },
+  createSubmitBtnText: { color: "#ffffff", fontWeight: "bold", fontSize: 14 },
+  flexRow: { flexDirection: "row", alignItems: "center" },
 });

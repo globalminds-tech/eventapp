@@ -99,7 +99,7 @@ export const Sidebar = ({ navigation, children }) => {
 
 
   return (
-    <SafeAreaView style={s.root} edges={["top", "left", "right"]}>
+    <SafeAreaView style={s.root} edges={["top", "bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* ── Top bar with hamburger ── */}

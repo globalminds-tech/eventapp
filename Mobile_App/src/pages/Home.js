@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  Image, TextInput, ActivityIndicator, Dimensions, ImageBackground, StatusBar, Animated 
+  Image, TextInput, ActivityIndicator, Dimensions, ImageBackground, StatusBar, Animated, Modal 
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { 
@@ -10,6 +10,7 @@ import {
 } from "lucide-react-native";
 import { getHomeEventshow } from "@Services/api";
 import { GLOBAL_STYLES, COLORS } from "../styles/theme";
+import BrandLogo from "../components/ui/BrandLogo";
 
 const { width } = Dimensions.get("window");
 
@@ -200,14 +201,7 @@ export default function Home({ navigation }) {
               <View style={styles.headerRow}>
                 <View>
                   {/* BookMyEvent Brand Logo */}
-                  <View style={styles.logoWrap}>
-                    <View style={styles.logoIconWrap}>
-                      <View style={[styles.logoDot, { backgroundColor: "#3b82f6", transform: [{ rotate: "-12deg" }] }]} />
-                      <View style={[styles.logoDot, { backgroundColor: "#f97316", transform: [{ rotate: "6deg" }] }]} />
-                      <View style={[styles.logoDot, { backgroundColor: "#22c55e", transform: [{ rotate: "-3deg" }] }]} />
-                    </View>
-                    <Text style={styles.logoText}>BookMyEvent</Text>
-                  </View>
+                  <BrandLogo textColor="#0f172a" />
 
                   {/* Location Selector */}
                   <TouchableOpacity style={styles.locationSelectorRow} onPress={() => navigation?.navigate("AllEvents")}>
@@ -217,7 +211,7 @@ export default function Home({ navigation }) {
                   </TouchableOpacity>
                 </View>
 
-                {/* Profile Avatar Shortcut */}
+                {/* Profile Avatar */}
                 <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => navigation?.navigate("MyProfile")}>
                   <User size={20} color="#0f172a" />
                 </TouchableOpacity>
@@ -350,6 +344,7 @@ export default function Home({ navigation }) {
           );
         })}
       </View>
+
     </View>
   );
 }
@@ -634,5 +629,66 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#64748b",
     marginTop: 2,
+  },
+  devRoleSwitchBtn: {
+    backgroundColor: "rgba(2, 132, 199, 0.12)",
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  devRoleSwitchText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0284c7",
+  },
+  roleModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  roleModalCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    elevation: 10,
+  },
+  roleModalTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 4,
+  },
+  roleModalSub: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 16,
+  },
+  roleOptionCard: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 10,
+  },
+  roleOptionTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  roleOptionSub: {
+    fontSize: 11,
+    color: "#475569",
+  },
+  roleCloseBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  roleCloseText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#64748b",
   },
 });

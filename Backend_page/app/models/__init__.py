@@ -16,8 +16,10 @@ from .program import EventProgram
 from .support import FeedbackEvent, Complaint, ChatHistory, FAQ
 from .todo import TodoTask, MessageGreeting, Contact
 
+from .category import CategoryMaster
+
 __all__ = [
-    'User',
+    'User', 'CategoryMaster',
     'EventDetails', 'EventBookingDetails', 'EventLayout',
     'EventFile', 'EventTerm', 'EventGuest',
     'Venue', 'VenueDocument', 'Country', 'State', 'City',

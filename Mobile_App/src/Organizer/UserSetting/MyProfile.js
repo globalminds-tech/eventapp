@@ -28,7 +28,8 @@ import {
   User,
   Edit2,
   X,
-  Save
+  Save,
+  LogOut
 } from "lucide-react-native";
 import { getUserProfile, updateUserProfile, getCountries, getStates, getCities } from "@Services/api";
 import { useDispatch } from "react-redux";
@@ -120,6 +121,9 @@ export const MyProfile = ({ navigation }) => {
     }
   };
 
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [showDevRoleModal, setShowDevRoleModal] = useState(false);
+
   const menuGroup1 = [
     { title: "Help Centre", icon: HelpCircle, screen: "Complaint_page" },
     { title: "Rewards", icon: Gift, screen: null },
@@ -129,8 +133,9 @@ export const MyProfile = ({ navigation }) => {
   ];
 
   const menuGroup2 = [
-    { title: "List your Show", icon: Home, screen: "OrganizerKYC", isHighlight: true },
-    { title: "Account & Settings", icon: Settings, action: () => setShowEditModal(true) },
+    { title: "Partner with Us (List Show / Book Booth)", icon: Home, action: () => setShowPartnerModal(true), isHighlight: true },
+    { title: "Account & Profile Settings", icon: Settings, action: () => setShowEditModal(true) },
+    { title: "⚡ Developer Role Switcher", icon: Shield, action: () => setShowDevRoleModal(true) },
   ];
 
   const menuGroup3 = [
@@ -148,6 +153,18 @@ export const MyProfile = ({ navigation }) => {
     } else {
       Alert.alert(item.title, `${item.title} feature coming soon!`);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.multiRemove([
+        "token", "role", "id", "name", "userId", "userName", "@organizer_step1_completed"
+      ]);
+    } catch (e) {
+      console.error(e);
+    }
+    dispatch(setUser({ id: null, name: null, role: null, email: null }));
+    navigation.replace("Login");
   };
 
   return (
@@ -236,6 +253,12 @@ export const MyProfile = ({ navigation }) => {
           })}
         </View>
 
+        {/* Prominent Red Logout Card */}
+        <TouchableOpacity style={styles.logoutCardBtn} onPress={handleLogout} activeOpacity={0.8}>
+          <LogOut size={20} color="#ef4444" style={{ marginRight: 10 }} />
+          <Text style={styles.logoutCardBtnText}>Log Out of Account</Text>
+        </TouchableOpacity>
+
         {/* BookAChange Banner Card */}
         <View style={styles.bannerCard}>
           <Text style={styles.bannerBadge}>BookAChange</Text>
@@ -290,6 +313,86 @@ export const MyProfile = ({ navigation }) => {
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Profile</Text>}
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Unified Partner Portal Selection Modal */}
+      <Modal visible={showPartnerModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalHeaderTitle}>Partner Portal Access</Text>
+              <TouchableOpacity onPress={() => setShowPartnerModal(false)}>
+                <X size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 16, gap: 12 }}>
+              <TouchableOpacity
+                style={[styles.partnerCard, { borderColor: "#f97316", backgroundColor: "#fff7ed" }]}
+                onPress={() => { setShowPartnerModal(false); navigation?.navigate("OrganizerKYC"); }}
+              >
+                <Text style={[styles.partnerTitle, { color: "#c2410c" }]}>🎪 Host & Produce Event (Organizer)</Text>
+                <Text style={styles.partnerSub}>7-Step Event Wizard, Ticket Inventory, Live Gate Scanners & Analytics</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.partnerCard, { borderColor: "#10b981", backgroundColor: "#ecfdf5" }]}
+                onPress={() => { setShowPartnerModal(false); navigation?.navigate("Exhibitor_Home"); }}
+              >
+                <Text style={[styles.partnerTitle, { color: "#047857" }]}>🏬 Book Stall & Exhibit (Exhibitor)</Text>
+                <Text style={styles.partnerSub}>Exhibition Discovery, Interactive Floor Plan Booth Reservation & Staff Passes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Developer Role Switcher Modal */}
+      <Modal visible={showDevRoleModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalHeaderTitle}>⚡ Developer Role Switcher Hub</Text>
+              <TouchableOpacity onPress={() => setShowDevRoleModal(false)}>
+                <X size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 16, gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.partnerCard, { borderColor: "#8b5cf6", backgroundColor: "#f5f3ff" }]}
+                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("Super_user_Home"); }}
+              >
+                <Text style={[styles.partnerTitle, { color: "#7c3aed" }]}>👑 Super Admin Portal</Text>
+                <Text style={styles.partnerSub}>Category Master, Event Approvals Queue, Platform Payouts</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.partnerCard, { borderColor: "#0284c7", backgroundColor: "#f0f9ff" }]}
+                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("OrganizerWelcome"); }}
+              >
+                <Text style={[styles.partnerTitle, { color: "#0369a1" }]}>🎪 Organizer Command Center</Text>
+                <Text style={styles.partnerSub}>7-Step Event Wizard, Live Gate Scanners, Live Sales Analytics</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.partnerCard, { borderColor: "#10b981", backgroundColor: "#ecfdf5" }]}
+                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("Exhibitor_Home"); }}
+              >
+                <Text style={[styles.partnerTitle, { color: "#047857" }]}>🏬 Exhibitor Portal</Text>
+                <Text style={styles.partnerSub}>Stall Discovery, Floor Plan Booth Booking, Lead Capture</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.partnerCard, { borderColor: "#f97316", backgroundColor: "#fff7ed" }]}
+                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("Home"); }}
+              >
+                <Text style={[styles.partnerTitle, { color: "#c2410c" }]}>🎟️ Public / Attendee View</Text>
+                <Text style={styles.partnerSub}>Category Event Discovery, Ticket Booking, QR Passes</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -359,6 +462,23 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 6,
+  },
+  logoutCardBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 14,
+    elevation: 1,
+  },
+  logoutCardBtnText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#ef4444",
   },
   menuRow: {
     flexDirection: "row",
@@ -452,5 +572,20 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "700",
     fontSize: 14,
+  },
+  partnerCard: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  partnerTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  partnerSub: {
+    fontSize: 11,
+    color: "#475569",
+    lineHeight: 16,
   },
 });

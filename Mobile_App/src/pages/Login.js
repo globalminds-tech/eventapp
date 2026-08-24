@@ -100,11 +100,18 @@ export default function Login({ navigation }) {
       }));
 
       if (data.role === "organizer") {
-        navigation.replace("OrganizerWelcome");
+        const step1Done = await AsyncStorage.getItem("@organizer_step1_completed");
+        if (step1Done === "true") {
+          navigation.replace("OrganizerWelcome");
+        } else {
+          navigation.replace("OrganizerKYC");
+        }
       } else if (data.role === "exhibitor") {
-        navigation.replace("Exhibitor_Home"); // Replace with correct exhibitor route
+        navigation.replace("Exhibitor_Home");
       } else if (data.role === "superuser") {
-        navigation.replace("Super_user_Home"); // Replace with correct superuser route
+        navigation.replace("Super_user_Home");
+      } else {
+        navigation.replace("Home");
       }
     } catch (err) {
       if (err.response) {
@@ -228,9 +235,24 @@ export default function Login({ navigation }) {
               style={s.registerBtn} 
               onPress={() => navigation?.navigate("Register")}
             >
-              <Text style={s.registerBtnText}>Create Account</Text>
+              <Text style={s.registerBtnText}>Create Account (Attendee)</Text>
               <ArrowRight size={16} color="#cbd5e1" style={{ marginLeft: 8 }} />
             </TouchableOpacity>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
+              <TouchableOpacity
+                style={[s.registerBtn, { flex: 1, backgroundColor: "rgba(249, 115, 22, 0.15)", borderColor: "#f97316" }]}
+                onPress={() => navigation?.navigate("OrganizerKYC")}
+              >
+                <Text style={{ color: "#f97316", fontSize: 12, fontWeight: "bold" }}>List Your Show (Organizer)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.registerBtn, { flex: 1, backgroundColor: "rgba(16, 185, 129, 0.15)", borderColor: "#10b981" }]}
+                onPress={() => navigation?.navigate("Exhibitor_Home")}
+              >
+                <Text style={{ color: "#10b981", fontSize: 12, fontWeight: "bold" }}>Exhibitor Portal</Text>
+              </TouchableOpacity>
+            </View>
 
           </View>
           

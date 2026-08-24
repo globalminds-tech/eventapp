@@ -8,7 +8,16 @@ import { ChevronDown, X, Calendar, Clock } from "lucide-react-native";
 import { get_Venues_details } from "@Services/api";
 import { useEffect } from "react";
 
-const CATEGORIES = ["Conference","Exhibition","Workshop","Seminar","Webinar","Concert","Sports","Festival","Other"];
+const CATEGORIES_MAP = {
+  "Music & Concerts": ["Rock", "Pop", "EDM", "Classical", "Jazz"],
+  "Sports & Fitness": ["Football", "Cricket", "Marathon", "Esports"],
+  "Tech & Business Expos": ["AI & Tech", "Startups", "Web3", "Finance"],
+  "Food & Culinary": ["Food Fest", "Wine Tasting", "Baking Workshop"],
+  "Arts & Theatre": ["Standup Comedy", "Drama", "Art Gallery"],
+  "+ Add Custom Category": ["Custom Subcategory"],
+};
+
+const CATEGORIES = Object.keys(CATEGORIES_MAP);
 const VISIBILITY_OPTIONS = ["Public","Private","Internal"];
 const EVENT_TYPES = ["OneTime","Recurring"];
 const OCCURRENCE_OPTIONS = ["Daily","Weekly","Monthly","Yearly"];
@@ -122,6 +131,10 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
   const openDropdown = (type) => {
     setDropdownType(type);
     if (type === "category") setDropdownList(CATEGORIES);
+    else if (type === "subcategory") {
+      const mainCat = ed.category || "Music & Concerts";
+      setDropdownList(CATEGORIES_MAP[mainCat] || ["General"]);
+    }
     else if (type === "visibility") setDropdownList(VISIBILITY_OPTIONS);
     else if (type === "eventType") setDropdownList(EVENT_TYPES);
     else if (type === "occurrence") setDropdownList(OCCURRENCE_OPTIONS);
@@ -267,8 +280,18 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
       {/* Basic Info */}
 
       <View style={s.section}>
-        <Text style={s.sectionTitle}>Basic Information</Text>
-        <SelectField label="Category" field="category" placeholder="Select Category" ed={ed} isView={isView} openDropdown={openDropdown} />
+        <Text style={s.sectionTitle}>Basic Information & Categories</Text>
+        <SelectField label="Main Category" field="category" placeholder="Select Main Category" ed={ed} isView={isView} openDropdown={openDropdown} />
+        
+        {ed.category === "+ Add Custom Category" ? (
+          <>
+            <InputField label="Custom Main Category" field="customCategory" placeholder="e.g. Esports & Gaming" required ed={ed} update={update} isView={isView} />
+            <InputField label="Custom Subcategory" field="customSubcategory" placeholder="e.g. Battle Royale Tournament" required ed={ed} update={update} isView={isView} />
+          </>
+        ) : (
+          <SelectField label="Subcategory" field="subcategory" placeholder="Select Subcategory" ed={ed} isView={isView} openDropdown={openDropdown} />
+        )}
+
         <InputField label="Event Name" field="eventName" placeholder="Enter event name" required ed={ed} update={update} isView={isView} />
         <InputField label="Description" field="description" placeholder="Event description..." required multiline ed={ed} update={update} isView={isView} />
         <InputField label="Tags" field="tags" placeholder="e.g. tech, conference" ed={ed} update={update} isView={isView} />

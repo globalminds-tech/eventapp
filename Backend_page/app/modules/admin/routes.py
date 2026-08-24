@@ -15,3 +15,22 @@ def update_event_status(event_id):
     status = data.get("status")
     res, status_code = AdminService.update_event_status(event_id, status)
     return jsonify(res), status_code
+
+@admin_module_bp.route("/categories", methods=["GET"])
+def get_categories():
+    res = AdminService.get_categories()
+    return jsonify(res)
+
+@admin_module_bp.route("/organizers/kyc-pending", methods=["GET"])
+def get_pending_organizers():
+    res = AdminService.get_pending_organizers()
+    return jsonify(res)
+
+@admin_module_bp.route("/organizers/<int:user_id>/kyc-status", methods=["PUT"])
+def update_organizer_kyc_status(user_id):
+    data = request.json or {}
+    status = data.get("status", "VERIFIED")
+    res, status_code = AdminService.update_organizer_kyc_status(user_id, status)
+    return jsonify(res), status_code
+
+
