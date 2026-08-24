@@ -313,7 +313,7 @@ export default function SponsorshipPage({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <View style={s.header}>
         <Text style={s.headerTitle}>Sponsorship</Text>
         <TouchableOpacity style={s.addBtn} onPress={() => { handleReset(); setShowForm(true); }}>

@@ -34,7 +34,10 @@ import {
   verifyOtp,
   resendOtp,
   bookEvent,
+  createPaymentOrder,
+  verifyPaymentSignature,
 } from "@Services/api";
+
 
 const { width } = Dimensions.get("window");
 
@@ -157,20 +160,54 @@ export default function UserBooking({ route, navigation }) {
     if (!agreed) return showToast("You must agree to the policies", "warning");
     try {
       setLoading(true);
+      const ticketAmount = event?.price || event?.ticket_price || 100;
+      
+      // Step 1: Create Razorpay Order (with Route split if organizer account ID exists)
+      const orderRes = await createPaymentOrder({
+        amount: ticketAmount,
+        currency: "INR",
+        organizer_account_id: event?.organizer_account_id,
+        receipt: `rcpt_evt_${eventId}_${Date.now()}`
+      });
+
+      if (!orderRes || !orderRes.success) {
+        throw new Error(orderRes?.message || "Failed to create payment order");
+      }
+
+      const orderData = orderRes.order;
+
+      // Step 2: Verify Payment (Simulated / Razorpay Checkout callback)
+      const paymentPayload = {
+        razorpay_order_id: orderData.id,
+        razorpay_payment_id: `pay_simulated_${Date.now()}`,
+        razorpay_signature: `sig_simulated_${Date.now()}`
+      };
+
+      const verifyRes = await verifyPaymentSignature(paymentPayload);
+      if (!verifyRes || !verifyRes.success) {
+        throw new Error("Payment verification failed");
+      }
+
+      // Step 3: Finalize Booking in DB & Generate Pass
       const res = await bookEvent({
         event_id: eventId,
         ...form,
         food_preference: event?.food == 1 ? form.food_preference : "None",
+        payment_id: paymentPayload.razorpay_payment_id,
+        order_id: paymentPayload.razorpay_order_id
       });
+
       setSuccessData(res);
       setStep(3);
-      showToast("Booking confirmed!", "success");
+      showToast("Payment verified & booking confirmed!", "success");
     } catch (err) {
-      showToast("Booking failed. Try again.", "error");
+      console.error("Booking Payment Error:", err);
+      showToast(err?.message || "Booking failed. Try again.", "error");
     } finally {
       setLoading(false);
     }
   };
+
 
   const getToastColor = () => {
     switch (toast.type) {

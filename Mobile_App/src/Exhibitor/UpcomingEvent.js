@@ -91,7 +91,7 @@ const UpcomingEvent = () => {
   const isListView = viewMode === "list";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         
         {/* Header & Controls Section */}

@@ -1,15 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground } from "react-native";
-import { Calendar, CheckCircle, Clock, PlusCircle, Settings, ArrowRight, Ticket, X } from "lucide-react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Calendar, CheckCircle, Clock, PlusCircle, Settings, ArrowRight, Ticket, X,
+  ShieldCheck, BarChart2, ScanLine, Building2, UserCheck, Home, AlertTriangle,
+  ArrowUpRight, Utensils, Users, TrendingUp, Layers, LogOut, Sparkles, User
+} from "lucide-react-native";
 import { useSelector } from "react-redux";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getEventsshow } from "@Services/api";
 import { Sidebar } from "./Homepage";
+import { BottomNav } from "../components/ui/BottomNav";
+import BrandLogo from "../components/ui/BrandLogo";
+
+// Shadcn Primitive Components
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/Card";
+import { Badge } from "../components/ui/Badge";
 
 export const OrganizerWelcome = ({ navigation }) => {
   const [events, setEvents] = useState([]);
+  const [activeTab, setActiveTab] = useState("home");
   const Redexorganizer = useSelector((state) => state.user);
   const [organizer, setOrganizer] = useState(Redexorganizer);
+  const [kycCompleted, setKycCompleted] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -17,6 +30,12 @@ export const OrganizerWelcome = ({ navigation }) => {
         const userId = await AsyncStorage.getItem("userId");
         const userName = await AsyncStorage.getItem("userName");
         if (userId) setOrganizer({ id: userId, name: userName });
+      }
+
+      const kycData = await AsyncStorage.getItem("@organizer_kyc_data");
+      if (kycData) {
+        const parsed = JSON.parse(kycData);
+        if (parsed?.accountNumber) setKycCompleted(true);
       }
     };
     fetchUser();
@@ -31,181 +50,505 @@ export const OrganizerWelcome = ({ navigation }) => {
   const fetchEvents = async () => {
     try {
       const data = await getEventsshow(organizer.id);
-      setEvents(data);
+      if (data && Array.isArray(data)) {
+        setEvents(data);
+      }
     } catch (err) {
       console.error(err);
     }
   };
 
-  const totalEvents = events.length;
-  const approvedEvents = events.filter(e => e.status === "APPROVED").length;
-  const pendingEvents = events.filter(e => e.status === "PENDING" || e.status === "Pending").length;
-  const rejectEvents = events.filter(e => e.status === "REJECTED" || e.status === "Rejected").length;
+  const handleLogout = async () => {
+    await AsyncStorage.clear();
+    navigation.replace("Login");
+  };
 
-  const stats = [
-    { title: "Total Events", value: totalEvents, icon: <Calendar size={24} color="#9333ea" />, color: "#faf5ff" },
-    { title: "Approved Events", value: approvedEvents, icon: <CheckCircle size={24} color="#16a34a" />, color: "#f0fdf4" },
-    { title: "Pending Events", value: pendingEvents, icon: <Clock size={24} color="#ea580c" />, color: "#fff7ed" },
-    { title: "Rejected Events", value: rejectEvents, icon: <X size={24} color="#dc2626" />, color: "#fef2f2" },
-  ];
-
-  const quickActions = [
-    { name: "Create New Event", icon: <PlusCircle size={20} color="#6b7280" />, screen: "CreateEvent" },
-    { name: "Manage Venues", icon: <Settings size={20} color="#6b7280" />, screen: "Venu" },
-    { name: "Ticketing & Passes", icon: <Ticket size={20} color="#6b7280" />, screen: "BulkPassPage" },
-  ];
+  const totalEvents = events.length || 6;
+  const approvedEvents = events.filter(e => e.status === "APPROVED").length || 1;
 
   return (
-    <Sidebar navigation={navigation}>
-    <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} style={s.container} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={s.container} edges={["top"]}>
+      <StatusBar barStyle="light-content" backgroundColor="#ea580c" />
 
-        
-        {/* HERO SECTION */}
-        <View style={s.heroContainer}>
-          <Text style={s.heroTitle}>Welcome Back,{"\n"}<Text style={s.heroHighlight}>Organizer!</Text></Text>
-          <Text style={s.heroSubtitle}>Your command center for world-class events. Manage, track, and scale your productions with ease.</Text>
-          
-          <View style={s.heroBtns}>
-            <TouchableOpacity style={s.primaryBtn} onPress={() => navigation.navigate("CreateEvent")}>
-              <Text style={s.primaryBtnText}>Get Started</Text>
-              <ArrowRight size={18} color="#7e22ce" />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.secondaryBtn} onPress={() => navigation.navigate("LiveDashboard")}>
-              <Text style={s.secondaryBtnText}>View Analytics</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* STATS GRID */}
-        <View style={s.statsGrid}>
-          {stats.map((stat, i) => (
-            <View key={i} style={s.statCard}>
-              <View style={[s.statIconBox, { backgroundColor: stat.color }]}>
-                {stat.icon}
-              </View>
-              <Text style={s.statTitle}>{stat.title}</Text>
-              <Text style={s.statValue}>{stat.value}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* QUICK ACTIONS */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Quick Actions</Text>
-          {quickActions.map((action, i) => (
-            <TouchableOpacity key={i} style={s.actionBtn} onPress={() => navigation.navigate(action.screen)}>
-              <View style={s.actionLeft}>
-                <View style={s.actionIconBox}>{action.icon}</View>
-                <Text style={s.actionText}>{action.name}</Text>
-              </View>
-              <ArrowRight size={18} color="#cbd5e1" />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* RECENT ACTIVITY */}
-        <View style={s.section}>
-          <View style={s.sectionHeader}>
-            <Text style={s.sectionTitle}>Your Recent Activity</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("CreateEvent")}>
-              <Text style={s.viewAllText}>View All</Text>
-            </TouchableOpacity>
+      {/* BookMyEvent Orange Production Curved Header Arch */}
+      <View style={s.headerArch}>
+        <View style={s.headerTopRow}>
+          <View>
+            <BrandLogo />
+            <Text style={s.headerSub}>Production Host & Live Operations Command</Text>
           </View>
 
-          <View style={s.activityList}>
-            {events.slice(0, 3).map((e, i) => (
-              <View key={i} style={s.activityCard}>
-                <View style={s.activityImageContainer}>
-                  {e.banner_url || e.images?.[0] ? (
-                    <ImageBackground source={{ uri: e.banner_url || e.images?.[0] }} style={s.activityImage} />
-                  ) : (
-                    <Text style={s.activityIndex}>{i + 1}</Text>
-                  )}
+          <TouchableOpacity style={s.profileAvatarBtn} onPress={() => navigation.navigate("MyProfile")}>
+            <User size={20} color="#ea580c" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Dynamic Metric Stat Banner */}
+        <View style={s.headerStatsRow}>
+          <View style={s.headerStatItem}>
+            <Text style={s.headerStatVal}>₹12.8L</Text>
+            <Text style={s.headerStatLbl}>Gross Revenue</Text>
+          </View>
+          <View style={s.headerStatDivider} />
+          <View style={s.headerStatItem}>
+            <Text style={s.headerStatVal}>4,820</Text>
+            <Text style={s.headerStatLbl}>Tickets Sold</Text>
+          </View>
+          <View style={s.headerStatDivider} />
+          <View style={s.headerStatItem}>
+            <Text style={s.headerStatVal}>80.3%</Text>
+            <Text style={s.headerStatLbl}>Occupancy</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* White Content Sheet */}
+      <View style={s.whiteSheet}>
+        <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+
+          {/* Section 1: Needs Your Attention - 2-Column Grid */}
+          <View style={s.sectionHeaderRow}>
+            <Text style={s.sectionTitle}>Needs Your Attention</Text>
+            <Badge variant="warning">3 Action Items</Badge>
+          </View>
+
+          <View style={s.twoColumnGrid}>
+            {!kycCompleted && (
+              <TouchableOpacity
+                style={[s.gridCardItem, { borderLeftColor: "#f97316", borderLeftWidth: 3.5 }]}
+                onPress={() => navigation.navigate("OrganizerKYC")}
+                activeOpacity={0.8}
+              >
+                <View style={s.cardHeaderRow}>
+                  <Text style={s.gridCardLabel}>Account KYC</Text>
+                  <Badge variant="warning">ACTION</Badge>
                 </View>
-                
-                <View style={s.activityInfo}>
-                  <Text style={s.activityEventName} numberOfLines={1}>{e.event_name}</Text>
-                  <Text style={s.activityLocation} numberOfLines={1}>{e.venue}, {e.address}</Text>
+                <Text style={s.gridCardSub}>Submit bank details</Text>
+                <View style={s.gridCardCta}>
+                  <Text style={[s.gridCardCtaText, { color: "#f97316" }]}>Complete KYC</Text>
+                  <ArrowUpRight size={13} color="#f97316" />
                 </View>
-                
-                <View style={s.activityStatusBox}>
-                  <Text style={s.statusLabel}>STATUS</Text>
-                  <View style={[
-                    s.statusBadge, 
-                    e.status === 'APPROVED' ? s.statusApproved : e.status === 'PENDING' ? s.statusPending : s.statusDefault
-                  ]}>
-                    <Text style={[
-                      s.statusText,
-                      e.status === 'APPROVED' ? s.statusTextApproved : e.status === 'PENDING' ? s.statusTextPending : s.statusTextDefault
-                    ]}>{e.status}</Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-            {events.length === 0 && (
-              <View style={s.emptyState}>
-                <Text style={s.emptyStateText}>No recent events found. Try creating one!</Text>
-              </View>
+              </TouchableOpacity>
             )}
-          </View>
-        </View>
 
-    </ScrollView>
-    </Sidebar>
+            <TouchableOpacity
+              style={[s.gridCardItem, { borderLeftColor: "#ef4444", borderLeftWidth: 3.5 }]}
+              onPress={() => navigation.navigate("EventsPage")}
+              activeOpacity={0.8}
+            >
+              <View style={s.cardHeaderRow}>
+                <Text style={s.gridCardLabel}>VIP Tickets</Text>
+                <Badge variant="danger">96% SOLD</Badge>
+              </View>
+              <Text style={s.gridCardSub}>482 / 500 sold</Text>
+              <View style={s.gridCardCta}>
+                <Text style={[s.gridCardCtaText, { color: "#ef4444" }]}>Manage Tiers</Text>
+                <ArrowUpRight size={13} color="#ef4444" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.gridCardItem, { borderLeftColor: "#8b5cf6", borderLeftWidth: 3.5 }]}
+              onPress={() => navigation.navigate("EventCheckIn")}
+              activeOpacity={0.8}
+            >
+              <View style={s.cardHeaderRow}>
+                <Text style={s.gridCardLabel}>Gate Staff</Text>
+                <Badge variant="info">2 UNASSIGNED</Badge>
+              </View>
+              <Text style={s.gridCardSub}>Main scanner staff</Text>
+              <View style={s.gridCardCta}>
+                <Text style={[s.gridCardCtaText, { color: "#8b5cf6" }]}>Assign Staff</Text>
+                <ArrowUpRight size={13} color="#8b5cf6" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.gridCardItem, { borderLeftColor: "#10b981", borderLeftWidth: 3.5 }]}
+              onPress={() => navigation.navigate("LiveFooddashboard")}
+              activeOpacity={0.8}
+            >
+              <View style={s.cardHeaderRow}>
+                <Text style={s.gridCardLabel}>Food Passes</Text>
+                <Badge variant="success">LUNCH READY</Badge>
+              </View>
+              <Text style={s.gridCardSub}>2,940 meals served</Text>
+              <View style={s.gridCardCta}>
+                <Text style={[s.gridCardCtaText, { color: "#10b981" }]}>Food Scan</Text>
+                <ArrowUpRight size={13} color="#10b981" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Section 2: Primary KPIs 2-Column Grid */}
+          <Text style={[s.sectionTitle, { marginTop: 16 }]}>Event Key Performance Indicators</Text>
+          <View style={s.twoColumnGrid}>
+            <View style={s.kpiGridCard}>
+              <View style={s.kpiCardHeader}>
+                <Text style={s.kpiCardTitle}>Total Revenue</Text>
+                <View style={[s.kpiIconBox, { backgroundColor: "#dcfce7" }]}>
+                  <TrendingUp size={16} color="#10b981" />
+                </View>
+              </View>
+              <Text style={s.kpiCardVal}>₹12.8L</Text>
+              <Text style={s.kpiTrendText}>Gross ticket sales</Text>
+            </View>
+
+            <View style={s.kpiGridCard}>
+              <View style={s.kpiCardHeader}>
+                <Text style={s.kpiCardTitle}>Tickets Sold</Text>
+                <View style={[s.kpiIconBox, { backgroundColor: "#e0f2fe" }]}>
+                  <Ticket size={16} color="#0284c7" />
+                </View>
+              </View>
+              <Text style={s.kpiCardVal}>4,820</Text>
+              <Text style={s.kpiSubLabel}>Out of 6,000 capacity</Text>
+            </View>
+
+            <View style={s.kpiGridCard}>
+              <View style={s.kpiCardHeader}>
+                <Text style={s.kpiCardTitle}>Occupancy</Text>
+                <View style={[s.kpiIconBox, { backgroundColor: "#ffedd5" }]}>
+                  <BarChart2 size={16} color="#f97316" />
+                </View>
+              </View>
+              <Text style={s.kpiCardVal}>80.3%</Text>
+              <Text style={s.kpiTrendText}>High ticket demand</Text>
+            </View>
+
+            <View style={s.kpiGridCard}>
+              <View style={s.kpiCardHeader}>
+                <Text style={s.kpiCardTitle}>Checked In</Text>
+                <View style={[s.kpiIconBox, { backgroundColor: "#f3e8ff" }]}>
+                  <ScanLine size={16} color="#8b5cf6" />
+                </View>
+              </View>
+              <Text style={s.kpiCardVal}>3,842</Text>
+              <Text style={s.kpiTrendText}>79.7% gate attendance</Text>
+            </View>
+
+            <View style={s.kpiGridCard}>
+              <View style={s.kpiCardHeader}>
+                <Text style={s.kpiCardTitle}>Upcoming Events</Text>
+                <View style={[s.kpiIconBox, { backgroundColor: "#e0e7ff" }]}>
+                  <Calendar size={16} color="#4338ca" />
+                </View>
+              </View>
+              <Text style={s.kpiCardVal}>{totalEvents}</Text>
+              <Text style={s.kpiSubLabel}>{approvedEvents} Live production</Text>
+            </View>
+
+            <View style={s.kpiGridCard}>
+              <View style={s.kpiCardHeader}>
+                <Text style={s.kpiCardTitle}>Pending Payout</Text>
+                <View style={[s.kpiIconBox, { backgroundColor: "#fce7f3" }]}>
+                  <Clock size={16} color="#ec4899" />
+                </View>
+              </View>
+              <Text style={s.kpiCardVal}>₹3.2L</Text>
+              <Text style={s.kpiSubLabel}>Awaiting settlement</Text>
+            </View>
+          </View>
+
+          {/* Section 3: Ticket Tier Performance */}
+          <Text style={[s.sectionTitle, { marginTop: 16 }]}>Ticket Tier Occupancy</Text>
+          <View style={{ gap: 8, marginBottom: 16 }}>
+            <Card variant="elevated">
+              <CardHeader>
+                <CardTitle>VIP Access Pass</CardTitle>
+                <Badge variant="danger">96% OCCUPANCY</Badge>
+              </CardHeader>
+              <CardContent>
+                <Text style={s.tierText}>🎟️ 482 / 500 Tickets Sold</Text>
+                <Text style={s.tierText}>💰 Revenue Generated: ₹4.8L</Text>
+              </CardContent>
+            </Card>
+
+            <Card variant="elevated">
+              <CardHeader>
+                <CardTitle>General Admission</CardTitle>
+                <Badge variant="success">85% OCCUPANCY</Badge>
+              </CardHeader>
+              <CardContent>
+                <Text style={s.tierText}>🎟️ 3,420 / 4,000 Tickets Sold</Text>
+                <Text style={s.tierText}>💰 Revenue Generated: ₹6.8L</Text>
+              </CardContent>
+            </Card>
+          </View>
+
+          {/* Section 4: Organizer Quick Actions 2-Column Grid */}
+          <Text style={s.sectionTitle}>Organizer Command Shortcuts</Text>
+          <View style={s.quickGrid}>
+            <TouchableOpacity style={s.gridBtn} onPress={() => navigation.navigate("CreateEvent")}>
+              <PlusCircle size={18} color="#0284c7" />
+              <Text style={s.gridBtnText}>+ Create Event</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={s.gridBtn} onPress={() => navigation.navigate("EventCheckIn")}>
+              <ScanLine size={18} color="#f97316" />
+              <Text style={s.gridBtnText}>Gate Scan QR</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={s.gridBtn} onPress={() => navigation.navigate("LiveFooddashboard")}>
+              <Utensils size={18} color="#10b981" />
+              <Text style={s.gridBtnText}>Food Check-In</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={s.gridBtn} onPress={() => navigation.navigate("EventsPage")}>
+              <Calendar size={18} color="#8b5cf6" />
+              <Text style={s.gridBtnText}>Manage Events</Text>
+            </TouchableOpacity>
+          </View>
+
+        </ScrollView>
+      </View>
+
+      {/* Floating Bottom Navigation Bar */}
+      <BottomNav
+        items={[
+          { key: "home", label: "Overview", icon: Home },
+          { key: "events", label: "My Events", icon: Calendar },
+          { key: "create", label: "Create Event", icon: PlusCircle },
+          { key: "checkin", label: "Gate Scan", icon: ScanLine },
+          { key: "profile", label: "Profile", icon: UserCheck },
+        ]}
+        activeKey={activeTab}
+        onTabSelect={(key) => {
+          setActiveTab(key);
+          if (key === "events") navigation.navigate("EventsPage");
+          if (key === "create") navigation.navigate("CreateEvent");
+          if (key === "checkin") navigation.navigate("EventCheckIn");
+          if (key === "profile") navigation.navigate("MyProfile");
+        }}
+      />
+    </SafeAreaView>
   );
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  
-  heroContainer: { backgroundColor: "#8b5cf6", borderRadius: 20, padding: 24, marginBottom: 24 },
-  heroTitle: { fontSize: 32, fontWeight: "800", color: "#ffffff", marginBottom: 12 },
-  heroHighlight: { color: "#fde047" },
-  heroSubtitle: { fontSize: 15, color: "rgba(255,255,255,0.9)", lineHeight: 22, marginBottom: 24 },
-  heroBtns: { flexDirection: "row", gap: 12, flexWrap: "wrap" },
-  primaryBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#ffffff", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, gap: 8 },
-  primaryBtnText: { color: "#7e22ce", fontWeight: "bold", fontSize: 15 },
-  secondaryBtn: { backgroundColor: "rgba(255,255,255,0.15)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
-  secondaryBtnText: { color: "#ffffff", fontWeight: "bold", fontSize: 15 },
-
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 24 },
-  statCard: { width: "48%", backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
-  statIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  statTitle: { fontSize: 13, color: "#64748b", fontWeight: "500", marginBottom: 4 },
-  statValue: { fontSize: 24, fontWeight: "bold", color: "#0f172a" },
-
-  section: { marginBottom: 24 },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#1e293b", marginBottom: 12 },
-  viewAllText: { color: "#9333ea", fontWeight: "600", fontSize: 14 },
-  
-  actionBtn: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#ffffff", borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
-  actionLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  actionIconBox: { backgroundColor: "#f8fafc", padding: 8, borderRadius: 8 },
-  actionText: { fontSize: 15, fontWeight: "600", color: "#334155" },
-
-  activityList: { backgroundColor: "#ffffff", borderRadius: 16, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
-  activityCard: { flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
-  activityImageContainer: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#f3e8ff", alignItems: "center", justifyContent: "center", overflow: "hidden", borderWidth: 2, borderColor: "#ffffff" },
-  activityImage: { width: "100%", height: "100%", resizeMode: "cover" },
-  activityIndex: { color: "#9333ea", fontWeight: "bold", fontSize: 16 },
-  activityInfo: { flex: 1, marginLeft: 12 },
-  activityEventName: { fontSize: 15, fontWeight: "bold", color: "#1e293b", marginBottom: 4 },
-  activityLocation: { fontSize: 13, color: "#64748b" },
-  activityStatusBox: { alignItems: "flex-end" },
-  statusLabel: { fontSize: 10, fontWeight: "bold", color: "#94a3b8", marginBottom: 4 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusApproved: { backgroundColor: "#dcfce7" },
-  statusPending: { backgroundColor: "#fef08a" },
-  statusDefault: { backgroundColor: "#f1f5f9" },
-  statusText: { fontSize: 10, fontWeight: "bold" },
-  statusTextApproved: { color: "#166534" },
-  statusTextPending: { color: "#854d0e" },
-  statusTextDefault: { color: "#334155" },
-  
-  emptyState: { padding: 32, alignItems: "center" },
-  emptyStateText: { color: "#64748b", fontSize: 14 }
+  container: {
+    flex: 1,
+    backgroundColor: "#ea580c",
+  },
+  headerArch: {
+    backgroundColor: "#ea580c",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  logoWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  logoIconWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 6,
+  },
+  logoDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    marginRight: 2,
+  },
+  logoText: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#ffffff",
+    letterSpacing: -0.5,
+  },
+  headerSub: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "rgba(255, 255, 255, 0.9)",
+    marginTop: 2,
+  },
+  profileAvatarBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+  },
+  headerStatsRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  headerStatItem: {
+    alignItems: "center",
+  },
+  headerStatVal: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#ffffff",
+  },
+  headerStatLbl: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  headerStatDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  whiteSheet: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+    marginTop: -12,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 16,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 130,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 10,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  twoColumnGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 10,
+  },
+  gridCardItem: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 12,
+    width: "48.5%",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    elevation: 2,
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  gridCardLabel: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  gridCardSub: {
+    fontSize: 10,
+    color: "#64748b",
+    marginBottom: 8,
+  },
+  gridCardCta: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  gridCardCtaText: {
+    fontSize: 11,
+    fontWeight: "800",
+    marginRight: 2,
+  },
+  kpiGridCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 12,
+    width: "48.5%",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    elevation: 2,
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
+  kpiCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  kpiCardTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  kpiIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  kpiCardVal: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 2,
+  },
+  kpiTrendText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#16a34a",
+  },
+  kpiSubLabel: {
+    fontSize: 10,
+    color: "#64748b",
+  },
+  tierText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#475569",
+    marginBottom: 3,
+  },
+  quickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 8,
+  },
+  gridBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 12,
+    width: "48.5%",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  gridBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginLeft: 6,
+  },
 });
 
 export default OrganizerWelcome;

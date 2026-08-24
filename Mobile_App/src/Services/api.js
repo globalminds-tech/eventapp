@@ -2,32 +2,123 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// const BASE_URL = "http://192.168.1.19:5001/";                          // local WiFi only
-const BASE_URL = "http://192.168.1.5:5001/"; // local WiFi only
-// const BASE_URL = "https://neat-lands-invent.loca.lt/";                  // localtunnel (unreliable)
-// const BASE_URL = "https://joint-independence-nokia-fly.trycloudflare.com/"; // Cloudflare tunnel ✅
+// DEFAULT BACKEND CANDIDATES
+const DEFAULT_BASE_URL = "http://10.133.157.12:5001/"; // Hotspot / Local Network IP
 
-// AXIOS INSTANCE
+// AXIOS INSTANCE WITH ROBUST TIMEOUT
 const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 15000, // 15 seconds — prevents premature timeout on mobile/WiFi
+  baseURL: DEFAULT_BASE_URL,
+  timeout: 15000, // 15s timeout
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// automatically attach token asynchronously in React Native
-api.interceptors.request.use(async (req) => {
+// Dynamic Base URL Setter & Getter
+export const setCustomBaseUrl = async (newUrl) => {
   try {
-    const token = await AsyncStorage.getItem("token");
-    if (token) {
-      req.headers.Authorization = `Bearer ${token}`;
-    }
-  } catch (error) {
-    console.error("Error retrieving token:", error);
+    const formattedUrl = newUrl.endsWith("/") ? newUrl : `${newUrl}/`;
+    await AsyncStorage.setItem("custom_base_url", formattedUrl);
+    api.defaults.baseURL = formattedUrl;
+    console.log("Updated Base URL to:", formattedUrl);
+    return formattedUrl;
+  } catch (e) {
+    console.error("Failed to save custom Base URL", e);
   }
-  return req;
-});
+};
+
+export const getCurrentBaseUrl = async () => {
+  try {
+    const storedUrl = await AsyncStorage.getItem("custom_base_url");
+    if (storedUrl) {
+      api.defaults.baseURL = storedUrl;
+      return storedUrl;
+    }
+  } catch (e) {
+    console.warn("Could not read stored base URL", e);
+  }
+  return DEFAULT_BASE_URL;
+};
+
+// Initialize Base URL asynchronously
+getCurrentBaseUrl();
+
+// REQUEST INTERCEPTOR: Attach Authorization Token & Dynamic Host Verification
+api.interceptors.request.use(
+  async (req) => {
+    try {
+      // Dynamic base URL check
+      const storedUrl = await AsyncStorage.getItem("custom_base_url");
+      if (storedUrl && api.defaults.baseURL !== storedUrl) {
+        api.defaults.baseURL = storedUrl;
+        req.baseURL = storedUrl;
+      }
+      
+      const token = await AsyncStorage.getItem("token");
+      if (token) {
+        req.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error("Error attaching request headers:", error);
+    }
+    return req;
+  },
+  (error) => Promise.reject(error)
+);
+
+// RESPONSE INTERCEPTOR: Exponential Retry & Standard Error Normalization
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Check if network error or server transient 5xx error & retry count < 3
+    const isNetworkOrServerError =
+      !error.response ||
+      error.code === "ECONNABORTED" ||
+      error.code === "ERR_NETWORK" ||
+      (error.response && error.response.status >= 500);
+
+    if (isNetworkOrServerError && originalRequest && !originalRequest._retry) {
+      originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+
+      if (originalRequest._retryCount <= 3) {
+        const backoffDelay = Math.pow(2, originalRequest._retryCount - 1) * 1000;
+        console.warn(
+          `[Axios Retry] Retrying request (${originalRequest._retryCount}/3) to ${originalRequest.url} after ${backoffDelay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+        return api(originalRequest);
+      }
+    }
+
+    // Auto-clear token on 401 Unauthorized
+    if (error.response && error.response.status === 401) {
+      console.warn("Unauthorized API call. Clearing expired token...");
+      try {
+        await AsyncStorage.removeItem("token");
+        await AsyncStorage.removeItem("user");
+      } catch (e) {
+        console.error("Failed to clear auth state:", e);
+      }
+    }
+
+    // Standardized Error Response object formatting
+    const formattedError = {
+      message:
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "A network error occurred. Please check server connection.",
+      status: error.response?.status || 0,
+      data: error.response?.data || null,
+      isNetworkError: !error.response,
+    };
+
+    return Promise.reject(formattedError);
+  }
+);
+
 
 // LOGIN API
 export const loginUser = (formData) => {
@@ -686,4 +777,53 @@ export const deleteFeedback = async (id) => {
   return res.data;
 };
 
+// RAZORPAY PAYMENT APIs
+export const createPaymentOrder = async (payload) => {
+  const res = await api.post("/api/payments/create-order", payload);
+  return res.data;
+};
+
+export const verifyPaymentSignature = async (payload) => {
+  const res = await api.post("/api/payments/verify-signature", payload);
+  return res.data;
+};
+
+export const requestPaymentRefund = async (payload) => {
+  const res = await api.post("/api/payments/refund", payload);
+  return res.data;
+};
+
+// CATEGORY MASTER APIs
+export const getAdminCategories = async () => {
+  try {
+    const res = await api.get("/api/admin/categories");
+    return res.data;
+  } catch (err) {
+    console.warn("Failed to fetch admin categories, falling back to default");
+    return { success: false, categories: [] };
+  }
+};
+
+export const createAdminCategory = async (payload) => {
+  const res = await api.post("/api/admin/categories", payload);
+  return res.data;
+};
+
+// ORGANIZER KYC VERIFICATION APIs
+export const getPendingOrganizers = async () => {
+  try {
+    const res = await api.get("/api/admin/organizers/kyc-pending");
+    return res.data;
+  } catch (err) {
+    console.warn("Failed to fetch pending organizers KYC");
+    return { success: false, organizers: [] };
+  }
+};
+
+export const updateOrganizerKycStatus = async (userId, status) => {
+  const res = await api.put(`/api/admin/organizers/${userId}/kyc-status`, { status });
+  return res.data;
+};
+
 export default api;
+

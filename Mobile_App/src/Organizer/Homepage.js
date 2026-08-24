@@ -43,112 +43,63 @@ export const Sidebar = ({ navigation, children }) => {
 
   const menu = [
     {
-      name: "Dashboard", panel: "dashboard",
+      name: "Dashboard & Analytics", panel: "dashboard",
       icon: (active) => <BarChart3 size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
       sub: [
-        { label: "Live Dashboard", screen: "LiveDashboard" },
-        { label: "Live Food Dashboard", screen: "LiveFoodDashboard" },
         { label: "Organizer Dashboard", screen: "Organizerdashboard" },
+        { label: "Live Gate Analytics", screen: "LiveDashboard" },
+        { label: "Live Food Analytics", screen: "LiveFoodDashboard" },
       ]
     },
     {
-      name: "My Event", panel: "myevent",
+      name: "Events & Programs", panel: "myevent",
       icon: (active) => <CalendarDays size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
       sub: [
-        { label: "Add-On Check-In / Check-Out", screen: "AddonCheckIn" },
-        { label: "Add-On Spot", screen: "SportBooking" },
-        { label: "Coupon", screen: "Coupon" },
-        { label: "Create Event", screen: "CreateEvent" },
-        { label: "Event Check-In/Check-Out", screen: "EventCheckIn" },
-        { label: "Food Check-In/Check-Out", screen: "FoodCheckIn" },
-        { label: "Messages & Greetings", screen: "Messages" },
-        { label: "Pass", screen: "Pass" },
-        { label: "Todo Task", screen: "TodoTask" },
-        { label: "Verify Event", screen: "VerifyEvent" },
-      ]
-    },
-    {
-      name: "Program", panel: "Program",
-      icon: (active) => <Mic size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
-      sub: [
-        { label: "Abstract Verification", screen: "AbstractVerification" },
-        { label: "Bulk and Pass Generation", screen: "BulkPassPage" },
-        { label: "Create Program", screen: "CreateProgram" },
-        { label: "Program Check In", screen: "ProgramCheckin" },
+        { label: "Create Event (DIY Wizard)", screen: "CreateEvent" },
+        { label: "My Events Directory", screen: "EventsPage" },
+        { label: "Verify Events", screen: "VerifyEvent" },
+        { label: "Create Program & Schedule", screen: "CreateProgram" },
         { label: "Program Verification", screen: "ProgramVerification" },
+        { label: "Messages & Greetings", screen: "Messages" },
+        { label: "Todo Checklist", screen: "TodoTask" },
       ]
     },
     {
-      name: "Account", panel: "Account",
-      icon: (active) => <Database size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
-      sub: [
-        { label: "Receipt", screen: "Receipt" },
-      ]
-    },
-    {
-      name: "Approval", panel: "Approval",
+      name: "Scanner & Check-In Hub", panel: "Operations",
       icon: (active) => <CircleCheckBig size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
       sub: [
-        { label: "Approval Work Flow", screen: "AdminApproval" },
+        { label: "Gate Entry Check-In", screen: "EventCheckIn" },
+        { label: "Food Token Check-In", screen: "FoodCheckIn" },
+        { label: "Add-On Check-In", screen: "AddonCheckIn" },
+        { label: "Program Entry Check-In", screen: "ProgramCheckin" },
       ]
     },
     {
-      name: "Users Setting", panel: "UserSetting",
-      icon: (active) => <UserCog size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
-      sub: [
-        { label: "My Billing", screen: "Billing" },
-        { label: "My Contacts", screen: "Contacts" },
-        { label: "My Profile", screen: "MyProfile" },
-        { label: "My Plan", screen: "MyPlan" },
-      ]
-    },
-    {
-      name: "Users", panel: "Users",
-      icon: (active) => <Users size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
-      sub: [
-        { label: "Exhibitor Spot Registration", screen: "ExhibitorSpotRegistration" },
-        { label: "Exhibitor", screen: "Exhibitor" },
-        { label: "Role Screen", screen: "RoleScreen" },
-        { label: "User Screen", screen: "UserScreen" },
-        { label: "User", screen: "User" },
-      ]
-    },
-    {
-      name: "Master", panel: "Master",
-      icon: (active) => <BetweenHorizontalEnd size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
-      sub: [
-        { label: "Policy", screen: "PolicyPage" },
-        { label: "Venue", screen: "Venu" },
-        { label: "Vendor", screen: "Vendor" },
-        { label: "Sponsors", screen: "SponsorshipPage" },
-      ]
-    },
-    {
-      name: "Help", panel: "Help",
-      icon: (active) => <HelpCircle size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
-      sub: [
-        { label: "Complaint", screen: "Complaint_page" },
-        { label: "Feedback", screen: "Feedback_page" },
-      ]
-    },
-    {
-      name: "Stall Management", panel: "Stall",
+      name: "Stall & Exhibitor Hub", panel: "Stall",
       icon: (active) => <Store size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
       sub: [
-        { label: "Manage Stall", screen: "Manage_Stall" },
+        { label: "Manage Stalls & Halls", screen: "Manage_Stall" },
+        { label: "Exhibitor Spot Booking", screen: "ExhibitorSpotRegistration" },
+        { label: "Exhibitor Directory", screen: "Exhibitor" },
       ]
     },
     {
-      name: "Report", panel: "Report",
-      icon: (active) => <FileCode size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
+      name: "Settings & KYC Portal", panel: "UserSetting",
+      icon: (active) => <UserCog size={20} color={active ? "#0ea5e9" : "#0c4a6e"} />,
       sub: [
-        { label: "Reports", screen: "EventReports" },
+        { label: "3-Step Account Onboarding (KYC)", screen: "OrganizerKYC" },
+        { label: "My Profile", screen: "MyProfile" },
+        { label: "Master Data (Venues, Vendors, Sponsors)", screen: "Venu" },
+        { label: "Staff & Role Permissions", screen: "RoleScreen" },
+        { label: "Billing & Subscription", screen: "Billing" },
+        { label: "Help & Support", screen: "Complaint_page" },
       ]
     },
   ];
 
+
   return (
-    <SafeAreaView style={s.root} edges={["top", "left", "right"]}>
+    <SafeAreaView style={s.root} edges={["top", "bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       {/* ── Top bar with hamburger ── */}

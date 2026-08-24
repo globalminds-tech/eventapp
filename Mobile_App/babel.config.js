@@ -16,6 +16,7 @@ module.exports = function(api) {
             '@Exhibitor': './src/Exhibitor',
             '@users': './src/users',
             '@super_user': './src/super_user',
+            '@styles': './src/styles',
           },
         },
       ],

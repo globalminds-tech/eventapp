@@ -407,7 +407,7 @@ export default function VendorPage({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <View style={s.header}>
         <Text style={s.headerTitle}>Vendor Management</Text>
         <TouchableOpacity style={s.addBtn} onPress={() => { handleReset(); setShowForm(true); }}>

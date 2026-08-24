@@ -17,6 +17,8 @@ import StepVehiclePassDetails from "./steps/StepVehiclePassDetails";
 import Step4Documents from "./steps/Step4Documents";
 import Step5Terms from "./steps/Step5Terms";
 import Step6VendorSponsor from "./steps/Step6VendorSponsor";
+import Step7Preview from "./steps/Step7Preview";
+
 
 // --- Utility Functions --------------------------------------------------------
 const convert24to12 = (time24h) => {
@@ -250,7 +252,9 @@ export default function CreateEvent({ route, navigation }) {
     { label: "Documents", Component: Step4Documents },
     { label: "Terms", Component: Step5Terms },
     { label: "Vendor/Sponsor", Component: Step6VendorSponsor },
+    { label: "Preview", Component: Step7Preview },
   ];
+
 
   const getFormValidationErrors = () => {
     const event = formData.eventDetails || {};
@@ -351,7 +355,8 @@ export default function CreateEvent({ route, navigation }) {
   const CurrentStepComponent = allSteps[step - 1]?.Component;
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={s.container} edges={["top", "bottom"]}>
+
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation?.goBack()} style={s.backBtn}>

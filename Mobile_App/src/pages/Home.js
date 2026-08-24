@@ -1,35 +1,111 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  ImageBackground, TextInput, ActivityIndicator, Dimensions 
+  Image, TextInput, ActivityIndicator, Dimensions, ImageBackground, StatusBar, Animated, Modal 
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { 
-  Search, MapPin, Calendar, Star, ChevronDown, Check,
-  X, ArrowRight, Sparkles 
+  Search, MapPin, Calendar, Star, ChevronDown, User,
+  Film, Music, Mic2, Ticket, Sparkles, Home as HomeIcon, Tv, Compass, ThumbsUp, Trophy, Zap, Heart
 } from "lucide-react-native";
 import { getHomeEventshow } from "@Services/api";
+import { GLOBAL_STYLES, COLORS } from "../styles/theme";
+import BrandLogo from "../components/ui/BrandLogo";
 
 const { width } = Dimensions.get("window");
 
+// ── DYNAMIC LIGHT CATEGORY THEMES CONFIGURATION ──────────────────────────────
+const categoryThemes = {
+  All: {
+    key: "All",
+    label: "All",
+    background: require("../../assets/backgrounds/1.png"),
+    primaryColor: "#0284c7",
+    accentColor: "#f97316", // Orange Selected Pill
+    placeholder: "Search \"all events, concerts...\"",
+    bannerBadge: "✦ WELCOME TO BOOKMYEVENT ✦",
+    bannerTitle: "Discover & Experience Live Moments",
+    bannerSub: "Book tickets instantly with zero convenience fee • Verified Venues",
+    icon: Sparkles,
+  },
+  Music: {
+    key: "Music",
+    label: "Music",
+    background: require("../../assets/backgrounds/2.png"),
+    primaryColor: "#7e22ce",
+    accentColor: "#f97316",
+    placeholder: "Search \"music events, concerts...\"",
+    bannerBadge: "✦ LIVE MUSIC FESTIVALS ✦",
+    bannerTitle: "Electrifying Concerts & Beats",
+    bannerSub: "Rock, Pop, EDM & Classical Shows Near You",
+    icon: Music,
+  },
+  Comedy: {
+    key: "Comedy",
+    label: "Comedy",
+    background: require("../../assets/backgrounds/3.png"),
+    primaryColor: "#0d9488",
+    accentColor: "#f97316",
+    placeholder: "Search \"comedy events, standup...\"",
+    bannerBadge: "✦ LAUGHTER ZONE ✦",
+    bannerTitle: "Top Standup Comedians Live",
+    bannerSub: "Laugh Out Loud • Weekend Specials",
+    icon: Mic2,
+  },
+  Expos: {
+    key: "Expos",
+    label: "Expos",
+    background: require("../../assets/backgrounds/4.png"),
+    primaryColor: "#ea580c",
+    accentColor: "#f97316",
+    placeholder: "Search \"expo events, exhibitions...\"",
+    bannerBadge: "✦ TECH & EXPOS ✦",
+    bannerTitle: "AI, Cloud & Product Innovation",
+    bannerSub: "Network with Industry Pioneers",
+    icon: Ticket,
+  },
+  Sports: {
+    key: "Sports",
+    label: "Sports",
+    background: require("../../assets/backgrounds/5.png"),
+    primaryColor: "#e11d48",
+    accentColor: "#f97316",
+    placeholder: "Search \"sports events, matches...\"",
+    bannerBadge: "✦ STADIUM ARENA ✦",
+    bannerTitle: "Live Matches, Tournaments & Runs",
+    bannerSub: "Feel the Energy Live from the Stands",
+    icon: Trophy,
+  },
+  Festivals: {
+    key: "Festivals",
+    label: "Festivals",
+    background: require("../../assets/backgrounds/6.png"),
+    primaryColor: "#d97706",
+    accentColor: "#f97316",
+    placeholder: "Search \"festivals, cultural events...\"",
+    bannerBadge: "✦ CULTURAL FESTIVALS ✦",
+    bannerTitle: "Festivals & Cultural Celebrations",
+    bannerSub: "Traditional Music, Food & Fairs",
+    icon: Zap,
+  },
+};
+
 export default function Home({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Search state
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCity, setSelectedCity] = useState("Chennai, Tamil Nadu");
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchCategory, setSearchCategory] = useState("");
-  const [searchLocation, setSearchLocation] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
+  const [activeTab, setActiveTab] = useState("Home");
 
-  const popularCategories = [
-    { name: "CONFERENCE", filterName: "Business", image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=600" },
-    { name: "ENTERTAINMENT", filterName: "Music", image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=600" },
-    { name: "CORPORATE", filterName: "Business", image: "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=600" },
-    { name: "EXPO", filterName: "Technology", image: "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600" },
-    { name: "EDUCATION", filterName: "Education", image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=600" },
-    { name: "SPORTS", filterName: "Sports", image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600" },
-  ];
+  // Animated Category Theme Transition State
+  const [prevTheme, setPrevTheme] = useState(categoryThemes.All);
+  const [currentTheme, setCurrentTheme] = useState(categoryThemes.All);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const categoryTabs = Object.values(categoryThemes);
 
   useEffect(() => {
     fetchEvents();
@@ -40,25 +116,19 @@ export default function Home({ navigation }) {
       const data = await getHomeEventshow();
       if (!data || data.length === 0) return;
 
-      const formatted = data.map((e) => {
-        const isDonation = e.entry_type === "Donation" || String(e.pass_fee).toLowerCase() === "donation";
-        const isFree = e.entry_type === "Free" || (!isDonation && (!e.pass_fee || Number(e.pass_fee) === 0));
-        return {
-          id: e.id,
-          title: e.event_name,
-          category: e.category || "General",
-          entry_type: isDonation ? "Donation" : isFree ? "Free" : "Paid",
-          price: isDonation || isFree ? 0 : (Number(e.pass_fee) || 0),
-          location: e.venue,
-          fullLocation: `${e.venue}, ${e.address}`,
-          date: e.start_date,
-          endDate: e.end_date,
-          image: e.banner_url || "https://via.placeholder.com/400",
-        };
-      });
+      const formatted = data.map((e, index) => ({
+        id: e.id,
+        title: e.event_name,
+        category: e.category || "Live Event",
+        price: e.pass_fee ? `₹${e.pass_fee}` : "Free",
+        location: e.venue || "Chennai",
+        date: e.start_date || "Today",
+        likes: `${(120 + index * 18).toFixed(1)}K+`,
+        rating: (8.6 + (index % 12) * 0.1).toFixed(1),
+        image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
+      }));
 
-      const sorted = [...formatted].sort((a, b) => new Date(a.date) - new Date(b.date));
-      setEvents(sorted);
+      setEvents(formatted);
     } catch (err) {
       console.error(err);
     } finally {
@@ -66,230 +136,178 @@ export default function Home({ navigation }) {
     }
   };
 
-  const handleSearch = () => {
-    navigation.navigate("AllEvents", {
-      title: searchQuery,
-      category: searchCategory || "All",
-      location: searchLocation,
-    });
+  // Smooth Category Transition Handler (300ms Cross-Fade)
+  const handleCategorySwitch = (catKey) => {
+    if (catKey === selectedCategory) return;
+    const targetTheme = categoryThemes[catKey] || categoryThemes.All;
+
+    setPrevTheme(currentTheme);
+    setCurrentTheme(targetTheme);
+    setSelectedCategory(catKey);
+
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
-  const getCityFromLocation = (loc) => {
-    if (!loc) return "";
-    const parts = loc.split(",");
-    let lastPart = parts[parts.length - 1]?.trim() || "";
-    if (lastPart.toUpperCase() === "INDIA" || lastPart.toUpperCase() === "TAMIL NADU") {
-      lastPart = parts[parts.length - 2]?.trim() || lastPart;
-    }
-    return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).toLowerCase();
-  };
-
-  const citiesList = Array.from(new Set(events.map((e) => getCityFromLocation(e.fullLocation || e.location)).filter(Boolean))).sort();
-
-  const featuredEvent = events[0];
-  const otherEvents = events.filter((e) => !selectedCity || getCityFromLocation(e.fullLocation || e.location) === selectedCity).slice(0, 4);
+  const filteredEvents = events.filter((e) => {
+    const matchesCategory =
+      selectedCategory === "All" ||
+      e.category.toLowerCase().includes(selectedCategory.toLowerCase());
+    const matchesSearch =
+      !searchQuery || e.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
-    <SafeAreaView style={s.safeArea}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        
-        {/* Header Navigation */}
-        <View style={s.navHeader}>
-          <View style={s.logoWrap}>
-            <View style={s.logoIconWrap}>
-              <View style={[s.logoDot, { backgroundColor: "#3b82f6", transform: [{ rotate: "-12deg" }] }]} />
-              <View style={[s.logoDot, { backgroundColor: "#f97316", transform: [{ rotate: "6deg" }] }]} />
-              <View style={[s.logoDot, { backgroundColor: "#22c55e", transform: [{ rotate: "-3deg" }] }]} />
-            </View>
-            <Text style={s.logoText}>BookMyEvent</Text>
-          </View>
-          <TouchableOpacity style={s.loginBtn} onPress={() => navigation.navigate("Login")}>
-            <Text style={s.loginBtnText}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
+    <View style={styles.rootContainer}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-        {/* Hero Section */}
-        <View style={s.hero}>
-          <View style={s.heroContent}>
-            <View style={s.badge}>
-              <View style={s.badgeDot} />
-              <Text style={s.badgeText}>Discover Amazing Events</Text>
-            </View>
-            <Text style={s.heroTitle}>
-              Turning Your Vision Into {"\n"}
-              <Text style={s.heroTitleHighlight}>Unforgettable Moments</Text>
-            </Text>
-            <Text style={s.heroSubtitle}>
-              From electrifying concerts to inspiring conferences. Discover, book, and experience events that transform your world.
-            </Text>
-          </View>
-        </View>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={{ paddingBottom: insets.bottom > 0 ? insets.bottom + 90 : 95 }}
+      >
+        {/* CURVED HEADER WRAPPER WITH IMAGE BACKGROUND */}
+        <View style={styles.curvedHeaderWrapper}>
+          {/* Previous Theme Layer */}
+          <ImageBackground
+            source={prevTheme.background}
+            style={StyleSheet.absoluteFillObject}
+            imageStyle={styles.curvedImageStyle}
+            resizeMode="cover"
+          />
 
-        {/* Search Widget */}
-        <View style={s.searchWidget}>
-          <View style={s.searchInputWrap}>
-            <Search size={18} color="#94a3b8" />
-            <TextInput 
-              style={s.searchInput}
-              placeholder="What are you looking for?"
-              placeholderTextColor="#94a3b8"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+          {/* Current Theme Layer fading in smoothly */}
+          <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
+            <ImageBackground
+              source={currentTheme.background}
+              style={StyleSheet.absoluteFillObject}
+              imageStyle={styles.curvedImageStyle}
+              resizeMode="cover"
             />
-          </View>
-          <View style={s.searchRow}>
-            <View style={s.searchHalfInput}>
-              <Text style={s.searchLabel}>Category</Text>
-              <TextInput 
-                style={s.searchInputSmall}
-                placeholder="All"
-                placeholderTextColor="#f8fafc"
-                value={searchCategory}
-                onChangeText={setSearchCategory}
-              />
+          </Animated.View>
+
+          {/* Soft subtle tint overlay for text legibility */}
+          <View style={styles.softPastelOverlay} />
+
+          {/* Main Header Safe Area Content */}
+          <SafeAreaView edges={["top"]}>
+            <View style={styles.headerContentArea}>
+              
+              {/* Header Row: BookMyEvent Brand Logo + Location */}
+              <View style={styles.headerRow}>
+                <View>
+                  {/* BookMyEvent Brand Logo */}
+                  <BrandLogo textColor="#0f172a" />
+
+                  {/* Location Selector */}
+                  <TouchableOpacity style={styles.locationSelectorRow} onPress={() => navigation?.navigate("AllEvents")}>
+                    <MapPin size={13} color="#f97316" style={{ marginRight: 4 }} />
+                    <Text style={styles.locationMainText}>{selectedCity}</Text>
+                    <ChevronDown size={13} color="#0f172a" style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Profile Avatar */}
+                <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => navigation?.navigate("MyProfile")}>
+                  <User size={20} color="#0f172a" />
+                </TouchableOpacity>
+              </View>
+
+              {/* White Search Bar */}
+              <View style={styles.searchBarWrap}>
+                <View style={styles.searchInputCard}>
+                  <Search size={18} color="#64748b" style={{ marginRight: 8 }} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder={currentTheme.placeholder}
+                    placeholderTextColor="#94a3b8"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+              </View>
+
+              {/* Dynamic Category Selector Strip */}
+              <View style={styles.categoryStripWrap}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+                  {categoryTabs.map((tab) => {
+                    const IconComp = tab.icon;
+                    const isSelected = selectedCategory === tab.key;
+                    return (
+                      <TouchableOpacity
+                        key={tab.key}
+                        style={[
+                          styles.categoryPill,
+                          isSelected ? styles.categoryPillSelected : styles.categoryPillUnselected
+                        ]}
+                        onPress={() => handleCategorySwitch(tab.key)}
+                        activeOpacity={0.8}
+                      >
+                        <IconComp size={15} color={isSelected ? "#000000" : "#334155"} />
+                        <Text style={[
+                          styles.categoryPillText,
+                          isSelected ? styles.categoryPillTextSelected : styles.categoryPillTextUnselected
+                        ]}>
+                          {tab.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
             </View>
-            <View style={s.searchHalfInput}>
-              <Text style={s.searchLabel}>Location</Text>
-              <TextInput 
-                style={s.searchInputSmall}
-                placeholder="Anywhere"
-                placeholderTextColor="#f8fafc"
-                value={searchLocation}
-                onChangeText={setSearchLocation}
-              />
-            </View>
-          </View>
-          <TouchableOpacity style={s.searchBtn} onPress={handleSearch}>
-            <Text style={s.searchBtnText}>SEARCH</Text>
-          </TouchableOpacity>
+          </SafeAreaView>
         </View>
 
-        {/* Popular Categories */}
-        <View style={s.section}>
-          <Text style={s.sectionSubTitle}>Explore Categories</Text>
-          <Text style={s.sectionTitle}>POPULAR CATEGORIES</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll} contentContainerStyle={{ paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
-            {popularCategories.map((cat, idx) => (
-              <TouchableOpacity 
-                key={idx} 
-                style={s.catCard}
-                onPress={() => navigation.navigate("AllEvents", { category: cat.filterName })}
-              >
-                <ImageBackground source={{ uri: cat.image }} style={s.catImage} imageStyle={{ borderRadius: 16 }}>
-                  <View style={s.catOverlay} />
-                  <View style={s.catBadge}>
-                    <Text style={s.catBadgeText}>{cat.name}</Text>
-                  </View>
-                  <View style={s.catBottom}>
-                    <Text style={s.catBottomText}>{cat.filterName} Events</Text>
-                    <ArrowRight size={16} color="#fff" />
-                  </View>
-                </ImageBackground>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Events List */}
-        <View style={s.section}>
-          <View style={s.eventsHeader}>
-            <Text style={s.sectionTitle}>EVENTS</Text>
-            <TouchableOpacity 
-              style={s.viewAllBtn}
-              onPress={() => navigation.navigate("AllEvents")}
-            >
-              <Text style={s.viewAllBtnText}>View All</Text>
+        {/* White Content Section Below Curved Header */}
+        <View style={styles.whiteContentSheet}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>
+              {currentTheme.label} <Text style={{ color: "#f97316" }}>Events</Text>
+            </Text>
+            <TouchableOpacity onPress={() => navigation?.navigate("AllEvents")}>
+              <Text style={styles.seeAllText}>See All ›</Text>
             </TouchableOpacity>
           </View>
-          
-          {/* City Filter pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.cityScroll} contentContainerStyle={{ paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
-            <TouchableOpacity 
-              style={[s.cityPill, !selectedCity && s.cityPillActive]}
-              onPress={() => setSelectedCity("")}
-            >
-              <Text style={[s.cityPillText, !selectedCity && s.cityPillTextActive]}>All Cities</Text>
-            </TouchableOpacity>
-            {citiesList.map((city) => (
-              <TouchableOpacity 
-                key={city}
-                style={[s.cityPill, selectedCity === city && s.cityPillActive]}
-                onPress={() => setSelectedCity(city)}
-              >
-                <Text style={[s.cityPillText, selectedCity === city && s.cityPillTextActive]}>{city}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
 
           {isLoading ? (
-            <ActivityIndicator size="large" color="#f97316" style={{ marginTop: 40 }} />
+            <ActivityIndicator color="#f97316" style={{ marginVertical: 40 }} />
           ) : (
-            <View style={s.eventsGrid}>
-              {otherEvents.map((event) => {
-                const eventDate = new Date(event.date);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const isPast = event.date ? (eventDate < today) : false;
-
-                return (
-                  <TouchableOpacity
-                    key={event.id}
-                    style={s.eventCard}
-                    onPress={() => navigation.navigate("EventDetail", { eventId: event.id })}
-                    activeOpacity={0.9}
-                  >
-                    <ImageBackground
-                      source={{ uri: event.image }}
-                      style={s.eventCardBg}
-                      imageStyle={s.eventCardImg}
-                      resizeMode="cover"
-                    >
-                      {/* Dark gradient overlay */}
-                      <View style={s.cardOverlay} />
-
-                      {/* Price tag top-left */}
-                      <View style={s.priceTag}>
-                        <Text style={s.priceText}>
-                          {event.entry_type === "Paid" ? `₹${event.price}` : event.entry_type}
-                        </Text>
+            <View style={styles.gridWrap}>
+              {filteredEvents.length > 0 ? (
+                filteredEvents.map((ev, i) => (
+                  <TouchableOpacity key={i} style={styles.gridCard} onPress={() => navigation?.navigate("UserBooking", { event: ev })}>
+                    <Image source={{ uri: ev.image }} style={styles.gridCardImg} />
+                    
+                    <View style={styles.cardBadgesRow}>
+                      <View style={styles.likesBadge}>
+                        <ThumbsUp size={11} color="#15803d" />
+                        <Text style={styles.likesText}>{ev.likes}</Text>
                       </View>
-
-                      {/* Content bottom */}
-                      <View style={s.cardBottom}>
-                        <Text style={s.eventCat}>{event.category}</Text>
-                        <Text style={s.eventTitle} numberOfLines={2}>{event.title}</Text>
-                        
-                        <View style={s.cardActionRow}>
-                          <View style={{ flex: 1, gap: 3 }}>
-                            <View style={s.eventRow}>
-                              <Calendar size={13} color="rgba(255,255,255,0.75)" />
-                              <Text style={s.eventRowText}>{event.date}</Text>
-                            </View>
-                            <View style={s.eventRow}>
-                              <MapPin size={13} color="rgba(255,255,255,0.75)" />
-                              <Text style={s.eventRowText} numberOfLines={1}>{event.location}</Text>
-                            </View>
-                          </View>
-
-                          <TouchableOpacity
-                            style={[s.bookBtn, isPast && s.bookBtnDisabled]}
-                            disabled={isPast}
-                            onPress={() => navigation.navigate("UserBooking", { eventId: event.id })}
-                          >
-                            <Text style={[s.bookBtnText, isPast && s.bookBtnTextDisabled]}>
-                              {isPast ? "Booking Closed" : "Book Tickets"}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
+                      <View style={styles.ratingBadge}>
+                        <Star size={11} color="#b45309" />
+                        <Text style={styles.ratingText}>{ev.rating}</Text>
                       </View>
-                    </ImageBackground>
+                    </View>
+
+                    <Text style={styles.cardTitle} numberOfLines={1}>{ev.title}</Text>
+                    <Text style={styles.cardCat}>{ev.category} • {ev.location}</Text>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.priceText}>{ev.price}</Text>
+                      <View style={styles.addTicketBtn}>
+                        <Text style={styles.addTicketBtnText}>BOOK</Text>
+                      </View>
+                    </View>
                   </TouchableOpacity>
-                );
-              })}
-              {otherEvents.length === 0 && (
-                <View style={s.emptyBox}>
-                  <Text style={s.emptyTitle}>No Results Found</Text>
-                  <Text style={s.emptyDesc}>There are no events available right now. Check back soon!</Text>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>No events found in {selectedCategory} category.</Text>
                 </View>
               )}
             </View>
@@ -297,83 +315,380 @@ export default function Home({ navigation }) {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Floating Pill Navigation Bar */}
+      <View style={[styles.floatingPillNavBar, { bottom: insets.bottom > 0 ? insets.bottom + 8 : 16 }]}>
+        {[
+          { label: "Home", icon: HomeIcon, tab: "Home" },
+          { label: "Events", icon: Ticket, tab: "Events" },
+          { label: "Explore", icon: Compass, tab: "Explore" },
+          { label: "Profile", icon: User, tab: "Profile" },
+        ].map((item, i) => {
+          const IconComponent = item.icon;
+          const isActive = activeTab === item.tab;
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[styles.pillNavTabBtn, isActive && { backgroundColor: "#fff7ed" }]}
+              onPress={() => {
+                setActiveTab(item.tab);
+                if (item.tab === "Profile") navigation?.navigate("MyProfile");
+                if (item.tab === "Events") navigation?.navigate("AllEvents");
+              }}
+            >
+              <IconComponent size={20} color={isActive ? "#f97316" : "#64748b"} />
+              <Text style={[styles.pillNavTabLabel, isActive && { color: "#f97316", fontWeight: "800" }]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+    </View>
   );
 }
 
-const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#020617" }, // slate-950
-
-  navHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 16, backgroundColor: "rgba(2, 6, 23, 0.8)", borderBottomWidth: 1, borderBottomColor: "#1e293b" },
-  logoWrap: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoIconWrap: { flexDirection: "row", gap: 2 },
-  logoDot: { width: 14, height: 14, borderRadius: 3 },
-  logoText: { color: "#fff", fontSize: 20, fontWeight: "bold" },
-  loginBtn: { backgroundColor: "#fff", paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  loginBtnText: { color: "#020617", fontSize: 13, fontWeight: "bold" },
-
-  hero: { paddingHorizontal: 16, paddingTop: 40, paddingBottom: 60, alignItems: "center" },
-  heroContent: { alignItems: "center" },
-  badge: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(249, 115, 22, 0.1)", borderWidth: 1, borderColor: "rgba(249, 115, 22, 0.3)", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 20 },
-  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#f97316", marginRight: 8 },
-  badgeText: { color: "#fb923c", fontSize: 12, fontWeight: "bold" },
-  heroTitle: { fontSize: 36, fontWeight: "bold", color: "#fff", textAlign: "center", marginBottom: 16 },
-  heroTitleHighlight: { color: "#fb923c" }, // orange-400
-  heroSubtitle: { fontSize: 15, color: "#94a3b8", textAlign: "center", lineHeight: 24, paddingHorizontal: 10 },
-
-  searchWidget: { backgroundColor: "#1e293b", marginHorizontal: 16, borderRadius: 24, padding: 16, marginTop: -40, borderWidth: 1, borderColor: "#334155", elevation: 10, shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 10 },
-  searchInputWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "#0f172a", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12 },
-  searchInput: { flex: 1, color: "#fff", marginLeft: 10, fontSize: 15 },
-  searchRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
-  searchHalfInput: { flex: 1, backgroundColor: "#0f172a", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
-  searchLabel: { fontSize: 11, color: "#64748b", textTransform: "uppercase", marginBottom: 4 },
-  searchInputSmall: { color: "#fff", fontSize: 14, padding: 0 },
-  searchBtn: { backgroundColor: "#2563eb", borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  searchBtnText: { color: "#fff", fontSize: 14, fontWeight: "bold", letterSpacing: 1 },
-
-  section: { marginTop: 40 },
-  sectionSubTitle: { color: "#f97316", fontSize: 12, fontWeight: "bold", textTransform: "uppercase", textAlign: "center", letterSpacing: 1, marginBottom: 4 },
-  sectionTitle: { color: "#fff", fontSize: 24, fontWeight: "bold", textAlign: "center", marginBottom: 20 },
-  
-  catScroll: { marginTop: 10 },
-  catCard: { width: 240, height: 160, marginRight: 16, borderRadius: 16, overflow: "hidden" },
-  catImage: { width: "100%", height: "100%", justifyContent: "space-between", padding: 12 },
-  catOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
-  catBadge: { alignSelf: "flex-start", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)" },
-  catBadgeText: { color: "#fff", fontSize: 10, fontWeight: "bold", letterSpacing: 1 },
-  catBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  catBottomText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
-
-  eventsHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, marginBottom: 16 },
-  viewAllBtn: { backgroundColor: "#fff", paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
-  viewAllBtnText: { color: "#0f172a", fontSize: 12, fontWeight: "bold", textTransform: "uppercase" },
-
-  cityScroll: { marginBottom: 20 },
-  cityPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#1e293b", marginRight: 8, borderWidth: 1, borderColor: "#334155" },
-  cityPillActive: { backgroundColor: "#eab308", borderColor: "#eab308" },
-  cityPillText: { color: "#94a3b8", fontSize: 13, fontWeight: "bold" },
-  cityPillTextActive: { color: "#fff" },
-
-  eventsGrid: { paddingHorizontal: 16, gap: 16 },
-  eventCard: { borderRadius: 16, overflow: "hidden", height: 240 },
-  eventCardBg: { flex: 1, justifyContent: "space-between", padding: 0 },
-  eventCardImg: { borderRadius: 16 },
-  cardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.42)", borderRadius: 16 },
-  priceTag: { alignSelf: "flex-start", margin: 12, backgroundColor: "rgba(0,0,0,0.65)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  priceText: { color: "#fff", fontWeight: "bold", fontSize: 12 },
-  cardBottom: { padding: 14 },
-  eventCat: { color: "#fb923c", fontSize: 11, fontWeight: "bold", textTransform: "uppercase", marginBottom: 4, letterSpacing: 0.5 },
-  eventTitle: { color: "#fff", fontSize: 16, fontWeight: "bold", marginBottom: 8 },
-  eventRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
-  eventRowText: { color: "rgba(255,255,255,0.8)", fontSize: 12, flex: 1 },
-  
-  cardActionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
-  bookBtn: { backgroundColor: "#2563eb", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: "flex-end" },
-  bookBtnDisabled: { backgroundColor: "#334155" },
-  bookBtnText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
-  bookBtnTextDisabled: { color: "#94a3b8" },
-
-  emptyBox: { backgroundColor: "rgba(30, 41, 59, 0.4)", borderRadius: 16, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#334155", marginTop: 20 },
-  emptyTitle: { color: "#fff", fontSize: 18, fontWeight: "bold", marginBottom: 8 },
-  emptyDesc: { color: "#94a3b8", fontSize: 13, textAlign: "center" },
+const styles = StyleSheet.create({
+  rootContainer: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+  },
+  curvedHeaderWrapper: {
+    backgroundColor: "#ffffff",
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    overflow: "hidden",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    paddingBottom: 16,
+  },
+  curvedImageStyle: {
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+  },
+  softPastelOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+  },
+  headerContentArea: {
+    paddingTop: 10,
+    paddingBottom: 8,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  logoWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  logoIconWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 6,
+  },
+  logoDot: {
+    width: 6,
+    height: 12,
+    borderRadius: 3,
+    marginHorizontal: 1,
+  },
+  logoText: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: -0.5,
+  },
+  locationSelectorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  locationMainText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  profileAvatarBtn: {
+    height: 42,
+    width: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  searchBarWrap: {
+    paddingHorizontal: 16,
+    marginBottom: 14,
+  },
+  searchInputCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    height: 48,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#0f172a",
+    fontWeight: "600",
+  },
+  categoryStripWrap: {
+    marginBottom: 4,
+  },
+  categoryPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  categoryPillSelected: {
+    backgroundColor: "#f97316", // Orange Selected Pill
+    elevation: 2,
+    shadowColor: "#f97316",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  categoryPillUnselected: {
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+  },
+  categoryPillText: {
+    fontSize: 13,
+  },
+  categoryPillTextSelected: {
+    color: "#ffffff",
+    fontWeight: "900",
+  },
+  categoryPillTextUnselected: {
+    color: "#334155",
+    fontWeight: "700",
+  },
+  whiteContentSheet: {
+    backgroundColor: "#ffffff",
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    minHeight: 400,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0f172a",
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#f97316",
+  },
+  gridWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  gridCard: {
+    width: (width - 44) / 2,
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+  },
+  gridCardImg: {
+    width: "100%",
+    height: 120,
+    borderRadius: 10,
+    backgroundColor: "#e2e8f0",
+  },
+  cardBadgesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 6,
+  },
+  likesBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  likesText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#15803d",
+    marginLeft: 3,
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  ratingText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#b45309",
+    marginLeft: 3,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  cardCat: {
+    fontSize: 11,
+    color: "#64748b",
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+  priceRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  priceText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0f172a",
+  },
+  addTicketBtn: {
+    backgroundColor: "#f97316",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  addTicketBtnText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: "center",
+    width: "100%",
+  },
+  emptyText: {
+    color: "#64748b",
+    fontSize: 13,
+  },
+  floatingPillNavBar: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    height: 56,
+    backgroundColor: "#ffffff",
+    borderRadius: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingHorizontal: 10,
+    elevation: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  pillNavTabBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  pillNavTabLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#64748b",
+    marginTop: 2,
+  },
+  devRoleSwitchBtn: {
+    backgroundColor: "rgba(2, 132, 199, 0.12)",
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  devRoleSwitchText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0284c7",
+  },
+  roleModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  roleModalCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 20,
+    elevation: 10,
+  },
+  roleModalTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 4,
+  },
+  roleModalSub: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 16,
+  },
+  roleOptionCard: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 10,
+  },
+  roleOptionTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  roleOptionSub: {
+    fontSize: 11,
+    color: "#475569",
+  },
+  roleCloseBtn: {
+    marginTop: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  roleCloseText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#64748b",
+  },
 });

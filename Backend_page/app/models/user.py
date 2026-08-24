@@ -19,6 +19,20 @@ class User(db.Model):
     profile_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     organization_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
+    def __init__(self, name: Optional[str] = None, email: str = "", password: str = "", role: Optional[str] = None, mobile: Optional[str] = None, address: Optional[str] = None, country: Optional[str] = None, state: Optional[str] = None, city: Optional[str] = None, profile_image: Optional[str] = None, organization_name: Optional[str] = None, **kwargs):
+        super().__init__(**kwargs)
+        self.name = name
+        self.email = email
+        self.password = password
+        self.role = role
+        self.mobile = mobile
+        self.address = address
+        self.country = country
+        self.state = state
+        self.city = city
+        self.profile_image = profile_image
+        self.organization_name = organization_name
+
     def to_dict(self):
         return {
             "id": self.id,

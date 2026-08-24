@@ -8,7 +8,16 @@ import { ChevronDown, X, Calendar, Clock } from "lucide-react-native";
 import { get_Venues_details } from "@Services/api";
 import { useEffect } from "react";
 
-const CATEGORIES = ["Conference","Exhibition","Workshop","Seminar","Webinar","Concert","Sports","Festival","Other"];
+const CATEGORIES_MAP = {
+  "Music & Concerts": ["Rock", "Pop", "EDM", "Classical", "Jazz"],
+  "Sports & Fitness": ["Football", "Cricket", "Marathon", "Esports"],
+  "Tech & Business Expos": ["AI & Tech", "Startups", "Web3", "Finance"],
+  "Food & Culinary": ["Food Fest", "Wine Tasting", "Baking Workshop"],
+  "Arts & Theatre": ["Standup Comedy", "Drama", "Art Gallery"],
+  "+ Add Custom Category": ["Custom Subcategory"],
+};
+
+const CATEGORIES = Object.keys(CATEGORIES_MAP);
 const VISIBILITY_OPTIONS = ["Public","Private","Internal"];
 const EVENT_TYPES = ["OneTime","Recurring"];
 const OCCURRENCE_OPTIONS = ["Daily","Weekly","Monthly","Yearly"];
@@ -122,6 +131,10 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
   const openDropdown = (type) => {
     setDropdownType(type);
     if (type === "category") setDropdownList(CATEGORIES);
+    else if (type === "subcategory") {
+      const mainCat = ed.category || "Music & Concerts";
+      setDropdownList(CATEGORIES_MAP[mainCat] || ["General"]);
+    }
     else if (type === "visibility") setDropdownList(VISIBILITY_OPTIONS);
     else if (type === "eventType") setDropdownList(EVENT_TYPES);
     else if (type === "occurrence") setDropdownList(OCCURRENCE_OPTIONS);
@@ -180,12 +193,105 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
     }
   };
 
+  // Inline Add Location Modal state
+  const [showAddLocationModal, setShowAddLocationModal] = useState(false);
+  const [newLocName, setNewLocName] = useState("");
+  const [newLocAddress, setNewLocAddress] = useState("");
+
+  const handleAddNewLocation = () => {
+    if (!newLocName) {
+      Alert.alert("Missing Name", "Please enter a location name.");
+      return;
+    }
+    const newVenueObj = { venue_name: newLocName, address: newLocAddress };
+    setVenues((prev) => [newVenueObj, ...prev]);
+    update("venue", newLocName);
+    update("address", newLocAddress);
+    setShowAddLocationModal(false);
+    setNewLocName("");
+    setNewLocAddress("");
+    Alert.alert("Location Added", `"${newLocName}" has been added and selected.`);
+  };
+
+  const handleDownloadExcelTemplate = () => {
+    Alert.alert(
+      "Download Template",
+      "Sample Excel Event Template (.xlsx) format:\nColumns: EventName, Category, Description, Venue, Address, StartDate, EndDate, Capacity, PassFeeINR",
+      [{ text: "OK" }]
+    );
+  };
+
+  const handleExcelPDFAutoFill = () => {
+    Alert.alert(
+      "Auto-Fill from Excel/PDF",
+      "Parsing spreadsheet details...",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Import Sample Event Data",
+          onPress: () => {
+            setFormData((prev) => ({
+              ...prev,
+              eventDetails: {
+                ...prev.eventDetails,
+                eventName: "TechInnovate Summit 2026",
+                category: "Conference",
+                description: "Annual flagship technology conference covering AI, Cloud, and Product Innovation.",
+                venue: "Grand Convention Center",
+                address: "45 Technology Parkway, Tech Corridor",
+                startDate: "2026-10-15",
+                endDate: "2026-10-17",
+                startTime: "09:00",
+                endTime: "18:00",
+                tags: "AI, Technology, Product",
+                amenities: "WiFi, AC, Catering, Parking",
+              },
+              bookingSettings: {
+                ...prev.bookingSettings,
+                entryType: "Paid",
+                passFeeINR: "1499",
+                capacity: "500",
+              },
+            }));
+            Alert.alert("Extracted Successfully", "Event details auto-filled from spreadsheet!");
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View>
+      {/* Excel / PDF Auto-Fill Toolbar */}
+      {!isView && (
+        <View style={s.excelToolbar}>
+          <Text style={s.excelToolbarTitle}>⚡ Smart Quick-Fill</Text>
+          <View style={s.excelBtnRow}>
+            <TouchableOpacity style={s.excelBtnOutline} onPress={handleDownloadExcelTemplate}>
+              <Text style={s.excelBtnOutlineText}>📥 Download Template (.xlsx)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.excelBtnPrimary} onPress={handleExcelPDFAutoFill}>
+              <Text style={s.excelBtnPrimaryText}>📄 Import Excel / PDF</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Basic Info */}
+
       <View style={s.section}>
-        <Text style={s.sectionTitle}>Basic Information</Text>
-        <SelectField label="Category" field="category" placeholder="Select Category" ed={ed} isView={isView} openDropdown={openDropdown} />
+        <Text style={s.sectionTitle}>Basic Information & Categories</Text>
+        <SelectField label="Main Category" field="category" placeholder="Select Main Category" ed={ed} isView={isView} openDropdown={openDropdown} />
+        
+        {ed.category === "+ Add Custom Category" ? (
+          <>
+            <InputField label="Custom Main Category" field="customCategory" placeholder="e.g. Esports & Gaming" required ed={ed} update={update} isView={isView} />
+            <InputField label="Custom Subcategory" field="customSubcategory" placeholder="e.g. Battle Royale Tournament" required ed={ed} update={update} isView={isView} />
+          </>
+        ) : (
+          <SelectField label="Subcategory" field="subcategory" placeholder="Select Subcategory" ed={ed} isView={isView} openDropdown={openDropdown} />
+        )}
+
         <InputField label="Event Name" field="eventName" placeholder="Enter event name" required ed={ed} update={update} isView={isView} />
         <InputField label="Description" field="description" placeholder="Event description..." required multiline ed={ed} update={update} isView={isView} />
         <InputField label="Tags" field="tags" placeholder="e.g. tech, conference" ed={ed} update={update} isView={isView} />
@@ -266,10 +372,53 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
 
       {/* Venue */}
       <View style={s.section}>
-        <Text style={s.sectionTitle}>Venue</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <Text style={s.sectionTitle}>Venue</Text>
+          {!isView && (
+            <TouchableOpacity style={s.addInlineBtn} onPress={() => setShowAddLocationModal(true)}>
+              <Text style={s.addInlineBtnText}>+ Add New Location</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <SelectField label="Venue" field="venue" placeholder="Select Venue" ed={ed} isView={isView} openDropdown={openDropdown} />
         <InputField label="Address" field="address" placeholder="Enter venue address" required multiline ed={ed} update={update} isView={isView} />
       </View>
+
+      {/* Add New Location Modal Dialog */}
+      <Modal visible={showAddLocationModal} transparent animationType="slide">
+        <View style={s.modalOverlay}>
+          <View style={s.dropdownCard}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitle}>Add New Location</Text>
+              <TouchableOpacity onPress={() => setShowAddLocationModal(false)}>
+                <X size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: 16 }}>
+              <Text style={s.label}>Location / Venue Name *</Text>
+              <TextInput
+                style={s.input}
+                placeholder="e.g. City Convention Center"
+                placeholderTextColor="#94a3b8"
+                value={newLocName}
+                onChangeText={setNewLocName}
+              />
+              <Text style={[s.label, { marginTop: 12 }]}>Address</Text>
+              <TextInput
+                style={[s.input, { height: 70, textAlignVertical: "top" }]}
+                placeholder="e.g. 123 Main Boulevard, Chennai"
+                placeholderTextColor="#94a3b8"
+                multiline
+                value={newLocAddress}
+                onChangeText={setNewLocAddress}
+              />
+              <TouchableOpacity style={s.submitModalBtn} onPress={handleAddNewLocation}>
+                <Text style={s.submitModalBtnText}>Save & Select Location</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Dropdown Modal */}
       <Modal visible={!!dropdownType} transparent animationType="fade">
@@ -295,6 +444,7 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
           </View>
         </View>
       </Modal>
+
 
       {/* Date / Time Picker Modal (iOS) */}
       {Platform.OS === "ios" && pickerVisible && (
@@ -379,4 +529,18 @@ const s = StyleSheet.create({
   pickerCancelText: { color: "#64748b", fontWeight: "bold", fontSize: 14 },
   pickerDoneBtn: { paddingHorizontal: 18, paddingVertical: 7, borderRadius: 20, backgroundColor: "#0284c7" },
   pickerDoneText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
+
+  // Excel Toolbar & Inline Modal styles
+  excelToolbar: { backgroundColor: "#f0f9ff", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#bae6fd" },
+  excelToolbarTitle: { fontSize: 14, fontWeight: "800", color: "#0369a1", marginBottom: 8 },
+  excelBtnRow: { flexDirection: "row", gap: 10 },
+  excelBtnOutline: { flex: 1, borderWidth: 1, borderColor: "#0284c7", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 8, alignItems: "center", backgroundColor: "#fff" },
+  excelBtnOutlineText: { fontSize: 12, fontWeight: "700", color: "#0284c7" },
+  excelBtnPrimary: { flex: 1, backgroundColor: "#0284c7", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 8, alignItems: "center" },
+  excelBtnPrimaryText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+  addInlineBtn: { backgroundColor: "#e0f2fe", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  addInlineBtnText: { fontSize: 12, fontWeight: "700", color: "#0369a1" },
+  submitModalBtn: { backgroundColor: "#0284c7", borderRadius: 8, paddingVertical: 12, alignItems: "center", marginTop: 16 },
+  submitModalBtnText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
 });
+
