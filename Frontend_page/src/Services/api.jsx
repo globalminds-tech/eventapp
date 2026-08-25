@@ -651,3 +651,36 @@ export const deleteFeedback = async (id) => {
   return res.data;
 };
 
+// CATEGORY MASTER APIs
+export const getAdminCategories = async () => {
+  try {
+    const res = await api.get("/api/admin/categories");
+    return res.data;
+  } catch (err) {
+    console.warn("Failed to fetch admin categories, falling back to default");
+    return { success: false, categories: [] };
+  }
+};
+
+export const createAdminCategory = async (payload) => {
+  const res = await api.post("/api/admin/categories", payload);
+  return res.data;
+};
+
+// ORGANIZER KYC VERIFICATION APIs
+export const getPendingOrganizers = async () => {
+  try {
+    const res = await api.get("/api/admin/organizers/kyc-pending");
+    return res.data;
+  } catch (err) {
+    console.warn("Failed to fetch pending organizers KYC");
+    return { success: false, organizers: [] };
+  }
+};
+
+export const updateOrganizerKycStatus = async (userId, status) => {
+  const res = await api.put(`/api/admin/organizers/${userId}/kyc-status`, { status });
+  return res.data;
+};
+
+

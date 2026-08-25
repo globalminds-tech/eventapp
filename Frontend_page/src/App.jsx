@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import WebSidebar from "./components/WebSidebar";
 
 import Home from "./pages/Home";
 import AllEvents from "./pages/AllEvents";
@@ -62,24 +63,27 @@ import Terms  from "./pages/Term";
 import Help from "./pages/Help_Center"
 import Cancellation from "./pages/cancellation"
 import Chatbot from "./components/chatbot";
+import EventDetail from "./pages/EventDetail";
+import Profile from "./pages/Profile";
 
 export default function App() {
   const location = useLocation();
 
-
   return (
-
     <>
       <Routes>
-        {/* Layout wrapper */}
         <Route path="/" element={<Home />} />
         <Route path="/all-events" element={<AllEvents />} />
+        <Route path="/event-detail/:id" element={<EventDetail />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/Login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
         <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/Terms" element={<Terms />} />
         <Route path="/Help_Center" element={<Help />} />
         <Route path="/Cancellation" element={<Cancellation />} />
+        <Route path="/usersbooking/:id" element={<Userbooking />} />
+        <Route path="/validate-booking/:id" element={<QRValidation />} />
         <Route path="/OrganizerHome" element={<ProtectedRoute allowedRoles={["organizer"]}><Sidebar /> </ProtectedRoute>}>
           <Route index element={<ProtectedRoute allowedRoles={["organizer"]}><OrganizerWelcome /></ProtectedRoute>} />
           <Route path="livedashboard" element={<ProtectedRoute allowedRoles={["organizer"]}><LiveDashboard /></ProtectedRoute>} />
@@ -125,17 +129,16 @@ export default function App() {
         </Route>
 
 
-        <Route path="/exhibitor/dashboard" element={<ProtectedRoute allowedRoles={["exhibitor"]}><ExhibitorHome /></ProtectedRoute>} />
+        <Route path="/exhibitor" element={<ProtectedRoute allowedRoles={["exhibitor"]}><WebSidebar role="exhibitor" /></ProtectedRoute>}>
+          <Route path="dashboard" element={<ExhibitorHome />} />
+          <Route path="my-bookings" element={<Exhibitormybooking />} />
+          <Route path="upcoming-events" element={<ExhibitorUpcomingEvent />} />
+        </Route>
         <Route path="/book-stall/:id" element={<ProtectedRoute allowedRoles={["exhibitor"]}><Exhibitorstall /></ProtectedRoute>} />
-        <Route path="/usersbooking/:id" element={<Userbooking />} />
-        <Route path="/validate-booking/:id" element={<QRValidation />} />
-        <Route path="/exhibitor/my-bookings" element={<ProtectedRoute allowedRoles={["exhibitor"]}><Exhibitormybooking /></ProtectedRoute>} />
-        <Route path="/exhibitor/upcoming-events" element={<ProtectedRoute allowedRoles={["exhibitor"]}><ExhibitorUpcomingEvent /></ProtectedRoute>} />
-        <Route path="/superuser/dashboard"
-          element={
-            <ProtectedRoute allowedRoles={["superuser"]}>
-              <SuperEventsPage />
-            </ProtectedRoute>} />
+
+        <Route path="/superuser" element={<ProtectedRoute allowedRoles={["superuser"]}><WebSidebar role="superuser" /></ProtectedRoute>}>
+          <Route path="dashboard" element={<SuperEventsPage />} />
+        </Route>
       </Routes>
       {location.pathname === "/" && <Chatbot />}
 
