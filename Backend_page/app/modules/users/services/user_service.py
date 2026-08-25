@@ -1,0 +1,135 @@
+import io
+import base64
+from app.exceptions.api_error import ApiError
+from app.Services.otp_service import is_verified, clear_verified
+from app.Services.mail_service import send_booking_email
+from app.modules.users.repository.user_repository import UserRepository
+from app.modules.users.schemas.user_schema import BookEventSchema, UpdateProfileSchema
+
+try:
+    import qrcode
+except ImportError:
+    qrcode = None
+
+class UserService:
+    @staticmethod
+    def get_profile(user_id: int) -> dict:
+        user = UserRepository.get_user_by_id(user_id)
+        if not user:
+            raise ApiError("User not found", 404)
+        return user.to_dict()
+
+    @staticmethod
+    def update_profile(user_id: int, raw_data: dict) -> dict:
+        data = UpdateProfileSchema(**raw_data)
+        updated_user = UserRepository.update_user_profile(user_id, data.dict(exclude_unset=True))
+        if not updated_user:
+            raise ApiError("User not found", 404)
+        return updated_user.to_dict()
+
+    @staticmethod
+    def book_event(raw_data: dict) -> dict:
+        data = BookEventSchema(**raw_data)
+        email_clean = data.email.strip().lower()
+
+        if not is_verified(email_clean):
+            raise ApiError("Please verify OTP first before completing booking", 403)
+
+        event = UserRepository.get_event_by_id(data.event_id)
+        if not event:
+            raise ApiError("Event not found", 404)
+
+        booking = UserRepository.create_booking(
+            event_id=data.event_id,
+            name=data.name,
+            email=email_clean,
+            phone=data.phone,
+            food_preference=data.food_preference
+        )
+        booking_id = booking.id
+
+        formatted_date = str(event.start_date)
+        if event.start_date:
+            try:
+                formatted_date = event.start_date.strftime("%d/%m/%Y")
+            except Exception:
+                pass
+
+        qr_text = (
+            f"Event: {event.event_name}\n"
+            f"Date: {formatted_date}\n"
+            f"Food: {data.food_preference}\n"
+            f"Verify: https://events.sportalytics.in/validate-booking/{booking_id}"
+        )
+
+        UserRepository.update_qr_data(booking_id, qr_text)
+
+        qr_base64 = ""
+        if qrcode is not None:
+            qr = qrcode.QRCode(version=1, box_size=10, border=4)
+            qr.add_data(qr_text)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            buffered = io.BytesIO()
+            img.save(buffered, format="PNG")
+            qr_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+        try:
+            event_dict = {
+                "event_name": event.event_name,
+                "venue": event.venue,
+                "address": event.address,
+                "start_date": formatted_date,
+                "start_time": str(event.start_time or "N/A")
+            }
+            send_booking_email(email_clean, data.name, event_dict, qr_base64, data.food_preference)
+        except Exception as mail_err:
+            print(f"⚠️ Email failed but booking was saved: {mail_err}")
+
+        clear_verified(email_clean)
+
+        return {
+            "booking_id": booking_id,
+            "qr_code": qr_base64,
+            "event_details": {
+                "name": event.event_name,
+                "venue": event.venue,
+                "address": event.address,
+                "date": formatted_date,
+                "time": str(event.start_time or 'N/A'),
+                "food": data.food_preference
+            }
+        }
+
+    @staticmethod
+    def validate_qr(booking_id: int) -> dict:
+        result = UserRepository.get_booking_with_event(booking_id)
+        if not result:
+            raise ApiError("Invalid Ticket / Booking not found", 404)
+
+        booking, event = result
+        if booking.is_scanned:
+            status_text = "already_scanned"
+            message_text = "This ticket has already been used"
+        else:
+            UserRepository.mark_booking_scanned(booking_id)
+            status_text = "success"
+            message_text = "Ticket Verified Successfully"
+
+        return {
+            "status": status_text,
+            "message": message_text,
+            "user_name": booking.name,
+            "user_email": booking.email,
+            "user_phone": booking.phone,
+            "food_preference": booking.food_preference,
+            "event_name": event.event_name,
+            "event_venue": event.venue,
+            "event_date": str(event.start_date)
+        }
+
+    @staticmethod
+    def get_my_bookings(email: str) -> list[dict]:
+        bookings = UserRepository.get_user_bookings(email)
+        return [b.to_dict() if hasattr(b, "to_dict") else {"id": b.id, "event_id": b.event_id, "qr_data": b.qr_data} for b in bookings]

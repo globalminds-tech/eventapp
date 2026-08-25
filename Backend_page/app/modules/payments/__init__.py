@@ -1,4 +1,3 @@
-from .routes import payments_module_bp
-from .razorpay_service import RazorpayService
+from app.modules.payments.routes.payment_routes import payment_router
 
-__all__ = ['payments_module_bp', 'RazorpayService']
+__all__ = ["payment_router"]

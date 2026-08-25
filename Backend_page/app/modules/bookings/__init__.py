@@ -1,5 +1,3 @@
-from .routes import bookings_module_bp
-from .service import BookingService
-from .repository import BookingRepository
+from app.modules.bookings.routes.booking_routes import booking_router
 
-__all__ = ['bookings_module_bp', 'BookingService', 'BookingRepository']
+__all__ = ["booking_router"]

@@ -1,5 +1,3 @@
-from .routes import checkins_module_bp
-from .service import CheckinService
-from .repository import CheckinRepository
+from app.modules.checkins.routes.checkin_routes import checkin_router
 
-__all__ = ['checkins_module_bp', 'CheckinService', 'CheckinRepository']
+__all__ = ["checkin_router"]

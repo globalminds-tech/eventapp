@@ -1,5 +1,3 @@
-from .routes import users_module_bp
-from .service import UserService
-from .repository import UserRepository
+from app.modules.users.routes.user_routes import users_router
 
-__all__ = ['users_module_bp', 'UserService', 'UserRepository']
+__all__ = ["users_router"]

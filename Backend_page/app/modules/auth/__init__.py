@@ -1,5 +1,3 @@
-from .routes import auth_module_bp
-from .service import AuthService
-from .repository import AuthRepository
+from app.modules.auth.routes.auth_routes import auth_router
 
-__all__ = ['auth_module_bp', 'AuthService', 'AuthRepository']
+__all__ = ["auth_router"]

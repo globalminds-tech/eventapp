@@ -1,5 +1,3 @@
-from .routes import chatbot_module_bp
-from .service import ChatbotService
-from .repository import ChatbotRepository
+from app.modules.chatbot.routes.chatbot_routes import chatbot_router
 
-__all__ = ['chatbot_module_bp', 'ChatbotService', 'ChatbotRepository']
+__all__ = ["chatbot_router"]
