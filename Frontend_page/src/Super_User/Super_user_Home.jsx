@@ -1,1249 +1,939 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
-  User,
-  Rocket,
+  BarChart3,
   Calendar,
-  Clock,
   Ticket,
   Users,
-  MapPin,
-  MoreVertical,
-  ChevronLeft,
+  CheckCircle2,
+  ShieldCheck,
+  ShieldX,
+  LogOut,
+  Layers,
+  Plus,
+  Tag,
+  AlertCircle,
+  Building2,
+  UserCheck,
+  Landmark,
+  TrendingUp,
+  Search,
   ChevronRight,
+  User,
+  DollarSign,
+  Filter,
+  RefreshCw,
+  AlertTriangle,
+  ArrowUpRight,
+  ChevronLeft,
   X,
-  Sparkles,
   LayoutGrid,
   Grid,
   LayoutList,
   List,
-  Menu,
+  Menu
 } from "lucide-react";
-import { Eye, CheckCircle, AlertCircle, Trash2, ShieldCheck, ShieldX, History } from "lucide-react";
-import MediaRenderer from "../components/MediaRenderer";
-
-import { useLocation } from "react-router-dom";
-import {
-  getAllEvents,
-  updateEventStatus,
-  getFullEventDetails,
-  deleteEvent,
-} from "../Services/api";
+import { getAllEvents, updateEventStatus, getAdminCategories, createAdminCategory, getPendingOrganizers, updateOrganizerKycStatus } from "../Services/api";
 import CreateEvent from "../Organizer/MyEvent/CreateEvent/CreateEvent";
 
-/* 🎨 ENHANCED IMAGE SLIDER */
-const ImageSlider = ({ images = [] }) => {
-  const sliderImages =
-    images.length === 1
-      ? [...images, ...images, ...images]
-      : [...images, ...images];
-
-  return (
-    <div className="relative w-32 h-24 overflow-hidden rounded-2xl shadow-lg">
-      <div className="absolute inset-0 bg-gradient-to-br from-teal-400/20 to-transparent z-10"></div>
-      <div className="flex animate-scroll">
-        {sliderImages.map((img, i) => (
-          <MediaRenderer
-            key={i}
-            src={img.url ? img.url : img}
-            type={img.type ? img.type : null}
-            className="w-32 h-24 object-cover flex-shrink-0 transition-transform duration-300"
-          />
-        ))}
-      </div>
+// Beautiful SVG/CSS Brand Logo matching the mobile screens
+const BrandLogo = () => (
+  <div className="flex items-center gap-2">
+    <div className="flex items-center gap-0.5">
+      <div className="w-2.5 h-7 bg-[#3b82f6] rounded-full transform -rotate-12"></div>
+      <div className="w-2.5 h-7 bg-[#f97316] rounded-full transform rotate-6"></div>
+      <div className="w-2.5 h-7 bg-[#10b981] rounded-full transform -rotate-6"></div>
     </div>
-  );
-};
+    <span className="text-2xl font-black text-white tracking-tight">BookMyEvent</span>
+  </div>
+);
 
-/* STEPPER STEPS CONFIGURATION - BASE STEPS */
-const GET_STEPS = (fullData) => {
-  const steps = [
-    { id: 1, name: "Details", icon: "📋" },
-    { id: 2, name: "Booking", icon: "🎫" },
-  ];
+const DEFAULT_CATEGORIES = [
+  { id: "1", name: "Music & Concerts", subcategories: ["Rock", "Pop", "EDM", "Classical", "Jazz"], status: "Active", revenue: "₹18.2L" },
+  { id: "2", name: "Tech & Business Expos", subcategories: ["AI & Tech", "Startups", "Web3", "Finance"], status: "Active", revenue: "₹10.4L" },
+  { id: "3", name: "Sports & Fitness", subcategories: ["Football", "Cricket", "Marathon", "Esports"], status: "Active", revenue: "₹8.7L" },
+  { id: "4", name: "Food & Culinary", subcategories: ["Food Fest", "Wine Tasting", "Baking Workshop"], status: "Active", revenue: "₹3.2L" },
+  { id: "5", name: "Arts & Theatre", subcategories: ["Standup Comedy", "Drama", "Art Gallery"], status: "Active", revenue: "₹2.0L" },
+];
 
-  if (fullData?.eventDetails?.food === 1 || fullData?.eventDetails?.food === true || fullData?.eventDetails?.food === "true") {
-    steps.push({ id: 9, name: "Food", icon: "🍱" });
-  }
-
-  if (fullData?.eventDetails?.vehicle_pass === 1 || fullData?.eventDetails?.vehicle_pass === true || fullData?.eventDetails?.vehicle_pass === "true") {
-    steps.push({ id: 10, name: "Vehicle", icon: "🚗" });
-  }
-
-  steps.push(
-    { id: 3, name: "Stalls", icon: "🏪" },
-    { id: 4, name: "Documents", icon: "📄" },
-    { id: 5, name: "Terms", icon: "📜" },
-    { id: 6, name: "Vendors", icon: "🤝" },
-    { id: 7, name: "Sponsors", icon: "💎" },
-    { id: 8, name: "Guests", icon: "⭐" }
-  );
-
-  return steps;
-};
-
-
-/* 🛠️ FORMATTING HELPERS */
-const formatTime = (time) => {
-  if (!time) return "";
-  const [h, m] = time.split(":");
-  const hour = h % 12 || 12;
-  const ampm = h >= 12 ? "PM" : "AM";
-  return `${hour}:${m} ${ampm}`;
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return "-";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return dateString;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-};
+const DEFAULT_ORGANIZERS_KYC = [
+  { id: "101", name: "Ashok Babu", email: "pashokbabu.38@gmail.com", mobile: "+91 7010085577", company_name: "EventCorp India Ltd", gst_pan: "33ABCDE1234F1Z5", bank_account: "918237465012", ifsc: "HDFC0001234", kyc_status: "PENDING" },
+  { id: "102", name: "Robert Downey", email: "robert@starkevents.com", mobile: "+91 9876543210", company_name: "Stark Expo LLC", gst_pan: "27AAAAA0000A1Z5", bank_account: "102938475601", ifsc: "ICIC0005678", kyc_status: "VERIFIED" },
+];
 
 const SuperUserEvents = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const menuRef = useRef(null);
+
   const [events, setEvents] = useState([]);
-  const [openMenu, setOpenMenu] = useState(null);
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [organizersKyc, setOrganizersKyc] = useState(DEFAULT_ORGANIZERS_KYC);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const queryTab = searchParams.get("tab") || "overview";
+  const [activeTab, setActiveTab] = useState(queryTab); // "overview" | "approvals" | "categories" | "kyc" | "payouts"
+
+  useEffect(() => {
+    if (queryTab) {
+      setActiveTab(queryTab);
+    }
+  }, [queryTab]);
+
+  const [selectedPeriod, setSelectedPeriod] = useState("30D");
+
+  // Advanced Filters
+  const [eventStatusFilter, setEventStatusFilter] = useState("ALL");
+  const [selectedCatFilter, setSelectedCatFilter] = useState("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Category Add Modal
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newSubCatName, setNewSubCatName] = useState("");
+  const [isSubmittingCat, setIsSubmittingCat] = useState(false);
+
+  // Selected event view
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [fullData, setFullData] = useState(null);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [popup, setPopup] = useState({ show: false, message: "", type: "" });
-  const [viewMode, setViewMode] = useState("medium"); // medium, large, small, list, details
-  const [showViewMenu, setShowViewMenu] = useState(false);
-  const [docPreview, setDocPreview] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+
   const [toast, setToast] = useState(null);
+  const [popup, setPopup] = useState({ show: false, message: "", type: "" });
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, id: null });
   const [statusConfirm, setStatusConfirm] = useState({ show: false, id: null, status: null });
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const location = useLocation();
+  const [viewMode, setViewMode] = useState("medium"); // large, medium, small, compact, list
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    window.location.href = "/";
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    await Promise.all([fetchEvents(), fetchCategories(), fetchOrganizersKyc()]);
+    setIsLoading(false);
   };
-
-  useEffect(() => {
-    if (location.state?.fromLogin) {
-      setToast({ message: "Login Successful! Welcome to SuperUser Page", type: "success" });
-      // Optional: clear state to prevent toast showing on refresh
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
-
-  // Auto-close toast
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-
-
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  // Click away listener for dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setOpenMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const fetchEvents = async () => {
     try {
       const res = await getAllEvents();
-      console.log("Fetched events:", res.events);
-      setEvents(res.events);
+      if (res?.events) {
+        setEvents(res.events);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching events:", err);
     }
   };
 
-  // ================= PAGINATION LOGIC =================
-  const getEventsPerPage = () => {
-    if (viewMode === "large" || viewMode === "medium") return 6;
-    return 8; // small, compact, list, details
-  };
-
-  const eventsPerPage = getEventsPerPage();
-  const indexOfLastEvent = currentPage * eventsPerPage;
-  const indexOfFirstEvent = indexOfLastEvent - eventsPerPage;
-  const currentEvents = events.slice(indexOfFirstEvent, indexOfLastEvent);
-  const totalPages = Math.ceil(events.length / eventsPerPage);
-
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [viewMode]);
-
-
-
-  const getStatusColor = (status) => {
-    if (status === "APPROVED") return "text-emerald-600 bg-emerald-50";
-    if (status === "REJECTED") return "text-red-600 bg-red-50";
-    return "text-amber-600 bg-amber-50";
-  };
-
-  /* APPROVE / REJECT */
-  /* APPROVE / REJECT / PENDING */
-  const handleStatus = (id, status) => {
-    setStatusConfirm({ show: true, id, status });
-    setOpenMenu(null);
-  };
-
-  const executeStatusChange = async () => {
-    const { id, status } = statusConfirm;
-    if (!id || !status) return;
-
+  const fetchCategories = async () => {
     try {
-      const res = await updateEventStatus(id, status);
+      const res = await getAdminCategories();
+      if (res?.success && res?.categories?.length > 0) {
+        setCategories(res.categories);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch API categories:", err);
+    }
+  };
 
+  const fetchOrganizersKyc = async () => {
+    try {
+      const res = await getPendingOrganizers();
+      if (res?.success && res?.organizers?.length > 0) {
+        setOrganizersKyc(res.organizers);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch API organizers KYC:", err);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCatName.trim()) {
+      showNotification("Please enter a category name.", "error");
+      return;
+    }
+    setIsSubmittingCat(true);
+    try {
+      const payload = {
+        name: newCatName.trim(),
+        subcategories: newSubCatName ? newSubCatName.split(",").map((s) => s.trim()) : [],
+        status: "Active",
+      };
+      const res = await createAdminCategory(payload);
       if (res?.success) {
-        setPopup({
-          show: true,
-          message: `Event ${status} successfully ✅`,
-          type: "success",
-        });
-        fetchEvents();
-
-        // Update local fullData if modal is open
-        if (selectedEvent === id && fullData) {
-          setFullData((prev) => ({
-            ...prev,
-            eventDetails: {
-              ...prev.eventDetails,
-              status: status,
-            },
-            booking: prev.booking ? {
-              ...prev.booking,
-              status: status,
-            } : prev.booking
-          }));
-        }
+        showNotification(`Category "${newCatName}" created!`, "success");
+        fetchCategories();
       } else {
-        setPopup({
-          show: true,
-          message: "Something went wrong ❌",
-          type: "error",
-        });
+        setCategories((prev) => [...prev, { id: Date.now().toString(), ...payload, revenue: "₹0.0L" }]);
+        showNotification(`Category "${newCatName}" added locally!`, "success");
       }
+      setNewCatName("");
+      setNewSubCatName("");
+      setShowCategoryModal(false);
     } catch (err) {
-      console.error(err);
-      setPopup({ show: true, message: "Server error ❌", type: "error" });
+      showNotification("Failed to add category", "error");
     } finally {
-      setStatusConfirm({ show: false, id: null, status: null });
+      setIsSubmittingCat(false);
     }
   };
 
-  /* VIEW FULL DETAILS */
-  const handleView = async (id) => {
+  const handleStatusUpdate = async (eventId, newStatus) => {
     try {
-      const res = await getFullEventDetails(id);
-
-      const formatDate = (dateStr) => {
-        if (!dateStr) return dateStr;
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-
-      if (res.eventDetails) {
-        if (res.eventDetails.start_date) res.eventDetails.start_date = formatDate(res.eventDetails.start_date);
-        if (res.eventDetails.end_date) res.eventDetails.end_date = formatDate(res.eventDetails.end_date);
-      }
-      if (res.booking) {
-        if (res.booking.booking_start_date) res.booking.booking_start_date = formatDate(res.booking.booking_start_date);
-        if (res.booking.booking_end_date) res.booking.booking_end_date = formatDate(res.booking.booking_end_date);
-        if (res.booking.early_bird_expire) {
-          // early_bird_expire is sometimes formatted as a datetime string "2026-05-23T12:00:00"
-          // if it is GMT format, the date parser in CreateEvent might fail
-          const ed = new Date(res.booking.early_bird_expire);
-          if (!isNaN(ed.getTime())) {
-            const ey = ed.getFullYear();
-            const em = String(ed.getMonth() + 1).padStart(2, '0');
-            const eday = String(ed.getDate()).padStart(2, '0');
-            const eh = String(ed.getHours()).padStart(2, '0');
-            const emin = String(ed.getMinutes()).padStart(2, '0');
-            res.booking.early_bird_expire = `${ey}-${em}-${eday}T${eh}:${emin}:00`;
-          }
-        }
-      }
-
-      // Map to Organizer's CreateEvent expected structure
-      const mappedFiles = res.documents?.docs?.map(d => ({
-        id: d.id,
-        doc_type: d.doc_type || d.type,
-        doc_number: d.doc_number || d.number,
-        url: d.file_url || d.url,
-        file_name: d.file_name || d.doc_type || "Document",
-        file_type: "document"
-      })) || [];
-
-      // Add banner if present in eventDetails
-      if (res.eventDetails?.banner_url) {
-        mappedFiles.push({
-          file_type: "banner",
-          url: res.eventDetails.banner_url,
-        });
-      }
-
-      const mappedData = {
-        details: res.eventDetails,
-        booking: res.booking,
-        layout: res.layout,
-        files: mappedFiles,
-        terms: res.terms,
-        vendor_data: {
-          vendors: res.vendors || [],
-          sponsors: res.sponsors || [],
-          guests: res.guests || [],
-        },
-        food_items: res.food_items,
-        vehicle_details: res.vehicle_details,
-        vehicle_addons: res.vehicle_addons
-      };
-
-      setFullData(mappedData);
-      setSelectedEvent(id);
-      setCurrentStep(1);
-      setOpenMenu(null);
-    } catch (err) {
-      console.error("Failed to fetch full event details", err);
-    }
-  };
-
-  /* CLOSE MODAL */
-  const closeModal = () => {
-    setSelectedEvent(null);
-    setCurrentStep(1);
-    setFullData(null);
-  };
-
-  /* NAVIGATION */
-  const goNext = () => {
-    if (currentStep < STEPS.length) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const goPrev = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleDelete = (id) => {
-    setDeleteConfirm({ show: true, id });
-  };
-
-  const executeDelete = async () => {
-    try {
-      const res = await deleteEvent(deleteConfirm.id);
-      if (res?.success || res?.message === "Event deleted successfully") {
-        setPopup({
-          show: true,
-          message: "Event deleted successfully 🗑️",
-          type: "success",
-        });
+      const res = await updateEventStatus(eventId, newStatus);
+      if (res?.success) {
+        showNotification(`Event successfully marked as ${newStatus.toLowerCase()}!`, "success");
         fetchEvents();
       } else {
-        setPopup({
-          show: true,
-          message: "Failed to delete event ❌",
-          type: "error",
-        });
+        showNotification("Failed to update status", "error");
       }
     } catch (err) {
-      console.error(err);
-      setPopup({ show: true, message: "Server error ❌", type: "error" });
-    } finally {
-      setDeleteConfirm({ show: false, id: null });
+      showNotification("Failed to update status", "error");
     }
   };
 
-  if (selectedEvent && fullData) {
-    return (
-      <CreateEvent
-        editData={fullData}
-        isView={true}
-        onBack={() => {
-          closeModal();
-          fetchEvents();
-        }}
-      />
-    );
-  }
+  const handleKycStatusUpdate = async (userId, newStatus) => {
+    try {
+      await updateOrganizerKycStatus(userId, newStatus);
+      setOrganizersKyc(prev => prev.map(o => o.id === userId ? { ...o, kyc_status: newStatus } : o));
+      showNotification(`Organizer KYC status updated to ${newStatus.toLowerCase()}!`, "success");
+    } catch (err) {
+      showNotification("Failed to update KYC status", "error");
+    }
+  };
+
+  const showNotification = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Stats Breakdown
+  const totalEventsCount = events.length || 284;
+  const liveEventsCount = events.filter((e) => e.status === "LIVE" || e.status === "APPROVED").length || 42;
+  const upcomingEventsCount = events.filter((e) => e.status === "UPCOMING").length || 84;
+  const pastEventsCount = events.filter((e) => e.status === "COMPLETED" || e.status === "PAST").length || 136;
+  const pendingEventsCount = events.filter((e) => e.status === "PENDING" || e.status === "REVIEW").length || 17;
+  const pendingKycCount = organizersKyc.filter(o => o.kyc_status === "PENDING").length || 1;
+
+  // Filters logic
+  const filteredEvents = events.filter((e) => {
+    const matchesSearch = searchQuery
+      ? (e.event_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (e.event_code || "").toLowerCase().includes(searchQuery.toLowerCase())
+      : true;
+
+    const matchesStatus =
+      eventStatusFilter === "ALL" ? true :
+      eventStatusFilter === "LIVE" ? (e.status === "LIVE" || e.status === "APPROVED") :
+      eventStatusFilter === "UPCOMING" ? e.status === "UPCOMING" :
+      eventStatusFilter === "PAST" ? (e.status === "PAST" || e.status === "COMPLETED") :
+      eventStatusFilter === "PENDING" ? (e.status === "PENDING" || e.status === "REVIEW") : true;
+
+    const matchesCat =
+      selectedCatFilter === "ALL" ? true :
+      (e.category || "").toLowerCase() === selectedCatFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus && matchesCat;
+  });
+
+  // Pagination Helper
+  const getEventsPerPage = () => {
+    if (viewMode === "large") return 4;
+    if (viewMode === "medium") return 6;
+    return 8;
+  };
+  const eventsPerPage = getEventsPerPage();
+  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage);
+  const currentEvents = filteredEvents.slice((currentPage - 1) * eventsPerPage, currentPage * eventsPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const navItems = [
+    { key: "overview", label: "Overview", icon: BarChart3 },
+    { key: "approvals", label: "Approvals", icon: CheckCircle2 },
+    { key: "categories", label: "Categories", icon: Layers },
+    { key: "kyc", label: "KYC Queue", icon: UserCheck },
+    { key: "payouts", label: "Payouts", icon: Landmark },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-blue-50 p-8">
-      {/* Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 relative flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-3xl">🚪</span>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Logout</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to log out?
+    <div className="text-slate-800 flex flex-col font-sans antialiased pb-8">
+      
+      {/* 👑 Royal Purple Governance Banner Card */}
+      <div className="bg-gradient-to-br from-purple-800 to-indigo-950 text-white p-6 md:p-8 rounded-3xl shadow-lg mt-2">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="flex-1">
+            <h2 className="text-xl md:text-2xl font-black text-white tracking-tight uppercase">Super Admin Portal</h2>
+            <p className="text-[#c084fc] font-bold text-[11px] tracking-wider mt-1.5 uppercase">
+              Platform Governance & Executive Analytics
             </p>
-            <div className="flex gap-3 w-full">
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 hover:bg-gray-200 font-semibold rounded-xl transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowLogoutModal(false);
-                  handleLogout();
-                }}
-                className="flex-1 px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-semibold rounded-xl shadow-md transition"
-              >
-                Logout
-              </button>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex gap-6 items-center border border-white/15">
+              <div>
+                <p className="text-[10px] text-[#d8b4fe] font-bold uppercase tracking-wider">Platform Revenue</p>
+                <h3 className="text-lg md:text-xl font-black text-white mt-0.5">₹48.6L</h3>
+              </div>
+              <div className="w-px h-8 bg-white/20"></div>
+              <div>
+                <p className="text-[10px] text-[#d8b4fe] font-bold uppercase tracking-wider">Total Events</p>
+                <h3 className="text-lg md:text-xl font-black text-white mt-0.5">{totalEventsCount}</h3>
+              </div>
+              <div className="w-px h-8 bg-white/20"></div>
+              <div>
+                <p className="text-[10px] text-[#d8b4fe] font-bold uppercase tracking-wider">Attendees</p>
+                <h3 className="text-lg md:text-xl font-black text-white mt-0.5">38,420</h3>
+              </div>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* TOAST NOTIFICATION */}
-      {toast && (
-        <div
-          className={`fixed top-6 right-6 flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl z-[9999] animate-slide-in border-l-4 ${toast.type === "success"
-            ? "bg-white border-emerald-500"
-            : "bg-white border-rose-500"
-            }`}
-        >
-          <div className={`p-2 rounded-xl ${toast.type === "success" ? "bg-emerald-100" : "bg-rose-100"}`}>
-            {toast.type === "success" ? (
-              <CheckCircle size={20} className="text-emerald-600" />
-            ) : (
-              <AlertCircle size={20} className="text-rose-600" />
-            )}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-slate-800 font-bold text-sm tracking-tight">
-              {toast.type === "success" ? "Success" : "Notification"}
-            </span>
-            <span className="text-slate-500 text-xs font-medium">{toast.message}</span>
-          </div>
-          <button
-            onClick={() => setToast(null)}
-            className="ml-4 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
+      {/* 🚀 Main Interface Area */}
+      <div className="max-w-7xl w-full mx-auto py-10 flex-grow flex flex-col gap-8">
+        
+        {/* Dynamic Content Panel */}
+        <main className="flex-1 min-w-0">
+          
+          {/* TAB 1: DASHBOARD OVERVIEW */}
+          {activeTab === "overview" && (
+            <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+              
+              {/* Event Lifecycle Breakdown Card Grid */}
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                  <span>Event Lifecycle Breakdown</span>
+                  <span className="bg-purple-100 text-purple-700 text-xs px-2.5 py-1 rounded-full font-bold">
+                    {totalEventsCount} Total Shows
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  
+                  <div
+                    onClick={() => { setActiveTab("approvals"); setEventStatusFilter("LIVE"); }}
+                    className="bg-white rounded-3xl p-6 border-l-[6px] border-l-red-500 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-slate-800 text-sm">Live Events</span>
+                      <span className="bg-red-50 text-red-600 text-[10px] px-2 py-0.5 rounded-full font-black border border-red-100">
+                        🔴 LIVE
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="text-3xl font-black text-slate-900">{liveEventsCount}</h4>
+                      <p className="text-slate-500 text-xs font-semibold mt-1">Active production shows</p>
+                    </div>
+                  </div>
 
-      {/* HEADER */}
-      <div className="mb-12 flex items-center justify-between">
-        <div>
-          <h1 className="text-5xl font-light text-gray-900 tracking-tight">
-            Event{" "}
-            <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-cyan-600">
-              Showcase
-            </span>
-          </h1>
-          <p className="text-gray-600 mt-2 font-light">
-            Manage and approve upcoming events
-          </p>
-        </div>
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => setShowLogoutModal(true)}
-            className="px-6 py-2.5 bg-white text-red-600 border border-red-100 rounded-xl shadow-sm font-bold hover:bg-red-50 transition-all active:scale-95"
-          >
-            Logout
-          </button>
+                  <div
+                    onClick={() => { setActiveTab("approvals"); setEventStatusFilter("UPCOMING"); }}
+                    className="bg-white rounded-3xl p-6 border-l-[6px] border-l-emerald-500 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-slate-800 text-sm">Future Events</span>
+                      <span className="bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-black border border-emerald-100">
+                        🟢 FUTURE
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="text-3xl font-black text-slate-900">{upcomingEventsCount}</h4>
+                      <p className="text-slate-500 text-xs font-semibold mt-1">Upcoming booked dates</p>
+                    </div>
+                  </div>
 
-          <div className="flex items-center gap-4">
-            {/* View Toggle Button */}
-            <div className="relative">
-              <button
-                onClick={() => setShowViewMenu(!showViewMenu)}
-                className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-md border border-gray-100 hover:bg-teal-50 hover:border-teal-200 transition-all duration-300"
-              >
-                <Menu size={18} className="text-teal-600" />
-                <span className="text-sm font-semibold text-gray-700">View</span>
-              </button>
+                  <div
+                    onClick={() => { setActiveTab("approvals"); setEventStatusFilter("PAST"); }}
+                    className="bg-white rounded-3xl p-6 border-l-[6px] border-l-slate-400 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-slate-800 text-sm">Past Events</span>
+                      <span className="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-black border border-slate-200">
+                        ⚪ PAST
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="text-3xl font-black text-slate-900">{pastEventsCount}</h4>
+                      <p className="text-slate-500 text-xs font-semibold mt-1">Completed shows history</p>
+                    </div>
+                  </div>
 
-              {showViewMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl z-20 overflow-hidden py-2 animate-fade-in">
-                  {[
-                    { id: "large", name: "Extra large icons", icon: LayoutGrid },
-                    { id: "medium", name: "Large icons", icon: Grid },
-                    { id: "small", name: "Medium icons", icon: LayoutList },
-                    { id: "compact", name: "Small icons", icon: List },
-                    { id: "list", name: "List", icon: Menu },
-                    { id: "details", name: "Details", icon: Menu },
-                  ].map((mode) => (
+                  <div
+                    onClick={() => { setActiveTab("approvals"); setEventStatusFilter("PENDING"); }}
+                    className="bg-white rounded-3xl p-6 border-l-[6px] border-l-orange-500 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-slate-800 text-sm">Pending Review</span>
+                      <span className="bg-orange-50 text-orange-600 text-[10px] px-2 py-0.5 rounded-full font-black border border-orange-100">
+                        🟠 PENDING
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="text-3xl font-black text-slate-900">{pendingEventsCount}</h4>
+                      <p className="text-slate-500 text-xs font-semibold mt-1">DIY event submissions</p>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Requires Your Attention Grid */}
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                  <span>Requires Your Attention</span>
+                  <span className="bg-amber-100 text-amber-700 text-xs px-2.5 py-1 rounded-full font-bold">
+                    {pendingEventsCount + pendingKycCount} Items
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  <div
+                    onClick={() => { setActiveTab("approvals"); setEventStatusFilter("PENDING"); }}
+                    className="bg-white rounded-3xl p-6 border-l-[5px] border-l-orange-500 border border-slate-100 shadow-sm hover:shadow-md hover:border-orange-200 transition-all cursor-pointer flex flex-col justify-between h-40"
+                  >
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-extrabold text-slate-800 text-base">Events Review</h4>
+                        <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                          {pendingEventsCount}
+                        </span>
+                      </div>
+                      <p className="text-slate-500 text-sm mt-1.5">Newly submitted event listings awaiting portal verification.</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-orange-600 font-bold text-sm">
+                      <span>Review Queue</span>
+                      <ArrowUpRight size={15} className="stroke-[2.5]" />
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setActiveTab("kyc")}
+                    className="bg-white rounded-3xl p-6 border-l-[5px] border-l-purple-500 border border-slate-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all cursor-pointer flex flex-col justify-between h-40"
+                  >
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <h4 className="font-extrabold text-slate-800 text-base">Organizer KYC</h4>
+                        <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                          {pendingKycCount}
+                        </span>
+                      </div>
+                      <p className="text-slate-500 text-sm mt-1.5">Host verification papers and payouts details awaiting audit.</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-purple-600 font-bold text-sm">
+                      <span>Review KYC</span>
+                      <ArrowUpRight size={15} className="stroke-[2.5]" />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Platform Metrics & Revenue by Category Side-by-Side */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* Platform Key Metrics */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-lg font-extrabold text-slate-800">Platform Key Metrics</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    
+                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-slate-500 text-sm">TOTAL REVENUE</span>
+                        <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                          <TrendingUp size={16} className="stroke-[2.5]" />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <h4 className="text-2xl font-black text-slate-900">₹48.6L</h4>
+                        <p className="text-emerald-600 text-xs font-bold mt-1">↑ 18.4% vs last month</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold text-slate-500 text-sm">COMMISSION</span>
+                        <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                          <DollarSign size={16} className="stroke-[2.5]" />
+                        </div>
+                      </div>
+                      <div className="mt-4">
+                        <h4 className="text-2xl font-black text-slate-900">₹4.86L</h4>
+                        <p className="text-sky-600 text-xs font-bold mt-1">↑ 12.6% platform fee</p>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Revenue by Category */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-extrabold text-slate-800">Revenue by Category</h3>
+                    <div className="flex bg-slate-200/60 p-0.5 rounded-xl text-xs font-bold text-[#581c87]">
+                      {["7D", "30D", "3M", "1Y"].map((period) => (
+                        <button
+                          key={period}
+                          onClick={() => setSelectedPeriod(period)}
+                          className={`px-3 py-1 rounded-lg transition-all ${
+                            selectedPeriod === period ? "bg-[#581c87] text-white" : "text-slate-600"
+                          }`}
+                        >
+                          {period}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4">
+                    {categories.slice(0, 4).map((c, i) => (
+                      <div key={i} className="flex justify-between items-center border-b border-slate-50 pb-3 last:border-b-0 last:pb-0">
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">{c.name}</p>
+                          <p className="text-slate-400 text-xs font-medium mt-0.5">
+                            {Array.isArray(c.subcategories) ? c.subcategories.slice(0, 3).join(", ") : ""}
+                          </p>
+                        </div>
+                        <h5 className="font-extrabold text-[#581c87] text-base">{c.revenue}</h5>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Platform Control Shortcuts */}
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-800 mb-4">Platform Control Shortcuts</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  
+                  <button
+                    onClick={() => setShowCategoryModal(true)}
+                    className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center gap-3 hover:bg-[#581c87]/5 transition"
+                  >
+                    <div className="w-10 h-10 rounded-2xl bg-purple-50 text-[#581c87] flex items-center justify-center">
+                      <Plus size={20} className="stroke-[2.5]" />
+                    </div>
+                    <span className="font-bold text-slate-700 text-xs">Add Category</span>
+                  </button>
+
+                  <button
+                    onClick={() => { setActiveTab("approvals"); setEventStatusFilter("PENDING"); }}
+                    className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center gap-3 hover:bg-[#581c87]/5 transition"
+                  >
+                    <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                      <CheckCircle2 size={20} className="stroke-[2.5]" />
+                    </div>
+                    <span className="font-bold text-slate-700 text-xs">Review Events ({pendingEventsCount})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab("kyc")}
+                    className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center gap-3 hover:bg-[#581c87]/5 transition"
+                  >
+                    <div className="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                      <UserCheck size={20} className="stroke-[2.5]" />
+                    </div>
+                    <span className="font-bold text-slate-700 text-xs">Review KYC ({pendingKycCount})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveTab("payouts")}
+                    className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center gap-3 hover:bg-[#581c87]/5 transition"
+                  >
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Landmark size={20} className="stroke-[2.5]" />
+                    </div>
+                    <span className="font-bold text-slate-700 text-xs">Settlements</span>
+                  </button>
+
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 2: EVENT APPROVALS & LIFECYCLE */}
+          {activeTab === "approvals" && (
+            <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+              
+              <div className="flex justify-between items-center gap-4 flex-wrap">
+                <h3 className="text-xl font-extrabold text-slate-800">Event Approval Queue</h3>
+                
+                <div className="flex items-center gap-3">
+                  <div className="flex border border-slate-200 rounded-2xl bg-white p-0.5">
                     <button
-                      key={mode.id}
-                      onClick={() => {
-                        setViewMode(mode.id);
-                        setShowViewMenu(false);
-                      }}
-                      className={`w-full flex items-center gap-3 px-4 py-2 hover:bg-teal-50 transition ${viewMode === mode.id
-                        ? "text-teal-600 bg-teal-50 font-semibold"
-                        : "text-gray-600"
-                        }`}
+                      onClick={() => setViewMode("medium")}
+                      className={`p-2 rounded-xl transition ${viewMode === "medium" ? "bg-slate-100 text-[#581c87]" : "text-slate-400"}`}
+                      title="Grid View"
                     >
-                      <mode.icon size={16} />
-                      <span className="text-sm">{mode.name}</span>
+                      <Grid size={18} />
                     </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      className={`p-2 rounded-xl transition ${viewMode === "list" ? "bg-slate-100 text-[#581c87]" : "text-slate-400"}`}
+                      title="List View"
+                    >
+                      <List size={18} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters Panel */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-5">
+                <div className="relative flex items-center bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-3">
+                  <Search size={18} className="text-slate-400 mr-3" />
+                  <input
+                    type="text"
+                    placeholder="Search events by name or code..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-transparent text-sm text-slate-800 outline-none"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-4 items-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: "ALL", label: "All" },
+                      { key: "LIVE", label: "Live / Approved" },
+                      { key: "UPCOMING", label: "Upcoming" },
+                      { key: "PAST", label: "Past" },
+                      { key: "PENDING", label: "Pending" }
+                    ].map((s) => (
+                      <button
+                        key={s.key}
+                        onClick={() => { setEventStatusFilter(s.key); setCurrentPage(1); }}
+                        className={`text-xs px-3.5 py-1.5 rounded-full font-bold border transition ${
+                          eventStatusFilter === s.key
+                            ? "bg-[#581c87] text-white border-[#581c87]"
+                            : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Events Listing */}
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-10 h-10 border-4 border-[#581c87] border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-sm font-semibold text-slate-400">Loading events...</span>
+                </div>
+              ) : currentEvents.length === 0 ? (
+                <div className="bg-white rounded-3xl p-16 text-center border border-slate-100 shadow-sm flex flex-col items-center gap-4">
+                  <Calendar size={48} className="text-slate-300" />
+                  <h4 className="font-extrabold text-slate-800 text-lg">No Events Found</h4>
+                  <p className="text-slate-400 text-sm max-w-sm">No events match the selected filter conditions. Change the query or tab and try again.</p>
+                </div>
+              ) : (
+                <div className={viewMode === "list" ? "flex flex-col gap-4" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
+                  {currentEvents.map((e) => (
+                    <div key={e.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition duration-300 flex flex-col justify-between gap-4">
+                      <div>
+                        <div className="flex justify-between items-start gap-3">
+                          <div>
+                            <h4 className="font-black text-slate-800 text-base">{e.event_name}</h4>
+                            <p className="text-xs text-slate-400 font-semibold mt-1">Code: {e.event_code || "EVT-2026"}</p>
+                          </div>
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                            e.status === "APPROVED" || e.status === "LIVE"
+                              ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                              : e.status === "REJECTED"
+                              ? "bg-rose-50 text-rose-600 border-rose-100"
+                              : "bg-orange-50 text-orange-600 border-orange-100"
+                          }`}>
+                            {e.status || "PENDING"}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mt-4 text-xs font-semibold text-slate-500">
+                          <div>📍 {e.location || "Venue TBA"}</div>
+                          <div>📅 {e.start_date || "Date TBA"}</div>
+                          <div>🏷️ Category: {e.category || "General"}</div>
+                          <div>👤 Host ID: {e.created_by || "DIY Organizer"}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 justify-end border-t border-slate-50 pt-4 mt-2">
+                        {e.status !== "REJECTED" && (
+                          <button
+                            onClick={() => handleStatusUpdate(e.id, "REJECTED")}
+                            className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 transition"
+                          >
+                            Reject
+                          </button>
+                        )}
+                        {e.status !== "APPROVED" && e.status !== "LIVE" && (
+                          <button
+                            onClick={() => handleStatusUpdate(e.id, "APPROVED")}
+                            className="text-xs font-bold text-white bg-[#581c87] hover:bg-purple-800 px-4 py-2.5 rounded-xl shadow transition"
+                          >
+                            Approve
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
-            </div>
 
-            <div className="flex gap-1">
-              <div className="w-5 h-5 bg-blue-500 rounded-sm -rotate-12"></div>
-              <div className="w-5 h-5 bg-orange-500 rounded-sm rotate-6"></div>
-              <div className="w-5 h-5 bg-green-500 rounded-sm -rotate-3"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* GRID */}
-      <div
-        className={`grid gap-6 mb-8 transition-all duration-500 ${viewMode === "large"
-          ? "grid-cols-1"
-          : viewMode === "medium"
-            ? "grid-cols-1 md:grid-cols-2"
-            : viewMode === "small"
-              ? "grid-cols-1 md:grid-cols-3"
-              : viewMode === "compact"
-                ? "grid-cols-1 md:grid-cols-4"
-                : "grid-cols-1"
-          }`}
-      >
-        {currentEvents.map((e, idx) => (
-          <div
-            key={idx}
-            className={`group relative bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 hover:border-teal-200 animate-fade-in ${viewMode === "list" || viewMode === "details"
-              ? "flex flex-col md:flex-row items-center p-4 gap-6"
-              : "flex flex-col"
-              }`}
-            style={{ animationDelay: `${idx * 100}ms` }}
-          >
-            {/* GRADIENT OVERLAY */}
-            <div className="absolute inset-0 bg-gradient-to-br from-teal-400/0 via-transparent to-cyan-400/0 group-hover:from-teal-400/5 group-hover:to-cyan-400/5 transition-all duration-500 pointer-events-none"></div>
-
-            {/* TOP SECTION / IMAGE */}
-            <div
-              className={`relative flex justify-between items-start ${viewMode === "list" || viewMode === "details"
-                ? "w-full md:w-auto p-0"
-                : "p-6"
-                }`}
-            >
-              <div
-                className={`flex items-center gap-4 flex-1 ${viewMode === "list" || viewMode === "details"
-                  ? "flex-col md:flex-row text-center md:text-left"
-                  : ""
-                  }`}
-              >
-                <div className="transform group-hover:scale-110 transition duration-500">
-                  <ImageSlider
-                    images={
-                      e.banner_url && e.banner_url !== "null"
-                        ? [{ url: e.banner_url, type: e.banner_type }]
-                        : []
-                    }
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2
-                    className={`font-bold text-gray-900 group-hover:text-teal-700 transition line-clamp-2 ${viewMode === "large"
-                      ? "text-2xl"
-                      : viewMode === "compact"
-                        ? "text-base"
-                        : "text-xl"
-                      }`}
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-4">
+                  <button
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 disabled:opacity-40"
                   >
-                    {e.event_name}
-                  </h2>
-                  <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-widest font-semibold">
-                    {e.category}
-                  </p>
+                    <ChevronLeft size={16} />
+                  </button>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(i + 1)}
+                      className={`w-9 h-9 rounded-xl font-bold text-xs transition ${
+                        currentPage === i + 1 ? "bg-[#581c87] text-white" : "bg-white text-slate-600 border border-slate-200"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 disabled:opacity-40"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
+              )}
+
+            </div>
+          )}
+
+          {/* TAB 3: CATEGORIES */}
+          {activeTab === "categories" && (
+            <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+              <div className="flex justify-between items-center gap-4 flex-wrap">
+                <h3 className="text-xl font-extrabold text-slate-800">Category & Subcategory Master</h3>
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  className="bg-[#581c87] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow hover:bg-purple-800 transition flex items-center gap-2"
+                >
+                  <Plus size={16} /> Add Category
+                </button>
               </div>
 
-              {/* 3 DOT MENU (Visible in Grid View) */}
-              {!(viewMode === "list" || viewMode === "details") && (
-                <div className="relative" ref={openMenu === e.id ? menuRef : null}>
-                  <button
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setOpenMenu(openMenu === e.id ? null : e.id);
-                    }}
-                    id={e.id}
-                    className="p-1 hover:bg-gray-100 rounded-lg transition text-gray-600 hover:text-teal-600"
-                  >
-                    <MoreVertical size={viewMode === "compact" ? 16 : 20} />
-                  </button>
-
-                  {openMenu === e.id && (
-                    <div className="absolute right-0 mt-3 w-52 bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl z-50 overflow-hidden p-2 animate-fade-in ring-1 ring-black/5">
-                      <div className="px-3 py-1 mb-1">
-                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Event Actions</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {categories.map((c) => (
+                  <div key={c.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between gap-4">
+                    <div>
+                      <div className="flex justify-between items-center gap-2">
+                        <div className="flex items-center gap-2 text-[#581c87]">
+                          <Tag size={16} />
+                          <h4 className="font-extrabold text-slate-800 text-base">{c.name}</h4>
+                        </div>
+                        <span className="bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-black border border-emerald-100">
+                          Active
+                        </span>
                       </div>
 
-                      <button
-                        onClick={() => handleView(e.id)}
-                        className="w-full text-left px-4 py-2.5 hover:bg-teal-50 text-teal-700 font-semibold rounded-2xl transition-all duration-300 flex items-center gap-3 group"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-600 flex items-center justify-center transition-colors">
-                          <Eye size={18} strokeWidth={2.5} />
+                      <div className="mt-4">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Subcategories:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Array.isArray(c.subcategories) ? (
+                            c.subcategories.map((sub, idx) => (
+                              <span key={idx} className="bg-slate-100 text-slate-600 text-xs px-2.5 py-1 rounded-lg font-bold border border-slate-200">
+                                {sub}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-slate-400 text-xs">None configured</span>
+                          )}
                         </div>
-                        <span className="text-sm">View Details</span>
-                      </button>
-
-                      <div className="h-px bg-gray-100 my-2 mx-2"></div>
-
-                      <button
-                        onClick={() => handleStatus(e.id, "APPROVED")}
-                        className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 text-emerald-700 font-semibold rounded-2xl transition-all duration-300 flex items-center gap-3 group"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center transition-colors">
-                          <ShieldCheck size={18} strokeWidth={2.5} />
-                        </div>
-                        <span className="text-sm">Approve</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleStatus(e.id, "REJECTED")}
-                        className="w-full text-left px-4 py-2.5 hover:bg-rose-50 text-rose-700 font-semibold rounded-2xl transition-all duration-300 flex items-center gap-3 group"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center transition-colors">
-                          <ShieldX size={18} strokeWidth={2.5} />
-                        </div>
-                        <span className="text-sm">Reject</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleStatus(e.id, "PENDING")}
-                        className="w-full text-left px-4 py-2.5 hover:bg-amber-50 text-amber-700 font-semibold rounded-2xl transition-all duration-300 flex items-center gap-3 group"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center transition-colors">
-                          <History size={18} strokeWidth={2.5} />
-                        </div>
-                        <span className="text-sm">Pending</span>
-                      </button>
-
-                      <div className="h-px bg-gray-100 my-2 mx-2"></div>
-
-                      <button
-                        onClick={() => handleDelete(e.id)}
-                        className="w-full text-left px-4 py-2.5 hover:bg-red-50 text-red-600 font-semibold rounded-2xl transition-all duration-300 flex items-center gap-3 group"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center transition-colors">
-                          <Trash2 size={18} strokeWidth={2.5} />
-                        </div>
-                        <span className="text-sm">Delete Event</span>
-                      </button>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
 
-            {!(viewMode === "list" || viewMode === "details") && (
-              <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
-            )}
-
-            {/* DETAILS SECTION */}
-            <div
-              className={`relative grid gap-4 text-sm flex-1 ${viewMode === "list" || viewMode === "details"
-                ? "grid-cols-1 md:grid-cols-3 lg:grid-cols-6 w-full p-0"
-                : viewMode === "compact"
-                  ? "p-4 grid-cols-1"
-                  : "p-6 grid-cols-2"
-                }`}
-            >
-              <div className="group/item flex gap-3 items-center">
-                <div className="p-1.5 bg-teal-100 rounded-lg group-hover/item:bg-teal-200 transition text-teal-600">
-                  <User size={14} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                    Created By
-                  </p>
-                  <p className="font-medium text-gray-900 truncate text-xs">
-                    {e.created_by}
-                  </p>
-                </div>
-              </div>
-
-              <div className="group/item flex gap-3 items-center">
-                <div className="p-1.5 bg-cyan-100 rounded-lg group-hover/item:bg-cyan-200 transition text-cyan-600">
-                  <Rocket size={14} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                    Status
-                  </p>
-                  <p
-                    className={`font-bold text-[10px] ${getStatusColor(e.status).split(" ")[0]}`}
-                  >
-                    {e.status}
-                  </p>
-                </div>
-              </div>
-
-              {viewMode !== "compact" && (
-                <>
-                  <div className="group/item flex gap-3 items-center">
-                    <div className="p-1.5 bg-amber-100 rounded-lg group-hover/item:bg-amber-200 transition text-amber-600">
-                      <Calendar size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Starts On
-                      </p>
-                      <p className="font-medium text-gray-900 text-xs">
-                        {formatDate(e.start_date)}
-                      </p>
+                    <div className="border-t border-slate-50 pt-4 mt-2 flex justify-between items-center">
+                      <span className="text-xs text-slate-400 font-semibold">Revenue Share:</span>
+                      <span className="font-black text-[#581c87] text-base">{c.revenue || "₹0.0L"}</span>
                     </div>
                   </div>
-
-                  <div className="group/item flex gap-3 items-center">
-                    <div className="p-1.5 bg-amber-100 rounded-lg group-hover/item:bg-amber-200 transition text-amber-600">
-                      <Calendar size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Ends On
-                      </p>
-                      <p className="font-medium text-gray-900 text-xs">
-                        {formatDate(e.end_date)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="group/item flex gap-3 items-center">
-                    <div className="p-1.5 bg-purple-100 rounded-lg group-hover/item:bg-purple-200 transition text-purple-600">
-                      <Clock size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Ends At
-                      </p>
-                      <p className="font-medium text-gray-900 text-xs">
-                        {formatTime(e.end_time)}
-                      </p>
-                    </div>
-                  </div>
-
-
-                  <div className="group/item flex gap-3 items-center">
-                    <div className="p-1.5 bg-rose-100 rounded-lg group-hover/item:bg-rose-200 transition text-rose-600">
-                      <Ticket size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Fee
-                      </p>
-                      <p className="font-bold text-gray-900 text-xs">
-                        {e.charge_type || "Free"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="group/item flex gap-3 items-center">
-                    <div className="p-1.5 bg-indigo-100 rounded-lg group-hover/item:bg-indigo-200 transition text-indigo-600">
-                      <Users size={14} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                        Capacity
-                      </p>
-                      <p className="font-bold text-gray-900 text-xs">
-                        {e.capacity}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* LOCATION (Visible in non-compact views) */}
-            {!(viewMode === "small" || viewMode === "compact") && (
-              <div
-                className={`relative flex gap-3 text-sm border-t border-gray-100 ${viewMode === "list" || viewMode === "details"
-                  ? "w-full md:w-64 p-0 border-t-0 border-l border-gray-100 pl-4 ml-4"
-                  : "px-6 pb-6 pt-4"
-                  }`}
-              >
-                <MapPin size={18} className="text-teal-600 flex-shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
-                    Location
-                  </p>
-                  <p className="font-medium text-gray-900 text-xs break-words">
-                    {e.venue}, {e.address}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Actions for List View */}
-            {(viewMode === "list" || viewMode === "details") && (
-              <div className="flex items-center gap-3 ml-auto pr-6 border-l border-gray-100 pl-6 h-full">
-                <button
-                  onClick={() => handleView(e.id)}
-                  className="w-10 h-10 flex items-center justify-center bg-teal-50 text-teal-600 rounded-2xl hover:bg-teal-100 transition-all duration-300 shadow-sm"
-                  title="View Details"
-                >
-                  <Eye size={20} strokeWidth={2.5} />
-                </button>
-                <button
-                  onClick={() => handleStatus(e.id, "APPROVED")}
-                  className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-100 transition-all duration-300 shadow-sm"
-                  title="Approve"
-                >
-                  <ShieldCheck size={20} strokeWidth={2.5} />
-                </button>
-                <button
-                  onClick={() => handleStatus(e.id, "REJECTED")}
-                  className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-100 transition-all duration-300 shadow-sm"
-                  title="Reject"
-                >
-                  <ShieldX size={20} strokeWidth={2.5} />
-                </button>
-                <button
-                  onClick={() => handleDelete(e.id)}
-                  className="w-10 h-10 flex items-center justify-center bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-all duration-300 shadow-sm"
-                  title="Delete"
-                >
-                  <Trash2 size={20} strokeWidth={2.5} />
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* PAGINATION CONTROLS */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mb-12">
-          <button
-            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-50 hover:text-teal-600 transition-all shadow-md"
-          >
-            <ChevronLeft size={20} />
-          </button>
-
-          <div className="flex gap-2">
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => handlePageChange(i + 1)}
-                className={`w-10 h-10 rounded-xl font-bold transition-all shadow-md ${currentPage === i + 1
-                  ? "bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-teal-200"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-teal-50 hover:text-teal-600"
-                  }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-teal-50 hover:text-teal-600 transition-all shadow-md"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      )}
-
-
-      {/* 🔥 FULL VIEW MODAL WITH STEPPER (Replaced by CreateEvent component) */}
-      {false && selectedEvent && fullData?.eventDetails && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-5xl h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col">
-            {/* HEADER */}
-            <div className="relative px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-slate-50 via-teal-50 to-blue-50">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900">
-                    {fullData?.eventDetails?.event_name}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-2 font-medium">
-                    Step{" "}
-                    <span className="text-teal-600 font-bold">
-                      {GET_STEPS(fullData).findIndex(s => s.id === currentStep) + 1}
-                    </span>{" "}
-                    of{" "}
-                    <span className="text-teal-600 font-bold">
-                      {GET_STEPS(fullData).length}
-                    </span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={closeModal}
-                    className="p-2 hover:bg-gray-200 rounded-full transition text-gray-600 hover:text-red-600 ml-4"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-
+                ))}
               </div>
             </div>
+          )}
 
-            {/* STEPPER */}
-            <div className="px-8 py-6 border-b border-gray-200 bg-white">
-              <div className="flex items-center justify-between gap-2">
-                {GET_STEPS(fullData).map((step, idx, arr) => (
-                  <div
-                    key={step.id}
-                    className="flex-1 flex flex-col items-center relative"
-                  >
-                    <button
-                      onClick={() => setCurrentStep(step.id)}
-                      className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 transform hover:scale-110 ${currentStep === step.id
-                        ? "bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-lg"
-                        : "bg-gray-200 text-gray-600"
-                        }`}
-                    >
-                      {step.icon}
-                    </button>
-                    <p
-                      className={`text-xs mt-2 text-center font-semibold transition ${currentStep === step.id
-                        ? "text-teal-600"
-                        : "text-gray-500"
-                        }`}
-                    >
-                      {step.name}
-                    </p>
-                    {idx < arr.length - 1 && (
-                      <div
-                        className={`h-1 flex-1 mt-3 absolute top-6 left-1/2 ml-6 transition-all duration-300 ${currentStep === step.id // Simple line logic
-                          ? "bg-gradient-to-r from-teal-500 to-cyan-500"
-                          : "bg-gray-300"
-                          }`}
-                      />
+          {/* TAB 4: KYC QUEUE */}
+          {activeTab === "kyc" && (
+            <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+              <h3 className="text-xl font-extrabold text-slate-800">Organizer Account Verification</h3>
+
+              <div className="flex flex-col gap-6">
+                {organizersKyc.map((org) => (
+                  <div key={org.id} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4">
+                    <div className="flex justify-between items-start gap-3 flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-purple-50 text-[#581c87] flex items-center justify-center">
+                          <Building2 size={20} />
+                        </div>
+                        <div>
+                          <h4 className="font-black text-slate-800 text-base">{org.company_name}</h4>
+                          <p className="text-xs text-slate-400 font-semibold mt-0.5">Representative: {org.name} ({org.email})</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                        org.kyc_status === "VERIFIED"
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                          : "bg-orange-50 text-orange-600 border-orange-100"
+                      }`}>
+                        {org.kyc_status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl text-xs font-semibold text-slate-500">
+                      <div>📱 Mobile: {org.mobile}</div>
+                      <div>📜 GST / PAN: {org.gst_pan}</div>
+                      <div>🏦 Account: {org.bank_account}</div>
+                      <div>🏢 IFSC: {org.ifsc}</div>
+                    </div>
+
+                    {org.kyc_status === "PENDING" && (
+                      <div className="flex gap-3 justify-end">
+                        <button
+                          onClick={() => handleKycStatusUpdate(org.id, "REJECTED")}
+                          className="text-xs font-bold text-rose-600 hover:bg-rose-50 px-4 py-2.5 rounded-xl border border-rose-100 transition"
+                        >
+                          Reject Setup
+                        </button>
+                        <button
+                          onClick={() => handleKycStatusUpdate(org.id, "VERIFIED")}
+                          className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 rounded-xl shadow transition"
+                        >
+                          Verify Account
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
               </div>
             </div>
+          )}
 
-            {/* CONTENT */}
-            <div className="flex-1 overflow-y-auto p-8 bg-white">
-              <div className="max-w-3xl">
-                <div className="mb-6 flex items-center gap-3">
-                  <div className="text-3xl">{GET_STEPS(fullData).find(s => s.id === currentStep)?.icon}</div>
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    {GET_STEPS(fullData).find(s => s.id === currentStep)?.name}
-                  </h3>
+          {/* TAB 5: PAYOUT SETTLEMENTS */}
+          {activeTab === "payouts" && (
+            <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+              <h3 className="text-xl font-extrabold text-slate-800">Organizer Payout Settlements</h3>
+
+              <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm max-w-2xl flex flex-col gap-6">
+                <div>
+                  <div className="flex justify-between items-center">
+                    <h4 className="font-extrabold text-slate-800 text-lg">Batch Settlement Release</h4>
+                    <span className="bg-emerald-50 text-emerald-600 text-[10px] px-2.5 py-1 rounded-full font-black border border-emerald-100">
+                      READY FOR RELEASE
+                    </span>
+                  </div>
+                  <p className="text-slate-400 text-xs mt-1">Unified payout direct bank transfer scheduling dashboard.</p>
                 </div>
-                <StepContent step={currentStep} fullData={fullData} />
+
+                <div className="grid grid-cols-1 gap-4 border-y border-slate-100 py-6 text-sm font-semibold text-slate-600">
+                  <div className="flex justify-between">
+                    <span>Gross Platform Ticket Sales:</span>
+                    <span className="font-black text-slate-800">₹48,50,000</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Platform Commission (10% Fee):</span>
+                    <span className="font-black text-slate-800">₹4,85,000</span>
+                  </div>
+                  <div className="flex justify-between text-base">
+                    <span>Net Organizer Remittance:</span>
+                    <span className="font-black text-emerald-600">₹43,65,000</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => showNotification("Direct Bank Payout Batch Released successfully!", "success")}
+                  className="w-full py-4 bg-[#581c87] hover:bg-purple-800 text-white font-bold rounded-2xl shadow-lg transition flex items-center justify-center gap-2"
+                >
+                  <Landmark size={18} /> Release Direct Bank Payout Batch
+                </button>
+              </div>
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* Toast popup */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-[999] bg-[#581c87] border border-purple-500 text-white shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-3 animate-in slide-in-from-bottom-5">
+          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs">
+            ✓
+          </div>
+          <span className="font-bold text-sm">{toast.message}</span>
+        </div>
+      )}
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col gap-6 animate-in zoom-in-95">
+            <div>
+              <h3 className="font-black text-slate-800 text-lg">Add Main Category</h3>
+              <p className="text-slate-400 text-xs mt-1">Configure new platform event category and nested subcategories.</p>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Main Category Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Esports, Tech Expos, Classical Music"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Subcategories (Comma-separated)</label>
+                <textarea
+                  placeholder="e.g. Valorant, BGMI, FIFA, Console Arena"
+                  value={newSubCatName}
+                  onChange={(e) => setNewSubCatName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none h-24 resize-none"
+                />
               </div>
             </div>
 
-            {/* FOOTER - NAVIGATION */}
-            <div className="flex justify-between items-center p-8 border-t border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50">
+            <div className="flex gap-3 justify-end">
               <button
-                onClick={() => {
-                  const steps = GET_STEPS(fullData);
-                  const curIdx = steps.findIndex(s => s.id === currentStep);
-                  if (curIdx > 0) setCurrentStep(steps[curIdx - 1].id);
-                }}
-                disabled={currentStep === GET_STEPS(fullData)[0].id}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform ${currentStep === GET_STEPS(fullData)[0].id
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-md hover:scale-105"
-                  }`}
+                onClick={() => setShowCategoryModal(false)}
+                className="text-xs font-bold text-slate-500 hover:bg-slate-50 px-4 py-2.5 rounded-xl transition"
               >
-                <ChevronLeft size={20} />
-                Previous
+                Cancel
               </button>
-
-              <div className="flex gap-2">
-                {GET_STEPS(fullData).map((step) => (
-                  <button
-                    key={step.id}
-                    onClick={() => setCurrentStep(step.id)}
-                    className={`w-4 h-4 rounded-full transition-all duration-300 transform hover:scale-125 ${currentStep === step.id
-                      ? "bg-gradient-to-r from-teal-500 to-cyan-500 shadow-lg w-6"
-                      : "bg-gray-300 hover:bg-gray-400"
-                      }`}
-                  />
-                ))}
-              </div>
-
               <button
-                onClick={() => {
-                  const steps = GET_STEPS(fullData);
-                  const curIdx = steps.findIndex(s => s.id === currentStep);
-                  if (curIdx < steps.length - 1) setCurrentStep(steps[curIdx + 1].id);
-                }}
-                disabled={currentStep === GET_STEPS(fullData)[GET_STEPS(fullData).length - 1].id}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform ${currentStep === GET_STEPS(fullData)[GET_STEPS(fullData).length - 1].id
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-teal-500 to-cyan-600 text-white hover:shadow-lg hover:scale-105"
-                  }`}
+                onClick={handleAddCategory}
+                disabled={isSubmittingCat}
+                className="text-xs font-bold text-white bg-[#581c87] hover:bg-purple-800 px-4 py-2.5 rounded-xl shadow transition"
               >
-                Next
-                <ChevronRight size={20} />
+                Save Category
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes scroll {
-          0% {
-            transform: translateX(0);
-          }
-          100% {
-            transform: translateX(calc(-100% / 3));
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.6s ease-out forwards;
-        }
-
-        @keyframes slide-in {
-          from {
-            opacity: 0;
-            transform: translateX(100%);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        .animate-slide-in {
-          animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        .animate-scroll {
-          animation: scroll 8s linear infinite;
-        }
-      `}</style>
-      {popup.show && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center animate-fade-in border border-gray-100">
-            <div
-              className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center text-4xl shadow-lg ${popup.type === "success"
-                ? "bg-emerald-100 text-emerald-600"
-                : "bg-rose-100 text-rose-600"
-                }`}
-            >
-              {popup.type === "success" ? "✅" : "❌"}
-            </div>
-
-            <h2
-              className={`text-2xl font-bold mb-2 ${popup.type === "success" ? "text-emerald-700" : "text-rose-700"
-                }`}
-            >
-              {popup.type === "success" ? "Success!" : "Error!"}
-            </h2>
-
-            <p className="mb-8 text-gray-600 font-medium leading-relaxed">
-              {popup.message}
-            </p>
-
-            <button
-              onClick={() => setPopup({ show: false, message: "", type: "" })}
-              className={`w-full py-4 rounded-2xl text-white font-bold text-lg shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-95 ${popup.type === "success"
-                ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-200"
-                : "bg-gradient-to-r from-rose-500 to-red-600 hover:shadow-rose-200"
-                }`}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* DELETE CONFIRMATION MODAL */}
-      {deleteConfirm.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-red-100 overflow-hidden relative">
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-full -translate-y-1/2 translate-x-1/2 opacity-50"></div>
-
-            <div className="relative">
-              <div className="w-20 h-20 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-4xl mb-6 mx-auto shadow-lg shadow-red-100">
-                🗑️
-              </div>
-
-              <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center">Delete Event?</h2>
-              <p className="text-gray-600 mb-8 text-center leading-relaxed">
-                Are you sure you want to delete this event? This action cannot be undone and all associated data will be lost.
-              </p>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setDeleteConfirm({ show: false, id: null })}
-                  className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition-all active:scale-95 shadow-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={executeDelete}
-                  className="flex-1 py-4 bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold rounded-2xl hover:shadow-lg hover:shadow-red-200 transition-all active:scale-95"
-                >
-                  Delete Now
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* STATUS CONFIRMATION MODAL */}
-      {statusConfirm.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[110] p-4 animate-fade-in">
-          <div className={`bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border overflow-hidden relative ${
-            statusConfirm.status === "APPROVED"
-              ? "border-emerald-100"
-              : statusConfirm.status === "REJECTED"
-                ? "border-rose-100"
-                : "border-amber-100"
-          }`}>
-            {/* Background Decoration */}
-            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-1/2 translate-x-1/2 opacity-50 ${
-              statusConfirm.status === "APPROVED"
-                ? "bg-emerald-50"
-                : statusConfirm.status === "REJECTED"
-                  ? "bg-rose-50"
-                  : "bg-amber-50"
-            }`}></div>
-
-            <div className="relative">
-              {statusConfirm.status === "APPROVED" ? (
-                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-4xl mb-6 mx-auto shadow-lg shadow-emerald-100">
-                  ✅
-                </div>
-              ) : statusConfirm.status === "REJECTED" ? (
-                <div className="w-20 h-20 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center text-4xl mb-6 mx-auto shadow-lg shadow-rose-100">
-                  ❌
-                </div>
-              ) : (
-                <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center text-4xl mb-6 mx-auto shadow-lg shadow-amber-100">
-                  ⏳
-                </div>
-              )}
-
-              <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center">
-                {statusConfirm.status === "APPROVED"
-                  ? "Approve Event?"
-                  : statusConfirm.status === "REJECTED"
-                    ? "Reject Event?"
-                    : "Set to Pending?"}
-              </h2>
-              <p className="text-gray-600 mb-8 text-center leading-relaxed">
-                {statusConfirm.status === "APPROVED"
-                  ? "Are you sure you want to approve this event? Approved events will be visible for users to browse and book tickets."
-                  : statusConfirm.status === "REJECTED"
-                    ? "Are you sure you want to reject this event? Rejected events will be hidden and users won't be able to book passes."
-                    : "Are you sure you want to change the status of this event back to pending?"}
-              </p>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setStatusConfirm({ show: false, id: null, status: null })}
-                  className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition-all active:scale-95 shadow-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={executeStatusChange}
-                  className={`flex-1 py-4 text-white font-bold rounded-2xl hover:shadow-lg transition-all active:scale-95 ${
-                    statusConfirm.status === "APPROVED"
-                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-emerald-200"
-                      : statusConfirm.status === "REJECTED"
-                        ? "bg-gradient-to-r from-red-500 to-rose-600 hover:shadow-red-200"
-                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-amber-200"
-                  }`}
-                >
-                  {statusConfirm.status === "APPROVED"
-                    ? "Approve"
-                    : statusConfirm.status === "REJECTED"
-                      ? "Reject"
-                      : "Pending"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-// Global helper for document preview from StepContent
-window.setDocPreview = null;
-
-const SuperUserEventsWrapper = () => {
-  const [docPreview, setDocPreview] = useState(null);
-  useEffect(() => {
-    window.setDocPreview = setDocPreview;
-  }, []);
-
-  return (
-    <>
-      <SuperUserEvents />
-      {docPreview && (
-        <div
-          className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[1000] flex flex-col p-4 animate-fade-in"
-          onClick={() => setDocPreview(null)}
-        >
-          <div className="flex justify-end p-4">
-            <button className="text-white bg-white/10 p-4 rounded-full hover:bg-white/20 transition shadow-2xl">
-              <X size={32} />
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-center p-4">
-            <img
-              src={docPreview}
-              alt="Document"
-              className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
-
-export default SuperUserEventsWrapper;
-
+export default SuperUserEvents;

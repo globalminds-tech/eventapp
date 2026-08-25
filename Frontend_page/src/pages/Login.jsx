@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ArrowRight, Sparkles } from "lucide-react";
 import { loginUser } from "../Services/api";
@@ -9,15 +9,8 @@ export default function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
-  const [fieldErrors, setFieldErrors] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,78 +20,42 @@ export default function Login() {
     const savedEmail = localStorage.getItem("rememberedEmail");
     const savedRememberMe = localStorage.getItem("rememberMe") === "true";
     if (savedRememberMe && savedEmail) {
-      setFormData((prev) => ({
-        ...prev,
-        email: savedEmail,
-      }));
+      setFormData((prev) => ({ ...prev, email: savedEmail }));
       setRememberMe(true);
     }
   }, []);
 
-  const handleKeyDown = (e) => {
-    if (e.key === " ") {
-      e.preventDefault();
-    }
-  };
+  const handleChange = (name, value) => {
+    setFormData({ ...formData, [name]: value });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-
-    // 🔥 Email validation
     if (name === "email") {
       if (!value) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: "Email is required",
-        }));
+        setFieldErrors((prev) => ({ ...prev, email: "Email is required" }));
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: "Enter a valid email (e.g. abc@gmail.com)",
-        }));
+        setFieldErrors((prev) => ({ ...prev, email: "Enter a valid email" }));
       } else {
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: "",
-        }));
+        setFieldErrors((prev) => ({ ...prev, email: "" }));
       }
     }
 
-    // 🔥 Password validation
     if (name === "password") {
       if (!value) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          password: "Password is required",
-        }));
+        setFieldErrors((prev) => ({ ...prev, password: "Password is required" }));
       } else {
-        setFieldErrors((prev) => ({
-          ...prev,
-          password: "",
-        }));
+        setFieldErrors((prev) => ({ ...prev, password: "" }));
       }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let errors = {
-      email: "",
-      password: "",
-    };
+    let errors = { email: "", password: "" };
 
-    if (!formData.password) {
-      errors.password = "Password is required";
-    }
+    if (!formData.email) errors.email = "Email is required";
+    if (!formData.password) errors.password = "Password is required";
 
     setFieldErrors(errors);
 
-    // ❌ Stop if error exists
     if (errors.email || errors.password) return;
 
     setError("");
@@ -106,15 +63,12 @@ export default function Login() {
 
     try {
       const response = await loginUser(formData);
-
       const data = response.data;
 
-      console.log("Login", data);
-
-      sessionStorage.setItem("token", data.token);
-      sessionStorage.setItem("role", data.role);
-      sessionStorage.setItem("id", data.User_id);
-      sessionStorage.setItem("name", data.name);
+      sessionStorage.setItem("token", data.token || "");
+      sessionStorage.setItem("role", data.role || "");
+      sessionStorage.setItem("id", data.User_id?.toString() || "");
+      sessionStorage.setItem("name", data.name || "");
       sessionStorage.setItem("profile_image", data.profile_image || "");
 
       if (rememberMe) {
@@ -131,302 +85,177 @@ export default function Login() {
           name: data.name,
           role: data.role,
           email: data.email,
-          profile_image: data.profile_image
-        }),
+          profile_image: data.profile_image,
+        })
       );
 
       if (data.role === "organizer") {
-        navigate("/OrganizerHome", { state: { fromLogin: true } });
+        navigate("/OrganizerHome");
       } else if (data.role === "exhibitor") {
-        navigate("/exhibitor/dashboard", { state: { fromLogin: true } });
+        navigate("/exhibitor/dashboard");
       } else if (data.role === "superuser") {
-        navigate("/superuser/dashboard", { state: { fromLogin: true } });
+        navigate("/superuser/dashboard");
+      } else {
+        navigate("/");
       }
     } catch (err) {
       if (err.response) {
         const message = err.response.data.message;
-
-        // 🔥 EMAIL NOT REGISTERED
         if (message === "Email Id is not registered") {
-          setFieldErrors((prev) => ({
-            ...prev,
-            email: "Email Id is not registered",
-          }));
-          setTimeout(() => {
-            setFieldErrors((prev) => ({ ...prev, email: "" }));
-          }, 2000);
-        }
-
-        // 🔥 WRONG PASSWORD
-        else if (message === "Incorrect password") {
-          setFieldErrors((prev) => ({
-            ...prev,
-            password: "Incorrect password",
-          }));
-          setTimeout(() => {
-            setFieldErrors((prev) => ({ ...prev, password: "" }));
-          }, 2000);
+          setFieldErrors((prev) => ({ ...prev, email: message }));
+        } else if (message === "Incorrect password") {
+          setFieldErrors((prev) => ({ ...prev, password: message }));
         } else {
           setError(message);
-          setTimeout(() => {
-            setError("");
-          }, 3000);
         }
       } else {
-        setError("Server error");
-        setTimeout(() => {
-          setError("");
-        }, 3000);
+        setError("Server error. Please check your connection.");
       }
     } finally {
       setIsLoading(false);
-      setTimeout(() => {
-        setError("");
-      }, 3000);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden flex items-center justify-center">
-      {/* Animated gradient orbs background */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2 animate-pulse"></div>
-      <div
-        className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl translate-y-1/2 translate-x-1/2 animate-pulse"
-        style={{ animationDelay: "2s" }}
-      ></div>
-
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/50 pointer-events-none"></div>
-
-      {/* Content */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row items-center justify-center gap-12 max-w-7xl mx-auto">
-          {/* Left section - Branding */}
-          <div className="hidden lg:flex flex-1 flex-col justify-center items-start">
-            <div className="space-y-8">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1">
-                  <div className="w-5 h-5 bg-blue-500 rounded-sm -rotate-12"></div>
-                  <div className="w-5 h-5 bg-orange-500 rounded-sm rotate-6"></div>
-                  <div className="w-5 h-5 bg-green-500 rounded-sm -rotate-3"></div>
-                </div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                  BookMyEvent
-                </span>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <h1 className="text-5xl font-bold text-white mb-4 leading-tight">
-                    Elevate Your{" "}
-                    <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                      Event
-                    </span>{" "}
-                    Experience
-                  </h1>
-                  <p className="text-lg text-slate-400 leading-relaxed">
-                    Connect organizers and exhibitors on a unified platform
-                    designed for seamless event management.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right section - Login form */}
-          <div className="w-full max-w-md">
-            <div className="relative">
-              {/* Card glow effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 rounded-2xl blur-xl opacity-0 hover:opacity-100 transition-opacity duration-500"></div>
-
-              {/* Form card */}
-              <div className="relative bg-slate-800/40 backdrop-blur-2xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-                {/* Decorative top accent */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"></div>
-
-                <div className="space-y-8">
-                  <div className="text-center">
-                    <h2 className="text-3xl font-bold text-white mb-2">
-                      Welcome Back
-                    </h2>
-                    <p className="text-slate-400">Sign in to your account</p>
-                  </div>
-
-                  {error && (
-                    <div className="bg-red-500/10 border border-red-500/30 text-red-300 px-4 py-3 rounded-lg flex items-center gap-2 text-sm animate-pulse">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      {error}
-                    </div>
-                  )}
-
-                  <form
-                    onSubmit={handleSubmit}
-                    noValidate
-                    className="space-y-5"
-                  >
-                    {/* Email input */}
-                    <div className="relative group">
-                      <label
-                        htmlFor="email"
-                        className="block text-sm font-medium text-slate-300 mb-2"
-                      >
-                        Email Id <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="email"
-                        type="email"
-                        name="email"
-                        placeholder="you@example.com"
-                        value={formData.email}
-                        onChange={handleChange}
-                        onKeyDown={handleKeyDown}
-                        className={`w-full px-4 py-3 bg-slate-700/30 border ${fieldErrors.email
-                          ? "border-red-500"
-                          : "border-slate-600/50"
-                          } rounded-xl text-white`}
-                      />
-                      {fieldErrors.email && (
-                        <p className="text-red-400 text-xs mt-1">
-                          {fieldErrors.email}
-                        </p>
-                      )}
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-400/0 to-blue-500/0 group-hover:from-cyan-400/5 group-hover:to-blue-500/5 pointer-events-none transition-all duration-300"></div>
-                    </div>
-
-                    {/* Password input */}
-                    <div className="relative group">
-                      <label
-                        htmlFor="password"
-                        className="block text-sm font-medium text-slate-300 mb-2"
-                      >
-                        Password <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          name="password"
-                          placeholder="••••••••"
-                          value={formData.password}
-                          onChange={handleChange}
-                          onKeyDown={handleKeyDown}
-                          className={`w-full px-4 py-3 pr-12 bg-slate-700/30 border ${fieldErrors.password
-                            ? "border-red-500"
-                            : "border-slate-600/50"
-                            } rounded-xl text-white`}
-                        />
-      
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors z-10"
-                        >
-                          {showPassword ? (
-                            <EyeOff size={18} />
-                          ) : (
-                            <Eye size={18} />
-                          )}
-                        </button>
-                      </div>
-                      {fieldErrors.password && (
-                        <p className="text-red-400 text-xs mt-1">
-                          {fieldErrors.password}
-                        </p>
-                      )}
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-cyan-400/0 to-blue-500/0 group-hover:from-cyan-400/5 group-hover:to-blue-500/5 pointer-events-none transition-all duration-300"></div>
-                    </div>
-
-                    {/* Remember me */}
-                    <div className="flex items-center justify-between text-sm">
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={rememberMe}
-                          onChange={(e) => setRememberMe(e.target.checked)}
-                          className="w-4 h-4 bg-slate-700 border border-slate-600 rounded cursor-pointer accent-cyan-400"
-                        />
-                        <span className="text-slate-400 group-hover:text-slate-300 transition-colors">
-                          Remember me
-                        </span>
-                      </label>
-                      <p
-                        onClick={() => navigate("/reset-password")}
-                        className="text-cyan-400 hover:text-cyan-300 cursor-pointer font-medium"
-                      >
-                        Forgot Password?
-                      </p>
-                    </div>
-
-                    {/* Login button */}
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      onSubmit={handleSubmit}
-                      className="w-full py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-cyan-500/30 disabled:scale-100 disabled:hover:shadow-none flex items-center justify-center gap-2 group relative overflow-hidden"
-                    >
-                      <span className="relative z-10">
-                        {isLoading ? "Signing in..." : "Sign In"}
-                      </span>
-                      {!isLoading && (
-                        <ArrowRight
-                          size={18}
-                          className="relative z-10 group-hover:translate-x-1 transition-transform"
-                        />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    </button>
-                  </form>
-
-                  {/* Divider */}
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-slate-600/30"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-4 bg-slate-800/40 text-slate-500">
-                        New to BookMyEvent?
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Register link */}
-                  <Link
-                    to="/register"
-                    className="w-full py-3 px-4 border border-slate-600/50 hover:border-cyan-400/50 text-slate-300 hover:text-white font-semibold rounded-xl transition-all duration-300 text-center hover:bg-slate-700/20 flex items-center justify-center gap-2 group"
-                  >
-                    Create Account
-                    <ArrowRight
-                      size={16}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <p className="text-center text-slate-500 text-xs mt-8">
-              By signing in, you agree to our{" "}
-              <a
-                href="#"
-                className="text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                Terms of Service
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile brand indicator */}
-      <div className="lg:hidden absolute top-8 left-8 flex items-center gap-2">
-        <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center shadow-lg">
+    <div className="min-h-full bg-[#0f172a] text-[#f8fafc] flex flex-col font-sans select-none px-6 py-8">
+      {/* Brand Header */}
+      <div className="flex items-center justify-center gap-3 mb-8 mt-4">
+        <div className="w-10 h-10 bg-[#0ea5e9] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/10">
           <Sparkles className="w-5 h-5 text-white" />
         </div>
-        <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-          BookMYShow
-        </span>
+        <span className="text-2xl font-black text-[#38bdf8] tracking-tight">BookMyEvent</span>
       </div>
+
+      {/* Login Card */}
+      <div className="w-full max-w-md mx-auto bg-slate-800/40 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 shadow-2xl">
+        <h2 className="text-2xl font-black text-center text-white mb-1.5">Welcome Back</h2>
+        <p className="text-xs text-slate-400 text-center mb-8 font-medium">Sign in to your account</p>
+
+        {error && (
+          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 p-3 rounded-xl mb-5">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <span className="text-xs text-red-300 font-bold">{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          {/* Email field */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-300">
+              Email Id <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={(e) => handleChange("email", e.target.value)}
+              className={`bg-slate-700/30 border ${
+                fieldErrors.email ? "border-red-500" : "border-slate-700 hover:border-slate-600"
+              } rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 font-semibold outline-none focus:border-blue-500 transition-colors`}
+            />
+            {fieldErrors.email && <span className="text-[11px] text-red-400 font-bold">{fieldErrors.email}</span>}
+          </div>
+
+          {/* Password field */}
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-300">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => handleChange("password", e.target.value)}
+                className={`w-full bg-slate-700/30 border ${
+                  fieldErrors.password ? "border-red-500" : "border-slate-700 hover:border-slate-600"
+                } rounded-xl px-4 py-3 pr-12 text-sm text-white placeholder-slate-500 font-semibold outline-none focus:border-blue-500 transition-colors`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-200 border-none bg-transparent cursor-pointer"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {fieldErrors.password && (
+              <span className="text-[11px] text-red-400 font-bold">{fieldErrors.password}</span>
+            )}
+          </div>
+
+          {/* Remember me & Forgot Password */}
+          <div className="flex items-center justify-between mt-1 text-xs select-none">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-0 cursor-pointer"
+              />
+              <span className="text-slate-400 font-semibold">Remember me</span>
+            </label>
+            <span
+              onClick={() => navigate("/reset-password")}
+              className="text-[#38bdf8] font-bold cursor-pointer hover:underline"
+            >
+              Forgot Password?
+            </span>
+          </div>
+
+          {/* Sign In Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-[#0ea5e9] text-white rounded-xl py-3.5 mt-2 flex items-center justify-center gap-2 font-black text-sm uppercase tracking-wider cursor-pointer border-none shadow-lg shadow-blue-500/10 hover:bg-[#0284c7] active:scale-[0.98] transition-all disabled:opacity-50"
+          >
+            {isLoading ? (
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <>
+                <span>Sign In</span>
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="flex items-center gap-3 my-6">
+          <div className="flex-1 h-px bg-slate-700/50" />
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">New to BookMyEvent?</span>
+          <div className="flex-1 h-px bg-slate-700/50" />
+        </div>
+
+        {/* Create Account */}
+        <button
+          onClick={() => navigate("/register")}
+          className="w-full border border-slate-700 hover:border-slate-600 text-slate-300 bg-transparent rounded-xl py-3.5 flex items-center justify-center gap-2 font-bold text-sm cursor-pointer hover:text-white transition-colors"
+        >
+          <span>Create Account (Attendee)</span>
+          <ArrowRight size={16} />
+        </button>
+
+        {/* Organizer and Exhibitor Links */}
+        <div className="flex gap-2.5 mt-3.5">
+          <button
+            onClick={() => navigate("/OrganizerHome")}
+            className="flex-1 bg-orange-500/15 border border-orange-500/30 text-orange-400 rounded-xl py-2.5 text-xs font-bold hover:bg-orange-500/25 transition-colors cursor-pointer"
+          >
+            List Your Show
+          </button>
+          <button
+            onClick={() => navigate("/exhibitor/dashboard")}
+            className="flex-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-xl py-2.5 text-xs font-bold hover:bg-emerald-500/25 transition-colors cursor-pointer"
+          >
+            Exhibitor Portal
+          </button>
+        </div>
+      </div>
+
+      {/* Footer Text */}
+      <span className="text-center text-[10px] font-bold text-slate-500 mt-auto pt-8">
+        By signing in, you agree to our Terms of Service
+      </span>
     </div>
   );
 }
