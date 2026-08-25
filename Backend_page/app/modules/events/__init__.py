@@ -1,5 +1,3 @@
-from .routes import events_module_bp
-from .service import EventService
-from .repository import EventRepository
+from app.modules.events.routes.event_routes import event_router
 
-__all__ = ['events_module_bp', 'EventService', 'EventRepository']
+__all__ = ["event_router"]

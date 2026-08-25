@@ -1,5 +1,3 @@
-from .routes import exhibitors_module_bp
-from .service import ExhibitorService
-from .repository import ExhibitorRepository
+from app.modules.exhibitors.routes.exhibitor_routes import exhibitor_router
 
-__all__ = ['exhibitors_module_bp', 'ExhibitorService', 'ExhibitorRepository']
+__all__ = ["exhibitor_router"]

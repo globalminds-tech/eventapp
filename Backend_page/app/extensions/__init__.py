@@ -1,5 +1,4 @@
 from app.extensions.database import db
-from app.extensions.jwt import jwt
-from app.extensions.redis import redis_client
+from app.extensions.redis import redis_cache, redis_client
 
-__all__ = ["db", "jwt", "redis_client"]
+__all__ = ["db", "redis_cache", "redis_client"]
