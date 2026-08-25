@@ -2,283 +2,113 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Search,
   MapPin,
-  Calendar,
   Star,
-  Clock,
   ChevronDown,
-  Heart,
-  Share2,
-  Ticket,
-  Users,
-  ArrowRight,
+  User,
   Sparkles,
-  TrendingUp,
+  Music,
+  Mic,
+  Ticket,
+  Trophy,
   Zap,
-  ArrowUp,
+  ThumbsUp,
+  Compass,
+  Home as HomeIcon,
   X,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Facebook,
-  Instagram,
-  Twitter,
-  Linkedin,
-  Youtube
+  ArrowUp
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MediaRenderer from "../components/MediaRenderer";
-import EventDetailModal from "../components/EventDetailModal";
-import { getHomeEventshow, getFullEventDetails } from "../Services/api";
-import { EventCard, CountdownTimer } from "../components/EventCard";
+import { getHomeEventshow } from "../Services/api";
 
-const CATEGORIES = [
-  { name: "All", icon: "🎯", color: "from-slate-600 to-slate-700" },
-  { name: "Music", icon: "🎵", color: "from-purple-500 to-pink-500" },
-  { name: "Business", icon: "💼", color: "from-blue-500 to-cyan-500" },
-  { name: "Technology", icon: "💻", color: "from-teal-500 to-emerald-500" },
-  { name: "Education", icon: "📚", color: "from-orange-500 to-yellow-500" },
-  { name: "Sports", icon: "⚽", color: "from-green-500 to-emerald-500" },
-
-];
-
-
-const Hero = ({
-  events,
-  likedEvents,
-  toggleLike,
-  onShowDetail,
-}) => {
-  const navigate = useNavigate();
-
-  // Find the closest upcoming open event (not closed)
-  const openEvents = (events || [])
-    .filter((e) => {
-      const isClosed = new Date() > new Date(e.bookingEnds);
-      return !isClosed;
-    })
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  const featuredEvent = openEvents[0] || events?.[0];
-
-  return (
-    <div className="relative min-h-[70vh] bg-slate-950">
-      {/* Sophisticated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Gradient mesh background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950" />
-
-        {/* Animated orbs - more subtle */}
-        <div className="absolute top-40 left-1/4 w-80 h-80 bg-teal-600/15 rounded-full blur-3xl animate-pulse" />
-        <div
-          className="absolute bottom-32 right-1/3 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "2s" }}
-        />
-
-        {/* Radial accent */}
-        <div className="absolute bottom-0 left-1/2 w-full h-1/2 bg-gradient-to-t from-orange-600/5 via-transparent to-transparent -translate-x-1/2" />
-      </div>
-
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-3 group">
-              <div className="flex gap-1">
-                <div className="w-5 h-5 bg-blue-500 rounded-sm -rotate-12"></div>
-                <div className="w-5 h-5 bg-orange-500 rounded-sm rotate-6"></div>
-                <div className="w-5 h-5 bg-green-500 rounded-sm -rotate-3"></div>
-              </div>
-              <span className="text-2xl font-bold text-white">BookMyEvent</span>
-            </div>
-
-            <div className="hidden md:flex items-center gap-8">
-              <a
-                href="#"
-                className="text-slate-400 hover:text-white transition-colors text-sm font-medium"
-              >
-
-              </a>
-              <a
-                href="#"
-                className="text-slate-400 hover:text-white transition-colors text-sm font-medium"
-              >
-
-              </a>
-              <a
-                href="#"
-                className="text-slate-400 hover:text-white transition-colors text-sm font-medium"
-              >
-
-              </a>
-            </div>
-
-            <button
-              onClick={() => navigate("/login")}
-              className="px-6 py-2.5 bg-white text-slate-950 rounded-full font-bold hover:bg-gray-100 transition-all transform hover:scale-105 text-sm"
-            >
-              Sign In / Register
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Content */}
-      <div className="relative z-10 pt-28 pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Column - Text */}
-            <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/10 border border-orange-500/30 w-fit">
-                <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-                <span className="text-orange-400 text-sm font-semibold">
-                  Discover Amazing Events
-                </span>
-              </div>
-
-              <div className="space-y-6">
-                <h1 className="text-6xl md:text-5xl font-bold text-white leading-tight">
-                  Turning Your Vision Into
-                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-red-400 to-orange-400">
-                    Unforgettable Moments
-                  </span>
-                </h1>
-
-                <p className="text-lg text-slate-400 leading-relaxed max-w-xl">
-                  From electrifying concerts to inspiring conferences. Discover,
-                  book, and experience events that transform your world. Your
-                  next unforgettable moment is just one click away.
-                </p>
-
-
-              </div>
-            </div>
-
-            {/* Right Column - Featured Event */}
-            <div className="hidden lg:block">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-600/20 to-red-600/20 rounded-2xl blur-2xl" />
-                <div className="relative rounded-2xl overflow-hidden h-96">
-                  {featuredEvent ? (
-                    <EventCard
-                      event={featuredEvent}
-                      isFeatured={true}
-                      isLiked={likedEvents.includes(featuredEvent.id)}
-                      onToggleLike={toggleLike}
-                      onShowDetail={onShowDetail}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-slate-400">
-                      Loading event...
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+/* ─────────────── Brand Logo ─────────────── */
+const BrandLogo = ({ textColor = "#0f172a" }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', gap: 3 }}>
+      <div style={{ width: 6, height: 16, borderRadius: 10, backgroundColor: '#3b82f6', transform: 'rotate(-15deg)' }} />
+      <div style={{ width: 6, height: 16, borderRadius: 10, backgroundColor: '#f97316', transform: 'rotate(10deg)' }} />
+      <div style={{ width: 6, height: 16, borderRadius: 10, backgroundColor: '#22c55e', transform: 'rotate(-5deg)' }} />
     </div>
-  );
-};
+    <span style={{ fontSize: 22, fontWeight: 900, color: textColor, letterSpacing: '-0.5px' }}>BookMyEvent</span>
+  </div>
+);
 
-const CategorySection = () => {
-  const navigate = useNavigate();
-
-  const popularCategories = [
-    {
-      name: "CONFERENCE",
-      filterName: "Business",
-      image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=600",
-    },
-    {
-      name: "ENTERTAINMENT",
-      filterName: "Music",
-      image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=600",
-    },
-    {
-      name: "CORPORATE",
-      filterName: "Business",
-      image: "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=600",
-    },
-    {
-      name: "EXPO",
-      filterName: "Technology",
-      image: "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600",
-    },
-    {
-      name: "EDUCATION",
-      filterName: "Education",
-      image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=600",
-    },
-    {
-      name: "SPORTS",
-      filterName: "Sports",
-      image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=600",
-    },
-  ];
-
-  // Duplicate the array of categories to create a seamless infinite scrolling track
-  const doubledCategories = [...popularCategories, ...popularCategories, ...popularCategories];
-
-  return (
-    <section className="py-12 bg-slate-950 relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 mb-8">
-        <div className="text-center">
-          <h2 className="text-sm font-bold tracking-widest text-orange-500 uppercase mb-2">
-            Explore Categories
-          </h2>
-          <h3 className="text-3xl font-extrabold text-white sm:text-4xl">
-            POPULAR CATEGORIES
-          </h3>
-        </div>
-      </div>
-
-      {/* Infinite Marquee Track Container */}
-      <div className="w-full overflow-hidden relative py-4">
-        {/* Soft fading edges for premium look */}
-        <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-slate-950 to-transparent z-10 pointer-events-none" />
-        <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-slate-950 to-transparent z-10 pointer-events-none" />
-
-        <div className="animate-marquee hover:[animation-play-state:paused] flex gap-6 cursor-pointer">
-          {doubledCategories.map((cat, idx) => (
-            <div
-              key={`${cat.name}-${idx}`}
-              onClick={() => navigate("/all-events", { state: { category: cat.filterName } })}
-              className="group relative w-72 h-44 rounded-2xl overflow-hidden shadow-xl transform transition-all duration-500 hover:scale-105 hover:shadow-orange-500/20 flex-shrink-0"
-            >
-              {/* Background Image */}
-              <img
-                src={cat.image}
-                alt={cat.name}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                loading="lazy"
-              />
-
-              {/* Overlay Gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent transition-opacity duration-300 group-hover:opacity-95" />
-
-              {/* Top-left category tag like the screenshot */}
-              <div className="absolute top-4 left-4">
-                <span className="text-[11px] font-extrabold tracking-widest text-white/95 uppercase bg-black/40 backdrop-blur-md px-3 py-1 rounded-md border border-white/10">
-                  {cat.name}
-                </span>
-              </div>
-
-              {/* Bottom detail row */}
-              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                <span className="text-base font-extrabold tracking-wide text-white group-hover:text-orange-400 transition-colors">
-                  {cat.filterName} Events
-                </span>
-                <span className="w-8 h-8 rounded-full bg-white/10 group-hover:bg-orange-500 flex items-center justify-center text-white transition-all duration-300 transform group-hover:translate-x-1">
-                  →
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+// ── DYNAMIC LIGHT CATEGORY THEMES CONFIGURATION ──────────────────────────────
+const categoryThemes = {
+  All: {
+    key: "All",
+    label: "All",
+    background: "/backgrounds/1.png",
+    primaryColor: "#0284c7",
+    accentColor: "#f97316",
+    placeholder: "Search \"all events, concerts...\"",
+    bannerBadge: "✦ WELCOME TO BOOKMYEVENT ✦",
+    bannerTitle: "Discover & Experience Live Moments",
+    bannerSub: "Book tickets instantly with zero convenience fee • Verified Venues",
+    icon: Sparkles,
+  },
+  Music: {
+    key: "Music",
+    label: "Music",
+    background: "/backgrounds/2.png",
+    primaryColor: "#7e22ce",
+    accentColor: "#f97316",
+    placeholder: "Search \"music events, concerts...\"",
+    bannerBadge: "✦ LIVE MUSIC FESTIVALS ✦",
+    bannerTitle: "Electrifying Concerts & Beats",
+    bannerSub: "Rock, Pop, EDM & Classical Shows Near You",
+    icon: Music,
+  },
+  Comedy: {
+    key: "Comedy",
+    label: "Comedy",
+    background: "/backgrounds/3.png",
+    primaryColor: "#0d9488",
+    accentColor: "#f97316",
+    placeholder: "Search \"comedy events, standup...\"",
+    bannerBadge: "✦ LAUGHTER ZONE ✦",
+    bannerTitle: "Top Standup Comedians Live",
+    bannerSub: "Laugh Out Loud • Weekend Specials",
+    icon: Mic,
+  },
+  Expos: {
+    key: "Expos",
+    label: "Expos",
+    background: "/backgrounds/4.png",
+    primaryColor: "#ea580c",
+    accentColor: "#f97316",
+    placeholder: "Search \"expo events, exhibitions...\"",
+    bannerBadge: "✦ TECH & EXPOS ✦",
+    bannerTitle: "AI, Cloud & Product Innovation",
+    bannerSub: "Network with Industry Pioneers",
+    icon: Ticket,
+  },
+  Sports: {
+    key: "Sports",
+    label: "Sports",
+    background: "/backgrounds/5.png",
+    primaryColor: "#e11d48",
+    accentColor: "#f97316",
+    placeholder: "Search \"sports events, matches...\"",
+    bannerBadge: "✦ STADIUM ARENA ✦",
+    bannerTitle: "Live Matches, Tournaments & Runs",
+    bannerSub: "Feel the Energy Live from the Stands",
+    icon: Trophy,
+  },
+  Festivals: {
+    key: "Festivals",
+    label: "Festivals",
+    background: "/backgrounds/6.png",
+    primaryColor: "#d97706",
+    accentColor: "#f97316",
+    placeholder: "Search \"festivals, cultural events...\"",
+    bannerBadge: "✦ CULTURAL FESTIVALS ✦",
+    bannerTitle: "Festivals & Cultural Celebrations",
+    bannerSub: "Traditional Music, Food & Fairs",
+    icon: Zap,
+  },
 };
 
 // Helper to extract clean city name
@@ -318,239 +148,83 @@ const getCityFromLocation = (loc) => {
   return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).toLowerCase();
 };
 
-const HomeSearchWidget = ({ events }) => {
+const App = () => {
   const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("");
-  const [categoryDisplay, setCategoryDisplay] = useState("");
-  const [location, setLocation] = useState("");
+  const [events, setEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState("");
-  const [isLocationOpen, setIsLocationOpen] = useState(false);
-  const [locationSearch, setLocationSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("Home");
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
 
-  const categoryRef = useRef(null);
-  const locationRef = useRef(null);
+  // Animated Category Theme Transition State
+  const [prevTheme, setPrevTheme] = useState(categoryThemes.All);
+  const [currentTheme, setCurrentTheme] = useState(categoryThemes.All);
+  const [opacity, setOpacity] = useState(1);
 
-  const categoriesList = [
-    { name: "CONFERENCE", filter: "Business" },
-    { name: "ENTERTAINMENT", filter: "Music" },
-    { name: "CORPORATE", filter: "Business" },
-    { name: "EXPO", filter: "Technology" },
-    { name: "EDUCATION", filter: "Education" },
-    { name: "SPORTS", filter: "Sports" },
-  ];
-
-  const uniqueLocations = Array.from(
-    new Set(
-      events
-        .map((e) => getCityFromLocation(e.fullLocation || e.location))
-        .filter(Boolean)
-    )
-  ).sort();
+  const categoryTabs = Object.values(categoryThemes);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (categoryRef.current && !categoryRef.current.contains(event.target)) {
-        setIsCategoryOpen(false);
-      }
-      if (locationRef.current && !locationRef.current.contains(event.target)) {
-        setIsLocationOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    fetchEvents();
   }, []);
 
-  const handleSearch = () => {
-    navigate("/all-events", {
-      state: {
-        title: query,
-        category: category || "All",
-        location: location,
-      },
-    });
+  const fetchEvents = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getHomeEventshow();
+      if (!data || data.length === 0) {
+        setEvents([]);
+        return;
+      }
+
+      const formatted = data.map((e, index) => {
+        const entryType = e.entry_type || "";
+        const passFee = e.pass_fee;
+        const isDonation = entryType === "Donation" || String(passFee).toLowerCase() === "donation";
+        const isFree = entryType === "Free" || (!isDonation && (!passFee || Number(passFee) === 0));
+
+        return {
+          id: e.id,
+          title: e.event_name,
+          category: e.category || "Live Event",
+          entry_type: isDonation ? "Donation" : isFree ? "Free" : "Paid",
+          price: isDonation || isFree ? "Free" : `₹${Number(passFee) || 0}`,
+          location: e.venue || "Chennai",
+          fullLocation: `${e.venue}, ${e.address}`,
+          date: e.start_date || "Today",
+          likes: `${(120 + index * 18).toFixed(1)}K+`,
+          rating: (8.6 + (index % 12) * 0.1).toFixed(1),
+          image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
+          banner_type: e.banner_type,
+          bookingEnds: e.end_date || e.start_date + "T23:59:59",
+        };
+      });
+
+      setEvents(formatted);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const filteredCategories = categoriesList.filter((cat) =>
-    cat.name.toLowerCase().includes(categorySearch.toLowerCase())
-  );
+  const handleCategorySwitch = (catKey) => {
+    if (catKey === selectedCategory) return;
+    const targetTheme = categoryThemes[catKey] || categoryThemes.All;
 
-  const filteredLocations = uniqueLocations.filter((loc) =>
-    loc.toLowerCase().includes(locationSearch.toLowerCase())
-  );
+    setPrevTheme(currentTheme);
+    setCurrentTheme(targetTheme);
+    setSelectedCategory(catKey);
 
-  return (
-    <div className="relative z-20 mt-4 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="bg-white rounded-2xl md:rounded-full p-2 md:p-1.5 shadow-xl border border-gray-200 flex flex-col md:flex-row items-center gap-1">
-        {/* What are you looking for */}
-        <div className="flex-1 w-full flex items-center gap-2.5 px-5 py-2 border-b md:border-b-0 md:border-r border-gray-200">
-          <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
-          <input
-            type="text"
-            placeholder="What are you looking for?"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-transparent text-slate-800 placeholder-slate-400 outline-none text-sm font-medium"
-          />
-        </div>
+    setOpacity(0);
+    setTimeout(() => {
+      setOpacity(1);
+    }, 50);
+  };
 
-        {/* Category Selector with Search Dropdown */}
-        <div ref={categoryRef} className="w-full md:w-52 flex flex-col justify-center border-b md:border-b-0 md:border-r border-gray-200 relative">
-          <div
-            onClick={() => {
-              setIsCategoryOpen(!isCategoryOpen);
-              setIsLocationOpen(false);
-            }}
-            className="w-full flex items-center justify-between px-5 py-3 cursor-pointer text-slate-800 text-sm font-medium select-none"
-          >
-            <span className={categoryDisplay ? "text-slate-800" : "text-slate-400"}>
-              {categoryDisplay || "Category"}
-            </span>
-            <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
-          </div>
-
-          {isCategoryOpen && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 p-3.5 animate-fadeIn">
-              {/* Search Box inside dropdown */}
-              <div className="relative mb-3 flex items-center bg-white rounded-md border border-sky-500/80 px-2.5 py-1">
-                <input
-                  type="text"
-                  placeholder="Search Category"
-                  value={categorySearch}
-                  onChange={(e) => setCategorySearch(e.target.value)}
-                  className="w-full bg-transparent text-slate-800 placeholder-slate-400 outline-none text-xs font-semibold pr-6 h-8"
-                  autoFocus
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute right-2.5 pointer-events-none" />
-              </div>
-
-              {/* List */}
-              <div className="max-h-52 overflow-y-auto no-scrollbar space-y-0.5">
-                {filteredCategories.map((cat) => (
-                  <div
-                    key={cat.name}
-                    onClick={() => {
-                      setCategory(cat.filter);
-                      setCategoryDisplay(cat.name);
-                      setIsCategoryOpen(false);
-                      setCategorySearch("");
-                    }}
-                    className={`px-3 py-2 text-xs font-bold rounded-md cursor-pointer transition-all uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-850 ${
-                      categoryDisplay === cat.name ? "bg-slate-100 text-slate-900" : ""
-                    }`}
-                  >
-                    {cat.name}
-                  </div>
-                ))}
-                {filteredCategories.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-slate-400 font-semibold text-center">
-                    No categories found
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Location Selector with Search Dropdown */}
-        <div ref={locationRef} className="w-full md:w-52 flex flex-col justify-center relative">
-          <div
-            onClick={() => {
-              setIsLocationOpen(!isLocationOpen);
-              setIsCategoryOpen(false);
-            }}
-            className="w-full flex items-center justify-between px-5 py-3 cursor-pointer text-slate-800 text-sm font-medium select-none"
-          >
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              <span className={location ? "text-slate-800" : "text-slate-400"}>
-                {location || "Location"}
-              </span>
-            </div>
-            <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
-          </div>
-
-          {isLocationOpen && (
-            <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 p-3.5 animate-fadeIn">
-              {/* Search Box inside dropdown */}
-              <div className="relative mb-3 flex items-center bg-white rounded-md border border-sky-500/80 px-2.5 py-1">
-                <input
-                  type="text"
-                  placeholder="Search Location"
-                  value={locationSearch}
-                  onChange={(e) => setLocationSearch(e.target.value)}
-                  className="w-full bg-transparent text-slate-800 placeholder-slate-400 outline-none text-xs font-semibold pr-6 h-8"
-                  autoFocus
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute right-2.5 pointer-events-none" />
-              </div>
-
-              {/* List */}
-              <div className="max-h-52 overflow-y-auto no-scrollbar space-y-0.5">
-                {filteredLocations.map((loc) => (
-                  <div
-                    key={loc}
-                    onClick={() => {
-                      setLocation(loc);
-                      setIsLocationOpen(false);
-                      setLocationSearch("");
-                    }}
-                    className={`px-3 py-2 text-xs font-bold rounded-md cursor-pointer transition-all uppercase tracking-wider text-slate-500 hover:bg-slate-100 hover:text-slate-850 ${
-                      location === loc ? "bg-slate-100 text-slate-900" : ""
-                    }`}
-                  >
-                    {loc}
-                  </div>
-                ))}
-                {filteredLocations.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-slate-400 font-semibold text-center">
-                    No locations found
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Search Button */}
-        <button
-          onClick={handleSearch}
-          className="w-full md:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-full font-bold transition-all shadow-md shadow-blue-500/10 text-xs uppercase tracking-wider cursor-pointer flex-shrink-0"
-        >
-          SEARCH
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const EventsSection = ({
-  events,
-  likedEvents,
-  onToggleLike,
-  onShowDetail,
-  onViewAllClick
-}) => {
-  const [selectedCity, setSelectedCity] = useState("");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [citySearchQuery, setCitySearchQuery] = useState("");
-
-  // 🔥 SORTING: Open events first (by date), Closed events last
-  const finalEvents = [...events].sort((a, b) => {
-    const aClosed = new Date() > new Date(a.bookingEnds);
-    const bClosed = new Date() > new Date(b.bookingEnds);
-
-    if (aClosed !== bClosed) {
-      return aClosed ? 1 : -1; // Open first, closed last
-    }
-
-    // Both are same status, sort by date ascending
-    return new Date(a.date) - new Date(b.date);
-  });
-
-  // Extract cities dynamically from current events list
+  // Get unique cities list from events
   const citiesList = Array.from(
     new Set(
       events
@@ -559,455 +233,405 @@ const EventsSection = ({
     )
   ).sort();
 
-  // Apply City Filter
-  const cityFilteredEvents = finalEvents.filter((event) => {
-    if (!selectedCity) return true;
-    return getCityFromLocation(event.fullLocation || event.location) === selectedCity;
+  const filteredEvents = events.filter((e) => {
+    const matchesCategory =
+      selectedCategory === "All" ||
+      e.category.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+      (selectedCategory === "Expos" && (e.category.toLowerCase().includes("expo") || e.category.toLowerCase().includes("tech")));
+
+    const matchesSearch =
+      !searchQuery || e.title.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const eventCity = getCityFromLocation(e.fullLocation || e.location);
+    const matchesCity = !selectedCity || eventCity === selectedCity;
+
+    return matchesCategory && matchesSearch && matchesCity;
   });
 
-  const otherEvents = cityFilteredEvents.slice(0, 4);
-
-  return (
-    <section
-      id="events-list"
-      className="py-12 bg-slate-950 relative bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('/event_bg.png')" }}
-    >
-      <div className="max-w-7xl mx-auto px-4">
-        {/* All Events */}
-        <div>
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <h2 className="text-3xl font-extrabold text-white tracking-wide">
-                EVENTS
-              </h2>
-
-              {/* City Filter Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold rounded-full text-xs transition-all cursor-pointer shadow-md select-none border border-yellow-500/20"
-                >
-                  <span className="tracking-wider uppercase">{selectedCity || "City"}</span>
-                  {selectedCity && (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCity("");
-                      }}
-                      className="hover:text-red-200 transition-colors ml-0.5 p-0.5"
-                    >
-                      <X className="w-3.5 h-3.5 stroke-[3]" />
-                    </span>
-                  )}
-                  <ChevronDown className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-
-                {/* Dropdown Box */}
-                {isDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                    <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-100 z-50 p-2.5 animate-fadeIn">
-                      {/* Search box inside dropdown */}
-                      <div className="relative flex items-center mb-2 border border-gray-300 rounded-md px-2.5 py-1 bg-white">
-                        <input
-                          type="text"
-                          placeholder="Search City..."
-                          value={citySearchQuery}
-                          onChange={(e) => setCitySearchQuery(e.target.value)}
-                          className="w-full bg-transparent text-slate-800 placeholder-slate-400 outline-none text-xs font-semibold pr-6"
-                          autoFocus
-                        />
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
-                      </div>
-
-                      {/* Cities list */}
-                      <div className="max-h-40 overflow-y-auto no-scrollbar">
-                        {citiesList
-                          .filter(city => city.toLowerCase().includes(citySearchQuery.toLowerCase()))
-                          .map(city => (
-                            <div
-                              key={city}
-                              onClick={() => {
-                                setSelectedCity(city);
-                                setIsDropdownOpen(false);
-                                setCitySearchQuery("");
-                              }}
-                              className={`px-3 py-2 text-xs font-bold rounded-md cursor-pointer transition-all ${selectedCity === city
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "text-slate-700 hover:bg-slate-100"
-                                }`}
-                            >
-                              {city}
-                            </div>
-                          ))}
-                        {citiesList.filter(city => city.toLowerCase().includes(citySearchQuery.toLowerCase())).length === 0 && (
-                          <div className="px-3 py-2 text-xs text-slate-400 font-semibold text-center">
-                            No cities found
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={onViewAllClick}
-              className="px-6 py-2 bg-white hover:bg-gray-100 text-slate-950 rounded-full font-bold transition-all text-xs uppercase cursor-pointer shadow-md transform hover:scale-105 active:scale-95"
-            >
-              View All
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {otherEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                isFeatured={false}
-                isLiked={likedEvents.includes(event.id)}
-                onToggleLike={onToggleLike}
-                onShowDetail={onShowDetail}
-              />
-            ))}
-          </div>
-          {otherEvents.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 bg-slate-900/40 rounded-2xl border border-slate-800/50 mt-8">
-              <div className="w-20 h-20 bg-slate-800/80 rounded-full flex items-center justify-center mb-4">
-                <Search className="w-10 h-10 text-slate-500" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">No Results Found</h3>
-              <p className="text-slate-500 text-sm max-w-sm text-center">
-                There are no events available right now. Check back soon!
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-};
-
-const Footer = () => {
-  const navigate = useNavigate();
-  return (
-    <footer className="bg-slate-950 border-t border-slate-800/50 pt-20 pb-10">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 group">
-              <div className="flex gap-1">
-                <div className="w-5 h-5 bg-blue-500 rounded-sm -rotate-12"></div>
-                <div className="w-5 h-5 bg-orange-500 rounded-sm rotate-6"></div>
-                <div className="w-5 h-5 bg-green-500 rounded-sm -rotate-3"></div>
-              </div>
-              <span className="text-2xl font-bold text-white">BookMyEvent</span>
-            </div>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Discover, book, and experience unforgettable moments. From
-              concerts to conferences, we connect you with events that matter.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-4 text-sm"></h4>
-            <ul className="space-y-3">
-              {[
-
-              ].map((item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="text-slate-400 hover:text-white transition-colors text-sm"
-                  >
-                    {item}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-4 text-sm">Support</h4>
-            <ul className="space-y-3">
-
-              <li>
-                <button
-                  onClick={() => navigate("/Help_Center")}
-                  className="text-slate-400 hover:text-white transition-colors text-sm cursor-pointer"
-                >
-                  Help Center
-                </button>
-              </li>
-
-              <li>
-                <button
-                  onClick={() => navigate("/Terms")}
-                  className="text-slate-400 hover:text-white transition-colors text-sm cursor-pointer"
-                >
-                  Terms of Service
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => navigate("/Cancellation")}
-                  className="text-slate-400 hover:text-white transition-colors text-sm cursor-pointer"
-                >
-                  Cancellation and Refund Policy
-                </button>
-              </li>
-
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-4 text-sm">Get in Touch</h4>
-            <div className="space-y-3 text-sm">
-              <p className="text-orange-400 font-bold text-lg  cursor-pointer">
-                +(91) 9444221003
-              </p>
-              <a
-                href="https://mail.google.com/mail/?view=cm&fs=1&to=bookmyevent2026@gmail.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-400 hover:text-white cursor-pointer"
-              >
-                bookmyevent2026@gmail.com
-              </a>
-              <div className="flex gap-3 pt-4">
-                {[
-                  { name: "Facebook", icon: Facebook, url: "https://www.facebook.com/login", color: "hover:bg-blue-600" },
-                  { name: "Instagram", icon: Instagram, url: "https://www.instagram.com/accounts/login/", color: "hover:bg-pink-600" },
-                  { name: "Twitter", icon: Twitter, url: "https://twitter.com/login", color: "hover:bg-sky-500" },
-                  { name: "LinkedIn", icon: Linkedin, url: "https://www.linkedin.com/login", color: "hover:bg-blue-700" },
-                  { name: "YouTube", icon: Youtube, url: "https://accounts.google.com/signin/v2/identifier?service=youtube", color: "hover:bg-red-600" }
-                ].map((social) => {
-                  const Icon = social.icon;
-                  return (
-                    <a
-                      key={social.name}
-                      href={social.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`w-9 h-9 bg-slate-800 rounded-full flex items-center justify-center transition-colors ${social.color}`}
-                    >
-                      <Icon className="w-4 h-4 text-white" />
-                    </a>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-8 border-t border-slate-800/50 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-slate-500 text-xs">
-            © {new Date().getFullYear()} BookMyEvent. All rights reserved.
-          </p>
-
-        </div>
-      </div>
-    </footer>
-  );
-};
-
-const PricingSection = () => {
-  return (
-    <section className="bg-slate-950 text-white py-16 text-center border-t border-slate-800/50">
-      <h2 className="text-2xl font-black mb-4 tracking-wider uppercase text-white">PRICING PLANS</h2>
-      <p className="mb-2 text-[15px] font-medium text-slate-400">Explore Our Budget-Friendly Rates</p>
-      <p className="text-orange-400 font-bold text-lg  cursor-pointer">
-        Kindly Contact us at (+91) 9444221003
-      </p>
-    </section>
-  );
-};
-
-const App = () => {
-  const navigate = useNavigate();
-  const [events, setEvents] = useState([]);
-  const [likedEvents, setLikedEvents] = useState(() => {
-    const saved = localStorage.getItem("wishlist");
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
-  // 🔥 DETAIL VIEW STATES
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [fullData, setFullData] = useState(null);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-
-  const onShowDetail = async (id) => {
-    setIsLoadingDetails(true);
-    try {
-      const res = await getFullEventDetails(id);
-      setFullData(res);
-      setSelectedEventId(id);
-      setCurrentStep('about'); // Default to about tab
-    } catch (err) {
-      console.error("Error fetching event details:", err);
-    } finally {
-      setIsLoadingDetails(false);
-    }
-  };
-
-  const closeModal = () => {
-    setSelectedEventId(null);
-    setFullData(null);
-    setCurrentStep('about');
-  };
-
-  const toggleLike = (id) => {
-    setLikedEvents(prev => {
-      const updated = prev.includes(id)
-        ? prev.filter(itemId => itemId !== id)
-        : [...prev, id];
-      localStorage.setItem("wishlist", JSON.stringify(updated));
-      return updated;
-    });
-  };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 400) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
-
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    const data = await getHomeEventshow();
-    console.log("Fetched Home events:", data);
-
-    if (!data || data.length === 0) {
-      setEvents([]);
-      return;
-    }
-    console.log("Raw event data:", data);
-
-    const formatted = data.map((e) => {
-      const entryType = e.entry_type || "";
-      const passFee = e.pass_fee;
-      const isDonation = entryType === "Donation" || String(passFee).toLowerCase() === "donation";
-      const isFree = entryType === "Free" || (!isDonation && (!passFee || Number(passFee) === 0));
-      return {
-        id: e.id,
-        title: e.event_name,
-        category: e.category || "General",
-        entry_type: isDonation ? "Donation" : isFree ? "Free" : "Paid",
-        price: isDonation || isFree ? 0 : (Number(passFee) || 0),
-        currency: e.currency || "₹",
-        location: e.venue,
-        fullLocation: `${e.venue}, ${e.address}`,
-        date: e.start_date,
-        endDate: e.end_date,
-        time: e.start_time,
-        image: e.banner_url || "https://via.placeholder.com/400",
-        banner_type: e.banner_type,
-        rating: 4.5,
-        reviews: 0,
-        attendees: e.capacity || 0,
-        organizer: "Admin",
-        tags: [],
-        bookingEnds: e.end_date || e.start_date + "T23:59:59",
-
-        // 🔥 IMPORTANT (so featured works)
-        trending: (e.capacity || 0) > 100,
-      };
-    });
-
-    setEvents(formatted);
+  const handleProfileClick = () => {
+    navigate("/profile");
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      {/* ✅ FIX: pass events */}
-      <Hero
-        events={events}
-        likedEvents={likedEvents}
-        toggleLike={toggleLike}
-        onShowDetail={onShowDetail}
-      />
-      <HomeSearchWidget events={events} />
-
-      <CategorySection />
-
-      <EventsSection
-        events={events}
-        likedEvents={likedEvents}
-        onToggleLike={toggleLike}
-        onShowDetail={onShowDetail}
-        onViewAllClick={() => navigate("/all-events")}
-      />
-
-      <PricingSection />
-
-      <Footer />
-
-      <EventDetailModal
-        selectedEventId={selectedEventId}
-        fullData={fullData}
-        closeModal={closeModal}
-      />
-
-
-
-      {/* Loading Overlay */}
-      {isLoadingDetails && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm flex items-center justify-center z-[110]">
-          <div className="bg-white p-8 rounded-[2rem] shadow-2xl flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-teal-100 border-t-teal-500 rounded-full animate-spin"></div>
-            <p className="text-slate-900 font-bold">Loading Details...</p>
-          </div>
-        </div>
-      )}
-
+    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] pb-24 relative select-none">
       <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;700&display=swap');
+        
+        body {
+          font-family: 'Outfit', sans-serif;
+          background-color: #f8fafc;
+          margin: 0;
         }
-        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
-        @keyframes scroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(calc(-100% / 3)); }
+
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
         }
-        .animate-scroll { animation: scroll 8s linear infinite; }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+
+        .curved-header {
+          border-bottom-left-radius: 36px;
+          border-bottom-right-radius: 36px;
+          overflow: hidden;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+          padding-bottom: 24px;
+          position: relative;
+        }
+
+        .overlay-tint {
+          position: absolute;
+          inset: 0;
+          background-color: rgba(255, 255, 255, 0.15);
+          border-bottom-left-radius: 36px;
+          border-bottom-right-radius: 36px;
+          z-index: 2;
+        }
+
+        .category-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: 1px solid rgba(255, 255, 255, 0.8);
+          background-color: rgba(255, 255, 255, 0.7);
+          color: #334155;
+          white-space: nowrap;
+        }
+
+        .category-pill.selected {
+          background-color: #f97316;
+          color: #ffffff;
+          border-color: #f97316;
+          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+        }
+
+        .grid-card {
+          background-color: #ffffff;
+          border-radius: 16px;
+          padding: 12px;
+          border: 1px solid #f1f5f9;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+        }
+
+        .grid-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+        }
+
+        .floating-pill-nav {
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%);
+          height: 64px;
+          background-color: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border-radius: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: space-around;
+          padding: 0 16px;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+          border: 1px solid rgba(241, 245, 249, 0.6);
+          width: 90%;
+          max-width: 500px;
+          z-index: 99;
+        }
+
+        .pill-tab {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 6px 16px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          color: #64748b;
+          text-decoration: none;
+        }
+
+        .pill-tab.active {
+          background-color: #fff7ed;
+          color: #f97316;
+        }
+
+        .pill-tab-label {
+          font-size: 11px;
+          font-weight: 700;
+          margin-top: 3px;
+        }
       `}</style>
 
-      {/* Return to Top Button */}
-      <button
-        onClick={scrollToTop}
-        className={`fixed bottom-28 right-7 z-[100] p-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full shadow-2xl transition-all duration-500 transform hover:scale-110 active:scale-95 group ${showScrollTop
-          ? "translate-y-0 opacity-100 visible"
-          : "translate-y-20 opacity-0 invisible"
-          }`}
-        aria-label="Return to top"
-      >
-        <ArrowUp className="w-6 h-6 group-hover:-translate-y-1 transition-transform" />
-        <div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
-      </button>
+      {/* CURVED HEADER WITH BG TRANSITION */}
+      <div className="curved-header min-h-[340px] flex flex-col justify-between">
+        {/* Dynamic transition background layers */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${prevTheme.background})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${currentTheme.background})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: opacity,
+            transition: "opacity 300ms ease-in-out",
+          }}
+        />
+        
+        {/* Soft layout overlay */}
+        <div className="overlay-tint" />
+
+        {/* Content Safe Container */}
+        <div className="relative z-10 max-w-6xl mx-auto w-full px-5 pt-6 flex flex-col justify-between h-full gap-8">
+          
+          {/* Top Row: Logo, Location Selector, Profile button */}
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-8">
+              <div>
+                <BrandLogo textColor="#0f172a" />
+                
+                {/* Location Select */}
+                <div className="relative mt-1">
+                  <button
+                    onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+                    className="flex items-center gap-1 text-[13px] font-extrabold text-[#334155] cursor-pointer bg-transparent border-none outline-none select-none hover:text-[#0f172a] transition-colors"
+                  >
+                    <MapPin size={13} className="text-[#f97316]" />
+                    <span>{selectedCity || "Select City"}</span>
+                    <ChevronDown size={13} className="text-[#0f172a]" />
+                  </button>
+
+                  {isCityDropdownOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setIsCityDropdownOpen(false)} />
+                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 p-2 py-1 max-h-60 overflow-y-auto no-scrollbar animate-fadeIn">
+                        <div
+                          onClick={() => {
+                            setSelectedCity("");
+                            setIsCityDropdownOpen(false);
+                          }}
+                          className={`px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors ${!selectedCity ? 'bg-orange-50 text-orange-600' : 'text-slate-700 hover:bg-slate-50'}`}
+                        >
+                          All Cities
+                        </div>
+                        {citiesList.map(city => (
+                          <div
+                            key={city}
+                            onClick={() => {
+                              setSelectedCity(city);
+                              setIsCityDropdownOpen(false);
+                            }}
+                            className={`px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors ${selectedCity === city ? 'bg-orange-50 text-orange-600' : 'text-slate-700 hover:bg-slate-50'}`}
+                          >
+                            {city}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Desktop Header Navigation Links */}
+              <div className="hidden sm:flex items-center gap-5 ml-4">
+                <button
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                >
+                  Home
+                </button>
+                <button
+                  onClick={() => navigate("/all-events")}
+                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                >
+                  Events
+                </button>
+                <button
+                  onClick={() => navigate("/all-events")}
+                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                >
+                  Explore
+                </button>
+              </div>
+            </div>
+
+            {/* Profile Avatar Button */}
+            <div className="flex items-center gap-3">
+              {/* Fallback for smaller screens to have nav items visible in header too */}
+              <div className="flex sm:hidden items-center gap-3">
+                <button
+                  onClick={() => navigate("/all-events")}
+                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                >
+                  Events
+                </button>
+              </div>
+              <button
+                onClick={handleProfileClick}
+                className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/90 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-all text-[#0f172a]"
+              >
+                <User size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* White Search Bar */}
+          <div className="w-full max-w-xl mx-auto shadow-md rounded-2xl overflow-hidden">
+            <div className="bg-white px-4 h-12 flex items-center gap-2 border border-slate-100/50">
+              <Search size={18} className="text-[#64748b]" />
+              <input
+                type="text"
+                placeholder={currentTheme.placeholder}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-full border-none outline-none font-semibold text-sm text-[#0f172a] placeholder-[#94a3b8]"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="p-1 hover:bg-slate-100 rounded-full">
+                  <X size={14} className="text-slate-400" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Dynamic Horizontal Category Strip */}
+          <div className="w-full overflow-x-auto no-scrollbar py-1">
+            <div className="flex gap-2.5">
+              {categoryTabs.map((tab) => {
+                const IconComp = tab.icon;
+                const isSelected = selectedCategory === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => handleCategorySwitch(tab.key)}
+                    className={`category-pill ${isSelected ? "selected" : ""}`}
+                  >
+                    <IconComp size={15} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* EVENTS SHEETS */}
+      <div className="max-w-6xl mx-auto px-5 pt-8">
+        
+        {/* Section title */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-black text-[#0f172a] uppercase tracking-wide">
+            {currentTheme.label} <span className="text-[#f97316]">Events</span>
+          </h2>
+          <button
+            onClick={() => navigate("/all-events")}
+            className="text-xs font-black text-[#f97316] hover:underline bg-transparent border-none cursor-pointer"
+          >
+            See All ›
+          </button>
+        </div>
+
+        {/* Loading feed */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-orange-100 border-t-orange-500 rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((ev) => (
+                <div
+                  key={ev.id}
+                  className="grid-card cursor-pointer"
+                  onClick={() => navigate(`/usersbooking/${ev.id}`)}
+                >
+                  {/* Card Banner */}
+                  <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 relative">
+                    <img
+                      src={ev.image}
+                      alt={ev.title}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  {/* Likes and Star Rating */}
+                  <div className="flex items-center justify-between my-2.5 px-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-black text-green-700">
+                      <ThumbsUp size={11} className="stroke-[3]" />
+                      <span>{ev.likes}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] font-black text-amber-600">
+                      <Star size={11} className="fill-amber-600 text-amber-600 stroke-[3]" />
+                      <span>{ev.rating}</span>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-xs font-black text-[#0f172a] line-clamp-1 mb-1 px-0.5">
+                    {ev.title}
+                  </h3>
+
+                  {/* Category and Venue info */}
+                  <p className="text-[11px] text-[#64748b] font-medium mb-3 px-0.5">
+                    {ev.category} • {getCityFromLocation(ev.fullLocation || ev.location)}
+                  </p>
+
+                  {/* Price and BOOK trigger */}
+                  <div className="mt-auto pt-2 flex items-center justify-between border-t border-slate-100 px-0.5">
+                    <span className="text-[13px] font-black text-[#0f172a]">{ev.price}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/usersbooking/${ev.id}`);
+                      }}
+                      className="bg-[#f97316] hover:bg-orange-600 active:scale-95 text-white font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm shadow-orange-500/10"
+                    >
+                      BOOK
+                    </button>
+                  </div>
+
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-3">
+                <Search size={36} className="text-slate-300" />
+                <p className="text-sm font-bold text-slate-500">No events found in this view</p>
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+
+
+
     </div>
   );
 };
