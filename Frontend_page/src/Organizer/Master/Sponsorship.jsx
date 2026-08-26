@@ -454,7 +454,7 @@ export const SponsorshipPage = () => {
   }, [searchTerm]);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
+    <div className="space-y-6 pb-12 w-full">
       {/* TOAST NOTIFICATION */}
       {toast.show && (
         <div className={`fixed top-10 right-10 z-[250] px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 duration-500 flex items-center gap-4 border ${toast.type === "success"
@@ -468,37 +468,42 @@ export const SponsorshipPage = () => {
         </div>
       )}
 
-      {/* HEADER */}
-      <div className="flex justify-between items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-sky-900">
-          Sponsorship
-        </h1>
+      {/* ── SLEEK PAGE HEADER BAR ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Sponsorship Tiers & Partners
+          </h1>
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Manage event sponsors, corporate partners, brand placement tiers, and sponsorship packages.
+          </p>
+        </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={handleExportExcel}
             disabled={excelLoading}
-            className="bg-emerald-600 px-4 py-2 rounded-lg text-white flex gap-2 items-center hover:bg-emerald-700 transition shadow-md disabled:opacity-50 text-xs font-semibold h-11"
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl flex gap-2 items-center transition border border-slate-200 text-xs font-bold cursor-pointer h-10"
           >
             {excelLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-700 border-t-transparent" />
             ) : (
-              <FileSpreadsheet size={18} />
+              <FileSpreadsheet size={16} className="text-emerald-600" />
             )}
-            <span>Excel</span>
+            <span>Excel Export</span>
           </button>
 
           <button
             onClick={handleExportPdf}
             disabled={pdfLoading}
-            className="bg-rose-600 px-4 py-2 rounded-lg text-white flex gap-2 items-center hover:bg-rose-700 transition shadow-md disabled:opacity-50 text-xs font-semibold h-11"
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl flex gap-2 items-center transition border border-slate-200 text-xs font-bold cursor-pointer h-10"
           >
             {pdfLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-700 border-t-transparent" />
             ) : (
-              <FileText size={18} />
+              <FileText size={16} className="text-rose-600" />
             )}
-            <span>PDF</span>
+            <span>PDF Export</span>
           </button>
 
           <button
@@ -506,44 +511,47 @@ export const SponsorshipPage = () => {
               handleReset();
               setShowForm(true);
             }}
-            className="bg-sky-600 px-4 py-2 rounded-lg text-white flex gap-2 items-center hover:bg-sky-700 transition shadow-lg h-11 text-xs font-semibold"
+            className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-4.5 py-2 rounded-xl flex gap-2 items-center transition shadow-md shadow-cyan-500/20 text-xs cursor-pointer border-none h-10"
           >
             <Plus size={18} />
-            Add Sponsor
+            <span>Add Sponsor</span>
           </button>
         </div>
       </div>
 
-      <div className="flex justify-between items-center mb-8 gap-4">
-        <div className="flex items-center gap-4 flex-1">
-          <div className="relative flex-1 max-w-md group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-sky-500 transition-colors" size={20} />
-            <input
-              type="text"
-              placeholder="Search sponsors by name, code or address..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl bg-white text-slate-800 placeholder-slate-400 border border-sky-200 focus:ring-2 focus:ring-sky-500 outline-none shadow-sm transition-all"
-            />
-          </div>
+      {/* ── SEARCH BAR ── */}
+      <div className="flex justify-start">
+        <div className="relative w-full max-w-sm">
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="text"
+            placeholder="Search sponsors by name, code..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full py-2 pl-9 pr-4 rounded-xl bg-white text-slate-800 placeholder-slate-400 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-xs font-semibold shadow-2xs"
+          />
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+      {/* ── SHADCN TABLE ── */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-sky-600 text-white">
-                <th className="px-6 py-4 text-center text-md font-bold text-white tracking-wider">Action</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Code</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Sponsor Name</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Contact</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Mail ID</th>
-                <th className="px-8 py-4 text-left text-md font-bold text-white tracking-wider">Status</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Created By</th>
-                <th className="px-6 py-4 text-center text-md font-bold text-white tracking-wider">Created On</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Modified By</th>
-                <th className="px-6 py-4 text-center text-md font-bold text-white tracking-wider">Modified On</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-3.5 text-center">Action</th>
+                <th className="px-4 py-3.5">Code</th>
+                <th className="px-5 py-3.5">Sponsor Name</th>
+                <th className="px-4 py-3.5">Contact</th>
+                <th className="px-4 py-3.5">Mail ID</th>
+                <th className="px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5">Created By</th>
+                <th className="px-4 py-3.5 text-center">Created On</th>
+                <th className="px-4 py-3.5">Modified By</th>
+                <th className="px-4 py-3.5 text-center">Modified On</th>
               </tr>
             </thead>
 

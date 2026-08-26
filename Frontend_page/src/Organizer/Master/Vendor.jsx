@@ -559,61 +559,43 @@ export const VendorPage = () => {
   }, [searchTerm]);
 
   return (
-    <div className="p-10 text-slate-800 bg-sky-50 min-h-screen w-full">
-      {toast && (
-        <div
-          className={`fixed top-5 right-5 flex items-center gap-3 px-6 py-4 rounded-lg shadow-2xl z-[9999] animate-in fade-in slide-in-from-top ${toast.type === "success"
-            ? "bg-sky-600 border border-sky-500"
-            : "bg-red-600 border border-red-500"
-            }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle size={24} className="text-white flex-shrink-0" />
-          ) : (
-            <AlertCircle size={24} className="text-white flex-shrink-0" />
-          )}
-          <span className="text-white font-medium">{toast.message}</span>
-          <button
-            onClick={() => setToast(null)}
-            className="ml-2 text-white hover:text-gray-200 transition"
-          >
-            <X size={18} />
-          </button>
+    <div className="space-y-6 pb-12 w-full">
+      {/* ── SLEEK PAGE HEADER BAR ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Vendor Directory Setup
+          </h1>
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Register event suppliers, sound/lighting contractors, catering vendors, and security services.
+          </p>
         </div>
-      )}
 
-      {/* HEADER */}
-
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-sky-900">
-          Vendor Management
-        </h1>
-
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={handleExportExcel}
             disabled={isExcelLoading}
-            className="bg-[#04945c] px-4 py-2 rounded-xl text-white flex gap-2 items-center hover:bg-[#037a4c] transition shadow-lg disabled:opacity-50 h-11 min-w-[120px] justify-center"
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl flex gap-2 items-center transition border border-slate-200 text-xs font-bold cursor-pointer h-10"
           >
             {isExcelLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-700 border-t-transparent" />
             ) : (
-              <FileSpreadsheet size={22} className="text-white" />
+              <FileSpreadsheet size={16} className="text-emerald-600" />
             )}
-            <span className="text-lg font-semibold tracking-wide">Excel</span>
+            <span>Excel Export</span>
           </button>
 
           <button
             onClick={handleExportPdf}
             disabled={isPdfLoading}
-            className="bg-[#e60026] px-4 py-2 rounded-xl text-white flex gap-2 items-center hover:bg-[#c40020] transition shadow-lg disabled:opacity-50 h-11 min-w-[120px] justify-center"
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl flex gap-2 items-center transition border border-slate-200 text-xs font-bold cursor-pointer h-10"
           >
             {isPdfLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-700 border-t-transparent" />
             ) : (
-              <FileText size={22} className="text-white" />
+              <FileText size={16} className="text-rose-600" />
             )}
-            <span className="text-lg font-semibold tracking-wide">PDF</span>
+            <span>PDF Export</span>
           </button>
 
           <button
@@ -621,43 +603,45 @@ export const VendorPage = () => {
               resetForm();
               setShowForm(true);
             }}
-            className="bg-[#007cc3] px-6 py-2.5 rounded-xl text-white flex gap-2 items-center hover:bg-[#0066a1] transition shadow-lg h-11 min-w-[160px] justify-center"
+            className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-4.5 py-2 rounded-xl flex gap-2 items-center transition shadow-md shadow-cyan-500/20 text-xs cursor-pointer border-none h-10"
           >
-            <Plus size={24} className="text-white" />
-            <span className="text-lg font-semibold tracking-wide">{t("Add Vendor")}</span>
+            <Plus size={18} />
+            <span>Add Vendor</span>
           </button>
         </div>
       </div>
 
-      {/* SEARCH */}
-
-      <div className="flex justify-start mb-6">
+      {/* ── SEARCH BAR ── */}
+      <div className="flex justify-start">
         <div className="relative w-full max-w-sm">
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+          />
           <input
-            placeholder={"Search vendors..."}
+            placeholder="Search vendor name, company..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-3 rounded-xl bg-white text-slate-800 placeholder-slate-400 border border-sky-200 focus:ring-2 focus:ring-sky-500 outline-none shadow-sm"
+            className="w-full py-2 pl-9 pr-4 rounded-xl bg-white text-slate-800 placeholder-slate-400 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-xs font-semibold shadow-2xs"
           />
         </div>
       </div>
 
-      {/* TABLE */}
-
-      <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+      {/* ── SHADCN TABLE ── */}
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-sky-600 text-white">
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Action</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Name</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Contact</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Email</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Status</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Created By</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Created On</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Modified By</th>
-                <th className="w-[10%] px-3 py-3 text-left text-[10px] font-bold text-white  tracking-wider">Modified On</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-3.5">Action</th>
+                <th className="px-4 py-3.5">Vendor Name</th>
+                <th className="px-4 py-3.5">Contact</th>
+                <th className="px-4 py-3.5">Email</th>
+                <th className="px-4 py-3.5">Status</th>
+                <th className="px-4 py-3.5">Created By</th>
+                <th className="px-4 py-3.5">Created On</th>
+                <th className="px-4 py-3.5">Modified By</th>
+                <th className="px-4 py-3.5">Modified On</th>
               </tr>
             </thead>
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Trash2, Edit, X } from "lucide-react";
+import { Trash2, Edit, X, Plus } from "lucide-react";
 
 const Step7FoodProvision = ({ formData, setFormData }) => {
   const foodItems = formData.foodProvision?.items || [];
@@ -113,13 +113,13 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
   };
 
   const inputClasses =
-    "w-full h-[45px] px-6 py-2 rounded-full bg-white border border-gray-200 text-gray-800 transition-all duration-200 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 placeholder:text-gray-400 text-sm";
-  const selectClasses = `${inputClasses} appearance-none bg-[url('data:image/svg+xml;utf8,<svg fill="%236b7280" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>')] bg-no-repeat bg-[right_1rem_center] cursor-pointer`;
-  const labelClasses = "block text-sm font-semibold text-gray-700 mb-2 ml-4";
-  const cardClasses = "bg-white p-6 rounded-3xl shadow-sm border border-gray-100";
-  const sectionTitleClasses = "text-xl font-bold text-gray-800 mb-6 border-l-4 border-purple-500 pl-4";
-  const tableHeaderClasses = "bg-gray-50 text-gray-600 text-[12px] font-bold  tracking-wider p-4 text-left border-b border-gray-100";
-  const tableCellClasses = "p-4 text-sm text-gray-700 border-b border-gray-50";
+    "w-full h-9 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder:text-slate-400 text-xs font-semibold";
+  const selectClasses = `${inputClasses} cursor-pointer`;
+  const labelClasses = "block text-xs font-bold text-slate-700 mb-1 ml-1";
+  const cardClasses = "bg-white p-4 rounded-xl shadow-xs border border-slate-200/80";
+  const sectionTitleClasses = "text-sm font-extrabold text-slate-900 mb-3 border-l-4 border-cyan-500 pl-2.5";
+  const tableHeaderClasses = "bg-slate-50 text-slate-700 text-[11px] font-bold tracking-wider p-2.5 text-left border-b border-slate-200";
+  const tableCellClasses = "p-2.5 text-xs text-slate-800 border-b border-slate-100 font-semibold";
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -171,10 +171,10 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
               </div>
             </div>
 
-            <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 space-y-6 sm:col-span-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[12px] font-bold text-gray-500 ml-4">Price In INR <span className="text-red-500">*</span></label>
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 sm:col-span-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Price In INR <span className="text-red-500">*</span></label>
                   <input
                     placeholder="₹ 0.00"
                     value={tempInput.priceINR}
@@ -183,8 +183,8 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
                     className={inputClasses}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[12px] font-bold text-gray-500 ml-4">Price In USD</label>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Price In USD</label>
                   <input
                     placeholder="$ 0.00"
                     value={tempInput.priceUSD}
@@ -196,26 +196,24 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
               </div>
             </div>
 
-            <div className="px-2 sm:col-span-2">
+            <div className="sm:col-span-2">
               <label className={labelClasses}>Menu Details / Included Items</label>
               <textarea
                 placeholder="e.g. Rice, Dal, Roti, Paneer Butter Masala, Sweet"
                 value={tempInput.menuDetails}
                 onChange={(e) => updateTempInput("menuDetails", e.target.value)}
-                rows={3}
-                className={`${inputClasses} h-auto py-3 rounded-2xl resize-none`}
+                rows={2}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
               />
             </div>
 
-            <div className="pt-4 border-t border-gray-100 sm:col-span-2">
+            <div className="pt-2 border-t border-slate-100 sm:col-span-2">
               <button
                 onClick={addFoodItem}
-                className="w-full py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-full shadow-lg shadow-indigo-200 hover:shadow-xl hover:scale-[1.01] transition-all duration-300 active:scale-95 flex items-center justify-center gap-2"
+                className="w-full h-9 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-xs border-none cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Confirm & Add Food Provision
+                <Plus size={14} />
+                <span>Confirm & Add Food Provision</span>
               </button>
             </div>
           </div>

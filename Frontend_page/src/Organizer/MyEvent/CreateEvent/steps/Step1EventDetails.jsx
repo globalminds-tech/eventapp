@@ -221,9 +221,9 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
   const addressError = showStep1Errors && !formData.eventDetails?.address ? "Address is required." : "";
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 pt-2 bg-gray-50/50 rounded-2xl">
-      {/* ---------------- LEFT SECTION ---------------- */}
-      <div className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300 md:h-[calc(110vh-290px)] md:overflow-y-auto custom-scrollbar pr-2">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ---------------- LEFT SECTION: BASIC INFO ---------------- */}
+      <div className="space-y-5 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-2 mb-2">
           <div className="p-2 bg-indigo-50 rounded-lg">
             <Calendar className="w-5 h-5 text-indigo-600" />
@@ -418,8 +418,8 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
         </div>
       </div>
 
-      {/* ---------------- MIDDLE SECTION ---------------- */}
-      <div className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300 md:h-[calc(110vh-290px)] md:overflow-y-auto custom-scrollbar pr-2 ">
+      {/* ---------------- RIGHT SECTION: DATE & VENUE CONFIG ---------------- */}
+      <div className="space-y-5 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-2 mb-2">
           <div className="p-2 bg-purple-50 rounded-lg">
             <Clock className="w-5 h-5 text-purple-600" />
@@ -679,16 +679,13 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
 
           </div>
         </div>
-      </div>
-
-      {/* ---------------- RIGHT SECTION ---------------- */}
-      <div className="space-y-6 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300 md:h-[calc(110vh-290px)] md:overflow-y-auto custom-scrollbar pr-2">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="p-2 bg-emerald-50 rounded-lg">
-            <Calendar className="w-5 h-5 text-emerald-600" />
+        <div className="pt-4 border-t border-slate-100 space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-2 bg-emerald-50 rounded-lg">
+              <Calendar className="w-5 h-5 text-emerald-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800">Event Date & Location</h3>
           </div>
-          <h3 className="text-xl font-bold text-gray-800">Event Date & Location</h3>
-        </div>
         <div className="space-y-1">
           <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
             When does Your Event Start and End? <span className="text-red-500">*</span>
@@ -715,10 +712,10 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
             ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
-                Start Date
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-700">
+                Start Date <span className="text-red-500">*</span>
               </label>
               <input
                 ref={startDateRef}
@@ -727,19 +724,19 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
                 value={formData.eventDetails?.startDate || ""}
                 min={todayLocal}
                 onChange={handleChange}
-                className={`w-full bg-gray-50 border-0 ring-1 p-2.5 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm ${
+                className={`w-full bg-gray-50 border-0 ring-1 p-2 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-xs ${
                   startDateError ? "ring-red-500" : "ring-gray-200"
                 }`}
               />
               {startDateError && (
-                <p className="text-red-500 text-xs mt-1 ml-1">{startDateError}</p>
+                <p className="text-red-500 text-[10px] mt-0.5">{startDateError}</p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
-                Start Time
-              </label>
 
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-700">
+                Start Time <span className="text-red-500">*</span>
+              </label>
               <CustomTimePicker
                 value={formData.eventDetails?.startTime || ""}
                 hasError={!!startTimeError}
@@ -754,12 +751,13 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
                 }
               />
               {startTimeError && (
-                <p className="text-red-500 text-xs mt-1 ml-1">{startTimeError}</p>
+                <p className="text-red-500 text-[10px] mt-0.5">{startTimeError}</p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
-                End Date
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-700">
+                End Date <span className="text-red-500">*</span>
               </label>
               <input
                 ref={endDateRef}
@@ -768,19 +766,19 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
                 value={formData.eventDetails?.endDate || ""}
                 min={formData.eventDetails?.startDate || todayLocal}
                 onChange={handleChange}
-                className={`w-full bg-gray-50 border-0 ring-1 p-2.5 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm ${
+                className={`w-full bg-gray-50 border-0 ring-1 p-2 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-xs ${
                   endDateError ? "ring-red-500" : "ring-gray-200"
                 }`}
               />
               {endDateError && (
-                <p className="text-red-500 text-xs mt-1 ml-1">{endDateError}</p>
+                <p className="text-red-500 text-[10px] mt-0.5">{endDateError}</p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">
-                End Time
-              </label>
 
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-gray-700">
+                End Time <span className="text-red-500">*</span>
+              </label>
               <CustomTimePicker
                 value={formData.eventDetails?.endTime || ""}
                 hasError={!!endTimeError}
@@ -795,7 +793,7 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
                 }
               />
               {endTimeError && (
-                <p className="text-red-500 text-xs mt-1 ml-1">{endTimeError}</p>
+                <p className="text-red-500 text-[10px] mt-0.5">{endTimeError}</p>
               )}
             </div>
           </div>
@@ -1009,6 +1007,7 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

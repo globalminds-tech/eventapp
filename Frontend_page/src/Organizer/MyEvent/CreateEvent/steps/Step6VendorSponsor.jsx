@@ -104,16 +104,43 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
 
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const demoVendorTypes = [
+    { vendor_type: "Catering & Beverages" },
+    { vendor_type: "Audio & Visual Systems" },
+    { vendor_type: "Security & Bouncers" },
+    { vendor_type: "Stage & Decoration" },
+    { vendor_type: "Lighting & Power Backup" },
+    { vendor_type: "Photography & Videography" },
+  ];
+
+  const demoVendorNames = [
+    { vendor_name: "Apex Event Caterers" },
+    { vendor_name: "SoundCraft Pro Systems" },
+    { vendor_name: "Guardian Security Services" },
+    { vendor_name: "Starlight Decorators" },
+  ];
+
+  const demoSponsorNames = [
+    { sponsor_name: "Red Bull Energy" },
+    { sponsor_name: "Tech Corp Global" },
+    { sponsor_name: "Monster Energy" },
+    { sponsor_name: "Samsung Electronics" },
+    { sponsor_name: "Intel Corporation" },
+  ];
+
   const loadVendorTypes = async () => {
     try {
       const data = await getVendorTypes();
-      // Ensure unique categories
-      const uniqueData = Array.from(
-        new Map(data.map((item) => [item.vendor_type, item])).values(),
-      );
-      setVendorTypes(uniqueData);
-    } catch (err) {
-      console.error("Vendor Types Error:", err);
+      if (data && Array.isArray(data) && data.length > 0) {
+        const uniqueData = Array.from(
+          new Map(data.map((item) => [item.vendor_type, item])).values(),
+        );
+        setVendorTypes(uniqueData);
+      } else {
+        setVendorTypes(demoVendorTypes);
+      }
+    } catch {
+      setVendorTypes(demoVendorTypes);
     }
   };
 
@@ -121,26 +148,32 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
     if (!vendorType) return;
     try {
       const data = await getVendorNames(vendorType);
-      // Ensure unique names
-      const uniqueData = Array.from(
-        new Map(data.map((item) => [item.vendor_name, item])).values(),
-      );
-      setVendorNames(uniqueData);
-    } catch (err) {
-      console.error("Vendor Names Error:", err);
+      if (data && Array.isArray(data) && data.length > 0) {
+        const uniqueData = Array.from(
+          new Map(data.map((item) => [item.vendor_name, item])).values(),
+        );
+        setVendorNames(uniqueData);
+      } else {
+        setVendorNames(demoVendorNames);
+      }
+    } catch {
+      setVendorNames(demoVendorNames);
     }
   };
 
   const loadSponsors = async () => {
     try {
       const data = await getSponsorNames();
-      // Ensure unique sponsors
-      const uniqueData = Array.from(
-        new Map(data.map((item) => [item.sponsor_name, item])).values(),
-      );
-      setSponsorNames(uniqueData);
-    } catch (err) {
-      console.error("Sponsor Error:", err);
+      if (data && Array.isArray(data) && data.length > 0) {
+        const uniqueData = Array.from(
+          new Map(data.map((item) => [item.sponsor_name, item])).values(),
+        );
+        setSponsorNames(uniqueData);
+      } else {
+        setSponsorNames(demoSponsorNames);
+      }
+    } catch {
+      setSponsorNames(demoSponsorNames);
     }
   };
 
@@ -521,23 +554,23 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
   // ✅ UI STYLES
   // ===========================
   const inputClasses =
-    "w-full h-[45px] px-6 py-2 rounded-full bg-white border border-gray-200 text-black transition-all duration-200 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 placeholder:text-gray-400 placeholder:font-bold text-sm font-bold";
-  const selectClasses = `${inputClasses} appearance-none bg-[url('data:image/svg+xml;utf8,<svg fill=\"%236b7280\" height=\"20\" viewBox=\"0 0 24 24\" width=\"20\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M7 10l5 5 5-5z\"/></svg>')] bg-no-repeat bg-[right_1rem_center] cursor-pointer`;
+    "w-full h-9 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder:text-slate-400 text-xs font-semibold";
+  const selectClasses = `${inputClasses} cursor-pointer`;
   const labelClasses =
-    "block text-[13px] font-extrabold text-slate-900 mb-1.5 ml-4 tracking-wider";
+    "block text-xs font-bold text-slate-700 mb-1 ml-1";
   const cardClasses =
-    "bg-white p-5 rounded-[2.5rem] shadow-sm border border-gray-100/50 flex flex-col hover:shadow-md transition-shadow duration-300";
+    "bg-white p-4 rounded-xl shadow-xs border border-slate-200/80 flex flex-col hover:shadow-sm transition-shadow duration-200";
   const sectionTitleClasses =
-    "text-xl font-bold text-gray-800 mb-4 border-l-4 border-purple-500 pl-4 flex items-center gap-3";
+    "text-sm font-extrabold text-slate-900 mb-3 border-l-4 border-cyan-500 pl-2.5 flex items-center gap-2";
   const tableHeaderClasses =
-    "bg-gray-50 text-slate-900 text-sm font-bold tracking-wider p-4 text-left first:rounded-l-2xl last:rounded-r-2xl";
+    "bg-slate-50 text-slate-700 text-[11px] font-bold tracking-wider p-2.5 text-left border-b border-slate-200";
   const tableCellClasses =
-    "p-4 text-sm text-black border-b border-gray-50/50 font-bold";
+    "p-2.5 text-xs text-slate-800 border-b border-slate-100 font-semibold";
   const actionButtonClasses =
-    "w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-full shadow-lg shadow-blue-200 hover:shadow-xl hover:scale-[1.01] transition-all duration-300 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 mt-4 text-sm tracking-wide";
+    "w-full h-9 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mt-3 text-xs cursor-pointer border-none";
 
   return (
-    <div className="max-w-[1600px] mx-auto px-6 py-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="w-full max-w-full px-1 py-2 space-y-4 overflow-x-hidden animate-in fade-in duration-300">
       {/* TOAST NOTIFICATION */}
       {toast.show && (
         <div className={`fixed top-10 right-10 z-[2000] px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 duration-500 flex items-center gap-4 border ${toast.type === "success"
@@ -550,7 +583,7 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
           <p className="font-bold text-sm tracking-wide">{toast.message}</p>
         </div>
       )}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* ================= Vendor ================= */}
         <div className={cardClasses} >
           <div>

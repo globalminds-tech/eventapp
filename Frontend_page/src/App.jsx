@@ -84,8 +84,8 @@ export default function App() {
         <Route path="/Cancellation" element={<Cancellation />} />
         <Route path="/usersbooking/:id" element={<Userbooking />} />
         <Route path="/validate-booking/:id" element={<QRValidation />} />
-        <Route path="/OrganizerHome" element={<ProtectedRoute allowedRoles={["organizer"]}><Sidebar /> </ProtectedRoute>}>
-          <Route index element={<ProtectedRoute allowedRoles={["organizer"]}><OrganizerWelcome /></ProtectedRoute>} />
+        <Route path="/OrganizerHome" element={<ProtectedRoute allowedRoles={["organizer"]}><WebSidebar role="organizer" /></ProtectedRoute>}>
+          <Route index element={<ProtectedRoute allowedRoles={["organizer"]}><Organizerdashboard /></ProtectedRoute>} />
           <Route path="livedashboard" element={<ProtectedRoute allowedRoles={["organizer"]}><LiveDashboard /></ProtectedRoute>} />
           <Route path="livedashfoodboard" element={<ProtectedRoute allowedRoles={["organizer"]}><LiveFoodDashboard /></ProtectedRoute>} />
           <Route path="Organizerdashboard" element={<ProtectedRoute allowedRoles={["organizer"]}><Organizerdashboard /></ProtectedRoute>} />

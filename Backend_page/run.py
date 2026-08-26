@@ -14,9 +14,7 @@ sys.pycache_prefix = cache_dir
 os.environ["PYTHONPYCACHEPREFIX"] = cache_dir
 
 
-from app import create_app
-
-app = create_app(os.environ.get("FLASK_ENV", "development"))
+import uvicorn
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=5001, reload=True)

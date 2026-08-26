@@ -103,17 +103,17 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
     });
   };
 
-  const inputClasses = "w-full h-[40px] px-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 text-sm";
-  const tableHeaderClasses = "bg-slate-100 text-slate-600 text-[12px] font-bold p-3 text-left border-b border-slate-200";
-  const tableCellClasses = "p-3 text-sm text-gray-700 border-b border-gray-100";
+  const inputClasses = "w-full h-9 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-xs font-semibold";
+  const tableHeaderClasses = "bg-slate-50 text-slate-700 text-[11px] font-bold p-2.5 text-left border-b border-slate-200";
+  const tableCellClasses = "p-2.5 text-xs text-slate-800 border-b border-slate-100 font-semibold";
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="space-y-4 animate-in fade-in duration-300">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* LEFT SECTION: VEHICLE DETAILS */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-bold text-blue-600 mb-6">Vehicle Details</h2>
+        <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200/80">
+          <h2 className="text-sm font-extrabold text-slate-900 mb-3 border-l-4 border-cyan-500 pl-2.5">Vehicle Details</h2>
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <table className="w-full">
               <thead>

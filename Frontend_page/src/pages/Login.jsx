@@ -71,6 +71,10 @@ export default function Login() {
       sessionStorage.setItem("name", data.name || "");
       sessionStorage.setItem("profile_image", data.profile_image || "");
 
+      localStorage.setItem("token", data.token || "");
+      localStorage.setItem("role", data.role || "");
+      localStorage.setItem("name", data.name || "");
+
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", formData.email);
         localStorage.setItem("rememberMe", "true");

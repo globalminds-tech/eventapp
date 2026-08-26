@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   User,
@@ -61,8 +61,7 @@ const ImageSlider = ({ images = [], className = "w-28 h-20" }) => {
 };
 
 const EventsPage = () => {
-  const location = useLocation();
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(true);
   const [editEvent, setEditEvent] = useState(null);
   const [isView, setIsView] = useState(false);
   const [events, setEvents] = useState([]);
@@ -204,16 +203,15 @@ const EventsPage = () => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const navigate = useNavigate();
+
   if (showCreate) {
     return (
       <CreateEvent
         editData={editEvent}
         isView={isView}
         onBack={() => {
-          setShowCreate(false);
-          setEditEvent(null);
-          setIsView(false);
-          fetchEvents();
+          navigate("/OrganizerHome");
         }}
       />
     );
