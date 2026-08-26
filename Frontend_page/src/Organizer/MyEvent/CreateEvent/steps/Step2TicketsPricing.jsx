@@ -246,159 +246,184 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
 
       {/* ─── RIGHT: Pricing & Payment ─── */}
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-50 rounded-lg">
-            <CreditCard className="w-4 h-4 text-blue-600" />
-          </div>
-          <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Pricing & Payment</h3>
-        </div>
-
-        {/* Razorpay Key */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Razorpay API Key</label>
-          <input name="razorpayKey" placeholder="rzp_live_..."
-            value={formData.booking?.razorpayKey || ""}
-            onChange={(e) => updateBooking("razorpayKey", e.target.value)}
-            className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm font-mono outline-none focus:ring-2 focus:ring-cyan-500"
-          />
-        </div>
-
-        {/* Paid-only section */}
-        {isPaid && (
-          <div className="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            {/* Price Type Tabs */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Price Type</label>
-              <div className="flex border-b border-slate-200">
-                <button type="button"
-                  onClick={() => { updateBooking("priceType", "National"); updateBooking("currency", "Indian Rupee - INR (₹)"); }}
-                  className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all border-none bg-transparent cursor-pointer ${
-                    formData.booking?.priceType === "National" ? "text-cyan-700 border-b-cyan-600" : "text-slate-400 border-b-transparent"
-                  }`}>
-                  National
-                </button>
-                {formData.eventDetails?.isInternationalInclude && (
-                  <button type="button"
-                    onClick={() => { updateBooking("priceType", "International"); updateBooking("currency", "US Dollar - USD ($)"); }}
-                    className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all border-none bg-transparent cursor-pointer ${
-                      formData.booking?.priceType === "International" ? "text-cyan-700 border-b-cyan-600" : "text-slate-400 border-b-transparent"
-                    }`}>
-                    International
-                  </button>
-                )}
-              </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-blue-50 rounded-lg">
+              <CreditCard className="w-4 h-4 text-blue-600" />
             </div>
+            <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Pricing & Payment</h3>
+          </div>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-700 bg-cyan-50 px-2.5 py-0.5 rounded-full border border-cyan-200">
+            {formData.booking?.chargeType || "Free"}
+          </span>
+        </div>
 
-            {/* Currency Dropdown */}
-            <div className="relative" ref={currencyDropdownRef}>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Currency</label>
-              <div onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}
-                className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm">
-                <span className="truncate text-slate-700 text-xs font-medium">
-                  {formData.booking?.currency || "Select Currency"}
-                </span>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isCurrencyDropdownOpen ? "rotate-180" : ""}`} />
-              </div>
-              {isCurrencyDropdownOpen && (
-                <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                  <div className="p-2 border-b border-slate-100">
-                    <input type="text" value={currencySearch} onChange={(e) => setCurrencySearch(e.target.value)}
-                      placeholder="Search..." className="w-full h-7 bg-slate-50 border border-slate-200 rounded-lg px-2 text-xs outline-none" />
+        {/* Charge Type Radio Selection */}
+        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Event Access Pricing Model</label>
+            <div className="grid grid-cols-2 gap-2 bg-white p-1 rounded-xl border border-slate-200">
+              {["Free", "Paid"].map((type) => (
+                <label key={type} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name="chargeType"
+                    value={type}
+                    className="hidden peer"
+                    checked={(formData.booking?.chargeType || "Free") === type}
+                    onChange={(e) => updateBooking("chargeType", e.target.value)}
+                  />
+                  <div className="text-center py-2 rounded-lg text-xs font-extrabold transition-all peer-checked:bg-gradient-to-r peer-checked:from-cyan-500 peer-checked:to-blue-600 peer-checked:text-white text-slate-500 hover:text-slate-900">
+                    {type === "Free" ? "🎟️ Free Entry Pass" : "💳 Paid Ticket Pass"}
                   </div>
-                  <div className="max-h-36 overflow-y-auto">
-                    {currencyOptions.filter((c) => c.toLowerCase().includes(currencySearch.toLowerCase())).map((cur) => (
-                      <div key={cur}
-                        onClick={() => { updateBooking("currency", cur); setIsCurrencyDropdownOpen(false); setCurrencySearch(""); }}
-                        className={`px-3 py-2 text-xs cursor-pointer transition-colors ${
-                          formData.booking?.currency === cur ? "bg-indigo-50 text-indigo-900 font-bold" : "text-slate-700 hover:bg-slate-50"
-                        }`}>
-                        {cur}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* If FREE Event */}
+          {!isPaid && (
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Total Pass Capacity / Seat Limit</label>
+                <input
+                  type="number"
+                  name="totalCapacity"
+                  placeholder="e.g. 500 Total Passes"
+                  value={formData.booking?.totalCapacity || ""}
+                  onChange={(e) => updateBooking("totalCapacity", e.target.value)}
+                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Max Passes Per Booking</label>
+                <select
+                  name="maxPerUser"
+                  value={formData.booking?.maxPerUser || "5"}
+                  onChange={(e) => updateBooking("maxPerUser", e.target.value)}
+                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+                >
+                  <option value="1">1 Pass per attendee</option>
+                  <option value="2">2 Passes per attendee</option>
+                  <option value="5">5 Passes per attendee</option>
+                  <option value="10">10 Passes per attendee</option>
+                  <option value="unlimited">Unlimited Passes</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">RSVP Issuance Approval</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: "Instant", label: "Instant Entry Pass" },
+                    { id: "Approval", label: "Organizer Approval" },
+                  ].map((mode) => (
+                    <label key={mode.id} className="cursor-pointer">
+                      <input
+                        type="radio"
+                        name="approvalMode"
+                        value={mode.id}
+                        className="hidden peer"
+                        checked={(formData.booking?.approvalMode || "Instant") === mode.id}
+                        onChange={(e) => updateBooking("approvalMode", e.target.value)}
+                      />
+                      <div className="p-2 rounded-xl border border-slate-200 text-center text-[10px] font-bold text-slate-600 peer-checked:border-cyan-500 peer-checked:bg-cyan-50 peer-checked:text-cyan-800 transition-all">
+                        {mode.label}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Include Tax */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" name="includeTax"
-                checked={formData.booking?.includeTax || false}
-                onChange={handleChange}
-                className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
-              />
-              <span className="text-xs font-bold text-slate-700">Include GST/Tax</span>
-            </label>
-
-            {/* Tax Selector */}
-            {formData.booking?.includeTax && (
-              <div className="relative" ref={taxDropdownRef}>
-                <div onClick={() => setIsTaxDropdownOpen(!isTaxDropdownOpen)}
-                  className="w-full h-10 bg-white border border-slate-200 rounded-xl px-3 flex items-center justify-between cursor-pointer text-xs">
-                  <span className="truncate text-slate-600 font-medium">
-                    {(formData.booking?.taxes || []).length > 0 ? (formData.booking.taxes).join(", ") : "Select Tax Types"}
-                  </span>
-                  <ChevronDown size={14} className="text-slate-400" />
-                </div>
-                {isTaxDropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                    <div className="p-2 border-b border-slate-100 flex items-center gap-2">
-                      <input type="text" value={taxSearch} onChange={(e) => setTaxSearch(e.target.value)}
-                        placeholder="Search tax..." className="flex-1 h-7 bg-slate-50 border border-slate-200 rounded-lg px-2 text-xs outline-none" />
-                      <button type="button" onClick={() => { setIsTaxDropdownOpen(false); setTaxSearch(""); }}
-                        className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer">
-                        <X size={14} />
-                      </button>
-                    </div>
-                    <div className="max-h-36 overflow-y-auto">
-                      {taxOptions.filter((t) => t.toLowerCase().includes(taxSearch.toLowerCase())).map((tax) => (
-                        <label key={tax} className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-indigo-50 text-xs">
-                          <input type="checkbox"
-                            checked={(formData.booking?.taxes || []).includes(tax)}
-                            onChange={() => handleTaxToggle(tax)}
-                            className="w-3.5 h-3.5 rounded border-slate-300 text-cyan-600"
-                          />
-                          <span className="text-slate-700 font-medium">{tax}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Early Bird */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Early Bird Expiry</label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Date</span>
-                  <DatePicker
-                    selected={parseDateStr(formData.booking?.earlyBirdExpireDate)}
-                    onChange={(date) => {
-                      if (!date) { updateBooking("earlyBirdExpireDate", ""); return; }
-                      updateBooking("earlyBirdExpireDate", formatDate(date));
-                    }}
-                    minDate={new Date()}
-                    maxDate={parseDateStr(formData.booking?.bookingEndDate) || eventMaxDate || undefined}
-                    dateFormat="dd/MM/yyyy"
-                    placeholderText="Expire Date"
-                    className="w-full h-9 bg-white border border-slate-200 rounded-lg px-2 text-xs outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                    wrapperClassName="w-full"
-                  />
-                </div>
-                <div>
-                  <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Time</span>
-                  <CustomTimePicker
-                    value={formData.booking?.earlyBirdExpireTime || ""}
-                    hasError={false}
-                    onChange={(v) => updateBooking("earlyBirdExpireTime", v)}
-                  />
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* If PAID Event */}
+          {isPaid && (
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Ticket Price Amount *</label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-xs font-black text-slate-500">₹</span>
+                  <input
+                    type="number"
+                    name="price"
+                    placeholder="499"
+                    value={formData.booking?.price || ""}
+                    onChange={(e) => updateBooking("price", e.target.value)}
+                    className="w-full h-9 bg-white border border-slate-200 rounded-xl pl-7 pr-3 text-xs font-extrabold outline-none focus:ring-1 focus:ring-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Total Pass Quantity Available</label>
+                <input
+                  type="number"
+                  name="totalCapacity"
+                  placeholder="e.g. 1000 Passes"
+                  value={formData.booking?.totalCapacity || ""}
+                  onChange={(e) => updateBooking("totalCapacity", e.target.value)}
+                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500"
+                />
+              </div>
+
+              {/* Price Type Tabs */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Price Tier</label>
+                <div className="flex border-b border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => { updateBooking("priceType", "National"); updateBooking("currency", "Indian Rupee - INR (₹)"); }}
+                    className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all border-none bg-transparent cursor-pointer ${
+                      (formData.booking?.priceType || "National") === "National" ? "text-cyan-700 border-b-cyan-600" : "text-slate-400 border-b-transparent"
+                    }`}
+                  >
+                    National (INR)
+                  </button>
+                  {formData.eventDetails?.isInternationalInclude && (
+                    <button
+                      type="button"
+                      onClick={() => { updateBooking("priceType", "International"); updateBooking("currency", "US Dollar - USD ($)"); }}
+                      className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all border-none bg-transparent cursor-pointer ${
+                        formData.booking?.priceType === "International" ? "text-cyan-700 border-b-cyan-600" : "text-slate-400 border-b-transparent"
+                      }`}
+                    >
+                      International (USD)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Include Tax Toggle */}
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  name="includeTax"
+                  checked={formData.booking?.includeTax || false}
+                  onChange={handleChange}
+                  className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span className="text-xs font-bold text-slate-700">Include GST / Taxes (18%)</span>
+              </label>
+
+              {/* Refund Policy */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Refund & Cancellation Terms</label>
+                <select
+                  name="refundPolicy"
+                  value={formData.booking?.refundPolicy || "Standard"}
+                  onChange={(e) => updateBooking("refundPolicy", e.target.value)}
+                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-2 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+                >
+                  <option value="Standard">100% Refund until 48 hrs before event</option>
+                  <option value="Strict">50% Refund until 7 days before event</option>
+                  <option value="NoRefund">Non-Refundable Ticket</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

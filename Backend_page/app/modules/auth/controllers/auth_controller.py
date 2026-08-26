@@ -10,6 +10,22 @@ class AuthController:
         }
 
     @staticmethod
+    def register_organizer(raw_data: dict):
+        result = AuthService.register_organizer(raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def register_exhibitor(raw_data: dict):
+        result = AuthService.register_exhibitor(raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
     def login(raw_data: dict):
         result = AuthService.login_user(raw_data)
         return {

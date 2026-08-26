@@ -1,0 +1,46 @@
+from typing import Optional
+from sqlalchemy import String, Text, Integer, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column
+from app.extensions.database import db
+
+class OrganizerProfile(db.Model):
+    __tablename__ = 'organizer_profiles'
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    business_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    gstin: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    pan_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    business_address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    state: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    pincode: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    website_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    bank_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    account_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    ifsc_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    account_holder: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    upi_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    kyc_status: Mapped[Optional[str]] = mapped_column(String(50), default="VERIFIED")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "company_name": self.company_name,
+            "business_type": self.business_type,
+            "gstin": self.gstin,
+            "pan_number": self.pan_number,
+            "business_address": self.business_address,
+            "city": self.city,
+            "state": self.state,
+            "pincode": self.pincode,
+            "website_url": self.website_url,
+            "bank_name": self.bank_name,
+            "account_number": self.account_number,
+            "ifsc_code": self.ifsc_code,
+            "account_holder": self.account_holder,
+            "upi_id": self.upi_id,
+            "kyc_status": self.kyc_status
+        }

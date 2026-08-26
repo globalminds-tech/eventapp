@@ -213,12 +213,9 @@ export default function WebSidebar({ role }) {
                 className="flex-1 min-w-0 cursor-pointer hover:opacity-80 transition"
                 title="View Profile & Action Items"
               >
-                <div className="flex items-center gap-1.5 mb-1">
-                  <h4 className="text-xs font-semibold text-slate-100 truncate leading-none">
-                    {username}
-                  </h4>
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                </div>
+                <h4 className="text-xs font-semibold text-slate-100 truncate leading-none mb-1">
+                  {username}
+                </h4>
                 <p className="text-[10px] font-medium text-slate-400 truncate uppercase tracking-wider">
                   {theme.roleLabel}
                 </p>

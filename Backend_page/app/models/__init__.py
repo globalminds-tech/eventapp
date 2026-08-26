@@ -1,4 +1,6 @@
 from .user import User
+from .organizer_profile import OrganizerProfile
+from .exhibitor_profile import ExhibitorProfile
 from .event import (
     EventDetails, EventBookingDetails, EventLayout,
     EventFile, EventTerm, EventGuest
@@ -19,7 +21,7 @@ from .todo import TodoTask, MessageGreeting, Contact
 from .category import CategoryMaster
 
 __all__ = [
-    'User', 'CategoryMaster',
+    'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster',
     'EventDetails', 'EventBookingDetails', 'EventLayout',
     'EventFile', 'EventTerm', 'EventGuest',
     'Venue', 'VenueDocument', 'Country', 'State', 'City',

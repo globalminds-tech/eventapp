@@ -53,7 +53,6 @@ export const DEMO_EVENT_DATA = {
     chargeType: "Per Ticket",
     currency: "INR",
     includeTax: true,
-    razorpayKey: "rzp_test_demo_key_12345",
     ticketTiers: [
       {
         id: 1,

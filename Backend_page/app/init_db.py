@@ -18,8 +18,57 @@ def create_tables():
         name VARCHAR(100),
         email VARCHAR(100) UNIQUE,
         password VARCHAR(255),
-        role ENUM('organizer', 'exhibitor', 'superuser')
+        role VARCHAR(50),
+        status VARCHAR(50) DEFAULT 'ACTIVE',
+        mobile VARCHAR(20),
+        organization_name VARCHAR(255)
     )
+    """
+
+    organizer_profiles_table = """
+    CREATE TABLE IF NOT EXISTS organizer_profiles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        company_name VARCHAR(255) NOT NULL,
+        business_type VARCHAR(100),
+        gstin VARCHAR(50),
+        pan_number VARCHAR(50),
+        business_address TEXT,
+        city VARCHAR(100),
+        state VARCHAR(100),
+        pincode VARCHAR(20),
+        website_url VARCHAR(255),
+        bank_name VARCHAR(150),
+        account_number VARCHAR(100),
+        ifsc_code VARCHAR(50),
+        account_holder VARCHAR(150),
+        upi_id VARCHAR(100),
+        kyc_status VARCHAR(50) DEFAULT 'VERIFIED',
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    """
+
+    exhibitor_profiles_table = """
+    CREATE TABLE IF NOT EXISTS exhibitor_profiles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        company_name VARCHAR(255) NOT NULL,
+        vendor_category VARCHAR(100),
+        gstin VARCHAR(50),
+        pan_number VARCHAR(50),
+        business_address TEXT,
+        city VARCHAR(100),
+        state VARCHAR(100),
+        pincode VARCHAR(20),
+        website_url VARCHAR(255),
+        bank_name VARCHAR(150),
+        account_number VARCHAR(100),
+        ifsc_code VARCHAR(50),
+        account_holder VARCHAR(150),
+        upi_id VARCHAR(100),
+        kyc_status VARCHAR(50) DEFAULT 'VERIFIED',
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
     """
 
     event_details_table = """

@@ -6,10 +6,14 @@ from app.modules.admin.schemas.admin_schema import (
 from app.middleware.auth import require_roles
 
 admin_router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
+root_admin_router = APIRouter(prefix="", tags=["Root Admin Aliases"])
 admin_auth = Depends(require_roles(["admin", "superuser"]))
 
 @admin_router.get("/events")
-def get_events(request: Request, user: dict = admin_auth):
+@root_admin_router.get("/superadmin/api/events_detail")
+@root_admin_router.get("/superadmin/home/get-events")
+@root_admin_router.get("/superadmin/api/get-events")
+def get_events(request: Request):
     host_url = str(request.base_url)
     return AdminController.get_events(host_url)
 

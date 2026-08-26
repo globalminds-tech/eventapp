@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import axios from "axios";
 import { getevent } from "@/Services/api";
 import {
@@ -13,6 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export const Organizerdashboard = () => {
   const navigate = useNavigate();
+  const reduxUser = useSelector((state) => state.user);
+  
+  const organizerName = reduxUser.name || sessionStorage.getItem("name") || localStorage.getItem("name") || "Organizer";
+  const organizerCompany = reduxUser.organization_name || sessionStorage.getItem("organization_name") || localStorage.getItem("organization_name") || "";
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,7 +153,7 @@ export const Organizerdashboard = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Organizer Dashboard
+              Welcome, {organizerName} {organizerCompany && <span className="text-cyan-600 font-bold text-lg sm:text-xl">({organizerCompany})</span>}
             </h1>
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

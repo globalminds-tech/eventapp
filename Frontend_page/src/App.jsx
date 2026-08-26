@@ -6,6 +6,8 @@ import Home from "./pages/Home";
 import AllEvents from "./pages/AllEvents";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import OrganizerRegister from "./pages/OrganizerRegister";
+import ExhibitorRegister from "./pages/ExhibitorRegister";
 import { Sidebar } from "./Organizer/Homepage"
 import { LiveDashboard } from "./Organizer/Dashboard/LiveDashboard";
 import { LiveFoodDashboard } from "./Organizer/Dashboard/LiveFooddashboard";
@@ -77,7 +79,11 @@ export default function App() {
         <Route path="/event-detail/:id" element={<EventDetail />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/Login" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/register/organizer" element={<OrganizerRegister />} />
+        <Route path="/register/exhibitor" element={<ExhibitorRegister />} />
         <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/Terms" element={<Terms />} />
         <Route path="/Help_Center" element={<Help />} />

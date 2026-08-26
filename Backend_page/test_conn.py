@@ -1,11 +1,12 @@
-from app.database import get_db_connection
+from app.extensions.database import engine, db_session
+from sqlalchemy import text
 
 try:
-    db = get_db_connection()
-    print("Connection successful!")
-    cursor = db.cursor()
-    cursor.execute("SELECT DATABASE()")
-    print("Database:", cursor.fetchone())
-    db.close()
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT current_database(), current_user;")).fetchone()
+        print("✅ Database Connection Successful!")
+        print(f"Connected Host: {engine.url.host}")
+        print(f"Database Name: {result[0]}")
+        print(f"Database User: {result[1]}")
 except Exception as e:
-    print("Connection failed:", e)
+    print(f"❌ Connection Failed: {e}")

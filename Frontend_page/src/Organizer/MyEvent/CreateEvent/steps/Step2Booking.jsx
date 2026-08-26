@@ -295,7 +295,6 @@ const Step2Booking = ({ formData, setFormData, showStep2Errors }) => {
         updatedData.booking = {
           ...updatedData.booking,
           includeTax: false,
-          razorpayKey: "",
           priceType: "",
           currency: "",
           earlyBirdExpire: "",
@@ -717,18 +716,7 @@ const Step2Booking = ({ formData, setFormData, showStep2Errors }) => {
             )}
           </div>
 
-          <div className="group">
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5 ml-1">
-              Razorpay API Key
-            </label>
-            <input
-              name="razorpayKey"
-              placeholder="rzp_live_..."
-              value={formData.booking?.razorpayKey || ""}
-              onChange={handleChange}
-              className="w-full bg-gray-50 border-0 ring-1 ring-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all outline-none font-mono text-sm"
-            />
-          </div>
+
 
           {/* ONLY PAID */}
           {isPaid && (

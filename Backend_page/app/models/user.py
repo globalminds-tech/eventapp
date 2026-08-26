@@ -11,6 +11,7 @@ class User(db.Model):
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    status: Mapped[Optional[str]] = mapped_column(String(50), default="ACTIVE")
     mobile: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -19,12 +20,13 @@ class User(db.Model):
     profile_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     organization_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    def __init__(self, name: Optional[str] = None, email: str = "", password: str = "", role: Optional[str] = None, mobile: Optional[str] = None, address: Optional[str] = None, country: Optional[str] = None, state: Optional[str] = None, city: Optional[str] = None, profile_image: Optional[str] = None, organization_name: Optional[str] = None, **kwargs):
+    def __init__(self, name: Optional[str] = None, email: str = "", password: str = "", role: Optional[str] = None, status: Optional[str] = "ACTIVE", mobile: Optional[str] = None, address: Optional[str] = None, country: Optional[str] = None, state: Optional[str] = None, city: Optional[str] = None, profile_image: Optional[str] = None, organization_name: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
         self.name = name
         self.email = email
         self.password = password
         self.role = role
+        self.status = status
         self.mobile = mobile
         self.address = address
         self.country = country
@@ -39,6 +41,7 @@ class User(db.Model):
             "name": self.name,
             "email": self.email,
             "role": self.role,
+            "status": self.status,
             "mobile": self.mobile,
             "address": self.address,
             "country": self.country,
