@@ -4,43 +4,56 @@ import {
   HelpCircle, Gift, Tag, CreditCard, Utensils,
   Home, Settings, Shield, Share2, ThumbsUp,
   FileText, User, X, LogOut, ChevronRight, Edit3,
-  ArrowLeft, Info
+  ArrowLeft, Info, ArrowUpRight
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent } from "@/components/ui/Card";
 
 export default function Profile() {
   const navigate = useNavigate();
   const [showDevRoleModal, setShowDevRoleModal] = useState(false);
-  const [userName, setUserName] = useState("Sneha");
+  const [userName, setUserName] = useState("User");
+  const [userRole, setUserRole] = useState("public");
 
   useEffect(() => {
-    const storedName = localStorage.getItem("name") || sessionStorage.getItem("name");
-    if (storedName) {
-      setUserName(storedName);
-    }
+    const storedName = sessionStorage.getItem("name") || localStorage.getItem("name") || "User";
+    const storedRole = (sessionStorage.getItem("role") || localStorage.getItem("role") || "public").toLowerCase();
+    setUserName(storedName);
+    setUserRole(storedRole);
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("name");
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("role");
-    sessionStorage.removeItem("name");
+    sessionStorage.clear();
+    localStorage.clear();
     navigate("/Login");
+  };
+
+  const getBackRoute = () => {
+    if (userRole === "superuser") return "/superuser/dashboard";
+    if (userRole === "organizer") return "/OrganizerHome";
+    if (userRole === "exhibitor") return "/exhibitor/dashboard";
+    return "/";
+  };
+
+  const getRoleBadge = () => {
+    if (userRole === "superuser") return "👑 Super Admin";
+    if (userRole === "organizer") return "🎪 Event Organizer";
+    if (userRole === "exhibitor") return "🏬 Exhibitor Vendor";
+    return "🎟️ Platform Member";
   };
 
   const handleRoleSwitch = (role, targetRoute) => {
     if (role === "public") {
       sessionStorage.removeItem("role");
-      sessionStorage.removeItem("token");
       localStorage.removeItem("role");
-      localStorage.removeItem("token");
     } else {
       sessionStorage.setItem("role", role);
-      sessionStorage.setItem("token", "dev-token-session");
+      sessionStorage.setItem("token", sessionStorage.getItem("token") || localStorage.getItem("token") || "dev-token-session");
       localStorage.setItem("role", role);
-      localStorage.setItem("token", "dev-token-session");
+      localStorage.setItem("token", localStorage.getItem("token") || "dev-token-session");
     }
+    setUserRole(role);
     setShowDevRoleModal(false);
     navigate(targetRoute);
   };
@@ -54,9 +67,10 @@ export default function Profile() {
   ];
 
   const menuGroup2 = [
-    { title: "Partner with Us (List Show / Book Booth)", icon: Home, isHighlight: true, path: "/OrganizerHome" },
+    { title: "Dashboard / Workspace", icon: Home, isHighlight: true, path: getBackRoute() },
     { title: "Account & Profile Settings", icon: Settings, path: null },
     { title: "⚡ Developer Role Switcher", icon: Shield, action: () => setShowDevRoleModal(true) },
+    { title: "Log Out / Switch Account", icon: LogOut, action: handleLogout },
   ];
 
   const menuGroup3 = [
@@ -69,7 +83,6 @@ export default function Profile() {
   const handleRowClick = (item) => {
     if (item.action) {
       item.action();
-      
     } else if (item.path) {
       navigate(item.path);
     } else {
@@ -85,11 +98,11 @@ export default function Profile() {
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate(getBackRoute())}
               className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer border-none bg-transparent font-bold text-xs"
             >
               <ArrowLeft size={16} />
-              <span>Back to Home</span>
+              <span>Back to Workspace</span>
             </button>
             <div className="w-px h-6 bg-slate-200" />
             <h1 className="text-base font-black text-slate-900 uppercase tracking-wider">Account Control Panel</h1>
@@ -101,7 +114,7 @@ export default function Profile() {
               className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-extrabold text-xs rounded-xl cursor-pointer bg-transparent transition-all shadow-sm"
             >
               <LogOut size={14} />
-              <span>Logout</span>
+              <span>Switch User / Logout</span>
             </button>
           </div>
         </div>
@@ -128,7 +141,7 @@ export default function Profile() {
 
             <h2 className="text-2xl font-black text-slate-900 mt-5 leading-none">{userName}</h2>
             <p className="text-[#be123c] font-bold text-xs uppercase tracking-widest mt-2 px-3 py-1 bg-[#be123c]/5 rounded-full">
-              Platform Member
+              {getRoleBadge()}
             </p>
 
             <div className="w-full h-px bg-slate-100 my-6" />
@@ -173,6 +186,104 @@ export default function Profile() {
         {/* Right Side: Options Grid (lg:col-span-8) */}
         <section className="lg:col-span-8 flex flex-col gap-8">
           
+          {/* ── OPERATIONAL WIDGETS ("NEEDS YOUR ATTENTION") ── */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                Needs Your Attention — Action Items
+              </h3>
+              <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border border-amber-200">
+                ● 1 Action Pending
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Widget 1: Account KYC Status */}
+              <Card className="border-slate-200/80 shadow-xs hover:border-amber-300 transition-all bg-gradient-to-br from-white to-amber-50/20">
+                <CardContent className="p-4.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Account KYC & Bank Payout</span>
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-extrabold">ACTION REQUIRED</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    Submit business GST/PAN details and payout bank account to enable instant ticket settlement.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => alert("Opening Bank Payout & KYC Setup Wizard")}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                  >
+                    <span>Complete KYC Now</span>
+                    <ArrowUpRight size={14} />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Widget 2: VIP Ticket Alert */}
+              <Card className="border-slate-200/80 shadow-xs hover:border-cyan-300 transition-all bg-gradient-to-br from-white to-cyan-50/20">
+                <CardContent className="p-4.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">VIP Ticket Demand</span>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">96% SOLD</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    482 / 500 VIP passes sold for MRC Grand Fest. Tier adjustment recommended.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate("/OrganizerHome/Organizerdashboard")}
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                  >
+                    <span>Manage Ticket Tiers</span>
+                    <ArrowUpRight size={14} />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Widget 3: Gate Staffing */}
+              <Card className="border-slate-200/80 shadow-xs hover:border-indigo-300 transition-all bg-gradient-to-br from-white to-indigo-50/20">
+                <CardContent className="p-4.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Gate Scanner Staff</span>
+                    <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px] font-extrabold">2 UNASSIGNED</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    Main entrance turnstiles require scanner operator staff assignment before doors open.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate("/OrganizerHome/EventCheckIn")}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                  >
+                    <span>Assign Gate Operators</span>
+                    <ArrowUpRight size={14} />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Widget 4: Food Passes */}
+              <Card className="border-slate-200/80 shadow-xs hover:border-emerald-300 transition-all bg-gradient-to-br from-white to-emerald-50/20">
+                <CardContent className="p-4.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Catering & Food Passes</span>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">CATERING READY</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    2,940 VIP meal vouchers active across food stalls. Scan telemetry operational.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate("/OrganizerHome/FoodCheckIn")}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                  >
+                    <span>Food Token Scan</span>
+                    <ArrowUpRight size={14} />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           {/* Quick Actions (Partner, Switching) */}
           <div>
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">

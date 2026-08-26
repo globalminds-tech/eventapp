@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { getPolicies, createPolicy } from "../../../../Services/api";
 import { useSelector } from "react-redux";
-import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, Info, Edit } from "lucide-react";
+import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit } from "lucide-react";
 
 const Step5Terms = ({ formData, setFormData }) => {
   const [policyData, setPolicyData] = useState({});
@@ -25,6 +25,24 @@ const Step5Terms = ({ formData, setFormData }) => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const [isGroupOpen, setIsGroupOpen] = useState(false);
+  const [isTypeOpen, setIsTypeOpen] = useState(false);
+  const [isNameOpen, setIsNameOpen] = useState(false);
+
+  const groupRef = useRef(null);
+  const typeRef = useRef(null);
+  const nameRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (groupRef.current && !groupRef.current.contains(e.target)) setIsGroupOpen(false);
+      if (typeRef.current && !typeRef.current.contains(e.target)) setIsTypeOpen(false);
+      if (nameRef.current && !nameRef.current.contains(e.target)) setIsNameOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const Redexorganizer = useSelector((state) => state.user);
   const storedUser = {
@@ -225,12 +243,12 @@ const Step5Terms = ({ formData, setFormData }) => {
   const currentTerms = (formData.terms || []).slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil((formData.terms || []).length / itemsPerPage);
 
-  const cardClasses = "bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md";
-  const labelClasses = "block text-sm font-semibold text-gray-700 mb-2 ml-1";
-  const selectClasses = "w-full px-6 py-4 rounded-full border border-gray-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 appearance-none text-sm font-bold text-slate-700 transition-all cursor-pointer disabled:bg-slate-50 disabled:cursor-not-allowed";
+  const cardClasses = "bg-white p-4 rounded-xl shadow-xs border border-slate-200/80 transition-all duration-200 hover:shadow-sm";
+  const labelClasses = "block text-xs font-bold text-slate-700 mb-1 ml-1";
+  const selectClasses = "w-full h-9 px-3 py-1 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed";
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
+    <div className="w-full max-w-full overflow-x-hidden space-y-4 animate-in fade-in duration-300">
       {/* TOAST NOTIFICATION */}
       {toast.show && (
         <div className={`fixed top-10 right-10 z-[3000] px-8 py-5 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 flex items-center gap-4 border-l-8 ${toast.type === "success" ? "bg-white text-emerald-600 border-emerald-500 shadow-emerald-100" : "bg-white text-rose-600 border-rose-500 shadow-rose-100"
@@ -242,7 +260,7 @@ const Step5Terms = ({ formData, setFormData }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* LEFT SECTION: PREMIUM SELECTION FORM */}
         <div className={`${cardClasses} flex flex-col md:h-[calc(110vh-290px)] md:overflow-y-auto custom-scrollbar pr-2`}>
           <div className="flex justify-between items-center mb-8 border-l-4 border-purple-500 pl-5">
@@ -259,83 +277,121 @@ const Step5Terms = ({ formData, setFormData }) => {
             </button>
           </div>
 
-          <div className="space-y-6 flex-1">
-            <div className="space-y-2">
+          <div className="space-y-4 flex-1">
+            {/* Policy Group */}
+            <div className="space-y-1.5" ref={groupRef}>
               <label className={labelClasses}>Policy Group <span className="text-red-500">*</span></label>
-              <div className="relative group">
-                <select
-                  value={policyGroup}
-                  onChange={(e) => {
-                    setPolicyGroup(e.target.value);
-                    setPolicyType("");
-                    setPolicyName("");
-                  }}
-                  className={selectClasses}
+              <div className="relative">
+                <div
+                  onClick={() => setIsGroupOpen(!isGroupOpen)}
+                  className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center justify-between cursor-pointer text-xs font-semibold text-slate-900 transition-all hover:border-cyan-400"
                 >
-                  <option value="">Select Group</option>
-                  <option value="All">All Groups</option>
-                  {Array.from(new Set([
-                    "Cancellation Policy",
-                    "Refund Policy",
-                    "Safety Policy",
-                    "Privacy Policy",
-                    "Payment Policy",
-                    "Paper Submission Guidelines",
-                    "Registration Policy",
-                    ...Object.keys(policyData)
-                  ])).map((group) => (
-                    <option key={group} value={group}>{group}</option>
-                  ))}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-focus-within:text-purple-500 transition-colors">
-                  <ChevronRight size={18} className="rotate-90" />
+                  <span className={policyGroup ? "text-slate-900 font-medium" : "text-slate-400 font-normal"}>
+                    {policyGroup || "Select Group"}
+                  </span>
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isGroupOpen ? "rotate-180 text-cyan-600" : ""}`} />
                 </div>
+
+                {isGroupOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="max-h-48 overflow-y-auto">
+                      <div
+                        onClick={() => { setPolicyGroup("All"); setPolicyType(""); setPolicyName(""); setIsGroupOpen(false); }}
+                        className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${policyGroup === "All" ? "bg-cyan-50 text-cyan-800 font-bold" : "text-slate-700 hover:bg-slate-50"}`}
+                      >
+                        All Groups
+                      </div>
+                      {Array.from(new Set([
+                        "Cancellation Policy",
+                        "Refund Policy",
+                        "Safety Policy",
+                        "Privacy Policy",
+                        "Payment Policy",
+                        "Paper Submission Guidelines",
+                        "Registration Policy",
+                        ...Object.keys(policyData)
+                      ])).map((group) => (
+                        <div
+                          key={group}
+                          onClick={() => { setPolicyGroup(group); setPolicyType(""); setPolicyName(""); setIsGroupOpen(false); }}
+                          className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${policyGroup === group ? "bg-cyan-50 text-cyan-800 font-bold" : "text-slate-700 hover:bg-slate-50"}`}
+                        >
+                          {group}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* Policy Type */}
+            <div className="space-y-1.5" ref={typeRef}>
               <label className={labelClasses}>Policy Type <span className="text-red-500">*</span></label>
-              <div className="relative group">
-                <select
-                  value={policyType}
-                  onChange={(e) => {
-                    setPolicyType(e.target.value);
-                    setPolicyName("");
-                  }}
-                  className={selectClasses}
-                  disabled={!policyGroup}
+              <div className="relative">
+                <div
+                  onClick={() => policyGroup && setIsTypeOpen(!isTypeOpen)}
+                  className={`w-full h-9 bg-slate-50 border rounded-xl px-3 flex items-center justify-between text-xs font-semibold transition-all ${
+                    policyGroup ? "cursor-pointer hover:border-cyan-400 text-slate-900 border-slate-200" : "cursor-not-allowed opacity-50 text-slate-400 border-slate-200"
+                  }`}
                 >
-                  <option value="">Select Type</option>
-                  {getAvailableTypes().map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <ChevronRight size={18} className="rotate-90" />
+                  <span className={policyType ? "text-slate-900 font-medium" : "text-slate-400 font-normal"}>
+                    {policyType || "Select Type"}
+                  </span>
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isTypeOpen ? "rotate-180 text-cyan-600" : ""}`} />
                 </div>
+
+                {isTypeOpen && policyGroup && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="max-h-48 overflow-y-auto">
+                      {getAvailableTypes().map((type) => (
+                        <div
+                          key={type}
+                          onClick={() => { setPolicyType(type); setPolicyName(""); setIsTypeOpen(false); }}
+                          className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${policyType === type ? "bg-cyan-50 text-cyan-800 font-bold" : "text-slate-700 hover:bg-slate-50"}`}
+                        >
+                          {type}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="space-y-2">
+            {/* Policy Name */}
+            <div className="space-y-1.5" ref={nameRef}>
               <label className={labelClasses}>Policy Name <span className="text-red-500">*</span></label>
-              <div className="relative group">
-                <select
-                  value={policyName}
-                  onChange={(e) => setPolicyName(e.target.value)}
-                  className={selectClasses}
-                  disabled={!policyType}
+              <div className="relative">
+                <div
+                  onClick={() => policyType && setIsNameOpen(!isNameOpen)}
+                  className={`w-full h-9 bg-slate-50 border rounded-xl px-3 flex items-center justify-between text-xs font-semibold transition-all ${
+                    policyType ? "cursor-pointer hover:border-cyan-400 text-slate-900 border-slate-200" : "cursor-not-allowed opacity-50 text-slate-400 border-slate-200"
+                  }`}
                 >
-                  <option value="">Select Policy</option>
-                  {getAvailableNames().map((name) => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <ChevronRight size={18} className="rotate-90" />
+                  <span className={policyName ? "text-slate-900 font-medium" : "text-slate-400 font-normal"}>
+                    {policyName || "Select Policy"}
+                  </span>
+                  <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isNameOpen ? "rotate-180 text-cyan-600" : ""}`} />
                 </div>
+
+                {isNameOpen && policyType && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="max-h-48 overflow-y-auto">
+                      {getAvailableNames().map((name) => (
+                        <div
+                          key={name}
+                          onClick={() => { setPolicyName(name); setIsNameOpen(false); }}
+                          className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${policyName === name ? "bg-cyan-50 text-cyan-800 font-bold" : "text-slate-700 hover:bg-slate-50"}`}
+                        >
+                          {name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-
             {/* DESCRIPTION PREVIEW */}
             {policyName && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -362,14 +418,14 @@ const Step5Terms = ({ formData, setFormData }) => {
               </label>
             </div>
 
-            <div className="pt-6">
+            <div className="pt-3">
               <button
                 onClick={addPolicy}
                 disabled={!policyGroup || !policyType || !policyName}
-                className="w-full py-5 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white font-black rounded-full shadow-xl shadow-purple-100 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+                className="w-full h-9 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 text-xs cursor-pointer border-none"
               >
-                {editingIndex !== null ? <Edit size={18} /> : <Plus size={18} />}
-                {editingIndex !== null ? "Update Policy" : "Add to Selection"}
+                {editingIndex !== null ? <Edit size={14} /> : <Plus size={14} />}
+                <span>{editingIndex !== null ? "Update Policy" : "Add to Selection"}</span>
               </button>
               {editingIndex !== null && (
                 <button

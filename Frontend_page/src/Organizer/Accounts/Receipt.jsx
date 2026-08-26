@@ -1,16 +1,49 @@
 import React, { useState, useEffect } from "react";
-import { Eye, ChevronLeft, ChevronRight, Search, X, Calendar } from "lucide-react";
+import { Eye, ChevronLeft, ChevronRight, Search, X, Calendar, Receipt as ReceiptIcon, FileText } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent } from "@/components/ui/Card";
 
 export const Receipt = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [data, setData] = useState([]); // Placeholder for actual data
+  const [data, setData] = useState([
+    {
+      invoiceNo: "INV-2026-001",
+      date: "2026-09-15",
+      type: "Ticket Payout",
+      personType: "Attendee",
+      billingName: "Rahul Kumar",
+      visitorName: "Rahul Kumar",
+      vehicleNo: "TN-01-AB-1234",
+      eventName: "MRC Grand Music Fest 2026",
+      amount: "1,996",
+      status: "Paid",
+      createdBy: "Organizer System",
+      createdOn: "2026-09-15"
+    },
+    {
+      invoiceNo: "INV-2026-002",
+      date: "2026-09-18",
+      type: "Stall Registration",
+      personType: "Exhibitor",
+      billingName: "TechCorp Solutions",
+      visitorName: "Suresh Raina",
+      vehicleNo: "TN-09-XY-9876",
+      eventName: "Valluvar Kottam Craft Expo",
+      amount: "12,500",
+      status: "Paid",
+      createdBy: "Admin Approval",
+      createdOn: "2026-09-18"
+    }
+  ]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Pagination Logic
   const filteredData = data.filter(item =>
     (item.invoiceNo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.billingName || "").toLowerCase().includes(searchTerm.toLowerCase())
+    (item.billingName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (item.eventName || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -21,238 +54,142 @@ export const Receipt = () => {
   }, [searchTerm]);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans">
-      <h1 className="text-3xl font-bold text-slate-800 mb-8">
-        Receipt Management
-      </h1>
-
-      {/* FILTER SECTION */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* FROM DATE */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              From Date <span className="text-red-500 font-bold lowercase tracking-normal ml-1">*</span>
-            </label>
-            <div className="relative group">
-              <input
-                type="date"
-                id="fromDate"
-                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none text-slate-700 text-sm font-semibold"
-              />
-              <Calendar className="absolute right-3 top-3 text-slate-400 group-hover:text-blue-500 transition-colors pointer-events-none" size={18} />
-            </div>
+    <div className="space-y-6 pb-12 w-full">
+      {/* ── SLEEK PAGE HEADER BAR ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Billings & Financial Receipts
+            </h1>
+            <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 px-2.5 py-0.5 font-bold text-[11px]">
+              Financial Ledger
+            </Badge>
           </div>
-
-          {/* TO DATE */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              To Date <span className="text-red-500 font-bold lowercase tracking-normal ml-1">*</span>
-            </label>
-            <div className="relative group">
-              <input
-                type="date"
-                id="toDate"
-                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none text-slate-700 text-sm font-semibold"
-              />
-              <Calendar className="absolute right-3 top-3 text-slate-400 group-hover:text-blue-500 transition-colors pointer-events-none" size={18} />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              Transaction Type <span className="text-red-500 font-bold lowercase tracking-normal ml-1">*</span>
-            </label>
-            <select className="w-full p-3 mt-1.5 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 text-sm font-semibold">
-              <option>Select Type</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              Plan / Event Name <span className="text-red-500 font-bold lowercase tracking-normal ml-1">*</span>
-            </label>
-            <select className="w-full p-3 mt-1.5 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 text-sm font-semibold">
-              <option>Plan / Event Name</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-          <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              Payment Status <span className="text-red-500 font-bold lowercase tracking-normal ml-1">*</span>
-            </label>
-            <select className="w-full p-3 mt-1.5 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-slate-700 text-sm font-semibold">
-              <option>All Status</option>
-              <option>Paid</option>
-              <option>Pending</option>
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <button className="w-full bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
-              <Search size={18} />
-              Search Receipts
-            </button>
-          </div>
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Download payment receipts, invoice history, payout settlements, and transaction logs.
+          </p>
         </div>
       </div>
 
-      {/* TABLE SECTION */}
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden p-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div className="relative w-full md:w-80">
+      {/* ── FILTER SECTION ── */}
+      <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              From Date
+            </label>
             <input
-              placeholder="Search Keyword"
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium"
+              type="date"
+              id="fromDate"
+              className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 text-xs font-semibold"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              To Date
+            </label>
+            <input
+              type="date"
+              id="toDate"
+              className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 text-xs font-semibold"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Transaction Type
+            </label>
+            <select className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 text-xs font-semibold">
+              <option>All Transactions</option>
+              <option>Ticket Sales Payout</option>
+              <option>Stall Registration Fee</option>
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Event Selection
+            </label>
+            <select className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 text-xs font-semibold">
+              <option>All Events</option>
+              <option>MRC Grand Music Fest 2026</option>
+              <option>Valluvar Kottam Craft Expo</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      {/* ── SHADCN RECEIPT DATA TABLE ── */}
+      <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-4">
+          <div className="relative w-72">
+            <Search className="absolute left-3.5 top-2.5 text-slate-400 w-4 h-4" />
+            <input
+              placeholder="Search invoice no or name..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-xs font-semibold"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Search className="absolute left-3 top-3.5 text-slate-400" size={18} />
-          </div>
-
-          <div className="flex items-center gap-4 w-full md:w-auto">
-            <div className="flex flex-col">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Total Amount</label>
-              <div className="relative">
-                <input 
-                  className="pl-8 pr-4 py-2 border border-slate-200 rounded-xl bg-slate-50 font-bold text-slate-700 text-sm outline-none" 
-                  value="0.00"
-                  readOnly
-                />
-                <span className="absolute left-3 top-2 text-slate-400 font-bold text-sm">₹</span>
-              </div>
-            </div>
-            <button 
-              className="mt-5 p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-100"
-              title="Clear Filters"
-            >
-              <X size={20} />
-            </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full min-w-[1600px]">
-              <thead>
-                <tr className="bg-sky-600 text-white">
-                  <th className="px-6 py-4 text-center text-sm font-bold text-white tracking-wider">Action</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Invoice No</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Invoice Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Invoice Type</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Billing Person Type</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Billing Person Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Visitor Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Vehicle No</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Plan / Event Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Total Amount</th>
-                  <th className="px-6 py-4 text-center text-sm font-bold text-white tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Created By</th>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Created On</th>
-                </tr>
-              </thead>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3.5 px-4 text-center">Action</th>
+                <th className="py-3.5 px-4">Invoice No</th>
+                <th className="py-3.5 px-4">Invoice Date</th>
+                <th className="py-3.5 px-4">Type</th>
+                <th className="py-3.5 px-4">Billing Name</th>
+                <th className="py-3.5 px-4">Event Name</th>
+                <th className="py-3.5 px-4">Total Amount</th>
+                <th className="py-3.5 px-4 text-center">Status</th>
+              </tr>
+            </thead>
 
-              <tbody className="divide-y divide-slate-50">
-                {currentData.length === 0 ? (
-                  <tr>
-                    <td colSpan="13" className="px-6 py-20 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
-                          <Eye className="text-slate-300" size={32} />
-                        </div>
-                        <p className="text-slate-400 font-bold italic text-sm">No receipts found matching your criteria</p>
-                      </div>
+            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+              {currentData.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <ReceiptIcon size={32} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm font-semibold">No receipts found matching your filter</p>
+                  </td>
+                </tr>
+              ) : (
+                currentData.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-4 text-center">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => alert(`Downloading Invoice ${item.invoiceNo}`)}
+                        className="h-8 w-8 p-0 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg cursor-pointer"
+                        title="Download Receipt PDF"
+                      >
+                        <Eye size={16} />
+                      </Button>
+                    </td>
+                    <td className="py-4 px-4 font-mono font-bold text-slate-900">{item.invoiceNo}</td>
+                    <td className="py-4 px-4 text-slate-600">{item.date}</td>
+                    <td className="py-4 px-4 text-slate-600">{item.type}</td>
+                    <td className="py-4 px-4 font-bold text-slate-900">{item.billingName}</td>
+                    <td className="py-4 px-4 font-semibold text-slate-800">{item.eventName}</td>
+                    <td className="py-4 px-4 font-extrabold text-slate-900">₹{item.amount}</td>
+                    <td className="py-4 px-4 text-center">
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold">
+                        {item.status}
+                      </Badge>
                     </td>
                   </tr>
-                ) : (
-                  currentData.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-sky-50/30 transition-all group">
-                      <td className="px-6 py-4 text-center">
-                        <button className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm">
-                          <Eye size={16} />
-                        </button>
-                      </td>
-                      <td className="px-6 py-4 font-mono text-xs font-bold text-slate-600">{item.invoiceNo}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm font-medium">{item.date}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{item.type}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{item.personType}</td>
-                      <td className="px-6 py-4 text-slate-800 text-sm font-black">{item.billingName}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{item.visitorName}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm font-bold">{item.vehicleNo}</td>
-                      <td className="px-6 py-4 text-slate-600 text-sm">{item.eventName}</td>
-                      <td className="px-6 py-4 text-blue-600 text-sm font-black">₹{item.amount}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${item.status === 'Paid' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 text-xs font-bold">{item.createdBy}</td>
-                      <td className="px-6 py-4 text-slate-500 text-[10px] font-bold uppercase">{item.createdOn}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-
-        {/* PAGINATION */}
-        {filteredData.length > 0 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-8 gap-4">
-            <div className="flex items-center gap-4">
-              <p className="text-slate-500 text-sm font-medium">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredData.length)} of {filteredData.length} entries
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500 text-sm font-medium">Records per page:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="p-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer shadow-sm"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-sky-50 disabled:opacity-40 transition-all shadow-sm"
-                >
-                  <ChevronLeft size={20} className="text-slate-600" />
-                </button>
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-10 h-10 rounded-xl font-bold transition-all ${currentPage === i + 1 ? "bg-sky-600 text-white shadow-lg shadow-sky-200" : "bg-white text-slate-600 border border-slate-200 hover:bg-sky-50"}`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-sky-50 disabled:opacity-40 transition-all shadow-sm"
-                >
-                  <ChevronRight size={20} className="text-slate-600" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      </Card>
     </div>
   );
 };
