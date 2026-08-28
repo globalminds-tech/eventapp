@@ -9,6 +9,7 @@ class OrganizerProfile(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
     business_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     gstin: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     pan_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -29,6 +30,7 @@ class OrganizerProfile(db.Model):
             "id": self.id,
             "user_id": self.user_id,
             "company_name": self.company_name,
+            "slug": self.slug or "",
             "business_type": self.business_type,
             "gstin": self.gstin,
             "pan_number": self.pan_number,

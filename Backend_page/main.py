@@ -7,6 +7,7 @@ sys.dont_write_bytecode = True
 from app import create_app
 from app.extensions.database import db
 from app.modules.admin.repository.admin_repository import AdminRepository
+from app.utils.slug import backfill_missing_slugs
 
 app = create_app()
 
@@ -15,6 +16,7 @@ def on_startup():
     try:
         db.create_all()
         AdminRepository.create_default_superuser()
+        backfill_missing_slugs(db.session)
     except Exception as e:
         print(f"Notice: Database initialization during startup: {e}")
 

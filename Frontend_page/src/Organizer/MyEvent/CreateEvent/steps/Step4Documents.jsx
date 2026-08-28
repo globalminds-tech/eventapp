@@ -12,8 +12,7 @@ const Step4Documents = ({ formData, setFormData }) => {
 
   const documentsList = formData.documents?.additionalDocs || [];
 
-  const handleDocUpload = (e) => {
-    const file = e.target.files?.[0];
+  const processFile = (file) => {
     if (!file) return;
     setDocError("");
 
@@ -27,9 +26,17 @@ const Step4Documents = ({ formData, setFormData }) => {
       return;
     }
 
-    const previewURL = URL.createObjectURL(file);
     setDocFile(file);
-    setDocPreview(previewURL);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setDocPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDocUpload = (e) => {
+    const file = e.target.files?.[0];
+    processFile(file);
   };
 
   const handleDrag = (e) => {
@@ -47,25 +54,13 @@ const Step4Documents = ({ formData, setFormData }) => {
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp", "application/pdf"];
-      if (!allowedTypes.includes(file.type)) {
-        setDocError("Invalid file type. Supported: JPG, PNG, WEBP, PDF");
-        return;
-      }
-      const previewURL = URL.createObjectURL(file);
-      setDocFile(file);
-      setDocPreview(previewURL);
+      processFile(e.dataTransfer.files[0]);
     }
   };
 
   const addDocument = () => {
     if (!docType) {
-      setDocError("Please select identity proof type");
-      return;
-    }
-    if (!docNumber) {
-      setDocError("Please enter document number");
+      setDocError("Please select document / permit type");
       return;
     }
     if (!docFile && !docPreview) {
@@ -76,10 +71,10 @@ const Step4Documents = ({ formData, setFormData }) => {
     const newDoc = {
       id: Date.now(),
       type: docType,
-      number: docNumber,
+      number: docNumber || "N/A",
       file: docFile,
       preview: docPreview,
-      name: docFile?.name || `${docType} Proof`,
+      name: docFile?.name || `${docType} Permit`,
     };
 
     const updated = [...documentsList, newDoc];
@@ -106,33 +101,40 @@ const Step4Documents = ({ formData, setFormData }) => {
 
   return (
     <div className="space-y-4 pt-1">
+      <p className="text-[11px] text-slate-500 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+        📌 <strong>Organizer Compliance Upload:</strong> Attach official permits, NOC clearances, and legal licenses required for hosting this event (e.g. Police Permission, Sound License, Safety Clearance, GST/PAN).
+      </p>
+
       {/* Input Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">
-            Identity Proof Type
+            Document / Permit Type
           </label>
           <select
             value={docType}
             onChange={(e) => { setDocType(e.target.value); setDocNumber(""); }}
             className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
           >
-            <option value="">Select Proof Type</option>
-            <option value="Aadhar">Aadhar Card</option>
-            <option value="PAN">PAN Card</option>
-            <option value="GST">GST Registration</option>
-            <option value="Other">Other Certificate</option>
+            <option value="">Select Document / Permit</option>
+            <option value="Police Permission NOC">Police Permission NOC</option>
+            <option value="Sound License">Sound & Loudspeaker License</option>
+            <option value="Fire & Safety NOC">Fire & Safety Clearance</option>
+            <option value="Municipal Trade License">Municipal Trade License</option>
+            <option value="GST Certificate">Organizer GST Certificate</option>
+            <option value="PAN / Aadhar Card">Organizer PAN / Aadhar Card</option>
+            <option value="Other Permit">Other License / Certificate</option>
           </select>
         </div>
 
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">
-            Document Number
+            Document / Permit Number (Optional)
           </label>
           <input
             type="text"
-            placeholder={docType === "PAN" ? "ABCDE1234F" : docType === "Aadhar" ? "XXXX-XXXX-XXXX" : "Enter number"}
-            maxLength={docType === "PAN" ? 10 : docType === "Aadhar" ? 12 : 20}
+            placeholder="Enter reference # (Optional)"
+            maxLength={25}
             value={docNumber}
             onChange={(e) => setDocNumber(e.target.value)}
             className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:ring-1 focus:ring-cyan-500"

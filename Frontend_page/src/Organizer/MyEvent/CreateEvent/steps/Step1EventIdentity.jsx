@@ -5,7 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
 import { get_Venues_details, getVenueDetails } from "../../../../Services/api";
 
-const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors }) => {
+const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, isReadOnly, isEditingAllowed }) => {
   const [venues, setVenues] = useState([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [venueOpen, setVenueOpen] = useState(false);
@@ -137,30 +137,36 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors }) 
     update(name, type === "checkbox" ? checked : value);
   };
 
-  // Banner handling
+  // Helper to ensure documents state is a clean object
+  const getDocObj = (prevDocs) => (prevDocs && typeof prevDocs === "object" && !Array.isArray(prevDocs) ? prevDocs : {});
+
+  // Banner handling (Local preview on select; uploaded to Supabase Storage on Save/Publish)
   const handleBannerUpload = (file) => {
     if (!file) return;
-    const isVideo = file.type.startsWith("video/");
-    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type?.startsWith("video/");
+    const isImage = file.type?.startsWith("image/");
     if (!isImage && !isVideo) return;
     if (file.size > 50 * 1024 * 1024) return; // 50MB limit
 
-    const preview = URL.createObjectURL(file);
-    setFormData((prev) => ({
-      ...prev,
-      documents: {
-        ...prev.documents,
-        banner: file,
-        bannerPreview: preview,
-        bannerType: isVideo ? "video" : "image",
-      },
-    }));
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({
+        ...prev,
+        documents: {
+          ...getDocObj(prev.documents),
+          banner: file.name,
+          bannerPreview: reader.result,
+          bannerType: isVideo ? "video" : "image",
+        },
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeBanner = () => {
     setFormData((prev) => ({
       ...prev,
-      documents: { ...prev.documents, banner: null, bannerPreview: null, bannerType: null },
+      documents: { ...getDocObj(prev.documents), banner: null, bannerPreview: null, bannerType: null },
     }));
   };
 
@@ -450,6 +456,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors }) 
                 value={formData.eventDetails?.startTime || ""}
                 hasError={showErrors && !formData.eventDetails?.startTime}
                 onChange={(v) => update("startTime", v)}
+                disabled={isReadOnly}
               />
             </div>
             <div>
@@ -460,6 +467,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors }) 
                 minDate={parseISODate(formData.eventDetails?.startDate) || new Date()}
                 dateFormat="dd/MM/yyyy"
                 placeholderText="End Date"
+                disabled={isReadOnly}
                 className={`w-full h-9 bg-slate-50 border rounded-lg px-2 text-xs outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer ${
                   err("endDate") ? "border-red-400" : "border-slate-200"
                 }`}
@@ -472,6 +480,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors }) 
                 value={formData.eventDetails?.endTime || ""}
                 hasError={showErrors && !formData.eventDetails?.endTime}
                 onChange={(v) => update("endTime", v)}
+                disabled={isReadOnly}
               />
             </div>
           </div>
@@ -521,91 +530,58 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors }) 
           </div>
         </div>
 
-        {/* Capacity & Max Passes */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Capacity <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text" name="capacity" placeholder="e.g. 500"
-              inputMode="numeric" maxLength={5}
-              value={formData.booking?.capacity || ""}
-              onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "");
-                setFormData((prev) => ({ ...prev, booking: { ...prev.booking, capacity: v } }));
-              }}
-              className={`w-full h-10 bg-slate-50 border rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 ${
-                showErrors && !formData.booking?.capacity ? "border-red-400" : "border-slate-200"
-              }`}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Max Passes/Person <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text" name="maxPass" placeholder="e.g. 5"
-              inputMode="numeric" maxLength={3}
-              value={formData.booking?.maxPass || ""}
-              onChange={(e) => {
-                const v = e.target.value.replace(/\D/g, "");
-                setFormData((prev) => ({ ...prev, booking: { ...prev.booking, maxPass: v } }));
-              }}
-              className={`w-full h-10 bg-slate-50 border rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 ${
-                showErrors && !formData.booking?.maxPass ? "border-red-400" : "border-slate-200"
-              }`}
-            />
-          </div>
-        </div>
-
         {/* Banner Upload — compact drag-drop zone */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">
             Event Banner <span className="text-red-500">*</span>
           </label>
           {bannerPreview ? (
-            <div className="relative rounded-xl overflow-hidden border border-slate-200 h-28">
+            <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm h-48 md:h-52 bg-slate-900">
               {bannerType === "video" ? (
-                <video src={bannerPreview} className="w-full h-full object-cover" muted autoPlay loop />
+                <video src={bannerPreview} className="w-full h-full object-cover object-center" muted autoPlay loop />
               ) : (
-                <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+                <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover object-center" />
               )}
-              <button
-                type="button"
-                onClick={removeBanner}
-                className="absolute top-2 right-2 p-1 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors border-none cursor-pointer"
-              >
-                <X size={12} />
-              </button>
-              <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] font-bold rounded-md flex items-center gap-1">
-                {bannerType === "video" ? <Video size={10} /> : <ImageIcon size={10} />}
-                {bannerType === "video" ? "Video" : "Image"}
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={removeBanner}
+                  className="absolute top-3 right-3 p-1.5 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors border-none cursor-pointer shadow-md"
+                >
+                  <X size={14} />
+                </button>
+              )}
+              <div className="absolute bottom-3 left-3 px-2.5 py-1 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 border border-white/10">
+                {bannerType === "video" ? <Video size={12} /> : <ImageIcon size={12} />}
+                {bannerType === "video" ? "Video Banner" : "Image Banner"}
               </div>
             </div>
           ) : (
             <div
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+              onDragOver={(e) => { if (!isReadOnly) { e.preventDefault(); setDragActive(true); } }}
               onDragLeave={() => setDragActive(false)}
-              onDrop={handleDrop}
-              className={`relative h-24 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
-                dragActive
-                  ? "border-cyan-500 bg-cyan-50/50"
+              onDrop={(e) => { if (!isReadOnly) handleDrop(e); }}
+              className={`relative h-36 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all ${
+                isReadOnly
+                  ? "border-slate-200 bg-slate-50/50 opacity-60 cursor-not-allowed"
+                  : dragActive
+                  ? "border-cyan-500 bg-cyan-50/50 cursor-pointer"
                   : showErrors && !bannerPreview
-                  ? "border-red-300 bg-red-50/30"
-                  : "border-slate-200 bg-slate-50/50 hover:border-cyan-400 hover:bg-cyan-50/30"
+                  ? "border-red-300 bg-red-50/30 cursor-pointer"
+                  : "border-slate-200 bg-slate-50/50 hover:border-cyan-400 hover:bg-cyan-50/30 cursor-pointer"
               }`}
             >
-              <Upload size={18} className="text-slate-400" />
-              <span className="text-[11px] font-semibold text-slate-500">
-                Drop banner here or <span className="text-cyan-600 underline">browse</span>
+              <Upload size={22} className="text-slate-400" />
+              <span className="text-xs font-bold text-slate-600">
+                {isReadOnly ? "No banner uploaded" : <>Drop event banner here or <span className="text-cyan-600 underline">browse</span></>}
               </span>
-              <span className="text-[9px] text-slate-400">Image or Video (max 50MB)</span>
+              {!isReadOnly && <span className="text-[10px] text-slate-400 font-medium">Supports Image or Video (Recommended 16:9 or 3:1 aspect ratio, max 50MB)</span>}
               <input
                 type="file"
                 accept="image/*,video/*"
                 onChange={(e) => handleBannerUpload(e.target.files?.[0])}
                 className="absolute inset-0 opacity-0 cursor-pointer"
+                disabled={isReadOnly}
               />
             </div>
           )}

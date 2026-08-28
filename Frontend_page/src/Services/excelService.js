@@ -1,152 +1,164 @@
 import * as XLSX from 'xlsx';
 
 /**
- * Excel & CSV Service for Bulk Category Import and 7-Step Event Creation Auto-Fill
+ * Excel & CSV Service for Bulk Category Import and 5-Step Event Creation Auto-Fill
  */
 
-// Preset Demo Data for instant 1-Click Auto-Fill of 7-Step Event Creation Wizard
+// Today ISO date helper
+const getFutureIsoDate = (daysAhead = 15) => {
+  const d = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+// Preset Demo Data for instant 1-Click Auto-Fill of 5-Step Event Creation Wizard
 export const DEMO_EVENT_DATA = {
-  // Step 1: Event Details
-  step1: {
-    eventName: "Global Tech & Startup Summit 2026",
-    eventCode: "GTSS-2026",
-    category: "Tech",
-    subCategory: "Software & AI",
+  // Step 1: Event Identity
+  eventDetails: {
+    eventName: "MRC Grand Music & Cultural Fest 2026",
+    eventCode: "EVT-2026-MRC",
+    category: "Music",
+    subCategory: "Live Orchestra & Fusion",
     customCategory: "",
-    eventType: "Public",
+    eventType: "OneTime",
     occurrence: "Single",
     visibility: "Public",
-    startDate: "2026-10-15",
-    endDate: "2026-10-17",
-    startTime: "09:00",
-    endTime: "18:00",
-    venue: "Grand Convention Center, Tech Park",
-    address: "100 Innovation Way, Cyber City, Bangalore",
-    city: "Bangalore",
-    state: "Karnataka",
-    pincode: "560100",
-    description: "The premier global tech conference bringing together AI pioneers, startup founders, developers, and venture capitalists for 3 days of keynotes and networking.",
-    amenities: ["Free High-Speed Wi-Fi", "AC Auditorium", "VIP Lounge", "Food Court", "Parking Space", "Live Broadcast"],
-    tags: ["Tech", "AI", "Startups", "Networking", "Innovation", "Conference"],
-    includeProgram: "Yes",
-    mail: true,
-    whatsapp: true,
-    print: true,
-    visitorMail: true,
-    visitorName: true,
-    visitorPhoto: true,
-    visitorMobile: true,
-    documentProof: true,
-    dayPass: true,
-    isInternationalInclude: true,
-    welcomeKit: true,
-    food: true,
-    vehiclePass: true,
+    startDate: getFutureIsoDate(15),
+    endDate: getFutureIsoDate(15),
+    startTime: "18:00",
+    endTime: "23:00",
+    venue: "Grand Convention Center (Chennai)",
+    address: "123 MRC Nagar, Chennai, Tamil Nadu 600028",
+    city: "Chennai",
+    state: "Tamil Nadu",
+    pincode: "600028",
+    description: "The premier grand musical festival featuring top classical and fusion artists live in Chennai.",
+    amenities: ["Free High-Speed Wi-Fi", "AC Auditorium", "VIP Lounge", "Food Court", "Parking Space"],
+    tags: ["Music", "Concert", "Chennai", "Culture"],
+    isInternationalInclude: false,
+    includeFood: true,
+    includeVehiclePass: true,
+    includeDocument: true,
   },
 
-  // Step 2: Booking & Ticket Tiers
-  step2: {
-    bookingStartDate: "2026-09-01",
-    bookingEndDate: "2026-10-14",
-    capacity: 2500,
+  // Step 2: Tickets & Pricing
+  booking: {
     entryType: "Paid",
-    chargeType: "Per Ticket",
-    currency: "INR",
+    chargeType: "Paid",
+    capacity: "500",
+    maxPass: "4",
+    priceINR: "499",
+    maxPassPerUser: "4",
+    priceType: "National",
+    currency: "Indian Rupee - INR (₹)",
+    rsvpApproval: "Automatic",
     includeTax: true,
-    ticketTiers: [
-      {
-        id: 1,
-        title: "Early Bird General Access",
-        passType: "General",
-        price: 1499,
-        maxPass: 5,
-        totalQuantity: 1000,
-        perks: "Access to main hall, exhibition zone, and welcome kit.",
-        earlyBirdExpire: "2026-09-20T23:59:59"
-      },
-      {
-        id: 2,
-        title: "VIP Executive Pass",
-        passType: "VIP",
-        price: 4999,
-        maxPass: 3,
-        totalQuantity: 300,
-        perks: "Front row seating, VIP lounge buffet lunch, speaker meet & greet.",
-        earlyBirdExpire: "2026-09-30T23:59:59"
-      },
-      {
-        id: 3,
-        title: "Student Pass",
-        passType: "Student",
-        price: 499,
-        maxPass: 2,
-        totalQuantity: 500,
-        perks: "Student ID verification required. Access to hackathon & keynotes.",
-        earlyBirdExpire: "2026-10-10T23:59:59"
-      }
-    ]
+    refundTerms: "Full refund up to 48 Hours before event",
   },
 
-  // Step 3: Stall & Floor Plan Layout
-  step3: {
-    floorType: "Grid Matrix",
-    dayBased: true,
-    personPassPerStall: 4,
-    includeTax: true,
-    taxes: "18% GST Included",
-    totalStalls: 40,
-    stallTypes: [
-      { name: "Premium Corner Booth (3x3m)", price: 25000, count: 10 },
-      { name: "Standard Shell Scheme (3x3m)", price: 15000, count: 20 },
-      { name: "Startup Bare Space (2x2m)", price: 8000, count: 10 }
-    ]
+  // Step 3: Facilities, Stalls & Layout
+  layout: {
+    stalls: [
+      { stallName: "A1 - Premium Tech Booth", size: "10x10", visibility: "Public", type: "Paid", priceINR: "5000" },
+      { stallName: "A2 - Standard Expo Booth", size: "10x10", visibility: "Public", type: "Paid", priceINR: "3500" },
+    ],
+    stallList: [
+      { stallName: "A1 - Premium Tech Booth", size: "10x10", visibility: "Public", type: "Paid", priceINR: "5000" },
+      { stallName: "A2 - Standard Expo Booth", size: "10x10", visibility: "Public", type: "Paid", priceINR: "3500" },
+    ],
+  },
+  foodProvision: {
+    items: [
+      { catererName: "Royal Catering", mealType: "Lunch", foodType: "Veg", priceINR: "350", menuDetails: "Multi-cuisine Buffet Spread" },
+      { catererName: "Snack Corner", mealType: "Snacks", foodType: "Veg", priceINR: "120", menuDetails: "Tea & Fresh Pastries" }
+    ],
+    coupons: [
+      { couponType: "VIP Buffet Lunch Pass", rate: "350", count: "100" },
+      { couponType: "Snack & Beverage Voucher", rate: "120", count: "250" },
+    ],
+  },
+  vehicleProvision: {
+    details: [
+      { vehicleType: "Two Wheeler Pass", priceINR: "50" },
+      { vehicleType: "Four Wheeler Pass", priceINR: "150" },
+      { vehicleType: "Heavy Vehicle / Truck", priceINR: "300" },
+    ],
+    addons: [
+      { isParent: true, addOnName: "VIP Valet Parking Service", price: "250" }
+    ],
   },
 
-  // Step 4: Documents & Media
-  step4: {
-    bannerImage: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200",
-    eventLogo: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400",
-    promotionalVideo: "https://www.youtube.com/watch?v=demo_tech_summit",
-    brochureUrl: "https://example.com/docs/tech_summit_2026_brochure.pdf",
-    files: [
-      { fileName: "Event_Proposal.pdf", fileType: "PDF", docType: "Proposal" },
-      { fileName: "Safety_Permit_BBMP.pdf", fileType: "PDF", docType: "Permit" }
-    ]
+  // Step 4: Partners & Sponsors
+  vendorSponsor: {
+    sponsors: [
+      { sponsorName: "TechCorp Global", sponsorshipType: "Title Sponsor", amount: "150000" }
+    ],
+    vendors: [
+      { vendorName: "Royal Catering Services", serviceType: "Food & Beverage", contactNo: "+91 9876543210" }
+    ],
+    guests: [
+      { name: "Dr. A. Subramanian", designation: "Minister of Cultural Affairs", topic: "Keynote Address on Cultural Revival" }
+    ],
+  },
+  vendors: {
+    sponsors: [
+      { sponsorName: "TechCorp Global", sponsorshipType: "Title Sponsor", amount: "150000" }
+    ],
+    vendors: [
+      { vendorName: "Royal Catering Services", serviceType: "Food & Beverage", contactNo: "+91 9876543210" }
+    ],
+    guests: [
+      { name: "Dr. A. Subramanian", designation: "Minister of Cultural Affairs", topic: "Keynote Address on Cultural Revival" }
+    ],
   },
 
   // Step 5: Terms & Policies
-  step5: {
-    policyGroup: "Standard Event Policies",
-    termsList: [
-      { policyName: "Cancellation & Refund", description: "Full refund available up to 7 days before the event start date. 50% refund thereafter." },
-      { policyName: "Code of Conduct", description: "All attendees, speakers, and sponsors must adhere to professional anti-harassment guidelines." },
-      { policyName: "Identity Verification", description: "Government issued Photo ID mandatory for entry badge collection at the registration desk." }
-    ]
-  },
+  terms: [
+    {
+      policyGroup: "Cancellation Policy",
+      policyType: "General Cancellation",
+      policyName: "Standard 48-Hour Refund Policy",
+      description: "Full refund available up to 48 hours before the event start date.",
+      isDefault: true
+    },
+    {
+      policyGroup: "Safety Policy",
+      policyType: "Venue Security",
+      policyName: "Mandatory Government ID Verification",
+      description: "All attendees must present a valid government-issued photo ID at entry.",
+      isDefault: true
+    }
+  ],
+  termsDetails: [
+    {
+      policyGroup: "Cancellation Policy",
+      policyType: "General Cancellation",
+      policyName: "Standard 48-Hour Refund Policy",
+      description: "Full refund available up to 48 hours before the event start date.",
+      isDefault: true
+    },
+    {
+      policyGroup: "Safety Policy",
+      policyType: "Venue Security",
+      policyName: "Mandatory Government ID Verification",
+      description: "All attendees must present a valid government-issued photo ID at entry.",
+      isDefault: true
+    }
+  ],
 
-  // Step 6: Vendors & Sponsors
-  step6: {
-    sponsors: [
-      { name: "Apex Tech Ventures", tier: "Title Sponsor", logo: "", contribution: "₹10,00,000" },
-      { name: "CloudScale Systems", tier: "Platinum Sponsor", logo: "", contribution: "₹5,00,000" }
-    ],
-    vendors: [
-      { vendorName: "Royal Catering Services", serviceType: "Food & Beverage", contact: "+91 9876543210" },
-      { vendorName: "SoundVision AV Works", serviceType: "Audio/Visual & Stage Lighting", contact: "+91 9123456789" }
-    ]
+  // Step backward compatibility
+  step1: {
+    eventName: "MRC Grand Music & Cultural Fest 2026",
+    category: "Music",
+    startDate: getFutureIsoDate(15),
+    eventType: "OneTime",
   },
-
-  // Step 7: Guests & Food Perks
-  step7: {
-    guests: [
-      { guestName: "Dr. Sarah Lin", designation: "AI Director @ Global Mind Labs", contact: "sarah.lin@example.com" },
-      { guestName: "Vikram Malhotra", designation: "Founder & CEO @ ScaleUp India", contact: "vikram@scaleup.in" }
-    ],
-    foodMeals: [
-      { mealType: "Breakfast", options: "Veg & Non-Veg Buffet", timings: "08:30 - 10:00 AM" },
-      { mealType: "Executive Lunch", options: "Multi-Cuisine VIP Spread", timings: "13:00 - 14:30 PM" }
-    ]
-  }
+  step2: { capacity: "500", maxPass: "4" },
+  step3: { totalStalls: 2 },
+  step4: {},
+  step5: {},
 };
 
 /**
@@ -198,30 +210,27 @@ export const downloadCategorySampleExcel = () => {
 };
 
 /**
- * Downloads a sample Excel file for 7-Step Event Creation Wizard
+ * Downloads a sample Excel file for 5-Step Event Creation Wizard
  */
 export const downloadEventCreationSampleExcel = () => {
   const eventSheet = [
     {
-      "Event Name": "Global Tech Summit 2026",
-      "Event Code": "GTS-2026",
-      "Category": "Tech",
-      "Subcategory": "Software & AI",
-      "Event Type": "Public",
-      "Start Date": "2026-10-15",
-      "End Date": "2026-10-17",
-      "Start Time": "09:00",
-      "End Time": "18:00",
-      "Venue": "Grand Convention Center",
-      "Address": "100 Innovation Way, Cyber City",
-      "City": "Bangalore",
-      "State": "Karnataka",
-      "Pincode": "560100",
-      "Description": "Premier global tech conference",
-      "General Ticket Price": 1499,
-      "VIP Ticket Price": 4999,
-      "Total Capacity": 2500,
-      "Stall Count": 40
+      "Event Name": "MRC Grand Music & Cultural Fest 2026",
+      "Event Code": "EVT-2026-MRC",
+      "Category": "Music",
+      "Subcategory": "Live Orchestra & EDM",
+      "Event Type": "OneTime",
+      "Start Date": getFutureIsoDate(15),
+      "End Date": getFutureIsoDate(15),
+      "Start Time": "18:00",
+      "End Time": "23:00",
+      "Venue": "Grand Convention Center (Chennai)",
+      "Address": "123 MRC Nagar, Chennai, Tamil Nadu 600028",
+      "City": "Chennai",
+      "State": "Tamil Nadu",
+      "Pincode": "600028",
+      "Ticket Price": 499,
+      "Total Capacity": 500
     }
   ];
 

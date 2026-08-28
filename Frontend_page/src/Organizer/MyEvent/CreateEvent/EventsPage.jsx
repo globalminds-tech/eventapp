@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
+import { fetchEventsThunk } from "../../../Redux/eventSlice";
+import { Skeleton } from "../../../components/ui/Skeleton";
 import {
   Plus,
   User,
@@ -61,10 +63,15 @@ const ImageSlider = ({ images = [], className = "w-28 h-20" }) => {
 };
 
 const EventsPage = () => {
+  const dispatch = useDispatch();
   const [showCreate, setShowCreate] = useState(true);
   const [editEvent, setEditEvent] = useState(null);
   const [isView, setIsView] = useState(false);
-  const [events, setEvents] = useState([]);
+  
+  const eventsState = useSelector((state) => state.events?.list);
+  const events = Array.isArray(eventsState) ? eventsState : (Array.isArray(eventsState?.data) ? eventsState.data : []);
+  const { loading, loaded } = useSelector((state) => state.events);
+
   const [viewMode, setViewMode] = useState("medium"); // large, medium, small, compact, list, details
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,32 +89,43 @@ const EventsPage = () => {
     name: sessionStorage.getItem("userName"),
   };
   const organizer = Redexorganizer?.id ? Redexorganizer : storedUser;
-  console.log("organizer", organizer);
 
   useEffect(() => {
-    if (location.state?.reset) {
+    if (organizer?.id) {
+      dispatch(fetchEventsThunk(organizer.id));
+    }
+  }, [dispatch, organizer?.id]);
+
+  useEffect(() => {
+    if (location.pathname.includes("/ViewEvent")) {
+      setShowCreate(true);
+      setIsView(true);
+      if (location.state?.eventData) {
+        setEditEvent(location.state.eventData);
+      }
+    } else if (location.pathname.includes("/EditEvent")) {
+      setShowCreate(true);
+      setIsView(false);
+      if (location.state?.eventData) {
+        setEditEvent(location.state.eventData);
+      }
+    } else if (location.state?.mode === "create") {
+      setShowCreate(true);
+      setIsView(false);
+      setEditEvent(null);
+    } else if (location.state?.mode === "view" || location.state?.isReadOnly) {
+      setShowCreate(true);
+      setIsView(true);
+      if (location.state?.eventData) {
+        setEditEvent(location.state.eventData);
+      }
+    } else if (location.state?.reset) {
       setShowCreate(false);
       setEditEvent(null);
       setIsView(false);
       window.history.replaceState({}, document.title);
     }
-  }, [location]);
-
-  useEffect(() => {
-    if (organizer?.id) {
-      fetchEvents();
-    }
-  }, [organizer?.id]);
-
-  const fetchEvents = async () => {
-    if (!organizer?.id) return;
-    try {
-      const data = await getEventshow(organizer.id);
-      setEvents(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  }, [location.state, location.pathname]);
 
   const formatTime = (time) => {
     if (!time) return "";
@@ -144,11 +162,12 @@ const EventsPage = () => {
     setIsLoadingFullData(true);
     try {
       const fullData = await getEventFullDetails(event.id);
-      console.log("fullData Time", fullData);
       if (fullData) {
         setEditEvent(fullData);
         setIsView(false);
         setShowCreate(true);
+        const eventCode = event.event_code || event.code || event.eventCode || event.id;
+        navigate(`/OrganizerHome/EditEvent/${eventCode}`, { state: { eventData: fullData, eventId: event.id }, replace: true });
       }
     } catch (err) {
       console.error("Failed to fetch full event details", err);
@@ -166,6 +185,8 @@ const EventsPage = () => {
         setEditEvent(fullData);
         setIsView(true);
         setShowCreate(true);
+        const eventCode = event.event_code || event.code || event.eventCode || event.id;
+        navigate(`/OrganizerHome/ViewEvent/${eventCode}`, { state: { mode: "view", isReadOnly: true, eventData: fullData, eventId: event.id }, replace: true });
       }
     } catch (err) {
       console.error("Failed to fetch full event details", err);
@@ -324,7 +345,18 @@ const EventsPage = () => {
                 : "grid-cols-1"
           }`}
       >
-        {filteredEvents.length === 0 ? (
+        {loading && !loaded ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-3xl p-5 border border-slate-100 shadow-xs space-y-4 animate-pulse">
+              <Skeleton className="w-full h-44 rounded-2xl" />
+              <div className="space-y-2">
+                <Skeleton className="w-20 h-4" />
+                <Skeleton className="w-3/4 h-6" />
+                <Skeleton className="w-1/2 h-4" />
+              </div>
+            </div>
+          ))
+        ) : filteredEvents.length === 0 ? (
           <div className="col-span-full text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200">
             <Search size={48} className="mx-auto text-gray-200 mb-4" />
             <p className="text-gray-500 font-medium">

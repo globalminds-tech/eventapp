@@ -77,14 +77,15 @@ export default function Register() {
       const userRole = (data?.user?.role || data?.role || "user").toLowerCase();
       const userId = data?.user?.id || data?.User_id || "";
       const userName = data?.user?.name || data?.name || formData.name;
-      const token = data?.token || "authenticated-user-token";
-
-      sessionStorage.setItem("token", token);
+      const token = data?.token || data?.access_token || "";
+      if (token) {
+        sessionStorage.setItem("token", token);
+        localStorage.setItem("token", token);
+      }
       sessionStorage.setItem("role", userRole);
       sessionStorage.setItem("id", userId.toString());
       sessionStorage.setItem("name", userName);
 
-      localStorage.setItem("token", token);
       localStorage.setItem("role", userRole);
       localStorage.setItem("name", userName);
 

@@ -4,7 +4,7 @@ from app.modules.auth.repository.auth_repository import AuthRepository
 from app.modules.auth.schemas.auth_schema import (
     RegisterSchema, LoginSchema, SendOTPSchema, VerifyOTPSchema, ResetPasswordSchema
 )
-from app.utils.jwt_utils import generate_token
+from app.utils.jwt_utils import generate_access_token, generate_refresh_token, generate_token
 from app.Services import otp_service
 
 class AuthService:
@@ -21,10 +21,13 @@ class AuthService:
 
         hashed_password = generate_password_hash(data.password)
         user = AuthRepository.create_user(data.name, data.email, hashed_password, data.role)
-        token = generate_token(user.id, user.role)
+        access_token = generate_access_token(user.id, user.role)
+        refresh_token = generate_refresh_token(user.id, user.role)
         return {
             "message": "User registered successfully",
-            "token": token,
+            "token": access_token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "user": user.to_dict()
         }
 
@@ -37,17 +40,21 @@ class AuthService:
         if existing_user:
             hashed_password = generate_password_hash(data.password) if data.password else ""
             user = AuthRepository.attach_organizer_profile(existing_user, data.dict(), hashed_password)
-            token = generate_token(user.id, "organizer")
+            access_token = generate_access_token(user.id, "organizer")
+            refresh_token = generate_refresh_token(user.id, "organizer")
 
             return {
                 "message": "Organizer profile updated successfully",
-                "token": token,
+                "token": access_token,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
                 "user": AuthService.get_current_user(user.id)
             }
 
         hashed_password = generate_password_hash(data.password) if data.password else ""
         user = AuthRepository.create_organizer_user(data.dict(), hashed_password)
-        token = generate_token(user.id, user.role)
+        access_token = generate_access_token(user.id, user.role)
+        refresh_token = generate_refresh_token(user.id, user.role)
 
         try:
             from app.Services.mail_service import send_organizer_welcome_email
@@ -57,7 +64,9 @@ class AuthService:
 
         return {
             "message": "Organizer account created successfully",
-            "token": token,
+            "token": access_token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "user": AuthService.get_current_user(user.id)
         }
 
@@ -70,17 +79,21 @@ class AuthService:
         if existing_user:
             hashed_password = generate_password_hash(data.password) if data.password else ""
             user = AuthRepository.attach_exhibitor_profile(existing_user, data.dict(), hashed_password)
-            token = generate_token(user.id, "exhibitor")
+            access_token = generate_access_token(user.id, "exhibitor")
+            refresh_token = generate_refresh_token(user.id, "exhibitor")
 
             return {
                 "message": "Exhibitor profile updated successfully",
-                "token": token,
+                "token": access_token,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
                 "user": AuthService.get_current_user(user.id)
             }
 
         hashed_password = generate_password_hash(data.password) if data.password else ""
         user = AuthRepository.create_exhibitor_user(data.dict(), hashed_password)
-        token = generate_token(user.id, user.role)
+        access_token = generate_access_token(user.id, user.role)
+        refresh_token = generate_refresh_token(user.id, user.role)
 
         try:
             from app.Services.mail_service import send_exhibitor_welcome_email
@@ -90,7 +103,9 @@ class AuthService:
 
         return {
             "message": "Exhibitor account created successfully",
-            "token": token,
+            "token": access_token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "user": AuthService.get_current_user(user.id)
         }
 
@@ -104,10 +119,13 @@ class AuthService:
         if not check_password_hash(user.password, data.password):
             raise ApiError("Invalid password", 401)
 
-        token = generate_token(user.id, user.role)
+        access_token = generate_access_token(user.id, user.role)
+        refresh_token = generate_refresh_token(user.id, user.role)
         user_dict = user.to_dict()
         return {
-            "token": token,
+            "token": access_token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "user": user_dict,
             "message": "Login successful"
         }

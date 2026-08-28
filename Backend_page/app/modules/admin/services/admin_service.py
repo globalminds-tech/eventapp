@@ -5,42 +5,52 @@ from app.modules.admin.schemas.admin_schema import (
     UpdateEventStatusSchema, CategorySchema, UpdateKycStatusSchema
 )
 
+from sqlalchemy import select, desc
+from app.extensions.database import db
+from app.models.event import EventDetails, EventBookingDetails, EventFile
+
 class AdminService:
     @staticmethod
     def get_events(host_url: str = "") -> list[dict]:
-        rows = AdminRepository.get_all_events()
-        events_dict = {}
-        base_url = host_url.rstrip("/")
-
-        for event, booking, banner_file in rows:
-            event_id = event.id
-            if event_id not in events_dict:
-                file_path = banner_file.file_path if banner_file else None
-                banner_url = None
-
-                if file_path:
-                    clean_path = file_path.replace("\\", "/")
-                    relative_path = clean_path.split("/uploads/")[-1] if "/uploads/" in clean_path else os.path.basename(clean_path)
-                    banner_url = f"{base_url}/uploads/{relative_path}"
-
-                events_dict[event_id] = {
+        try:
+            stmt = select(EventDetails).order_by(desc(EventDetails.id))
+            events = db.session.scalars(stmt).all()
+            events_list = []
+            for event in events:
+                booking = db.session.scalars(select(EventBookingDetails).where(EventBookingDetails.event_id == event.id)).first()
+                banner_file = db.session.scalars(select(EventFile).where(EventFile.event_id == event.id, EventFile.file_type == "banner")).first()
+                b_url = banner_file.file_path if banner_file else ""
+                events_list.append({
                     "id": event.id,
-                    "event_name": event.event_name,
-                    "status": event.status,
-                    "category": event.category,
-                    "start_date": str(event.start_date) if event.start_date else None,
-                    "start_time": str(event.start_time) if event.start_time else None,
-                    "end_date": str(event.end_date) if event.end_date else None,
-                    "end_time": str(event.end_time) if event.end_time else None,
-                    "venue": event.venue,
-                    "address": event.address,
-                    "created_by": event.created_by,
-                    "capacity": booking.capacity if booking else None,
-                    "charge_type": booking.charge_type if booking else None,
-                    "banner_url": banner_url
-                }
-
-        return list(events_dict.values())
+                    "event_code": getattr(event, "event_code", None) or f"EVT-{event.id}",
+                    "code": getattr(event, "event_code", None) or f"EVT-{event.id}",
+                    "slug": getattr(event, "slug", "") or "",
+                    "event_name": event.event_name or "Untitled Event",
+                    "name": event.event_name or "Untitled Event",
+                    "status": event.status or "Active",
+                    "category": event.category or "General",
+                    "sub_category": getattr(event, "sub_category", "") or "",
+                    "start_date": str(event.start_date) if getattr(event, "start_date", None) else None,
+                    "date": str(event.start_date) if getattr(event, "start_date", None) else None,
+                    "start_time": str(event.start_time) if getattr(event, "start_time", None) else None,
+                    "end_date": str(event.end_date) if getattr(event, "end_date", None) else None,
+                    "end_time": str(event.end_time) if getattr(event, "end_time", None) else None,
+                    "venue": event.venue or "Venue Setup",
+                    "address": event.address or "",
+                    "created_by": getattr(event, "created_by", None),
+                    "user_id": getattr(event, "user_id", None),
+                    "capacity": (getattr(booking, "capacity", None) if booking else None) or getattr(event, "total_capacity", 500) or 500,
+                    "charge_type": (getattr(booking, "charge_type", None) if booking else None) or "Free",
+                    "pass_fee": float(getattr(event, "pass_fee", 0) or 0),
+                    "banner_url": b_url,
+                    "banner": b_url,
+                    "image": b_url,
+                    "banner_preview": b_url
+                })
+            return events_list
+        except Exception as e:
+            print("Failed to load events from DB:", e)
+            return []
 
     @staticmethod
     def update_event_status(event_id: int, raw_data: dict) -> dict:

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Trash2, AlertCircle, X, Edit, Plus } from "lucide-react";
+import { Trash2, AlertCircle, X, Edit, Plus, Store, ChevronDown } from "lucide-react";
 
 const formatSizeRange = (val, unit, isDeleting) => {
   // Strip any character that is not a digit or slash
@@ -38,7 +38,9 @@ const formatSizeRange = (val, unit, isDeleting) => {
 
 const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
   // ✅ ALWAYS take from formData (NO local state)
-  const stallList = formData.layout?.stalls || [];
+  const stallList = (formData.layout?.stalls && formData.layout.stalls.length > 0)
+    ? formData.layout.stalls
+    : (formData.layout?.stallList || []);
   const amenitiesList = formData.layout?.amenities || [];
 
   useEffect(() => {
@@ -68,6 +70,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
   const [amenity, setAmenity] = useState("");
   const [qty, setQty] = useState("");
+  const [draftAmenities, setDraftAmenities] = useState([]);
   const [showTips, setShowTips] = useState(false);
   const [viewData, setViewData] = useState(null); // { data, type }
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, index: null, type: "" }); // type: 'stall' | 'amenity'
@@ -75,6 +78,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
   const [taxSearch, setTaxSearch] = useState("");
   const [isTaxDropdownOpen, setIsTaxDropdownOpen] = useState(false);
+  const [isEditTaxDropdownOpen, setIsEditTaxDropdownOpen] = useState(false);
 
   const taxOptions = [
     "Ticket - CGST",
@@ -168,93 +172,85 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
   // ADD STALL
   const addStall = () => {
     const layout = formData.layout || {};
+    const visibility = layout.visibility || "Public";
+    const stallType = layout.stallType || "Paid";
+    const sizeRange = layout.sizeRange || (layout.length && layout.width ? `${layout.length}/${layout.width}` : "");
 
     // Validation: Empty not allowed
     if (!layout.stallName?.trim()) return showModal("Stall Name is required");
-    if (!layout.sizeRange?.trim()) return showModal("Size Range is required");
-    const parts = layout.sizeRange.split("/");
+    if (!sizeRange.trim()) return showModal("Size Range is required");
+    const parts = sizeRange.split("/");
     if (parts.length < 2 || !parts[0] || !parts[1]) {
       return showModal("Please enter both Length and Width dimensions (e.g. 10/10)");
     }
-    if (!layout.visibility) return showModal("Stall Visibility is required");
-    if (!layout.stallType) return showModal("Stall Type is required");
 
-    if (layout.stallType === "Paid") {
+    if (stallType === "Paid") {
       if (!layout.priceINR || layout.priceINR === "0") return showModal("Price in INR is required for Paid stalls");
-      if (!layout.priceUSD || layout.priceUSD === "0") return showModal("Price in USD is required for Paid stalls");
     }
 
+    // Associate draft amenities with this stallName
+    const stallAmenities = draftAmenities.map((d) => ({
+      stallName: layout.stallName.trim(),
+      amenity: d.amenity,
+      qty: d.qty,
+    }));
+
     const newStall = {
-      stallName: layout.stallName,
-      size: `${layout.length || ""}/${layout.width || ""} ${layout.stallSize || "Feet"}`,
-      sizeRange: layout.sizeRange,
-      visibility: layout.visibility,
-      type: layout.stallType,
-      priceINR: layout.stallType === "Free" ? "Free" : (layout.priceINR || "Free"),
-      priceUSD: layout.stallType === "Free" ? "Free" : (layout.priceUSD || "Free"),
-      primeSeat: layout.stallType === "Free" ? false : (layout.primeSeat || false),
-      primePriceINR: layout.stallType === "Free" ? "" : layout.primePriceINR,
-      primePriceUSD: layout.stallType === "Free" ? "" : layout.primePriceUSD,
-      taxes: layout.stallType === "Free" ? [] : (layout.taxes || []),
+      stallName: layout.stallName.trim(),
+      size: `${parts[0]}/${parts[1]} ${layout.stallSize || "Feet"}`,
+      sizeRange: sizeRange,
+      visibility: visibility,
+      type: stallType,
+      priceINR: stallType === "Free" ? "Free" : (layout.priceINR || "Free"),
+      primeSeat: stallType === "Free" ? false : Boolean(layout.primeSeat),
+      primePriceINR: stallType === "Free" ? "" : layout.primePriceINR,
+      personPass: layout.personPass || 1,
+      includeTax: stallType === "Free" ? false : Boolean(layout.includeTax),
+      taxes: (layout.includeTax && layout.taxes?.length > 0) ? layout.taxes : (formData.layout?.taxes || []),
+      amenities: stallAmenities,
     };
 
     // Validation: Same value not allowed (Duplicate Name) - ONLY for new stalls
     const isDuplicate = stallList.some(
-      (s) => s.stallName.toLowerCase() === layout.stallName.toLowerCase()
+      (s) => s.stallName?.toLowerCase() === layout.stallName.trim().toLowerCase()
     );
     if (isDuplicate) return showModal("Stall Name already exists");
 
     const updatedStalls = [...stallList, newStall];
+    const updatedAmenities = [...amenitiesList, ...stallAmenities];
 
     setFormData({
       ...formData,
       layout: {
         ...formData.layout,
         stalls: updatedStalls,
-        // Clear inputs after adding/updating
+        amenities: updatedAmenities,
+        // Clear inputs after adding
         stallName: "",
         sizeRange: "",
         priceINR: "",
-        priceUSD: "",
         primeSeat: false,
         primePriceINR: "",
-        primePriceUSD: "",
+        personPass: "",
         length: "",
         width: "",
-        taxes: [],
       },
     });
+
+    setDraftAmenities([]);
   };
 
-  // ADD AMENITIES
+  // ADD AMENITIES (Local Draft)
   const addAmenity = () => {
-    if (!formData.layout?.stallName) return showModal("Please enter/select a Stall Name first");
     if (!amenity.trim()) return showModal("Amenity Name is required");
     if (!qty || qty <= 0) return showModal("Valid Quantity is required");
 
-    // Check for duplicate amenity for the same stall
-    const isDuplicate = amenitiesList.some(
-      (a) => a.stallName === formData.layout.stallName && a.amenity.toLowerCase() === amenity.toLowerCase()
+    const isDuplicate = draftAmenities.some(
+      (a) => a.amenity.toLowerCase() === amenity.trim().toLowerCase()
     );
-    if (isDuplicate) return showModal("This amenity is already added for this stall");
+    if (isDuplicate) return showModal("This amenity is already in your pending list");
 
-    const newAmenity = {
-      stallName: formData.layout?.stallName,
-      amenity,
-      qty,
-    };
-
-    const updatedAmenities = [...amenitiesList, newAmenity];
-
-    // ✅ SAVE to formData
-    setFormData({
-      ...formData,
-      layout: {
-        ...formData.layout,
-        amenities: updatedAmenities,
-      },
-    });
-
+    setDraftAmenities((prev) => [...prev, { amenity: amenity.trim(), qty }]);
     setAmenity("");
     setQty("");
   };
@@ -262,27 +258,28 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
   // EDIT STALL MODAL OPEN
   const openEditStall = (index) => {
     const stall = stallList[index];
-    const sizeParts = stall.size.split(" ");
-    const dimParts = sizeParts[0].split("/");
+    const rawSize = stall.size || stall.stall_size || "10/10 Feet";
+    const sizeParts = rawSize.split(" ");
+    const dimParts = (sizeParts[0] || "10/10").split("/");
 
     setEditModal({
       isOpen: true,
       index,
       type: "stall",
       data: {
-        stallName: stall.stallName,
+        stallName: stall.stallName || stall.stall_name || "",
         stallSize: sizeParts[1] || "Feet",
-        length: dimParts[0] || "",
-        width: dimParts[1] || "",
-        sizeRange: stall.sizeRange,
-        visibility: stall.visibility,
-        stallType: stall.type,
-        priceINR: stall.priceINR === "Free" ? "" : stall.priceINR,
-        priceUSD: stall.priceUSD === "Free" ? "" : stall.priceUSD,
-        primeSeat: stall.primeSeat,
-        primePriceINR: stall.primePriceINR,
-        primePriceUSD: stall.primePriceUSD,
-        taxes: stall.taxes || [],
+        length: dimParts[0] || "10",
+        width: dimParts[1] || "10",
+        sizeRange: stall.sizeRange || `${dimParts[0] || 10}/${dimParts[1] || 10}`,
+        visibility: stall.visibility || "Public",
+        stallType: stall.type || stall.stall_type || "Paid",
+        priceINR: stall.priceINR === "Free" ? "" : (stall.priceINR || stall.price_inr || ""),
+        primeSeat: Boolean(stall.primeSeat || stall.prime_seat),
+        primePriceINR: stall.primePriceINR || stall.prime_price_inr || "",
+        personPass: stall.personPass || formData.layout?.personPass || 1,
+        includeTax: Boolean(stall.includeTax || (stall.taxes && stall.taxes.length > 0)),
+        taxes: stall.taxes && stall.taxes.length > 0 ? stall.taxes : (formData.layout?.taxes || []),
       }
     });
   };
@@ -301,33 +298,33 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
   const handleUpdateStall = () => {
     const { data, index } = editModal;
     if (!data.stallName?.trim()) return showModal("Stall Name is required");
-    const parts = (data.sizeRange || "").split("/");
+    const parts = (data.sizeRange || `${data.length}/${data.width}`).split("/");
     if (parts.length < 2 || !parts[0] || !parts[1]) {
       return showModal("Please enter both Length and Width dimensions (e.g. 10/10)");
     }
 
-    const oldStallName = stallList[index].stallName;
-    const newStallName = data.stallName;
+    const oldStallName = stallList[index].stallName || stallList[index].stall_name;
+    const newStallName = data.stallName.trim();
 
     const updatedStall = {
       ...stallList[index],
       stallName: newStallName,
-      size: `${data.length || ""}/${data.width || ""} ${data.stallSize || "Feet"}`,
-      sizeRange: `${data.length || ""}/${data.width || ""}`,
-      visibility: data.visibility,
-      type: data.stallType,
+      size: `${data.length || parts[0]}/${data.width || parts[1]} ${data.stallSize || "Feet"}`,
+      sizeRange: `${data.length || parts[0]}/${data.width || parts[1]}`,
+      visibility: data.visibility || "Public",
+      type: data.stallType || "Paid",
       priceINR: data.stallType === "Free" ? "Free" : (data.priceINR || "Free"),
-      priceUSD: data.stallType === "Free" ? "Free" : (data.priceUSD || "Free"),
-      primeSeat: data.stallType === "Free" ? false : data.primeSeat,
+      primeSeat: data.stallType === "Free" ? false : Boolean(data.primeSeat),
       primePriceINR: data.stallType === "Free" ? "" : data.primePriceINR,
-      primePriceUSD: data.stallType === "Free" ? "" : data.primePriceUSD,
-      taxes: data.stallType === "Free" ? [] : (data.taxes || []),
+      personPass: data.personPass || 1,
+      includeTax: data.stallType === "Free" ? false : Boolean(data.includeTax),
+      taxes: data.stallType === "Free" ? [] : (data.includeTax ? (data.taxes || []) : []),
     };
 
     const updatedStalls = [...stallList];
     updatedStalls[index] = updatedStall;
 
-    // ✅ Automatically update stall name in amenities list
+    // Automatically update stall name in amenities list
     const updatedAmenities = amenitiesList.map(a =>
       a.stallName === oldStallName ? { ...a, stallName: newStallName } : a
     );
@@ -413,20 +410,11 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
             {/* Flooring Type */}
             <div className="space-y-2">
               <label className={labelClasses}>Flooring Type <span className="text-red-500">*</span></label>
-              <div className="px-4">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="floorType"
-                    value="Stall"
-                    checked={formData.layout?.floorType === "Stall"}
-                    onChange={handleChange}
-                    className="w-5 h-5 text-blue-600 border-2 border-blue-400 focus:ring-blue-500 cursor-pointer"
-                  />
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-                    Stall
-                  </span>
-                </label>
+              <div className="px-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 text-cyan-800 border border-cyan-200 rounded-xl font-bold text-xs">
+                  <Store size={14} className="text-cyan-600" />
+                  <span>Stall Layout</span>
+                </span>
               </div>
             </div>
 
@@ -465,57 +453,61 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
             </div>
           </div>
 
-          {/* Stall Size & Pricing */}
+          {/* Stall Name & Size */}
           <div className="space-y-3">
-            <label className={labelClasses}>
-              How much do you want to charge for Stall? <span className="text-red-500">*</span>
-            </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-2">
-              <input
-                maxLength={20}
-                name="stallName"
-                placeholder="Stall Name"
-                value={formData.layout?.stallName || ""}
-                onChange={handleChange}
-                className={inputClasses}
-              />
-              <div className="flex gap-2">
-                <select
-                  name="stallSize"
-                  value={formData.layout?.stallSize || "Feet"}
-                  onChange={handleChange}
-                  className={`${selectClasses} flex-1`}
-                >
-                  <option>Feet</option>
-                  <option>Inches</option>
-                </select>
-
-                {/* Automated Length/Width Input */}
+              <div>
+                <label className={labelClasses}>Stall Name / Booth ID <span className="text-red-500">*</span></label>
                 <input
-                  type="text"
-                  placeholder={formData.layout?.stallSize === "Inches" ? "Length/Width" : "Length/Width"}
-                  value={formData.layout?.sizeRange || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const isDeleting = val.length < (formData.layout?.sizeRange || "").length;
-                    const unit = formData.layout?.stallSize || "Feet";
-                    const formatted = formatSizeRange(val, unit, isDeleting);
-                    setFormData({
-                      ...formData,
-                      layout: {
-                        ...formData.layout,
-                        length: formatted.length,
-                        width: formatted.width,
-                        sizeRange: formatted.sizeRange
-                      }
-                    });
-                  }}
-                  className={`${inputClasses} flex-1 text-center font-semibold`}
+                  maxLength={20}
+                  name="stallName"
+                  placeholder="e.g. A1 - Premium Booth"
+                  value={formData.layout?.stallName || ""}
+                  onChange={handleChange}
+                  className={inputClasses}
                 />
               </div>
 
-              {/* Stall Visibility & Type */}
-              <div className="sm:col-span-2 pt-4 border-t border-gray-100 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClasses}>Stall Dimensions <span className="text-red-500">*</span></label>
+                <div className="flex gap-2">
+                  <select
+                    name="stallSize"
+                    value={formData.layout?.stallSize || "Feet"}
+                    onChange={handleChange}
+                    className={`${selectClasses} flex-1`}
+                  >
+                    <option>Feet</option>
+                    <option>Inches</option>
+                  </select>
+
+                  {/* Automated Length/Width Input */}
+                  <input
+                    type="text"
+                    placeholder={formData.layout?.stallSize === "Inches" ? "Length/Width" : "10/10"}
+                    value={formData.layout?.sizeRange || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const isDeleting = val.length < (formData.layout?.sizeRange || "").length;
+                      const unit = formData.layout?.stallSize || "Feet";
+                      const formatted = formatSizeRange(val, unit, isDeleting);
+                      setFormData({
+                        ...formData,
+                        layout: {
+                          ...formData.layout,
+                          length: formatted.length,
+                          width: formatted.width,
+                          sizeRange: formatted.sizeRange
+                        }
+                      });
+                    }}
+                    className={`${inputClasses} flex-1 text-center font-semibold`}
+                  />
+              </div>
+            </div>
+
+            {/* Stall Visibility & Type */}
+            <div className="sm:col-span-2 pt-4 border-t border-gray-100 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className={labelClasses}>Stall Visibility <span className="text-red-500">*</span></label>
                   <div className="flex gap-4 px-2">
@@ -562,36 +554,18 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
               {/* PRICE FIELDS FOR PAID STALLS */}
               {stallType === "Paid" && (
                 <div className="bg-gray-50 p-4 rounded-3xl border border-gray-100 space-y-4 animate-in slide-in-from-top-4 duration-300 sm:col-span-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <label className="text-[12px] font-bold text-gray-500 ml-4">PRICE IN INR</label>
+                  <div className="grid grid-cols-2 gap">
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="text-[12px] font-bold text-gray-500 ml-4">STALL PRICE (₹ INR)</label>
                       <input
                         name="priceINR"
                         placeholder="₹ 0.00"
                         value={formData.layout?.priceINR || ""}
                         maxLength={10}
-                        onChange={(e) =>
-                          handleChange({
-                            target: {
-                              name: "priceINR",
-                              value: e.target.value.replace(/[^0-9.]/g, "")
-                            }
-                          })
-                        }
-                        className={inputClasses}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[12px] font-bold text-gray-500 ml-4">PRICE IN USD</label>
-                      <input
-                        name="priceUSD"
-                        placeholder="$ 0.00"
-                        value={formData.layout?.priceUSD || ""}
-                        maxLength={10}
                         onChange={(e) => {
                           let value = e.target.value.replace(/[^0-9.]/g, "");
                           if (/^\d*\.?\d{0,2}$/.test(value)) {
-                            handleChange({ target: { name: "priceUSD", value } });
+                            handleChange({ target: { name: "priceINR", value } });
                           }
                         }}
                         className={inputClasses}
@@ -604,25 +578,18 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                       <input
                         type="checkbox"
                         name="primeSeat"
-                        checked={formData.layout?.primeSeat}
+                        checked={Boolean(formData.layout?.primeSeat)}
                         onChange={handleChange}
                         className="w-5 h-5 rounded text-purple-600 border-gray-300 focus:ring-purple-500"
                       />
                       <span className="text-sm font-semibold text-gray-700">Mark as Prime Stall</span>
                     </label>
                     {formData.layout?.primeSeat && (
-                      <div className="grid grid-cols-2 gap-3 animate-in zoom-in-95 duration-200">
+                      <div className="animate-in zoom-in-95 duration-200">
                         <input
                           name="primePriceINR"
-                          placeholder="+ ₹ Prime Add-on"
+                          placeholder="+ ₹ Prime Add-on Extra Fee"
                           value={formData.layout?.primePriceINR || ""}
-                          onChange={handleChange}
-                          className={inputClasses}
-                        />
-                        <input
-                          name="primePriceUSD"
-                          placeholder="+ $ Prime Add-on"
-                          value={formData.layout?.primePriceUSD || ""}
                           onChange={handleChange}
                           className={inputClasses}
                         />
@@ -689,6 +656,28 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     Add Amenity
                   </button>
                 </div>
+
+                {/* Pending Draft Amenities List */}
+                {draftAmenities.length > 0 && (
+                  <div className="pt-2 flex flex-wrap gap-1.5 border-t border-slate-100 mt-2">
+                    <span className="text-[11px] font-bold text-slate-500 w-full block">
+                      Stall Amenities (Saved when stall is confirmed):
+                    </span>
+                    {draftAmenities.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-50 border border-cyan-200 text-xs font-bold text-cyan-800">
+                        <span>{item.amenity} (x{item.qty})</span>
+                        <button
+                          type="button"
+                          onClick={() => setDraftAmenities(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-cyan-600 hover:text-red-500 border-none bg-transparent cursor-pointer p-0.5"
+                          title="Remove"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 space-y-3 sm:col-span-2">
@@ -728,7 +717,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     </div>
 
                     {isTaxDropdownOpen && (
-                      <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      <div className="absolute z-[9999] top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
                         <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-white">
                           <input
                             type="checkbox"
@@ -803,48 +792,65 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                       <th className={tableHeaderClasses}>Size</th>
                       <th className={tableHeaderClasses}>Visibility</th>
                       <th className={tableHeaderClasses}>Type</th>
-                      <th className={tableHeaderClasses}>Price (INR)</th>
-                      <th className={tableHeaderClasses}>Price (USD)</th>
+                      <th className={tableHeaderClasses}>Price (₹ INR)</th>
+                      <th className={tableHeaderClasses}>Passes</th>
+                      <th className={tableHeaderClasses}>Taxes</th>
                     </tr>
                   </thead>
                   <tbody>
                     {stallList.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="p-12 text-center text-gray-400 italic bg-gray-50/30">
+                        <td colSpan="8" className="p-12 text-center text-gray-400 italic bg-gray-50/30">
                           No stalls added yet. Start by filling the form on the left.
                         </td>
                       </tr>
                     ) : (
-                      stallList.map((stall, index) => (
-                        <tr key={index} className="hover:bg-sky-50/50 transition-colors duration-200 group">
-                          <td className="p-4 border-b border-gray-50 flex gap-3">
-                            <button
-                              onClick={() => openEditStall(index)}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-200"
-                              title="Edit"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => setDeleteModal({ isOpen: true, index, type: "stall" })}
-                              className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-200"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                          <td className={`${tableCellClasses} font-semibold text-purple-700`}>{stall.stallName}</td>
-                          <td className={tableCellClasses}>{stall.size}</td>
-                          <td className={tableCellClasses}>
-                            <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${stall.visibility === "Public" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
-                              {stall.visibility}
-                            </span>
-                          </td>
-                          <td className={tableCellClasses}>{stall.type}</td>
-                          <td className={`${tableCellClasses} font-bold`}>{stall.priceINR}</td>
-                          <td className={`${tableCellClasses} font-bold`}>{stall.priceUSD}</td>
-                        </tr>
-                      ))
+                      stallList.map((stall, index) => {
+                        const stallTaxes = (stall.taxes && stall.taxes.length > 0) ? stall.taxes : (formData.layout?.taxes || []);
+                        return (
+                          <tr key={index} className="hover:bg-sky-50/50 transition-colors duration-200 group">
+                            <td className="p-4 border-b border-gray-50 flex gap-3">
+                              <button
+                                onClick={() => openEditStall(index)}
+                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-200"
+                                title="Edit"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteModal({ isOpen: true, index, type: "stall" })}
+                                className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-200"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                            <td className={`${tableCellClasses} font-semibold text-purple-700`}>{stall.stallName || stall.stall_name}</td>
+                            <td className={tableCellClasses}>{stall.size || stall.stall_size}</td>
+                            <td className={tableCellClasses}>
+                              <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${stall.visibility === "Public" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                                {stall.visibility}
+                              </span>
+                            </td>
+                            <td className={tableCellClasses}>{stall.type || stall.stall_type}</td>
+                            <td className={`${tableCellClasses} font-bold`}>₹{stall.priceINR || stall.price_inr}</td>
+                            <td className={`${tableCellClasses} font-semibold`}>{stall.personPass || formData.layout?.personPass || 1} Staff</td>
+                            <td className={tableCellClasses}>
+                              {stallTaxes.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {stallTaxes.map((t, i) => (
+                                    <span key={i} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                      {t}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">None</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1007,44 +1013,46 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
       {/* EDIT MODAL */}
       {editModal.isOpen && (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2rem] shadow-2xl max-w-2xl w-full overflow-hidden animate-in zoom-in-95 duration-300 border border-sky-100">
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200/80">
             {/* Header */}
-            <div className="px-8 py-6 flex items-center justify-between bg-gradient-to-r from-sky-600 to-blue-700 text-white">
+            <div className="px-6 py-4 flex items-center justify-between bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-700 text-white">
               <div>
-                <h3 className="text-xl font-black tracking-tight">
+                <h3 className="text-base font-extrabold tracking-tight">
                   Edit {editModal.type === "stall" ? "Stall Details" : "Amenity Details"}
                 </h3>
-                <p className="text-sky-100 text-xs font-bold uppercase tracking-widest mt-1 opacity-80">
-                  Refining Layout Information
+                <p className="text-cyan-100 text-[11px] font-medium tracking-wide mt-0.5">
+                  Refining layout & stall configuration
                 </p>
               </div>
               <button
                 onClick={() => setEditModal({ isOpen: false, index: null, type: "", data: {} })}
-                className="p-2 hover:bg-white/20 rounded-xl transition-all hover:rotate-90 duration-300"
+                className="p-1.5 hover:bg-white/20 rounded-lg transition-all text-white cursor-pointer"
               >
-                <X size={24} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Body */}
-            <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            <div className="p-6 max-h-[75vh] overflow-y-auto custom-scrollbar space-y-4">
               {editModal.type === "stall" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="sm:col-span-2 space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Stall Name</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Stall Name */}
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className={labelClasses}>Stall Name</label>
                     <input
                       className={inputClasses}
-                      value={editModal.data.stallName}
+                      value={editModal.data.stallName || ""}
                       onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, stallName: e.target.value } })}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Unit</label>
+                  {/* Unit */}
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Unit</label>
                     <select
                       className={selectClasses}
-                      value={editModal.data.stallSize}
+                      value={editModal.data.stallSize || "Feet"}
                       onChange={(e) => {
                         const newUnit = e.target.value;
                         const limit = newUnit === "Inches" ? 4 : 2;
@@ -1067,8 +1075,9 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     </select>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Dimensions (Length / Width)</label>
+                  {/* Dimensions */}
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Dimensions (Length / Width)</label>
                     <input
                       type="text"
                       placeholder={editModal.data.stallSize === "Inches" ? "L/W (e.g. 1200/1200)" : "L/W (e.g. 10/10)"}
@@ -1088,15 +1097,16 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                           }
                         });
                       }}
-                      className={`${inputClasses} w-full text-center font-semibold bg-gray-50`}
+                      className={`${inputClasses} font-semibold text-center`}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Visibility</label>
+                  {/* Visibility */}
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Visibility</label>
                     <select
                       className={selectClasses}
-                      value={editModal.data.visibility}
+                      value={editModal.data.visibility || "Public"}
                       onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, visibility: e.target.value } })}
                     >
                       <option>Public</option>
@@ -1104,11 +1114,12 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     </select>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Type</label>
+                  {/* Stall Type */}
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Stall Type</label>
                     <select
                       className={selectClasses}
-                      value={editModal.data.stallType}
+                      value={editModal.data.stallType || "Paid"}
                       onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, stallType: e.target.value } })}
                     >
                       <option>Paid</option>
@@ -1116,47 +1127,143 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     </select>
                   </div>
 
-                  {editModal.data.stallType === "Paid" && (
-                    <>
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-sky-600 uppercase ml-2">Price (INR)</label>
+                  {/* Price (INR) & Person Passes */}
+                  {editModal.data.stallType !== "Free" && (
+                    <div className="space-y-1">
+                      <label className={labelClasses}>Price (₹ INR)</label>
+                      <input
+                        className={inputClasses}
+                        placeholder="e.g. 5000"
+                        value={editModal.data.priceINR || ""}
+                        onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, priceINR: e.target.value.replace(/[^0-9.]/g, "") } })}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className={labelClasses}>No. of Person Passes Allowed</label>
+                    <input
+                      className={inputClasses}
+                      placeholder="e.g. 2"
+                      value={editModal.data.personPass || ""}
+                      onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, personPass: e.target.value.replace(/\D/g, "") } })}
+                    />
+                  </div>
+
+                  {/* Mark as Prime Stall */}
+                  {editModal.data.stallType !== "Free" && (
+                    <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
                         <input
-                          className={inputClasses}
-                          value={editModal.data.priceINR}
-                          onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, priceINR: e.target.value.replace(/[^0-9.]/g, "") } })}
+                          type="checkbox"
+                          checked={Boolean(editModal.data.primeSeat)}
+                          onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, primeSeat: e.target.checked } })}
+                          className="w-4 h-4 rounded text-cyan-600 border-slate-300 focus:ring-cyan-500 cursor-pointer"
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-black text-sky-600 uppercase ml-2">Price (USD)</label>
+                        <span className="text-xs font-bold text-slate-700">Mark as Prime Stall</span>
+                      </label>
+                      {editModal.data.primeSeat && (
                         <input
+                          placeholder="+ ₹ Prime Add-on Extra Fee"
                           className={inputClasses}
-                          value={editModal.data.priceUSD}
-                          onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, priceUSD: e.target.value.replace(/[^0-9.]/g, "") } })}
+                          value={editModal.data.primePriceINR || ""}
+                          onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, primePriceINR: e.target.value.replace(/[^0-9.]/g, "") } })}
                         />
-                      </div>
-                    </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Include Tax in Final Price & Tax Dropdown */}
+                  {editModal.data.stallType !== "Free" && (
+                    <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-2">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editModal.data.includeTax)}
+                          onChange={(e) => setEditModal({
+                            ...editModal,
+                            data: {
+                              ...editModal.data,
+                              includeTax: e.target.checked,
+                              taxes: e.target.checked ? (editModal.data.taxes?.length ? editModal.data.taxes : formData.layout?.taxes || []) : []
+                            }
+                          })}
+                          className="w-4 h-4 rounded text-cyan-600 border-slate-300 focus:ring-cyan-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-slate-700">Include Tax in Final Price</span>
+                      </label>
+
+                      {editModal.data.includeTax && (
+                        <div className="relative animate-in slide-in-from-top-2 duration-300">
+                          <label className={labelClasses}>Select Taxes</label>
+                          <div
+                            className="w-full h-9 px-3 flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 text-slate-900 cursor-pointer text-xs font-medium"
+                            onClick={() => setIsEditTaxDropdownOpen(!isEditTaxDropdownOpen)}
+                          >
+                            <span className="truncate text-slate-700">
+                              {(editModal.data.taxes || []).length > 0
+                                ? (editModal.data.taxes || []).join(", ")
+                                : "Select taxes..."}
+                            </span>
+                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${isEditTaxDropdownOpen ? 'rotate-180' : ''}`} />
+                          </div>
+
+                          {isEditTaxDropdownOpen && (
+                            <div className="absolute z-[9999] top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden p-2 space-y-1">
+                              {taxOptions.map((opt) => {
+                                const isChecked = (editModal.data.taxes || []).includes(opt);
+                                return (
+                                  <label key={opt} className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-xs font-semibold text-slate-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        const current = editModal.data.taxes || [];
+                                        const next = e.target.checked ? [...current, opt] : current.filter((t) => t !== opt);
+                                        setEditModal({ ...editModal, data: { ...editModal.data, taxes: next } });
+                                      }}
+                                      className="w-3.5 h-3.5 rounded text-cyan-600"
+                                    />
+                                    <span>{opt}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Stall Name</label>
-                    <p className="bg-gray-50 px-6 py-3 rounded-2xl font-bold text-gray-700 border border-gray-100">{editModal.data.stallName}</p>
+                /* EDIT AMENITY DETAILS */
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Stall Name</label>
+                    <input
+                      disabled
+                      className={`${inputClasses} bg-slate-100 text-slate-500 cursor-not-allowed`}
+                      value={editModal.data.stallName || ""}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Amenity Name</label>
+
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Amenity Name</label>
                     <input
                       className={inputClasses}
-                      value={editModal.data.amenity}
+                      placeholder="e.g. Executive Chair"
+                      value={editModal.data.amenity || ""}
                       onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, amenity: e.target.value } })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-sky-600 uppercase ml-2">Quantity</label>
+
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Quantity</label>
                     <input
                       type="number"
                       className={inputClasses}
-                      value={editModal.data.qty}
+                      placeholder="e.g. 2"
+                      value={editModal.data.qty || ""}
                       onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, qty: e.target.value } })}
                     />
                   </div>
@@ -1165,16 +1272,18 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex gap-4">
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200/80 flex items-center justify-end gap-3">
               <button
+                type="button"
                 onClick={() => setEditModal({ isOpen: false, index: null, type: "", data: {} })}
-                className="flex-1 py-4 bg-white border border-gray-200 text-gray-600 font-bold rounded-2xl hover:bg-gray-100 transition-all active:scale-95"
+                className="h-9 px-4 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={editModal.type === "stall" ? handleUpdateStall : handleUpdateAmenity}
-                className="flex-[2] py-4 bg-gradient-to-r from-sky-600 to-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-200 hover:shadow-2xl transition-all active:scale-95"
+                className="h-9 px-6 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-xs border-none cursor-pointer"
               >
                 Save Changes
               </button>

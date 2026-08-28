@@ -88,7 +88,25 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
   }, [formData.booking?.earlyBirdExpireDate, formData.booking?.earlyBirdExpireTime]);
 
   const updateBooking = (field, value) => {
-    setFormData((prev) => ({ ...prev, booking: { ...prev.booking, [field]: value } }));
+    setFormData((prev) => {
+      const updated = { ...(prev.booking || {}), [field]: value };
+      if (field === "totalCapacity" || field === "capacity") {
+        updated.capacity = value;
+        updated.totalCapacity = value;
+        updated.total_capacity = value;
+      }
+      if (field === "maxPerUser" || field === "maxPass") {
+        updated.maxPass = value;
+        updated.maxPerUser = value;
+        updated.max_pass = value;
+      }
+      if (field === "price" || field === "priceINR" || field === "price_inr") {
+        updated.price = value;
+        updated.priceINR = value;
+        updated.price_inr = value;
+      }
+      return { ...prev, booking: updated };
+    });
   };
 
   const handleChange = (e) => {
@@ -116,7 +134,16 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
 
   const parseDateStr = (str) => {
     if (!str) return null;
-    return new Date(str.split("/").reverse().join("-"));
+    if (typeof str === "string" && str.includes("-")) {
+      const parts = str.split("-");
+      if (parts[0].length === 4) return new Date(str);
+      return new Date(parts.reverse().join("-"));
+    }
+    if (typeof str === "string" && str.includes("/")) {
+      const parts = str.split("/");
+      if (parts[2]?.length === 4) return new Date(parts.reverse().join("-"));
+    }
+    return new Date(str);
   };
 
   const eventStartDate = formData.eventDetails?.startDate ? new Date(formData.eventDetails.startDate) : null;
@@ -133,10 +160,10 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
           <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Booking Configuration</h3>
         </div>
 
-        {/* Booking Date Range */}
+        {/* Booking Date & Time Range */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">
-            Booking Period <span className="text-red-500">*</span>
+            Booking Period & Times <span className="text-red-500">*</span>
           </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -171,7 +198,50 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                 wrapperClassName="w-full"
               />
             </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Booking Start Time (24h/12h)</span>
+              <CustomTimePicker
+                value={formData.booking?.bookingStartTime || "12:00 AM"}
+                onChange={(val) => updateBooking("bookingStartTime", val)}
+              />
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Booking End Time (Max {formData.eventDetails?.startTime || "06:00 PM"})</span>
+              <CustomTimePicker
+                value={formData.booking?.bookingEndTime || formData.eventDetails?.startTime || "06:00 PM"}
+                onChange={(val) => {
+                  const eventStartTime = formData.eventDetails?.startTime || "06:00 PM";
+                  const eventStartDateStr = formData.eventDetails?.startDate || "";
+                  const bookingEndDateStr = formData.booking?.bookingEndDate || "";
+                  const normBookingEnd = bookingEndDateStr ? bookingEndDateStr.split("/").reverse().join("-") : "";
+
+                  // Format times to 24h for comparison
+                  const to24 = (t) => {
+                    if (!t) return "00:00";
+                    const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+                    if (!m) return t;
+                    let h = parseInt(m[1], 10);
+                    if (m[3]?.toUpperCase() === "PM" && h < 12) h += 12;
+                    if (m[3]?.toUpperCase() === "AM" && h === 12) h = 0;
+                    return `${h.toString().padStart(2, "0")}:${m[2]}`;
+                  };
+
+                  const event24 = to24(eventStartTime);
+                  const selected24 = to24(val);
+
+                  if (normBookingEnd && eventStartDateStr && normBookingEnd === eventStartDateStr && selected24 > event24) {
+                    // Cap at eventStartTime if user tries to set time past event start
+                    updateBooking("bookingEndTime", eventStartTime);
+                  } else {
+                    updateBooking("bookingEndTime", val);
+                  }
+                }}
+              />
+            </div>
           </div>
+          <p className="text-[10px] font-semibold text-cyan-700 bg-cyan-50 p-2 rounded-lg mt-2 border border-cyan-200/60 leading-tight">
+            ℹ️ <strong>Booking Time Rule:</strong> Bookings start at 12:00 AM (00:00) on Start Date and MUST end on or before Event Start Time ({formData.eventDetails?.startTime || "06:00 PM"}) on {formData.eventDetails?.startDate || "Event Date"}.
+          </p>
         </div>
 
         {/* Pass Type */}
@@ -192,36 +262,63 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
           </div>
         </div>
 
-        {/* Ticket Field Customization (Single Pass only) */}
+        {/* Attendee Badge & Professional Information (Optional) */}
         {formData.booking?.passType === "Single Pass" && (
-          <div className="p-3 bg-cyan-50/40 rounded-xl border border-cyan-100 space-y-2">
-            <span className="text-[11px] font-extrabold text-cyan-900">Ticket Field Customization</span>
-            {[
-              { id: "title", label: "Title", type: "titleType", selection: "titleSelection" },
-              { id: "designation", label: "Designation", type: "designationType", selection: "designationSelection" },
-              { id: "company", label: "Company", type: "companyType", selection: "companySelection" },
-            ].map((field) => (
-              <div key={field.id} className="flex items-center gap-2">
-                <input name={field.id} placeholder={field.label}
-                  value={formData.booking?.[field.id] || ""}
-                  onChange={(e) => updateBooking(field.id, e.target.value)}
-                  className="flex-1 h-8 bg-white border border-slate-200 rounded-lg px-2 text-xs outline-none focus:ring-1 focus:ring-cyan-500"
-                />
-                <div className="flex bg-white border border-slate-200 rounded-lg p-0.5">
-                  {["Editable", "Selection"].map((mode) => (
-                    <label key={mode} className="cursor-pointer">
-                      <input type="radio" name={field.type} value={mode} className="hidden peer"
-                        checked={formData.booking?.[field.type] === mode}
-                        onChange={(e) => updateBooking(field.type, e.target.value)} />
-                      <div className="px-2 py-1 rounded-md text-[9px] font-bold uppercase text-slate-400
-                        peer-checked:bg-cyan-600 peer-checked:text-white transition-all">
-                        {mode}
-                      </div>
-                    </label>
-                  ))}
-                </div>
+          <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">Attendee Badge Information</span>
+                <span className="text-[10px] text-slate-500 font-medium block">
+                  Enable optional fields for Business Expos, Conferences & B2B Events
+                </span>
               </div>
-            ))}
+            </div>
+
+            <div className="space-y-2 pt-1">
+              {[
+                { id: "enableTitle", key: "titleType", label: "Title / Honorific (e.g. Dr./Mr./Ms.)" },
+                { id: "enableDesignation", key: "designationType", label: "Job Designation / Role" },
+                { id: "enableCompany", key: "companyType", label: "Company / Organization Name" },
+              ].map((field) => {
+                const isEnabled = Boolean(formData.booking?.[field.id]);
+                const mode = formData.booking?.[field.key] || "Editable";
+
+                return (
+                  <div key={field.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        onChange={(e) => updateBooking(field.id, e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                      />
+                      <span className={`text-xs font-bold ${isEnabled ? "text-slate-900" : "text-slate-500"}`}>
+                        {field.label}
+                      </span>
+                    </label>
+
+                    {isEnabled && (
+                      <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                        {["Editable", "Selection"].map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => updateBooking(field.key, opt)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase transition-all border-none cursor-pointer ${
+                              mode === opt
+                                ? "bg-cyan-600 text-white shadow-xs"
+                                : "text-slate-400 hover:text-slate-700 bg-transparent"
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -350,7 +447,12 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                     name="price"
                     placeholder="499"
                     value={formData.booking?.price || ""}
-                    onChange={(e) => updateBooking("price", e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      updateBooking("price", val);
+                      updateBooking("priceINR", val);
+                      updateBooking("price_inr", val);
+                    }}
                     className="w-full h-9 bg-white border border-slate-200 rounded-xl pl-7 pr-3 text-xs font-extrabold outline-none focus:ring-1 focus:ring-cyan-500"
                   />
                 </div>

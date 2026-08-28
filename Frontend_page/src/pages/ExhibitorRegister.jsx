@@ -271,10 +271,13 @@ export default function ExhibitorRegister() {
       const userRole = (data?.user?.role || data?.role || "exhibitor").toLowerCase();
       const userId = data?.user?.id || data?.User_id || "";
       const userName = data?.user?.name || data?.name || formData.name;
-      const token = data?.token || "exhibitor-session-token";
+      const token = data?.token || data?.access_token || "";
       const orgName = data?.user?.organization_name || formData.company_name;
 
-      sessionStorage.setItem("token", token);
+      if (token) {
+        sessionStorage.setItem("token", token);
+        localStorage.setItem("token", token);
+      }
       sessionStorage.setItem("role", userRole);
       sessionStorage.setItem("id", userId.toString());
       sessionStorage.setItem("name", userName);

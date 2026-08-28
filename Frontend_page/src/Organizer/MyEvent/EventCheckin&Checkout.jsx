@@ -15,28 +15,14 @@ export default function EventCheckIn() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const fallbackEvents = [
-    { event_code: "EVT-25", event_name: "MRC Grand Music Fest 2026", arrived: 380, departed: 45, present: 335 },
-    { event_code: "EVT-22", event_name: "Valluvar Kottam Craft & Food Expo", arrived: 720, departed: 180, present: 540 },
-    { event_code: "EVT-9", event_name: "Furniture & Home Products Expo", arrived: 210, departed: 30, present: 180 },
-    { event_code: "EVT-11", event_name: "District Leadership Conference 2026", arrived: 140, departed: 10, present: 130 }
-  ];
-
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
   const fetchEvents = async () => {
     setLoading(true);
     try {
       const res = await getEventscheckin();
-      if (res && Array.isArray(res) && res.length > 0) {
-        setEvents(res);
-      } else {
-        setEvents(fallbackEvents);
-      }
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setEvents(list);
     } catch {
-      setEvents(fallbackEvents);
+      setEvents([]);
     } finally {
       setLoading(false);
     }

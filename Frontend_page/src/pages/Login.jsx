@@ -4,6 +4,7 @@ import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Compass, Sh
 import { loginUser } from "../Services/api";
 import { useDispatch } from "react-redux";
 import { setUser } from "../Redux/userSlice";
+import { setCredentials } from "../Redux/authSlice";
 import BrandLogo from "../components/ui/BrandLogo";
 
 export default function Login() {
@@ -82,9 +83,12 @@ export default function Login() {
       const userEmail = data.user?.email || formData.email || "";
       const userMobile = data.user?.mobile || "";
       const userOrg = data.user?.organization_name || "";
-      const token = data.token || "authenticated-user-token";
+      const token = data.token || data.access_token || "";
 
-      sessionStorage.setItem("token", token);
+      if (token) {
+        sessionStorage.setItem("token", token);
+        localStorage.setItem("token", token);
+      }
       sessionStorage.setItem("role", userRole);
       sessionStorage.setItem("id", userId.toString());
       sessionStorage.setItem("name", userName);
@@ -92,10 +96,11 @@ export default function Login() {
       if (userMobile) sessionStorage.setItem("mobile", userMobile);
       if (userOrg) sessionStorage.setItem("organization_name", userOrg);
 
-      localStorage.setItem("token", token);
       localStorage.setItem("role", userRole);
       localStorage.setItem("name", userName);
       localStorage.setItem("email", userEmail);
+
+      dispatch(setCredentials({ user: data.user || data, token: token, role: userRole }));
 
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", formData.email);

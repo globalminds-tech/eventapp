@@ -173,13 +173,14 @@ const App = () => {
   const fetchEvents = async () => {
     try {
       setIsLoading(true);
-      const data = await getHomeEventshow();
-      if (!data || data.length === 0) {
+      const res = await getHomeEventshow();
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      if (list.length === 0) {
         setEvents([]);
         return;
       }
 
-      const formatted = data.map((e, index) => {
+      const formatted = list.map((e, index) => {
         const entryType = e.entry_type || "";
         const passFee = e.pass_fee;
         const isDonation = entryType === "Donation" || String(passFee).toLowerCase() === "donation";

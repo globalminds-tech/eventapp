@@ -1,16 +1,34 @@
 import React, { useEffect, useState, useRef } from "react";
 import CustomTimePicker from "../TimePickerClock";
-import { get_Venues_details, getVenueDetails } from "../../../../Services/api";
+import { get_Venues_details, getVenueDetails, getAdminCategories } from "../../../../Services/api";
 // import { Calendar, Clock } from "lucide-react";
 import { Calendar, Clock, Search } from "lucide-react";
 const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors }) => {
   const [venues, setVenues] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([
+    { name: "Music", subcategories: ["Concert", "Festival"] },
+    { name: "Business", subcategories: ["Conference", "Expo", "Summit"] },
+    { name: "Technology", subcategories: ["Hackathon", "Seminar"] },
+    { name: "Education", subcategories: ["Workshop", "Webinar"] },
+    { name: "Sports", subcategories: ["Tournament", "Marathon"] }
+  ]);
   /* inside component */
   const startDateRef = useRef(null);
   const endDateRef = useRef(null);
   const categoryRef = useRef(null);
   const venueRef = useRef(null);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    getAdminCategories()
+      .then((res) => {
+        const catData = res?.data || res;
+        if (Array.isArray(catData) && catData.length > 0) {
+          setCategoriesList(catData);
+        }
+      })
+      .catch((err) => console.log("Category load note:", err));
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -205,8 +223,8 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
   
   const eventNameError = (showStep1Errors && !formData.eventDetails?.eventName) 
     ? "Event Name is required." 
-    : (formData.eventDetails?.eventName && formData.eventDetails.eventName.length > 50) 
-      ? "Max 50 characters allowed" 
+    : (formData.eventDetails?.eventName && formData.eventDetails.eventName.length > 255) 
+      ? "Max 255 characters allowed" 
       : "";
 
   const descriptionError = showStep1Errors && !formData.eventDetails?.description ? "Event Description is required." : "";
@@ -293,7 +311,8 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
 
                   {/* Category List */}
                   <div className="max-h-60 overflow-y-auto">
-                    {["Music", "Business", "Technology", "Education", "Sports"]
+                    {categoriesList
+                      .map((catObj) => (typeof catObj === "object" ? catObj.name : catObj))
                       .filter((cat) =>
                         cat
                           .toLowerCase()
@@ -360,6 +379,18 @@ const Step1EventDetails = ({ formData, setFormData, organizerId, showStep1Errors
                 eventNameError ? "ring-red-500" : "ring-gray-200"
               }`}
             />
+            {formData.eventDetails?.eventName && (
+              <div className="mt-2 text-xs font-semibold text-cyan-700 bg-cyan-50/80 border border-cyan-200/80 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                <span className="text-cyan-600 font-bold">🔗 Event Link Preview:</span>
+                <span className="font-mono text-slate-700">
+                  /event/
+                  {formData.eventDetails.eventName
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '') || 'your-event-slug'}
+                </span>
+              </div>
+            )}
             {eventNameError && (
               <p className="text-red-500 text-xs mt-1.5 ml-1">
                 {eventNameError}

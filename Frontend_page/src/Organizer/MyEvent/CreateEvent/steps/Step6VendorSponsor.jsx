@@ -23,7 +23,7 @@ import {
 } from "../../../../Services/api";
 import { useSelector } from "react-redux";
 
-const Step6VendorSponsor = ({ formData, setFormData }) => {
+const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   // ===========================
   // ✅ STATE
   // ===========================
@@ -131,16 +131,14 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
   const loadVendorTypes = async () => {
     try {
       const data = await getVendorTypes();
-      if (data && Array.isArray(data) && data.length > 0) {
+      if (data && Array.isArray(data)) {
         const uniqueData = Array.from(
           new Map(data.map((item) => [item.vendor_type, item])).values(),
         );
         setVendorTypes(uniqueData);
-      } else {
-        setVendorTypes(demoVendorTypes);
       }
     } catch {
-      setVendorTypes(demoVendorTypes);
+      setVendorTypes([]);
     }
   };
 
@@ -148,32 +146,28 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
     if (!vendorType) return;
     try {
       const data = await getVendorNames(vendorType);
-      if (data && Array.isArray(data) && data.length > 0) {
+      if (data && Array.isArray(data)) {
         const uniqueData = Array.from(
           new Map(data.map((item) => [item.vendor_name, item])).values(),
         );
         setVendorNames(uniqueData);
-      } else {
-        setVendorNames(demoVendorNames);
       }
     } catch {
-      setVendorNames(demoVendorNames);
+      setVendorNames([]);
     }
   };
 
   const loadSponsors = async () => {
     try {
       const data = await getSponsorNames();
-      if (data && Array.isArray(data) && data.length > 0) {
+      if (data && Array.isArray(data)) {
         const uniqueData = Array.from(
           new Map(data.map((item) => [item.sponsor_name, item])).values(),
         );
         setSponsorNames(uniqueData);
-      } else {
-        setSponsorNames(demoSponsorNames);
       }
     } catch {
-      setSponsorNames(demoSponsorNames);
+      setSponsorNames([]);
     }
   };
 
@@ -197,25 +191,33 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
   // ✅ LOAD FROM formData (IMPORTANT FIX)
   // ===========================
   useEffect(() => {
-    if (formData?.vendors) {
-      setVendorList(formData.vendors.vendors || []);
-      setSponsorList(formData.vendors.sponsors || []);
-      setGuestList(formData.vendors.guests || []);
+    const v = formData?.vendorSponsor || formData?.vendors;
+    if (v) {
+      if (Array.isArray(v.vendors) && v.vendors.length > 0) setVendorList(v.vendors);
+      if (Array.isArray(v.sponsors) && v.sponsors.length > 0) setSponsorList(v.sponsors);
+      if (Array.isArray(v.guests) && v.guests.length > 0) setGuestList(v.guests);
     }
-  }, []);
+  }, [formData?.vendorSponsor, formData?.vendors]);
 
   // ===========================
   // ✅ SAVE TO formData (SYNC)
   // ===========================
   useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      vendors: {
-        vendors: vendorList,
-        sponsors: sponsorList,
-        guests: guestList,
-      },
-    }));
+    if (vendorList.length > 0 || sponsorList.length > 0 || guestList.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        vendorSponsor: {
+          vendors: vendorList,
+          sponsors: sponsorList,
+          guests: guestList,
+        },
+        vendors: {
+          vendors: vendorList,
+          sponsors: sponsorList,
+          guests: guestList,
+        },
+      }));
+    }
   }, [vendorList, sponsorList, guestList]);
 
   // ===========================
@@ -594,17 +596,20 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
                 </div>
                 Vendor Details
               </h2>
-              <button
-                onClick={() => setShowAddVendorModal(true)}
-                className="flex items-center gap-1 text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full hover:bg-purple-100 transition-all"
-              >
-                <Plus size={12} /> Add New
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => setShowAddVendorModal(true)}
+                  className="flex items-center gap-1 text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full hover:bg-purple-100 transition-all"
+                >
+                  <Plus size={12} /> Add New
+                </button>
+              )}
             </div>
 
+            {!isReadOnly && (
             <div className="space-y-3">
               <div className="space-y-1 relative vendor-type-dropdown">
-                <label className={labelClasses}>Vendor Type <span className="text-red-500">*</span> </label>
+                <label className={labelClasses}>Service Category <span className="text-red-500">*</span> </label>
                 <div className="relative group">
                   <div
                     className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-purple-400 transition-all duration-300 ${isVendorTypeOpen ? "border-purple-500 ring-4 ring-purple-500/10" : ""}`}
@@ -743,6 +748,7 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
                 </button>
               )}
             </div>
+            )}
           </div>
 
           <div className="mt-4">
@@ -786,11 +792,11 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
                             </div>
                           </td>
                           <td className={`${tableCellClasses} font-semibold text-gray-800`}>
-                            {v.vendorName}
+                            {v.vendorName || v.vendor_name || "Vendor Provider"}
                           </td>
                           <td className={tableCellClasses}>
                             <span className="px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                              {v.vendorType}
+                              {v.vendorType || v.vendor_type || v.serviceType || v.service_type || "General Vendor"}
                             </span>
                           </td>
                           <td className={tableCellClasses}>
@@ -832,14 +838,17 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
                 </div>
                 Sponsorships
               </h2>
-              <button
-                onClick={() => setShowAddSponsorModal(true)}
-                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full hover:bg-indigo-100 transition-all"
-              >
-                <Plus size={12} /> Add New
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => setShowAddSponsorModal(true)}
+                  className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full hover:bg-indigo-100 transition-all"
+                >
+                  <Plus size={12} /> Add New
+                </button>
+              )}
             </div>
 
+            {!isReadOnly && (
             <div className="space-y-3">
               <div className="space-y-1 relative sponsor-name-dropdown">
                 <label className={labelClasses}>Sponsor<span className="text-red-500">*</span></label>
@@ -979,6 +988,7 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
                 </button>
               )}
             </div>
+            )}
           </div>
 
           <div className="mt-4">
@@ -1021,11 +1031,11 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
                             </div>
                           </td>
                           <td className={`${tableCellClasses} font-semibold text-gray-800`}>
-                            {s.sponsorName}
+                            {s.sponsorName || s.sponsor_name || "Sponsor Partner"}
                           </td>
                           <td className={tableCellClasses}>
                             <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                              {s.sponsorship}
+                              {s.sponsorship || s.sponsorshipType || s.sponsorship_type || s.tier || "Title Sponsor"}
                             </span>
                           </td>
                         </tr>
@@ -1264,16 +1274,19 @@ const Step6VendorSponsor = ({ formData, setFormData }) => {
             <form onSubmit={handleCreateVendor} className="p-8 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Vendor Type</label>
+                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Service Category</label>
                   <select
                     value={newVendor.vendor_type}
-                    onChange={(e) => setNewVendor({ ...newVendor, vendor_type: e.target.value })}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.vendor_type ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm`}
+                    onChange={(e) => {
+                      setNewVendor({ ...newVendor, vendor_type: e.target.value });
+                      setFieldErrors({ ...fieldErrors, vendor_type: "" });
+                    }}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.vendor_type ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-bold`}
                   >
-                    <option value="">Select Type</option>
-                    <option>Suppliers</option>
-                    <option>Contractors</option>
-                    <option>Distributors</option>
+                    <option value="">Select Category</option>
+                    {(vendorTypes.length > 0 ? vendorTypes : demoVendorTypes).map((vt, idx) => (
+                      <option key={idx} value={vt.vendor_type}>{vt.vendor_type}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-1">

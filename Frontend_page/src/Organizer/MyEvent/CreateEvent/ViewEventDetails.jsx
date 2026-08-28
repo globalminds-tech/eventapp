@@ -48,17 +48,27 @@ const ViewEventDetails = ({ eventId, onClose }) => {
     }
   };
 
-  const { eventDetails, booking, layout, documents, terms, vendors, sponsors, guests, food_items, vehicle_details, vehicle_addons } = data;
+  const isTruthy = (val) => val === true || val === 1 || val === "1" || val === "true" || val === "Yes" || val === "yes";
+
+  const { eventDetails = {}, booking = {}, layout = {}, documents = {}, terms = [], vendors = [], sponsors = [], guests = [] } = data || {};
+
+  const food_items = data.food_items || data.food || data.foodProvision?.items || data.foodProvision?.foodItems || [];
+  const vehicle_details = data.vehicle_details || data.vehicles || data.vehicleProvision?.details || data.vehicleProvision?.vehicles || [];
+  const vehicle_addons = data.vehicle_addons || data.addons || data.vehicleProvision?.addons || [];
+  const docList = documents?.docs || documents?.additionalDocs || documents?.existingFiles || data.files || [];
+
+  const hasFood = isTruthy(eventDetails?.food) || food_items.length > 0;
+  const hasVehicle = isTruthy(eventDetails?.vehicle_pass || eventDetails?.vehiclePass) || vehicle_details.length > 0 || vehicle_addons.length > 0;
 
   const tabs = [
     { id: 1, label: "Event Details" },
     { id: 2, label: "Booking" },
-    ...(eventDetails?.food === 1 || eventDetails?.food === true || eventDetails?.food === "true" ? [{ id: 7, label: "Food Provision" }] : []),
-    ...(eventDetails?.vehicle_pass === 1 || eventDetails?.vehicle_pass === true || eventDetails?.vehicle_pass === "true" ? [{ id: 8, label: "Vehicle Provision" }] : []),
+    ...(hasFood ? [{ id: 7, label: "Food Provision" }] : []),
+    ...(hasVehicle ? [{ id: 8, label: "Vehicle Provision" }] : []),
     { id: 3, label: "Layout & Stall" },
     { id: 4, label: "Documents" },
     { id: 5, label: "Terms" },
-    { id: 6, label: "Vendor" },
+    { id: 6, label: "Vendor & Partners" },
   ];
 
   return (
@@ -69,7 +79,7 @@ const ViewEventDetails = ({ eventId, onClose }) => {
         <div className="flex justify-between items-center px-8 py-5 border-b border-gray-100 bg-gray-50/50">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              {eventDetails?.event_name || 'Event Details'}
+              {eventDetails?.eventName || eventDetails?.event_name || 'Event Details'}
             </h2>
             <p className="text-sm text-gray-500 mt-1">Read-only view of the event configuration</p>
           </div>
@@ -113,23 +123,23 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                   </h3>
 
                   {/* Banner Preview */}
-                  {eventDetails?.banner_url && (
+                  {(eventDetails?.banner_url || eventDetails?.bannerPreview) && (
                     <div className="mb-6 rounded-xl overflow-hidden shadow-sm border border-gray-100">
                       <MediaRenderer
-                        src={eventDetails.banner_url}
-                        type={eventDetails.banner_type}
+                        src={eventDetails.banner_url || eventDetails.bannerPreview}
+                        type={eventDetails.banner_type || eventDetails.bannerType || "image"}
                         className="w-full h-48 object-cover"
                       />
                     </div>
                   )}
 
                   <div className="space-y-4">
-                    <DetailItem label="Event Category" value={eventDetails?.category} />
-                    <DetailItem label="Event Name" value={eventDetails?.event_name} />
+                    <DetailItem label="Event Category" value={eventDetails?.category ? `${eventDetails.category}${eventDetails.subCategory || eventDetails.sub_category ? ` (${eventDetails.subCategory || eventDetails.sub_category})` : ''}` : ''} />
+                    <DetailItem label="Event Name" value={eventDetails?.eventName || eventDetails?.event_name} />
                     <DetailItem label="About Event" value={eventDetails?.description} />
                     <DetailItem label="Amenities" value={eventDetails?.amenities} />
                     <DetailItem label="Tags" value={eventDetails?.tags} />
-                    <DetailItem label="Status" value={eventDetails?.status} isBadge />
+                    <DetailItem label="Status" value={eventDetails?.status || "Active"} isBadge />
                   </div>
                 </div>
               </div>
@@ -140,12 +150,12 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                     <Calendar className="w-5 h-5 text-emerald-500" /> Time & Place
                   </h3>
                   <div className="space-y-4">
-                    <DetailItem label="Event Type" value={eventDetails?.event_type || "One-Time"} />
+                    <DetailItem label="Event Type" value={eventDetails?.eventType || eventDetails?.event_type || "One-Time"} />
                     <div className="grid grid-cols-2 gap-4">
-                      <DetailItem label="Start Date" value={formatDateOnly(eventDetails?.start_date)} />
-                      <DetailItem label="Start Time" value={eventDetails?.start_time} />
-                      <DetailItem label="End Date" value={formatDateOnly(eventDetails?.end_date)} />
-                      <DetailItem label="End Time" value={eventDetails?.end_time} />
+                      <DetailItem label="Start Date" value={formatDateOnly(eventDetails?.startDate || eventDetails?.start_date)} />
+                      <DetailItem label="Start Time" value={eventDetails?.startTime || eventDetails?.start_time} />
+                      <DetailItem label="End Date" value={formatDateOnly(eventDetails?.endDate || eventDetails?.end_date)} />
+                      <DetailItem label="End Time" value={eventDetails?.endTime || eventDetails?.end_time} />
                     </div>
                     {eventDetails?.occurrence && <DetailItem label="Frequency" value={eventDetails.occurrence} />}
                     <div className="pt-2 border-t border-gray-50">
@@ -162,40 +172,46 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                     <Clock className="w-5 h-5 text-purple-500" /> Settings & Requirements
                   </h3>
                   <div className="space-y-4">
-                    <DetailItem label="Visibility" value={eventDetails?.visibility} />
-                    <DetailItem label="Include Program" value={eventDetails?.include_program} />
+                    <DetailItem label="Visibility" value={eventDetails?.visibility || "Public"} />
+                    <DetailItem label="Include Program" value={eventDetails?.includeProgram || eventDetails?.include_program || "No"} />
 
                     <div className="pt-2">
                       <p className="text-xs font-bold text-gray-500 mb-2">Communication</p>
                       <div className="flex gap-2 flex-wrap">
-                        {eventDetails?.mail === 'true' && <Badge>Email</Badge>}
-                        {eventDetails?.whatsapp === 'true' && <Badge>WhatsApp</Badge>}
-                        {eventDetails?.print === 'true' && <Badge>Print</Badge>}
+                        {isTruthy(eventDetails?.mail) && <Badge>Email</Badge>}
+                        {isTruthy(eventDetails?.whatsapp) && <Badge>WhatsApp</Badge>}
+                        {isTruthy(eventDetails?.print) && <Badge>Print</Badge>}
+                        {!isTruthy(eventDetails?.mail) && !isTruthy(eventDetails?.whatsapp) && !isTruthy(eventDetails?.print) && (
+                          <span className="text-xs text-gray-400 italic">None selected</span>
+                        )}
                       </div>
                     </div>
 
                     <div className="pt-2">
                       <p className="text-xs font-bold text-gray-500 mb-2">On-spot requirements</p>
                       <div className="flex gap-2 flex-wrap">
-                        {eventDetails?.visitor_mail === 'true' && <Badge>Email ID</Badge>}
-                        {eventDetails?.visitor_name === 'true' && <Badge>Full Name</Badge>}
-                        {eventDetails?.visitor_photo === 'true' && <Badge>Photo</Badge>}
-                        {eventDetails?.visitor_mobile === 'true' && <Badge>Mobile</Badge>}
-                        {eventDetails?.document_proof === 'true' && <Badge>ID Proof</Badge>}
+                        {isTruthy(eventDetails?.visitorMail || eventDetails?.visitor_mail) && <Badge>Email ID</Badge>}
+                        {isTruthy(eventDetails?.visitorName || eventDetails?.visitor_name) && <Badge>Full Name</Badge>}
+                        {isTruthy(eventDetails?.visitorPhoto || eventDetails?.visitor_photo) && <Badge>Photo</Badge>}
+                        {isTruthy(eventDetails?.visitorMobile || eventDetails?.visitor_mobile) && <Badge>Mobile</Badge>}
+                        {isTruthy(eventDetails?.documentProof || eventDetails?.document_proof) && <Badge>ID Proof</Badge>}
                       </div>
                     </div>
 
                     <div className="flex gap-4 pt-2">
-                      <DetailItem label="Day Pass" value={eventDetails?.day_pass === 'true' ? 'Yes' : 'No'} />
-                      <DetailItem label="International" value={eventDetails?.is_international_include === 'true' ? 'Yes' : 'No'} />
+                      <DetailItem label="Day Pass" value={isTruthy(eventDetails?.dayPass || eventDetails?.day_pass) ? 'Yes' : 'No'} />
+                      <DetailItem label="International" value={isTruthy(eventDetails?.isInternationalInclude || eventDetails?.is_international_include) ? 'Yes' : 'No'} />
                     </div>
 
                     <div className="pt-2 border-t border-gray-50">
                       <p className="text-xs font-bold text-gray-500 mb-2">Mandatory documents</p>
                       <div className="flex gap-2 flex-wrap">
-                        {(eventDetails?.aadhar === 'true' || eventDetails?.aadhar === true || eventDetails?.aadhar === 1) && <Badge color="indigo">Aadhar</Badge>}
-                        {(eventDetails?.passport === 'true' || eventDetails?.passport === true || eventDetails?.passport === 1) && <Badge color="indigo">Passport</Badge>}
-                        {(eventDetails?.vehicle_number === 'true' || eventDetails?.vehicle_number === true || eventDetails?.vehicle_number === 1) && <Badge color="indigo">Vehicle Number</Badge>}
+                        {isTruthy(eventDetails?.aadhar) && <Badge color="indigo">Aadhar</Badge>}
+                        {isTruthy(eventDetails?.passport) && <Badge color="indigo">Passport</Badge>}
+                        {isTruthy(eventDetails?.vehicleNumber || eventDetails?.vehicle_number) && <Badge color="indigo">Vehicle Number</Badge>}
+                        {!isTruthy(eventDetails?.aadhar) && !isTruthy(eventDetails?.passport) && !isTruthy(eventDetails?.vehicleNumber || eventDetails?.vehicle_number) && (
+                          <span className="text-xs text-gray-400 italic">None mandatory</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -216,35 +232,35 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                 <div className="space-y-6">
                   <h4 className="text-sm font-bold text-indigo-600 tracking-wider border-b pb-2">Schedule & limits</h4>
                   <div className="grid grid-cols-2 gap-4">
-                    <DetailItem label="Booking Start Date" value={formatDateOnly(booking?.booking_start_date)} />
-                    <DetailItem label="Booking End Date" value={formatDateOnly(booking?.booking_end_date)} />
+                    <DetailItem label="Booking Start Date" value={formatDateOnly(booking?.bookingStartDate || booking?.booking_start_date)} />
+                    <DetailItem label="Booking End Date" value={formatDateOnly(booking?.bookingEndDate || booking?.booking_end_date)} />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <DetailItem label="Total Capacity" value={booking?.capacity} />
-                    <DetailItem label="Max Pass Per User" value={booking?.max_pass} />
+                    <DetailItem label="Total Capacity" value={booking?.totalCapacity || booking?.capacity || 500} />
+                    <DetailItem label="Max Pass Per User" value={booking?.maxPass || booking?.maxPerUser || booking?.max_pass || 4} />
                   </div>
-                  <DetailItem label="Pass Type" value={booking?.pass_type} />
+                  <DetailItem label="Pass Type" value={booking?.passType || booking?.pass_type || "Single Pass"} />
                 </div>
 
                 <div className="space-y-6">
                   <h4 className="text-sm font-bold text-indigo-600 tracking-wider border-b pb-2">Form visibility configuration</h4>
-                  <DetailItem label="Title Setup" value={`${booking?.title_type || 'N/A'} - ${booking?.title_selection === 'true' ? 'Required' : 'Optional'}`} />
-                  <DetailItem label="Designation Setup" value={`${booking?.designation_type || 'N/A'} - ${booking?.designation_selection === 'true' ? 'Required' : 'Optional'}`} />
-                  <DetailItem label="Company Setup" value={`${booking?.company_type || 'N/A'} - ${booking?.company_selection === 'true' ? 'Required' : 'Optional'}`} />
+                  <DetailItem label="Title Setup" value={`${booking?.titleType || booking?.title_type || 'N/A'} - ${isTruthy(booking?.titleSelection || booking?.title_selection) ? 'Required' : 'Optional'}`} />
+                  <DetailItem label="Designation Setup" value={`${booking?.designationType || booking?.designation_type || 'N/A'} - ${isTruthy(booking?.designationSelection || booking?.designation_selection) ? 'Required' : 'Optional'}`} />
+                  <DetailItem label="Company Setup" value={`${booking?.companyType || booking?.company_type || 'N/A'} - ${isTruthy(booking?.companySelection || booking?.company_selection) ? 'Required' : 'Optional'}`} />
                 </div>
 
                 <div className="space-y-6 md:col-span-2 mt-4">
                   <h4 className="text-sm font-bold text-indigo-600 tracking-wider border-b pb-2">Pricing & entry</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <DetailItem label="Entry Type" value={booking?.entry_type} />
-                    <DetailItem label="Charge Type" value={booking?.charge_type} />
-                    <DetailItem label="Include Tax" value={booking?.include_tax === 'true' ? 'Yes' : 'No'} />
+                    <DetailItem label="Entry Type" value={booking?.entryType || booking?.entry_type || "Single Entry"} />
+                    <DetailItem label="Charge Type" value={booking?.chargeType || booking?.charge_type || "Free"} />
+                    <DetailItem label="Include Tax" value={isTruthy(booking?.includeTax || booking?.include_tax) ? 'Yes' : 'No'} />
                   </div>
-                  {booking?.charge_type === 'Paid' && (
+                  {(booking?.chargeType === 'Paid' || booking?.charge_type === 'Paid') && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 bg-gray-50 p-6 rounded-xl border border-gray-100">
-                      <DetailItem label="Price Type" value={booking?.price_type} />
-                      <DetailItem label="Currency" value={booking?.currency} />
-                      <DetailItem label="Early Bird Expiry" value={booking?.early_bird_expire} />
+                      <DetailItem label="Ticket Price (INR)" value={`₹${booking?.priceINR || booking?.price_inr || booking?.price || 0}`} />
+                      <DetailItem label="Price Type" value={booking?.priceType || booking?.price_type || "National"} />
+                      <DetailItem label="Currency" value={booking?.currency || "INR"} />
                     </div>
                   )}
                 </div>
@@ -339,16 +355,16 @@ const ViewEventDetails = ({ eventId, onClose }) => {
             <div className="space-y-8">
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-8 items-center justify-between">
                 <div className="flex gap-8">
-                  <DetailItem label="Floor Type" value={layout?.layout?.floor_type || 'Custom'} />
-                  <DetailItem label="Day Based" value={layout?.layout?.day_based === 1 ? 'Yes' : 'No'} />
-                  <DetailItem label="Include Tax" value={layout?.layout?.include_tax === 1 ? 'Yes' : 'No'} />
+                  <DetailItem label="Floor Type" value={layout?.floorType || layout?.floor_type || layout?.layout?.floor_type || 'Stall'} />
+                  <DetailItem label="Day Based" value={isTruthy(layout?.dayBased || layout?.day_based || layout?.layout?.day_based) ? 'Yes' : 'No'} />
+                  <DetailItem label="Include Tax" value={isTruthy(layout?.includeTax || layout?.include_tax || layout?.layout?.include_tax) ? 'Yes' : 'No'} />
                 </div>
               </div>
 
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h3 className="text-lg font-bold text-gray-800 mb-6">Stall Configured</h3>
 
-                {(!layout?.stalls || layout.stalls.length === 0) ? (
+                {(!layout?.stalls && !layout?.stallList && (!data?.stalls || data.stalls.length === 0)) ? (
                   <p className="text-gray-500 italic py-8 text-center bg-gray-50 rounded-xl">No stalls configured.</p>
                 ) : (
                   <div className="overflow-x-auto rounded-3xl shadow-xl">
@@ -365,16 +381,16 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {layout.stalls.map((stall, idx) => (
+                        {(layout?.stalls || layout?.stallList || data?.stalls || []).map((stall, idx) => (
                           <tr key={idx} className="hover:bg-sky-50/50 transition-colors duration-200 group">
-                            <td className="px-6 py-4 font-medium text-gray-900">{stall.stall_name}</td>
-                            <td className="px-6 py-4 text-gray-600">{stall.stall_size}</td>
-                            <td className="px-6 py-4 text-gray-600">{stall.stall_type}</td>
-                            <td className="px-6 py-4 text-gray-600">{stall.visibility}</td>
-                            <td className="px-6 py-4 text-gray-900 font-medium text-right">₹{stall.price_inr}</td>
-                            <td className="px-6 py-4 text-gray-900 font-medium text-right">₹{stall.prime_price_inr || 0}</td>
+                            <td className="px-6 py-4 font-medium text-gray-900">{stall.stall_name || stall.stallName}</td>
+                            <td className="px-6 py-4 text-gray-600">{stall.stall_size || stall.size}</td>
+                            <td className="px-6 py-4 text-gray-600">{stall.stall_type || stall.type}</td>
+                            <td className="px-6 py-4 text-gray-600">{stall.visibility || "Public"}</td>
+                            <td className="px-6 py-4 text-gray-900 font-medium text-right">₹{stall.price_inr || stall.priceINR || stall.price || 0}</td>
+                            <td className="px-6 py-4 text-gray-900 font-medium text-right">₹{stall.prime_price_inr || stall.primePriceINR || 0}</td>
                             <td className="px-6 py-4 text-center">
-                              {stall.prime_seat === 'true' ? '✅' : '-'}
+                              {isTruthy(stall.prime_seat || stall.primeSeat) ? '✅' : '-'}
                             </td>
                           </tr>
                         ))}
@@ -399,7 +415,7 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                   Event Verification Documents
                 </h3>
 
-                {(!documents?.docs || documents.docs.length === 0) ? (
+                {(!docList || docList.length === 0) ? (
                   <div className="flex flex-col items-center justify-center py-16 bg-gray-50/50 rounded-[2rem] border border-dashed border-gray-200">
                     <div className="px-6 py-4 bg-gray-100 rounded-full mb-4">
                       <AlertCircle className="w-8 h-8 text-gray-400" />
@@ -408,73 +424,67 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative">
-                    {documents.docs.map((doc, idx) => (
-                      <div key={idx} className="group overflow-hidden bg-white border border-gray-100 rounded-[2rem] shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all duration-500 flex flex-col">
-                        {/* Top Preview/Icon */}
-                        <div className="h-40 bg-slate-900 relative overflow-hidden group/media">
-                          {doc.file_url ? (
-                            doc.file_type?.includes('image') ? (
-                              <MediaRenderer
-                                src={doc.file_url}
-                                type="image"
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center bg-slate-800 text-slate-500 gap-3">
-                                <div className="px-6 py-4 bg-slate-700/50 rounded-2xl shadow-inner group-hover/media:scale-110 group-hover/media:text-indigo-400 transition-all duration-500">
-                                  <FileText size={40} />
+                    {docList.map((doc, idx) => {
+                      const fileUrl = doc.file_url || doc.file_path || doc.preview;
+                      const fileType = doc.file_type || doc.type || 'file';
+                      return (
+                        <div key={idx} className="group overflow-hidden bg-white border border-gray-100 rounded-[2rem] shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all duration-500 flex flex-col">
+                          {/* Top Preview/Icon */}
+                          <div className="h-40 bg-slate-900 relative overflow-hidden group/media">
+                            {fileUrl ? (
+                              fileType?.includes('image') || fileUrl.match(/\.(jpeg|jpg|png|webp|gif)$/i) ? (
+                                <MediaRenderer
+                                  src={fileUrl}
+                                  type="image"
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-slate-800 text-slate-500 gap-3">
+                                  <div className="px-6 py-4 bg-slate-700/50 rounded-2xl shadow-inner group-hover/media:scale-110 group-hover/media:text-indigo-400 transition-all duration-500">
+                                    <FileText size={40} />
+                                  </div>
+                                  <span className="text-[10px] font-black tracking-[0.2em]">Document file</span>
                                 </div>
-                                <span className="text-[10px] font-black tracking-[0.2em]">Non-image document</span>
+                              )
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
+                                <FileText size={48} className="mb-2 opacity-50" />
+                                <span className="text-[10px] font-black tracking-tighter">Document preview</span>
                               </div>
-                            )
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-gray-300">
-                              <FileText size={48} className="mb-2 opacity-50" />
-                              <span className="text-[10px] font-black tracking-tighter">Document preview</span>
-                            </div>
-                          )}
+                            )}
 
-                          {/* Floating Type Badge */}
-                          <div className="absolute top-4 left-4 z-10">
-                            <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-[10px] font-black text-indigo-600 rounded-full shadow-sm border border-indigo-50 leading-none">
-                              {doc.file_type || 'FILE'}
-                            </span>
+                            {/* Floating Type Badge */}
+                            <div className="absolute top-4 left-4 z-10">
+                              <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-[10px] font-black text-indigo-600 rounded-full shadow-sm border border-indigo-50 leading-none">
+                                {doc.doc_type || doc.type || 'DOCUMENT'}
+                              </span>
+                            </div>
+
+                            {/* Hover Overlay View Button */}
+                            {fileUrl && (
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="absolute inset-0 bg-indigo-600/60 backdrop-blur-[2px] opacity-0 group-hover/media:opacity-100 transition-all duration-300 flex items-center justify-center z-20"
+                              >
+                                <div className="px-6 py-2.5 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-2 transform translate-y-4 group-hover/media:translate-y-0 transition-transform duration-500">
+                                  <Eye size={16} /> View Document
+                                </div>
+                              </a>
+                            )}
                           </div>
 
-                          {/* Hover Overlay View Button */}
-                          {doc.file_url && (
-                            <a
-                              href={doc.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="absolute inset-0 bg-indigo-600/60 backdrop-blur-[2px] opacity-0 group-hover/media:opacity-100 transition-all duration-300 flex items-center justify-center z-20"
-                            >
-                              <div className="px-6 py-2.5 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-2 transform translate-y-4 group-hover/media:translate-y-0 transition-transform duration-500">
-                                <Eye size={16} /> View Document
-                              </div>
-                            </a>
-                          )}
+                          {/* Info Part */}
+                          <div className="p-6 flex flex-col gap-1">
+                            <h4 className="text-lg font-black text-gray-900 leading-tight">
+                              {doc.doc_type || doc.type || 'Event Document'}
+                            </h4>
+                            <p className="text-sm font-bold text-gray-400 mb-4">{doc.file_name || doc.name || 'Uploaded File'}</p>
+                          </div>
                         </div>
-
-                        {/* Info Part */}
-                        <div className="p-6 flex flex-col gap-1">
-                          <h4 className="text-lg font-black text-gray-900 leading-tight">
-                            {doc.doc_type || doc.type || 'Sponsor Document'}
-                          </h4>
-                          <p className="text-sm font-bold text-gray-400 mb-4">{doc.file_name || 'Uploaded File'}</p>
-
-                          {doc.doc_number && (
-                            <div className="mt-auto pt-4 border-t border-gray-50">
-                              <div className="flex items-center gap-2 text-xs">
-                                <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full shadow-sm" />
-                                <span className="text-gray-400 font-bold tracking-widest text-[9px]">Document ID</span>
-                              </div>
-                              <p className="text-sm font-black text-slate-700 mt-1">{doc.doc_number}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -492,16 +502,23 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                 ) : (
                   <div className="space-y-4">
                     {terms.map((term, idx) => (
-                      <div key={idx} className="flex flex-col  p-5 bg-gray-50 rounded-xl border border-gray-100">
-                        <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">{term.policy_group} &gt; {term.policy_type}</span>
-                        <span className="text-gray-900 font-semibold">{term.policy_name}</span>
-                        {term.is_default ? (
-                          <div className="absolute top-2 right-2">
-                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md text-[10px] font-bold uppercase">
-                              Default
+                      <div key={idx} className="relative flex flex-col p-5 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                            {term.policy_group || term.policyGroup || "General"} &gt; {term.policy_type || term.policyType || "Policy"}
+                          </span>
+                          {(term.is_default || term.isDefault) && (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md text-[10px] font-extrabold uppercase">
+                              Default Policy
                             </span>
-                          </div>
-                        ) : null}
+                          )}
+                        </div>
+                        <span className="text-gray-900 font-bold text-sm">
+                          {term.policy_name || term.policyName || term.name || `Policy #${idx + 1}`}
+                        </span>
+                        <p className="text-xs font-medium text-gray-600 leading-relaxed pt-1">
+                          {term.description || term.details || term.policy_name || term.policyName || "Standard terms apply."}
+                        </p>
                       </div>
                     ))}
                   </div>
