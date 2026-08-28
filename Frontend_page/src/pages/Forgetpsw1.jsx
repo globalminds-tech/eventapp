@@ -80,6 +80,13 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-[400px] bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-1 text-xs font-extrabold text-gray-500 hover:text-indigo-600 transition-colors cursor-pointer mb-3"
+        >
+          ← Back
+        </button>
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">Forgot Password</h2>
 
         {step === 1 && (

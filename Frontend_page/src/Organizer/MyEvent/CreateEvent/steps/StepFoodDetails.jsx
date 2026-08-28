@@ -2,28 +2,20 @@ import React, { useState } from "react";
 import { Trash2, Edit, X, Plus } from "lucide-react";
 
 const Step7FoodProvision = ({ formData, setFormData }) => {
-  const foodItems = formData.foodProvision?.items || [];
+  const foodItems = (formData.foodProvision?.items && formData.foodProvision.items.length > 0)
+    ? formData.foodProvision.items
+    : (formData.foodProvision?.coupons || []);
 
-  const tempInput = formData.foodProvision?.tempInput || {
+  const [tempInput, setTempInput] = useState({
     catererName: "",
     mealType: "Breakfast",
     foodType: "Veg",
     priceINR: "",
-    priceUSD: "",
     menuDetails: "",
-  };
+  });
 
   const updateTempInput = (field, value) => {
-    setFormData({
-      ...formData,
-      foodProvision: {
-        ...formData.foodProvision,
-        tempInput: {
-          ...tempInput,
-          [field]: value,
-        },
-      },
-    });
+    setTempInput((prev) => ({ ...prev, [field]: value }));
   };
 
   const [warning, setWarning] = useState({ show: false, message: "" });
@@ -46,7 +38,6 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
       mealType: tempInput.mealType,
       foodType: tempInput.foodType,
       priceINR: tempInput.priceINR,
-      priceUSD: tempInput.priceUSD || "0",
       menuDetails: tempInput.menuDetails,
     };
 
@@ -54,18 +45,22 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
 
     setFormData({
       ...formData,
+      eventDetails: {
+        ...formData.eventDetails,
+        food: true,
+      },
       foodProvision: {
         ...formData.foodProvision,
         items: updatedItems,
-        tempInput: {
-          catererName: "",
-          mealType: "Breakfast",
-          foodType: "Veg",
-          priceINR: "",
-          priceUSD: "",
-          menuDetails: "",
-        }
       },
+    });
+
+    setTempInput({
+      catererName: "",
+      mealType: "Breakfast",
+      foodType: "Veg",
+      priceINR: "",
+      menuDetails: "",
     });
   };
 
@@ -125,7 +120,7 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* LEFT SIDE: FORM */}
-        <div className={`${cardClasses} space-y-4 md:h-[calc(100vh-290px)] md:overflow-y-auto custom-scrollbar pr-1`}>
+        <div className={`${cardClasses} space-y-4 h-auto`}>
           <h2 className={sectionTitleClasses}>Food Provision Details</h2>
 
           <div className="space-y-6">
@@ -172,25 +167,16 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 sm:col-span-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Price In INR <span className="text-red-500">*</span></label>
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Meal Pass Price (₹ INR) <span className="text-red-500">*</span></label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-xs font-black text-slate-400">₹</span>
                   <input
-                    placeholder="₹ 0.00"
+                    placeholder="250"
                     value={tempInput.priceINR}
                     maxLength={10}
                     onChange={(e) => updateTempInput("priceINR", e.target.value.replace(/[^0-9.]/g, ""))}
-                    className={inputClasses}
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Price In USD</label>
-                  <input
-                    placeholder="$ 0.00"
-                    value={tempInput.priceUSD}
-                    maxLength={10}
-                    onChange={(e) => updateTempInput("priceUSD", e.target.value.replace(/[^0-9.]/g, ""))}
-                    className={inputClasses}
+                    className="w-full h-9 bg-white border border-slate-200 rounded-xl pl-7 pr-3 text-xs font-extrabold outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
               </div>
@@ -337,18 +323,13 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
                   <option value="Both">Both</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClasses}>Meal Pass Price (₹ INR)</label>
                 <input
                   value={editModal.data.priceINR || ""}
                   onChange={(e) => setEditModal(prev => ({ ...prev, data: { ...prev.data, priceINR: e.target.value.replace(/[^0-9.]/g, "") } }))}
                   className={inputClasses}
                   placeholder="Price INR"
-                />
-                <input
-                  value={editModal.data.priceUSD || ""}
-                  onChange={(e) => setEditModal(prev => ({ ...prev, data: { ...prev.data, priceUSD: e.target.value.replace(/[^0-9.]/g, "") } }))}
-                  className={inputClasses}
-                  placeholder="Price USD"
                 />
               </div>
               <textarea

@@ -26,42 +26,35 @@ class EventService:
         return EventRepository.get_all_event_summaries()
 
     @staticmethod
-    def get_event_detail(event_id: int) -> dict:
+    def get_event_detail(event_id) -> dict:
         cache_key = f"events:detail:{event_id}"
         cached_event = redis_cache.get_json(cache_key)
         if cached_event is not None:
             return cached_event
 
-        event = EventRepository.get_by_id(event_id)
-        if not event:
+        result = EventRepository.get_full_event_by_id(event_id)
+        if not result:
             raise ApiError("Event not found", 404)
-        result = event.to_dict() if hasattr(event, "to_dict") else {"id": event.id, "event_name": event.event_name}
         
         redis_cache.set_json(cache_key, result, expire_seconds=300)
         return result
 
     @staticmethod
     def create_event(raw_data: dict, user_id: int = None) -> dict:
-        data = CreateEventSchema(**raw_data)
-        event_dict = data.dict(exclude_unset=True)
-        if user_id:
-            event_dict["created_by"] = user_id
-
-        event = EventRepository.create(event_dict)
+        result = EventRepository.save_full_event(raw_data, user_id=user_id)
         redis_cache.clear_pattern("events:*")
-        return event.to_dict() if hasattr(event, "to_dict") else {"id": event.id, "event_name": event.event_name}
+        return result
 
     @staticmethod
-    def update_event(event_id: int, raw_data: dict) -> dict:
-        data = UpdateEventSchema(**raw_data)
-        event = EventRepository.update(event_id, data.dict(exclude_unset=True))
-        if not event:
+    def update_event(event_id, raw_data: dict) -> dict:
+        result = EventRepository.save_full_event(raw_data, event_id=event_id)
+        if not result:
             raise ApiError("Event not found", 404)
         redis_cache.clear_pattern("events:*")
-        return event.to_dict() if hasattr(event, "to_dict") else {"id": event.id, "event_name": event.event_name}
+        return result
 
     @staticmethod
-    def delete_event(event_id: int) -> dict:
+    def delete_event(event_id) -> dict:
         success = EventRepository.delete(event_id)
         if not success:
             raise ApiError("Event not found", 404)

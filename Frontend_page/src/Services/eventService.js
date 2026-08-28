@@ -1,14 +1,33 @@
 import apiClient from "./client";
 import { ENDPOINTS } from "./endpoints";
 
+const eventsMemoryCache = new Map();
+
+export const clearEventsCache = () => {
+  eventsMemoryCache.clear();
+};
+
 export const getevent = async () => {
   const response = await apiClient.get(ENDPOINTS.EVENTS.LIST);
   return response.data;
 };
 
-export const getEventshow = async (organizerId) => {
+export const getEventshow = async (organizerId, forceRefresh = false) => {
+  const cacheKey = `events_${organizerId || 'all'}`;
   const url = organizerId ? `/superadmin/get-events?organizer=${encodeURIComponent(organizerId)}` : "/superadmin/get-events";
+
+  if (!forceRefresh && eventsMemoryCache.has(cacheKey)) {
+    // Return cached data immediately for instant response
+    const cachedData = eventsMemoryCache.get(cacheKey);
+    // Background revalidation
+    apiClient.get(url).then(res => {
+      eventsMemoryCache.set(cacheKey, res.data);
+    }).catch(err => console.error("Background event refresh error:", err));
+    return cachedData;
+  }
+
   const res = await apiClient.get(url);
+  eventsMemoryCache.set(cacheKey, res.data);
   return res.data;
 };
 
@@ -18,9 +37,10 @@ export const saveEventDetails = async (data) => {
 };
 
 export const completeEvent = async (formData) => {
-  const res = await apiClient.post("/superadmin/api/complete-event", formData, {
-    headers: { "Content-Type": undefined },
-  });
+  const isFormData = typeof FormData !== "undefined" && formData instanceof FormData;
+  const config = isFormData ? { headers: { "Content-Type": undefined } } : {};
+  const res = await apiClient.post("/superadmin/api/complete-event", formData, config);
+  clearEventsCache();
   return res.data;
 };
 
@@ -35,9 +55,9 @@ export const saveLayout = async (data) => {
 };
 
 export const saveDocuments = async (data) => {
-  const res = await apiClient.post("/superadmin/upload/all-docs", data, {
-    headers: { "Content-Type": undefined },
-  });
+  const isFormData = typeof FormData !== "undefined" && data instanceof FormData;
+  const config = isFormData ? { headers: { "Content-Type": undefined } } : {};
+  const res = await apiClient.post("/superadmin/upload/all-docs", data, config);
   return res.data;
 };
 
@@ -57,14 +77,16 @@ export const finalSubmit = async (data) => {
 };
 
 export const updateEvent = async (id, formData) => {
-  const res = await apiClient.put(ENDPOINTS.EVENTS.UPDATE(id), formData, {
-    headers: { "Content-Type": undefined },
-  });
+  const isFormData = typeof FormData !== "undefined" && formData instanceof FormData;
+  const config = isFormData ? { headers: { "Content-Type": undefined } } : {};
+  const res = await apiClient.put(ENDPOINTS.EVENTS.UPDATE(id), formData, config);
+  clearEventsCache();
   return res.data;
 };
 
 export const deleteEvent = async (id) => {
   const res = await apiClient.delete(ENDPOINTS.EVENTS.DELETE(id));
+  clearEventsCache();
   return res.data;
 };
 

@@ -22,7 +22,7 @@ const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = fa
   const c = colorMap[accentColor] || colorMap.cyan;
 
   return (
-    <div className={`border border-slate-200 rounded-xl overflow-hidden transition-all ${open ? "shadow-sm" : ""}`}>
+    <div className={`border border-slate-200 rounded-xl overflow-visible transition-all ${open ? "shadow-sm" : ""}`}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -172,35 +172,52 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
 
       {/* ── Food Provision ── */}
       <AccordionSection icon={Utensils} title="Food Provision"
-        badge={formData.eventDetails?.food ? "Enabled" : undefined} accentColor="amber">
+        badge={formData.eventDetails?.food ? "Enabled" : undefined} accentColor="amber" defaultOpen={true}>
         <div className="space-y-3 pt-1">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={formData.eventDetails?.food || false}
+            <input type="checkbox" checked={Boolean(formData.eventDetails?.food)}
               onChange={() => handleToggle("food")}
               className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
             />
             <span className="text-xs font-bold text-slate-700">Include Food for this event</span>
           </label>
-          {formData.eventDetails?.food && (
+          {Boolean(formData.eventDetails?.food) && (
             <StepFoodProvision formData={formData} setFormData={setFormData} />
           )}
         </div>
       </AccordionSection>
 
-      {/* ── Vehicle Pass ── */}
-      {formData.eventDetails?.vehiclePass && (
-        <AccordionSection icon={Car} title="Vehicle Pass Configuration" accentColor="indigo">
-          <StepVehicleProvision formData={formData} setFormData={setFormData} />
-        </AccordionSection>
-      )}
+      {/* ── Vehicle & Parking Pass ── */}
+      <AccordionSection
+        icon={Car}
+        title="Vehicle & Parking Pass Allotment"
+        badge={formData.eventDetails?.vehiclePass ? "Enabled" : undefined}
+        accentColor="indigo"
+        defaultOpen={true}
+      >
+        <div className="space-y-3 pt-1">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={Boolean(formData.eventDetails?.vehiclePass)}
+              onChange={() => handleToggle("vehiclePass")}
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="text-xs font-bold text-slate-700">Enable Vehicle Parking Passes for this event</span>
+          </label>
+          {Boolean(formData.eventDetails?.vehiclePass) && (
+            <StepVehicleProvision formData={formData} setFormData={setFormData} />
+          )}
+        </div>
+      </AccordionSection>
 
       {/* ── Documents & Media ── */}
-      <AccordionSection icon={FileText} title="Additional Documents" accentColor="rose">
+      <AccordionSection icon={FileText} title="Additional Documents" accentColor="rose" defaultOpen={true}>
         <Step4Documents formData={formData} setFormData={setFormData} showStep4Errors={showErrors} />
       </AccordionSection>
 
       {/* ── Stall Layout ── */}
-      <AccordionSection icon={Layers} title="Stall Layout & Configuration" accentColor="emerald">
+      <AccordionSection icon={Layers} title="Stall Layout & Configuration" accentColor="emerald" defaultOpen={true}>
         <Step3LayoutStall formData={formData} setFormData={setFormData} showStep3Errors={showErrors} />
       </AccordionSection>
     </div>

@@ -58,28 +58,66 @@ const Step5Terms = ({ formData, setFormData }) => {
     }
   }, [organizer?.id]);
 
+  const DEFAULT_POLICIES = {
+    "Cancellation Policy": {
+      "General Cancellation": {
+        "Standard 48-Hour Refund Policy": "Full refund available up to 48 hours before event start date.",
+        "Non-Refundable Ticket": "Tickets are strictly non-refundable once purchased.",
+        "Partial 50% Refund": "50% refund available up to 7 days prior to the event."
+      },
+      "Event Reschedule": {
+        "Reschedule Ticket Validity": "Tickets will automatically transfer to the new date if event is rescheduled."
+      }
+    },
+    "Refund Policy": {
+      "Payment Return": {
+        "5-7 Business Days Payout": "Refunds will be credited to original payment method within 5-7 business days."
+      }
+    },
+    "Safety Policy": {
+      "Venue Security": {
+        "Mandatory Government ID Verification": "All attendees must present a valid government-issued photo ID at entry.",
+        "Prohibited Items Policy": "Outside food, weapons, and hazardous items are strictly prohibited."
+      }
+    },
+    "Privacy Policy": {
+      "Data Collection": {
+        "Attendee Contact Usage": "Your details are used solely for event badge generation and gate entry check-in."
+      }
+    }
+  };
+
   const fetchPolicies = async () => {
     try {
-      const res = await getPolicies(organizer.id);
-      const policies = res.data || [];
+      const res = await getPolicies(organizer?.id || 1);
+      const data = res?.data || res;
       const grouped = {};
 
-      policies.forEach((item) => {
-        const group = item.policy_group;
-        const type = item.policy_type;
-        const name = item.policy_name;
-        const desc = item.description;
+      if (Array.isArray(data) && data.length > 0) {
+        data.forEach((item) => {
+          const group = item.policy_group || item.policyGroup;
+          const type = item.policy_type || item.policyType;
+          const name = item.policy_name || item.policyName;
+          const desc = item.description || "";
 
-        if (!grouped[group]) grouped[group] = {};
-        if (!grouped[group][type]) grouped[group][type] = {};
+          if (group && type && name) {
+            if (!grouped[group]) grouped[group] = {};
+            if (!grouped[group][type]) grouped[group][type] = {};
+            grouped[group][type][name] = desc;
+          }
+        });
+      } else if (typeof data === "object" && data !== null && Object.keys(data).length > 0) {
+        Object.assign(grouped, data);
+      }
 
-        grouped[group][type][name] = desc;
-      });
-
-      setPolicyData(grouped);
+      if (Object.keys(grouped).length > 0) {
+        setPolicyData(grouped);
+      } else {
+        setPolicyData(DEFAULT_POLICIES);
+      }
     } catch (error) {
-      console.error("Failed to load policies", error);
-      showNotification("Failed to load policies", "error");
+      console.error("Failed to load policies, using defaults", error);
+      setPolicyData(DEFAULT_POLICIES);
     }
   };
 
@@ -170,15 +208,21 @@ const Step5Terms = ({ formData, setFormData }) => {
     }
 
     if (editingIndex !== null) {
-      const updatedTerms = [...formData.terms];
+      const updatedTerms = [...(formData.terms || [])];
       updatedTerms[editingIndex] = newPolicyItem;
-      setFormData({ ...formData, terms: updatedTerms });
+      setFormData({
+        ...formData,
+        terms: updatedTerms,
+        termsDetails: { policies: updatedTerms }
+      });
       setEditingIndex(null);
       showNotification("Policy updated successfully!");
     } else {
+      const updatedTerms = [...existing, newPolicyItem];
       setFormData({
         ...formData,
-        terms: [...existing, newPolicyItem],
+        terms: updatedTerms,
+        termsDetails: { policies: updatedTerms }
       });
       showNotification("Policy added to selection!");
     }
@@ -195,8 +239,12 @@ const Step5Terms = ({ formData, setFormData }) => {
   };
 
   const removePolicy = (index) => {
-    const updatedTerms = formData.terms.filter((_, i) => i !== index);
-    setFormData({ ...formData, terms: updatedTerms });
+    const updatedTerms = (formData.terms || []).filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      terms: updatedTerms,
+      termsDetails: { policies: updatedTerms }
+    });
     showNotification("Policy removed from selection", "error");
   };
 
@@ -261,19 +309,19 @@ const Step5Terms = ({ formData, setFormData }) => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* LEFT SECTION: PREMIUM SELECTION FORM */}
-        <div className={`${cardClasses} flex flex-col md:h-[calc(110vh-290px)] md:overflow-y-auto custom-scrollbar pr-2`}>
-          <div className="flex justify-between items-center mb-8 border-l-4 border-purple-500 pl-5">
+        {/* LEFT SECTION: SELECTION FORM */}
+        <div className={`${cardClasses} flex flex-col h-auto`}>
+          <div className="flex justify-between items-center mb-3 border-l-4 border-cyan-500 pl-2.5">
             <div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Terms & Conditions</h2>
-              <p className="text-[10px] font-bold text-slate-400  mt-1 tracking-widest">Select and configure event policies</p>
+              <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Terms & Conditions</h3>
+              <p className="text-[10px] font-medium text-slate-500">Select and configure event policies</p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
-              className="p-3 bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white rounded-full transition-all duration-500 shadow-sm group"
+              className="p-1.5 bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white rounded-lg transition-all shadow-xs group cursor-pointer border-none"
               title="Add New Policy to Master"
             >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+              <Plus size={16} />
             </button>
           </div>
 
@@ -439,12 +487,12 @@ const Step5Terms = ({ formData, setFormData }) => {
           </div>
         </div>
 
-        {/* RIGHT SECTION: PREMIUM PREVIEW TABLE */}
-        <div className={`${cardClasses} flex flex-col lg:h-[calc(110vh-290px)] lg:overflow-y-auto custom-scrollbar pr-2`}>
-          <div className="flex justify-between items-center mb-8 border-l-4 border-indigo-500 pl-5">
+        {/* RIGHT SECTION: PREVIEW TABLE */}
+        <div className={`${cardClasses} flex flex-col h-auto`}>
+          <div className="flex justify-between items-center mb-3 border-l-4 border-indigo-500 pl-2.5">
             <div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Preview</h2>
-              <p className="text-[10px] font-bold text-slate-400  mt-1 tracking-widest">Review added policies</p>
+              <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Preview</h3>
+              <p className="text-[10px] font-medium text-slate-500">Review added policies</p>
             </div>
           </div>
 
@@ -495,20 +543,24 @@ const Step5Terms = ({ formData, setFormData }) => {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <p className="text-xs font-black text-slate-800 leading-tight">{p.policyGroup}</p>
+                            <p className="text-xs font-black text-slate-800 leading-tight">
+                              {p.policyGroup || p.policy_group || "General"}
+                            </p>
                           </td>
                           <td className="px-6 py-4">
-                            <p className="text-xs font-bold text-slate-600 leading-tight">{p.policyName}</p>
+                            <p className="text-xs font-bold text-slate-600 leading-tight">
+                              {p.policyName || p.policy_name || p.name || "Policy Item"}
+                            </p>
                           </td>
                           <td className="px-6 py-4">
                             <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[9px] font-black uppercase tracking-tighter">
-                              {p.policyType}
+                              {p.policyType || p.policy_type || "General"}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => {
-                                setViewDescription(p.description);
+                                setViewDescription(p.description || p.details || p.policyName || p.policy_name || "No additional description provided.");
                                 setShowViewModal(true);
                               }}
                               className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-all"

@@ -6,6 +6,8 @@ import Home from "./pages/Home";
 import AllEvents from "./pages/AllEvents";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import OrganizerRegister from "./pages/OrganizerRegister";
+import ExhibitorRegister from "./pages/ExhibitorRegister";
 import { Sidebar } from "./Organizer/Homepage"
 import { LiveDashboard } from "./Organizer/Dashboard/LiveDashboard";
 import { LiveFoodDashboard } from "./Organizer/Dashboard/LiveFooddashboard";
@@ -75,9 +77,14 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/all-events" element={<AllEvents />} />
         <Route path="/event-detail/:id" element={<EventDetail />} />
+        <Route path="/event/:id" element={<EventDetail />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/Login" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/register/organizer" element={<OrganizerRegister />} />
+        <Route path="/register/exhibitor" element={<ExhibitorRegister />} />
         <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/Terms" element={<Terms />} />
         <Route path="/Help_Center" element={<Help />} />
@@ -106,6 +113,10 @@ export default function App() {
           <Route path="Venu" element={<ProtectedRoute allowedRoles={["organizer"]}><Venuepage /></ProtectedRoute>} />
           <Route path="Vendor" element={<ProtectedRoute allowedRoles={["organizer"]}><VendorPage /></ProtectedRoute>} />
           <Route path="CreateEvent" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
+          <Route path="EditEvent/:id" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
+          <Route path="EditEvent" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
+          <Route path="ViewEvent/:id" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
+          <Route path="ViewEvent" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
           <Route path="PolicyPage" element={<ProtectedRoute allowedRoles={["organizer"]}><PolicyPage /></ProtectedRoute>} />
           <Route path="Coupon" element={<ProtectedRoute allowedRoles={["organizer"]}><Coupon /></ProtectedRoute>} />
           <Route path="EventCheckIn" element={<ProtectedRoute allowedRoles={["organizer"]}><EventCheckIn /></ProtectedRoute>} />

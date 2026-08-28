@@ -9,38 +9,71 @@ export const registerUser = (formData) => {
   return apiClient.post(ENDPOINTS.AUTH.REGISTER, formData);
 };
 
+export const registerOrganizer = (formData) => {
+  return apiClient.post(ENDPOINTS.AUTH.REGISTER_ORGANIZER, formData);
+};
+
+export const registerExhibitor = (formData) => {
+  return apiClient.post(ENDPOINTS.AUTH.REGISTER_EXHIBITOR, formData);
+};
+
 export const sendOtp = async (email) => {
-  const res = await apiClient.post("/otp/send-otp", { email });
-  return res.data;
+  try {
+    const res = await apiClient.post("/api/v1/auth/otp/send", { email });
+    return res.data;
+  } catch (err) {
+    if (err?.response?.status === 404) {
+      const res = await apiClient.post("/api/v1/auth/otp/send-otp", { email });
+      return res.data;
+    }
+    throw err;
+  }
 };
 
 export const verifyOtp = async (email, otp) => {
-  const res = await apiClient.post("/otp/verify-otp", { email, otp });
-  return res.data;
+  try {
+    const res = await apiClient.post("/api/v1/auth/otp/verify", { email, otp });
+    return res.data;
+  } catch (err) {
+    if (err?.response?.status === 404) {
+      const res = await apiClient.post("/api/v1/auth/otp/verify-otp", { email, otp });
+      return res.data;
+    }
+    throw err;
+  }
 };
 
 export const resendOtp = async (email) => {
-  const res = await apiClient.post("/otp/resend-otp", { email });
-  return res.data;
+  try {
+    const res = await apiClient.post("/api/v1/auth/otp/resend", { email });
+    return res.data;
+  } catch (err) {
+    if (err?.response?.status === 404) {
+      const res = await apiClient.post("/api/v1/auth/otp/resend-otp", { email });
+      return res.data;
+    }
+    throw err;
+  }
 };
 
 export const resetsendOtp = async (data) => {
-  const res = await apiClient.post("/otp/reset/send-otp", data);
-  return res.data;
+  const email = typeof data === "string" ? data : data.email;
+  return sendOtp(email);
 };
 
 export const resetverifyOtp = async (data) => {
-  const res = await apiClient.post("/otp/reset/verify-otp", data);
-  return res.data;
+  const email = data.email;
+  const otp = data.otp;
+  return verifyOtp(email, otp);
 };
 
 export const resetresendOtp = async (data) => {
-  const res = await apiClient.post("/otp/reset/resend-otp", data);
-  return res.data;
+  const email = typeof data === "string" ? data : data.email;
+  return resendOtp(email);
 };
 
 export const resetPassword = async (data) => {
-  const res = await apiClient.post("/otp/reset-password", data);
+  const res = await apiClient.post("/api/v1/auth/reset-password", data);
   return res.data;
 };
 

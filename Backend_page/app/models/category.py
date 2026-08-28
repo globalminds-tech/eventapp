@@ -9,14 +9,16 @@ class CategoryMaster(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    slug: Mapped[Optional[str]] = mapped_column(String(150), unique=True, index=True, nullable=True)
     subcategories: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Comma-separated or JSON list
     icon_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="Active")
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
 
-    def __init__(self, name: str = "", subcategories: Optional[str] = None, icon_name: Optional[str] = None, status: str = "Active", **kwargs):
+    def __init__(self, name: str = "", subcategories: Optional[str] = None, icon_name: Optional[str] = None, status: str = "Active", slug: Optional[str] = None, **kwargs):
         super().__init__(**kwargs)
         self.name = name
+        self.slug = slug
         self.subcategories = subcategories
         self.icon_name = icon_name
         self.status = status
@@ -26,6 +28,7 @@ class CategoryMaster(db.Model):
         return {
             "id": str(self.id),
             "name": self.name,
+            "slug": self.slug or "",
             "subcategories": subs,
             "icon_name": self.icon_name or "Tag",
             "status": self.status,

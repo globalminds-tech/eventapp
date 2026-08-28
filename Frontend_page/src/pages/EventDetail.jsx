@@ -89,7 +89,7 @@ export default function EventDetail() {
 
   const { eventDetails: ev, organizer, booking, vendors, sponsors, guests, terms, food_items, layout } = data;
 
-  const bannerUrl = ev?.banner_url || "https://via.placeholder.com/600x300";
+  const bannerUrl = ev?.banner_url || ev?.banner || ev?.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800";
   const entryType = booking?.charge_type || "Free";
   const isPaid    = entryType?.toLowerCase() === "paid";
 

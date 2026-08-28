@@ -1,142 +1,55 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { getevent } from "@/Services/api";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchEventsThunk } from "@/Redux/eventSlice";
 import {
-  Eye, Search, PlusCircle, Calendar, Ticket, IndianRupee, Users,
+  Eye, Pencil, Search, PlusCircle, Calendar, Ticket, IndianRupee, Users,
   QrCode, TrendingUp, Sparkles, MapPin, CheckCircle2, Clock,
   ArrowUpRight, Store, Filter, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export const Organizerdashboard = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+  const reduxUser = useSelector((state) => state.user);
+  const eventsState = useSelector((state) => state.events?.list);
+  const events = Array.isArray(eventsState) ? eventsState : (Array.isArray(eventsState?.data) ? eventsState.data : []);
+  const { loading, loaded } = useSelector((state) => state.events);
+  
+  const organizerName = reduxUser.name || sessionStorage.getItem("name") || localStorage.getItem("name") || "Organizer";
+  const organizerCompany = reduxUser.organization_name || sessionStorage.getItem("organization_name") || localStorage.getItem("organization_name") || "";
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("all");
 
-  // Fallback demo dataset if backend API is not ready
-  const fallbackEvents = [
-    {
-      id: 1,
-      code: "EVT-25",
-      name: "MRC Grand Music & Cultural Fest 2026",
-      category: "Music & Concerts",
-      date: "2026-09-15",
-      time: "06:00 PM",
-      venue: "MRC Center, Chennai",
-      status: "Live",
-      price: "₹499",
-      passesSold: 420,
-      totalCapacity: 500,
-      banner: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 2,
-      code: "EVT-22",
-      name: "Valluvar Kottam Craft & Food Expo",
-      category: "Expo & Exhibition",
-      date: "2026-09-20",
-      time: "10:00 AM",
-      venue: "Valluvar Kottam Ground",
-      status: "Upcoming",
-      price: "₹150",
-      passesSold: 850,
-      totalCapacity: 1200,
-      banner: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 3,
-      code: "EVT-9",
-      name: "Furniture & Home Decor Products Expo",
-      category: "Business Expo",
-      date: "2026-10-05",
-      time: "11:00 AM",
-      venue: "Trade Center Hall B",
-      status: "Upcoming",
-      price: "Free",
-      passesSold: 310,
-      totalCapacity: 800,
-      banner: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 4,
-      code: "EVT-12",
-      name: "LOGMAT Industrial Logistics Expo 2026",
-      category: "Tech & Corporate",
-      date: "2026-10-12",
-      time: "09:30 AM",
-      venue: "Codissia Complex",
-      status: "Draft",
-      price: "₹999",
-      passesSold: 0,
-      totalCapacity: 1500,
-      banner: "https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 5,
-      code: "EVT-11",
-      name: "District Leadership Conference 2026",
-      category: "Conference",
-      date: "2026-10-25",
-      time: "08:00 AM",
-      venue: "Grand Palace Auditorium",
-      status: "Upcoming",
-      price: "₹1,200",
-      passesSold: 190,
-      totalCapacity: 250,
-      banner: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      id: 6,
-      code: "EVT-10",
-      name: "Global Tech Startup Networking Night",
-      category: "Networking",
-      date: "2026-11-02",
-      time: "07:00 PM",
-      venue: "Hyatt Regency Hall",
-      status: "Published",
-      price: "₹750",
-      passesSold: 145,
-      totalCapacity: 200,
-      banner: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&w=600&q=80"
-    }
-  ];
-
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const res = await getevent();
-      if (res && Array.isArray(res) && res.length > 0) {
-        setEvents(res);
-      } else {
-        setEvents(fallbackEvents);
-      }
-    } catch {
-      setEvents(fallbackEvents);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    const userId = reduxUser.id || sessionStorage.getItem("userId");
+    if (userId) {
+      dispatch(fetchEventsThunk(userId));
+    }
+  }, [dispatch, reduxUser.id]);
 
   // Filter events based on tab and search query
   const filteredEvents = events.filter((evt) => {
+    if (!evt) return false;
+    const evtName = evt.name || evt.event_name || "";
+    const evtCode = evt.code || evt.event_code || "";
+    const evtCategory = evt.category || "";
+    const evtStatus = evt.status || "Active";
+
     const matchesSearch =
-      evt.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      evt.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (evt.category && evt.category.toLowerCase().includes(searchQuery.toLowerCase()));
+      evtName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      evtCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      evtCategory.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (selectedTab === "all") return matchesSearch;
-    if (selectedTab === "live") return matchesSearch && evt.status === "Live";
-    if (selectedTab === "upcoming") return matchesSearch && (evt.status === "Upcoming" || evt.status === "Published");
-    if (selectedTab === "draft") return matchesSearch && evt.status === "Draft";
+    if (selectedTab === "live") return matchesSearch && (evtStatus === "Live" || evtStatus === "APPROVED" || evtStatus === "Active");
+    if (selectedTab === "upcoming") return matchesSearch && (evtStatus === "Upcoming" || evtStatus === "Published" || evtStatus === "Active");
+    if (selectedTab === "draft") return matchesSearch && (evtStatus === "Draft" || evtStatus === "PENDING");
     return matchesSearch;
   });
 
@@ -147,7 +60,7 @@ export const Organizerdashboard = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Organizer Dashboard
+              Welcome, {organizerName} {organizerCompany && <span className="text-cyan-600 font-bold text-lg sm:text-xl">({organizerCompany})</span>}
             </h1>
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -161,7 +74,7 @@ export const Organizerdashboard = () => {
 
         <div className="flex items-center gap-3 shrink-0">
           <Button
-            onClick={() => navigate("/OrganizerHome/CreateEvent")}
+            onClick={() => navigate("/OrganizerHome/CreateEvent", { state: { mode: "create" } })}
             className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-4.5 py-2.5 rounded-xl shadow-md shadow-cyan-500/25 border-none cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] gap-2 text-xs sm:text-sm"
           >
             <PlusCircle size={18} />
@@ -279,7 +192,10 @@ export const Organizerdashboard = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={fetchEvents}
+              onClick={() => {
+                const userId = reduxUser.id || sessionStorage.getItem("userId");
+                if (userId) dispatch(fetchEventsThunk(userId));
+              }}
               className="h-9 px-3 border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer"
               title="Refresh Events"
             >
@@ -303,7 +219,26 @@ export const Organizerdashboard = () => {
             </thead>
 
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {filteredEvents.length === 0 ? (
+              {loading && !loaded ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-4 px-5">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="w-12 h-12 rounded-xl" />
+                        <div className="space-y-2">
+                          <Skeleton className="w-16 h-3" />
+                          <Skeleton className="w-36 h-4" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4"><Skeleton className="w-28 h-4" /></td>
+                    <td className="py-4 px-4"><Skeleton className="w-16 h-4" /></td>
+                    <td className="py-4 px-4"><Skeleton className="w-24 h-4" /></td>
+                    <td className="py-4 px-4"><Skeleton className="w-16 h-6 rounded-full mx-auto" /></td>
+                    <td className="py-4 px-5 text-right"><Skeleton className="w-20 h-8 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : filteredEvents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     <Calendar size={32} className="mx-auto mb-2 opacity-50" />
@@ -316,21 +251,21 @@ export const Organizerdashboard = () => {
                     {/* Event Banner + Title + Category */}
                     <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
-                        {evt.banner ? (
+                        {(evt.banner || evt.banner_url || evt.image || evt.banner_preview) ? (
                           <img
-                            src={evt.banner}
-                            alt={evt.name}
+                            src={evt.banner || evt.banner_url || evt.image || evt.banner_preview}
+                            alt={evt.name || evt.event_name || "Event"}
                             className="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-bold flex-shrink-0">
-                            {evt.code || "EVT"}
+                          <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center font-bold flex-shrink-0 text-xs">
+                            {evt.code || evt.event_code || `EVT-${evt.id}`}
                           </div>
                         )}
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-[10px] font-extrabold text-indigo-600 bg-indigo-50 border-indigo-200 px-1.5 py-0">
-                              {evt.code}
+                              {evt.code || evt.event_code || `EVT-${evt.id}`}
                             </Badge>
                             {evt.category && (
                               <span className="text-[11px] font-semibold text-slate-400 truncate">
@@ -339,7 +274,7 @@ export const Organizerdashboard = () => {
                             )}
                           </div>
                           <h4 className="font-bold text-slate-900 text-sm truncate max-w-xs">
-                            {evt.name}
+                            {evt.name || evt.event_name}
                           </h4>
                         </div>
                       </div>
@@ -348,9 +283,9 @@ export const Organizerdashboard = () => {
                     {/* Date & Venue */}
                     <td className="py-4 px-4">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+                        <div className="flex items-center gap-1.5 text-slate-800 font-semibold text-xs">
                           <Calendar size={13} className="text-slate-400 flex-shrink-0" />
-                          <span>{evt.date || "2026-09-15"}</span>
+                          <span>{evt.date || evt.start_date || "Upcoming"}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
                           <MapPin size={12} className="text-slate-400 flex-shrink-0" />
@@ -360,8 +295,8 @@ export const Organizerdashboard = () => {
                     </td>
 
                     {/* Pricing */}
-                    <td className="py-4 px-4 font-bold text-slate-900">
-                      {evt.price || "₹499"}
+                    <td className="py-4 px-4 font-bold text-slate-900 text-xs">
+                      {evt.price || (evt.pass_fee ? `₹${evt.pass_fee}` : "Free")}
                     </td>
 
                     {/* Passes Sold & Progress */}
@@ -408,9 +343,25 @@ export const Organizerdashboard = () => {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => navigate("/OrganizerHome/CreateEvent")}
+                          onClick={() => {
+                            const eventCode = evt.slug || evt.event_code || evt.code || evt.eventCode || evt.id;
+                            navigate(`/OrganizerHome/EditEvent/${eventCode}`, { state: { mode: "edit", isReadOnly: false, eventId: evt.id, eventData: evt } });
+                          }}
+                          className="h-8 w-8 p-0 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg cursor-pointer"
+                          title="Edit Event Details"
+                        >
+                          <Pencil size={16} />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const eventCode = evt.slug || evt.event_code || evt.code || evt.eventCode || evt.id;
+                            navigate(`/OrganizerHome/ViewEvent/${eventCode}`, { state: { mode: "view", isReadOnly: true, eventId: evt.id, eventData: evt } });
+                          }}
                           className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer"
-                          title="View & Edit Event"
+                          title="View Details (Read-Only)"
                         >
                           <Eye size={16} />
                         </Button>

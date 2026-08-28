@@ -1,6 +1,7 @@
+import uuid
 from typing import Optional
 from datetime import datetime, date, time
-from sqlalchemy import String, Text, Boolean, Integer, Date, Time, DateTime, ForeignKey
+from sqlalchemy import String, Text, Boolean, Integer, Date, Time, DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions.database import db
 
@@ -8,8 +9,11 @@ class EventDetails(db.Model):
     __tablename__ = 'event_details_table'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    uuid: Mapped[Optional[str]] = mapped_column(String(36), unique=True, index=True, nullable=True, default=lambda: str(uuid.uuid4()))
     event_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    slug: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
     category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    sub_category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     event_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     amenities: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -63,6 +67,7 @@ class EventBookingDetails(db.Model):
     event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
     booking_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     booking_end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    price_inr: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     capacity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     pass_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -79,6 +84,7 @@ class EventBookingDetails(db.Model):
     max_pass: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     razorpay_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     include_tax: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    taxes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     price_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     currency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     early_bird_expire: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

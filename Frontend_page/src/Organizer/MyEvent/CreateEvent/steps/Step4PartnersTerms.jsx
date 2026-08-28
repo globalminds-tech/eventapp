@@ -1,10 +1,9 @@
 import React, { useState } from "react";
-import { Users, Award, UserPlus, ScrollText, ChevronDown } from "lucide-react";
-import Step5Terms from "./Step5Terms";
+import { Users, ChevronDown } from "lucide-react";
 import Step6VendorSponsor from "./Step6VendorSponsor";
 
 // ── Reusable Accordion Section ──
-const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = false, accentColor = "cyan" }) => {
+const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = true, accentColor = "cyan" }) => {
   const [open, setOpen] = useState(defaultOpen);
   const colorMap = {
     cyan: { bg: "bg-cyan-50", text: "text-cyan-600" },
@@ -46,7 +45,7 @@ const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = fa
   );
 };
 
-const Step4PartnersTerms = ({ formData, setFormData }) => {
+const Step4PartnersTerms = ({ formData, setFormData, isReadOnly }) => {
   const vendorCount = formData.vendorSponsor?.vendors?.length || 0;
   const sponsorCount = formData.vendorSponsor?.sponsors?.length || 0;
   const guestCount = formData.vendorSponsor?.guests?.length || 0;
@@ -58,9 +57,9 @@ const Step4PartnersTerms = ({ formData, setFormData }) => {
         <div className="p-1.5 bg-purple-50 rounded-lg">
           <Users className="w-4 h-4 text-purple-600" />
         </div>
-        <h3 className="text-sm font-extrabold text-slate-900">Partners & Policies</h3>
+        <h3 className="text-sm font-extrabold text-slate-900">Partners & Sponsors</h3>
         <span className="text-[10px] text-slate-500 font-medium">
-          Manage vendors, sponsors, guests, and event terms
+          Manage vendors, sponsors, and chief guests
         </span>
       </div>
 
@@ -73,20 +72,10 @@ const Step4PartnersTerms = ({ formData, setFormData }) => {
             ? `${vendorCount + sponsorCount + guestCount} added`
             : undefined
         }
-        accentColor="cyan"
+        accentColor="purple"
         defaultOpen={true}
       >
-        <Step6VendorSponsor formData={formData} setFormData={setFormData} />
-      </AccordionSection>
-
-      {/* ── Terms & Policies ── */}
-      <AccordionSection
-        icon={ScrollText}
-        title="Terms & Policies"
-        accentColor="amber"
-        defaultOpen={false}
-      >
-        <Step5Terms formData={formData} setFormData={setFormData} />
+        <Step6VendorSponsor formData={formData} setFormData={setFormData} isReadOnly={isReadOnly} />
       </AccordionSection>
     </div>
   );
