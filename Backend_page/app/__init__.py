@@ -62,7 +62,7 @@ def create_app() -> FastAPI:
     register_error_handlers(app)
 
     # Mount static uploads directory if present
-    basedir = os.path.abspath(os.path.dirname(__file__))
+    basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     uploads_path = os.path.join(basedir, "uploads")
     os.makedirs(uploads_path, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")

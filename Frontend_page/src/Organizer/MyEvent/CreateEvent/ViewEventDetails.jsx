@@ -3,6 +3,15 @@ import { getFullEventDetails } from "../../../Services/api";
 import { X, Calendar, Clock, MapPin, Users, Ticket, Tag, FileText, AlertCircle, Eye } from "lucide-react";
 import MediaRenderer from "../../../components/MediaRenderer";
 
+const getFullDocUrl = (url) => {
+  if (!url) return "#";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+  return `http://localhost:5001${cleanUrl}`;
+};
+
 const ViewEventDetails = ({ eventId, onClose }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +25,7 @@ const ViewEventDetails = ({ eventId, onClose }) => {
     try {
       setLoading(true);
       const res = await getFullEventDetails(eventId);
-      setData(res);
+      setData(res?.data || res);
     } catch (err) {
       console.error(err);
     } finally {
@@ -425,7 +434,8 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative">
                     {docList.map((doc, idx) => {
-                      const fileUrl = doc.file_url || doc.file_path || doc.preview;
+                      const rawUrl = doc.file_url || doc.file_path || doc.preview;
+                      const fileUrl = getFullDocUrl(rawUrl);
                       const fileType = doc.file_type || doc.type || 'file';
                       return (
                         <div key={idx} className="group overflow-hidden bg-white border border-gray-100 rounded-[2rem] shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all duration-500 flex flex-col">
