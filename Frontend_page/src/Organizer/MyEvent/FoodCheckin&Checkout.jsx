@@ -1,26 +1,57 @@
 import React, { useState } from "react";
-import { Search, Utensils, QrCode, CheckCircle2, RefreshCw, Filter } from "lucide-react";
+import { Search, Utensils, QrCode, CheckCircle2, RefreshCw, Filter, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import QRScanner from "@/components/QRScanner";
 
 export default function FoodCheckIn() {
   const [search, setSearch] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [scanResultAlert, setScanResultAlert] = useState(null);
+  const [redeemedCount, setRedeemedCount] = useState(1440);
 
-  const sampleEvents = [
+  const [foodEvents, setFoodEvents] = useState([
     { code: "EVT-25", name: "MRC Grand Music Fest 2026", startDate: "2026-09-15", endDate: "2026-09-16", totalFoodTokens: 500, scannedTokens: 380, status: "Live" },
     { code: "EVT-22", name: "Valluvar Kottam Food & Craft Expo", startDate: "2026-09-20", endDate: "2026-09-22", totalFoodTokens: 1200, scannedTokens: 850, status: "Upcoming" },
     { code: "EVT-11", name: "District Conference 2026", startDate: "2026-10-25", endDate: "2026-10-25", totalFoodTokens: 250, scannedTokens: 210, status: "Upcoming" }
-  ];
+  ]);
 
-  const filtered = sampleEvents.filter(
+  const handleOpenFoodScanner = (eventItem) => {
+    setSelectedEvent(eventItem);
+    setShowScanner(true);
+    setScanResultAlert(null);
+  };
+
+  const handleScanFoodToken = (code) => {
+    const timeNow = new Date().toLocaleTimeString();
+    const cleanCode = code.trim().toUpperCase();
+
+    // Increment counters
+    setRedeemedCount((prev) => prev + 1);
+    setFoodEvents((prev) =>
+      prev.map((e) =>
+        e.code === selectedEvent?.code
+          ? { ...e, scannedTokens: e.scannedTokens + 1 }
+          : e
+      )
+    );
+
+    setScanResultAlert({
+      type: "success",
+      message: `🍱 MEAL PASSED VERIFIED! Token #${cleanCode} (Veg Lunch - Royal Caterers) Redeemed @ ${timeNow}`
+    });
+  };
+
+  const filtered = foodEvents.filter(
     (item) =>
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.code.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 select-none">
       {/* ── PAGE HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
         <div className="space-y-1">
@@ -57,8 +88,8 @@ export default function FoodCheckIn() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Meals Served Today</p>
-              <h3 className="text-2xl font-extrabold text-emerald-600">1,440</h3>
-              <p className="text-xs font-medium text-emerald-600">73.8% Tokens Redeemed</p>
+              <h3 className="text-2xl font-extrabold text-emerald-600">{redeemedCount.toLocaleString("en-IN")}</h3>
+              <p className="text-xs font-medium text-emerald-600">74.2% Tokens Redeemed</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
               <CheckCircle2 size={22} />
@@ -70,7 +101,7 @@ export default function FoodCheckIn() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending Redemptions</p>
-              <h3 className="text-2xl font-extrabold text-slate-700">510</h3>
+              <h3 className="text-2xl font-extrabold text-slate-700">{Math.max(0, 1950 - redeemedCount)}</h3>
               <p className="text-xs font-medium text-slate-400">Tokens Remaining</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
@@ -79,6 +110,32 @@ export default function FoodCheckIn() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── FOOD SCANNER MODAL ── */}
+      {showScanner && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-xl space-y-3">
+            <QRScanner
+              title={`Food Token Scanner (${selectedEvent?.name})`}
+              onScan={handleScanFoodToken}
+              onClose={() => setShowScanner(false)}
+            />
+
+            {/* Scan Output Banner */}
+            {scanResultAlert && (
+              <div className="p-3.5 bg-emerald-600 text-white rounded-xl text-xs font-extrabold flex items-center justify-between shadow-lg">
+                <span>{scanResultAlert.message}</span>
+                <button
+                  onClick={() => setScanResultAlert(null)}
+                  className="p-1 border-none bg-transparent text-white font-extrabold cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── EVENTS FOOD LOG TABLE ── */}
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl overflow-hidden">
@@ -112,7 +169,7 @@ export default function FoodCheckIn() {
                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-4 px-5">
                     <div className="space-y-1">
-                      <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200">
+                      <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
                         {item.code}
                       </Badge>
                       <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
@@ -139,8 +196,8 @@ export default function FoodCheckIn() {
                   <td className="py-4 px-5 text-right">
                     <Button
                       size="sm"
-                      onClick={() => alert(`Opening Food Scanner for ${item.name}`)}
-                      className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg border-none cursor-pointer gap-1.5 shadow-xs"
+                      onClick={() => handleOpenFoodScanner(item)}
+                      className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg border-none cursor-pointer gap-1.5 shadow-xs hover:scale-105 transition"
                     >
                       <QrCode size={14} />
                       <span>Scan Food Token</span>

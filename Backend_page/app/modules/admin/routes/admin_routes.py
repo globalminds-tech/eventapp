@@ -16,9 +16,9 @@ admin_auth = Depends(require_roles(["admin", "superuser"]))
 @root_admin_router.get("/superadmin/home/get-events")
 @root_admin_router.get("/superadmin/api/get-events")
 @root_admin_router.get("/superadmin/get-events")
-def get_events(request: Request, organizer: int = None):
+def get_events(request: Request, organizer: str = None):
     host_url = str(request.base_url)
-    return AdminController.get_events(host_url)
+    return AdminController.get_events(host_url=host_url, organizer_id=organizer)
 
 from fastapi import UploadFile, File
 from app.extensions.storage import StorageService

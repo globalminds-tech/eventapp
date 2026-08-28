@@ -2,8 +2,8 @@ from app.modules.admin.services.admin_service import AdminService
 
 class AdminController:
     @staticmethod
-    def get_events(host_url: str = ""):
-        events = AdminService.get_events(host_url)
+    def get_events(host_url: str = "", organizer_id: str = None):
+        events = AdminService.get_events(host_url=host_url, organizer_id=organizer_id)
         return {
             "success": True,
             "data": events

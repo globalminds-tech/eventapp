@@ -11,15 +11,28 @@ from app.models.event import EventDetails, EventBookingDetails, EventFile
 
 class AdminService:
     @staticmethod
-    def get_events(host_url: str = "") -> list[dict]:
+    def get_events(host_url: str = "", organizer_id: str = None) -> list[dict]:
         try:
             stmt = select(EventDetails).order_by(desc(EventDetails.id))
             events = db.session.scalars(stmt).all()
+
+            if organizer_id and str(organizer_id).isdigit():
+                org_num = int(organizer_id)
+                filtered = [e for e in events if getattr(e, "user_id", None) == org_num]
+                if filtered:
+                    events = filtered
+
             events_list = []
             for event in events:
                 booking = db.session.scalars(select(EventBookingDetails).where(EventBookingDetails.event_id == event.id)).first()
                 banner_file = db.session.scalars(select(EventFile).where(EventFile.event_id == event.id, EventFile.file_type == "banner")).first()
                 b_url = banner_file.file_path if banner_file else ""
+
+                price_val = float(getattr(booking, "price_inr", 0) or getattr(booking, "price", 0) or getattr(event, "pass_fee", 0) or 0)
+                capacity_val = int(getattr(booking, "capacity", 500) or getattr(event, "total_capacity", 500) or 500)
+                passes_sold_val = int(getattr(event, "passes_sold", 0) or getattr(booking, "passes_sold", 0) or 0)
+                gate_scans_val = int(getattr(event, "gate_scans", 0) or getattr(event, "arrived", 0) or 0)
+
                 events_list.append({
                     "id": event.id,
                     "event_code": getattr(event, "event_code", None) or f"EVT-{event.id}",
@@ -39,9 +52,14 @@ class AdminService:
                     "address": event.address or "",
                     "created_by": getattr(event, "created_by", None),
                     "user_id": getattr(event, "user_id", None),
-                    "capacity": (getattr(booking, "capacity", None) if booking else None) or getattr(event, "total_capacity", 500) or 500,
+                    "price": price_val,
+                    "price_inr": price_val,
+                    "passesSold": passes_sold_val,
+                    "gateScans": gate_scans_val,
+                    "totalCapacity": capacity_val,
+                    "capacity": capacity_val,
                     "charge_type": (getattr(booking, "charge_type", None) if booking else None) or "Free",
-                    "pass_fee": float(getattr(event, "pass_fee", 0) or 0),
+                    "pass_fee": price_val,
                     "banner_url": b_url,
                     "banner": b_url,
                     "image": b_url,

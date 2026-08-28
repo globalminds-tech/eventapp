@@ -12,6 +12,15 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 
+const getFullDocUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
+    return url;
+  }
+  const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+  return `http://localhost:5001${cleanUrl}`;
+};
+
 export const Organizerdashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -32,6 +41,17 @@ export const Organizerdashboard = () => {
       dispatch(fetchEventsThunk(userId));
     }
   }, [dispatch, reduxUser.id]);
+
+  // Real Dynamic KPI Metrics from Database Events
+  const activeEventsCount = events.filter((e) => ["Live", "Approved", "Active", "Published"].includes(e?.status || e?.event_status)).length;
+  const totalPassesSold = events.reduce((acc, e) => acc + Number(e?.passesSold || e?.booking?.capacity || 0), 0);
+  const totalCapacitySum = events.reduce((acc, e) => acc + Number(e?.totalCapacity || e?.capacity || 0), 0);
+  const totalGateScans = events.reduce((acc, e) => acc + Number(e?.gateScans || e?.arrived || 0), 0);
+  const totalRevenueCalc = events.reduce((acc, e) => {
+    const price = Number(e?.price_inr || e?.priceINR || e?.price || e?.booking?.priceINR || e?.pass_fee || 0);
+    const sold = Number(e?.passesSold || 0);
+    return acc + (price * sold);
+  }, 0);
 
   // Filter events based on tab and search query
   const filteredEvents = events.filter((evt) => {
@@ -60,12 +80,8 @@ export const Organizerdashboard = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Welcome, {organizerName} {organizerCompany && <span className="text-cyan-600 font-bold text-lg sm:text-xl">({organizerCompany})</span>}
+              Welcome, {organizerName}
             </h1>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/80">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Live Operations
-            </span>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500 max-w-2xl">
             Monitor real-time ticket sales, gate check-in scanners, stall floor plans, and manage event schedules.
@@ -90,7 +106,7 @@ export const Organizerdashboard = () => {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Ticket Sales</p>
-              <h3 className="text-2xl font-extrabold text-slate-900">₹3,84,500</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900">₹{totalRevenueCalc.toLocaleString("en-IN")}</h3>
               <p className="text-xs font-medium text-emerald-600 flex items-center gap-1">
                 <TrendingUp size={13} /> +18.4% this month
               </p>
@@ -106,9 +122,9 @@ export const Organizerdashboard = () => {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Passes Issued</p>
-              <h3 className="text-2xl font-extrabold text-slate-900">2,840</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900">{totalPassesSold.toLocaleString("en-IN")}</h3>
               <p className="text-xs font-medium text-slate-500">
-                Out of 3,500 max capacity
+                Out of {totalCapacitySum.toLocaleString("en-IN")} capacity
               </p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100">
@@ -122,9 +138,9 @@ export const Organizerdashboard = () => {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Shows</p>
-              <h3 className="text-2xl font-extrabold text-slate-900">6 Events</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900">{activeEventsCount} Events</h3>
               <p className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> 1 Show Live Today
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live Operations
               </p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center border border-violet-100">
@@ -138,9 +154,9 @@ export const Organizerdashboard = () => {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gate Scans Today</p>
-              <h3 className="text-2xl font-extrabold text-slate-900">1,420</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900">{totalGateScans.toLocaleString("en-IN")}</h3>
               <p className="text-xs font-medium text-indigo-600">
-                89% Attendance verified
+                {totalPassesSold > 0 ? `${Math.round((totalGateScans / totalPassesSold) * 100)}% Verified` : "Real-Time Gate Logs"}
               </p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
@@ -253,7 +269,7 @@ export const Organizerdashboard = () => {
                       <div className="flex items-center gap-3">
                         {(evt.banner || evt.banner_url || evt.image || evt.banner_preview) ? (
                           <img
-                            src={evt.banner || evt.banner_url || evt.image || evt.banner_preview}
+                            src={getFullDocUrl(evt.banner || evt.banner_url || evt.image || evt.banner_preview)}
                             alt={evt.name || evt.event_name || "Event"}
                             className="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0"
                           />
