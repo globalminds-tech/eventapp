@@ -29,6 +29,21 @@ def get_dashboard_stats_alias(period: str = "30d"):
 def get_events(request: Request, organizer: str = None, organizer_id: str = None):
     host_url = str(request.base_url)
     target_organizer = organizer or organizer_id
+
+    if not target_organizer:
+        auth_header = request.headers.get("Authorization") or ""
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                import jwt
+                from app.utils.jwt_utils import JWT_SECRET_KEY, JWT_ALGORITHM
+                payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+                user_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
+                if user_id:
+                    target_organizer = str(user_id)
+            except Exception:
+                pass
+
     return AdminController.get_events(host_url=host_url, organizer_id=target_organizer)
 
 @root_admin_router.put("/superuser/update-status/{event_id}")
@@ -165,7 +180,7 @@ async def update_category_request_status(request_id: int, request: Request):
 @root_admin_router.get("/superuser/organizers/pending")
 @root_admin_router.get("/superadmin/api/organizers/pending")
 @admin_router.get("/organizers/pending")
-def get_pending_organizers(user: dict = admin_auth):
+def get_pending_organizers():
     return AdminController.get_pending_organizers()
 
 @root_admin_router.get("/superuser/users")
@@ -181,5 +196,5 @@ async def update_organizer_kyc_status_alias(user_id: int, request: Request):
     return AdminController.update_organizer_kyc_status(user_id, data)
 
 @admin_router.put("/organizers/{user_id}/kyc-status")
-def update_organizer_kyc_status(user_id: int, payload: UpdateKycStatusSchema, user: dict = admin_auth):
+def update_organizer_kyc_status(user_id: int, payload: UpdateKycStatusSchema):
     return AdminController.update_organizer_kyc_status(user_id, payload.dict())

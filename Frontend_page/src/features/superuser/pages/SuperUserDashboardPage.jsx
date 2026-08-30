@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchDashboardStatsThunk } from "@/app/store/adminSlice";
 import {
   Calendar,
   Radio,
@@ -18,7 +20,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { getDashboardStats } from "@/Services/eventService";
 
 const formatIndianCurrency = (amount) => {
   if (amount === null || amount === undefined || isNaN(amount)) return "—";
@@ -41,51 +42,17 @@ const formatIndianNumber = (num) => {
 
 export default function SuperUserDashboard() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { stats, statsLoading: loading } = useSelector((state) => state.admin);
   const [selectedPeriod, setSelectedPeriod] = useState("30d");
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [financeLoading, setFinanceLoading] = useState(false);
 
   useEffect(() => {
-    fetchStats(selectedPeriod, true);
-  }, []);
-
-  const fetchStats = async (period, isFullLoad = false) => {
-    if (isFullLoad) {
-      setLoading(true);
-    } else {
-      setFinanceLoading(true);
-    }
-
-    try {
-      const res = await getDashboardStats(period);
-      const data = res?.data || res;
-      setStats(data);
-    } catch (err) {
-      console.error("Dashboard stats fetch error:", err);
-      setStats({
-        total_events: 0,
-        live_events: 0,
-        upcoming_events: 0,
-        completed_events: 0,
-        total_users: 0,
-        total_attendees: 0,
-        total_organizers: 0,
-        total_exhibitors: 0,
-        gross_gmv: 0,
-        platform_revenue: 0,
-        organizer_payable: 0,
-        pending_payouts: 0
-      });
-    } finally {
-      setLoading(false);
-      setFinanceLoading(false);
-    }
-  };
+    dispatch(fetchDashboardStatsThunk({ period: selectedPeriod, force: false }));
+  }, [dispatch, selectedPeriod]);
 
   const handlePeriodChange = (newPeriod) => {
     setSelectedPeriod(newPeriod);
-    fetchStats(newPeriod, false);
+    dispatch(fetchDashboardStatsThunk({ period: newPeriod, force: true }));
   };
 
   const periodOptions = [
@@ -112,7 +79,7 @@ export default function SuperUserDashboard() {
 
         <button
           type="button"
-          onClick={() => fetchStats(selectedPeriod)}
+          onClick={() => dispatch(fetchDashboardStatsThunk({ period: selectedPeriod, force: true }))}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:border-slate-300 transition shadow-2xs cursor-pointer self-start sm:self-auto shrink-0"
         >
           <RefreshCw size={13} className={loading ? "animate-spin text-purple-600" : "text-slate-500"} />
@@ -453,7 +420,7 @@ export default function SuperUserDashboard() {
               </div>
 
               <div>
-                {loading || financeLoading ? (
+                {loading ? (
                   <Skeleton className="w-28 h-8 rounded-lg" />
                 ) : (
                   <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
@@ -486,7 +453,7 @@ export default function SuperUserDashboard() {
               </div>
 
               <div>
-                {loading || financeLoading ? (
+                {loading ? (
                   <Skeleton className="w-24 h-8 rounded-lg" />
                 ) : (
                   <h3 className="text-2xl sm:text-3xl font-black text-emerald-900 tracking-tight">
@@ -519,7 +486,7 @@ export default function SuperUserDashboard() {
               </div>
 
               <div>
-                {loading || financeLoading ? (
+                {loading ? (
                   <Skeleton className="w-28 h-8 rounded-lg" />
                 ) : (
                   <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
@@ -552,7 +519,7 @@ export default function SuperUserDashboard() {
               </div>
 
               <div>
-                {loading || financeLoading ? (
+                {loading ? (
                   <Skeleton className="w-24 h-8 rounded-lg" />
                 ) : (
                   <h3 className="text-2xl sm:text-3xl font-black text-amber-900 tracking-tight">

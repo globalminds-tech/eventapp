@@ -49,3 +49,18 @@ export const getRedirectPathForUser = (role) => {
   }
   return "/";
 };
+
+/**
+ * Universal Helper: Resolves authenticated User ID from Redux, JSON user object, or storage keys
+ */
+export const getAuthUserId = (reduxUser) => {
+  if (reduxUser && reduxUser.id) return reduxUser.id;
+  const storedUserStr = localStorage.getItem("user") || sessionStorage.getItem("user");
+  if (storedUserStr) {
+    try {
+      const u = JSON.parse(storedUserStr);
+      if (u && u.id) return u.id;
+    } catch (e) {}
+  }
+  return sessionStorage.getItem("id") || localStorage.getItem("id") || sessionStorage.getItem("userId") || localStorage.getItem("userId") || "";
+};

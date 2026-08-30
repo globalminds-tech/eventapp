@@ -9,8 +9,17 @@ const ensureArray = (payload) => {
 
 export const fetchEventsThunk = createAsyncThunk(
   "events/fetchEvents",
-  async (organizerId, { rejectWithValue }) => {
+  async (param, { getState, rejectWithValue }) => {
     try {
+      const isObject = param && typeof param === "object" && !Array.isArray(param);
+      const organizerId = isObject ? param.organizerId : param;
+      const force = isObject ? Boolean(param.force) : false;
+
+      const state = getState();
+      if (!force && state.events?.loaded && Array.isArray(state.events?.list) && state.events.list.length > 0) {
+        return state.events.list;
+      }
+
       const data = await eventApi.getEventshow(organizerId);
       return ensureArray(data);
     } catch (err) {
@@ -35,7 +44,14 @@ const eventSlice = createSlice({
     },
     addEventToStore: (state, action) => {
       if (!Array.isArray(state.list)) state.list = [];
-      state.list.unshift(action.payload);
+      const newEvt = action.payload;
+      const existsIndex = state.list.findIndex((e) => e.id === newEvt.id);
+      if (existsIndex !== -1) {
+        state.list[existsIndex] = { ...state.list[existsIndex], ...newEvt };
+      } else {
+        state.list.unshift(newEvt);
+      }
+      state.loaded = true;
     },
     updateEventInStore: (state, action) => {
       if (!Array.isArray(state.list)) state.list = [];
@@ -43,6 +59,7 @@ const eventSlice = createSlice({
       if (index !== -1) {
         state.list[index] = { ...state.list[index], ...action.payload };
       }
+      state.loaded = true;
     },
     deleteEventFromStore: (state, action) => {
       if (!Array.isArray(state.list)) state.list = [];

@@ -23,7 +23,7 @@ const initialUser = getStoredUser();
 const initialState = {
   user: initialUser,
   accessToken: initialToken,
-  role: initialUser?.role || sessionStorage.getItem("userRole") || null,
+  role: initialUser?.role || localStorage.getItem("role") || sessionStorage.getItem("role") || null,
   isAuthenticated: Boolean(initialToken),
   loading: false,
   error: null
@@ -47,10 +47,28 @@ const authSlice = createSlice({
       if (user) {
         state.user = user;
         state.role = user.role || role || state.role;
+        
         localStorage.setItem("user", JSON.stringify(user));
-        if (user.id) sessionStorage.setItem("userId", user.id);
-        if (user.role) sessionStorage.setItem("userRole", user.role);
-        if (user.name) sessionStorage.setItem("userName", user.name);
+        sessionStorage.setItem("user", JSON.stringify(user));
+
+        if (user.id) {
+          localStorage.setItem("id", user.id);
+          sessionStorage.setItem("id", user.id);
+          localStorage.setItem("userId", user.id);
+          sessionStorage.setItem("userId", user.id);
+        }
+        if (user.role) {
+          localStorage.setItem("role", user.role);
+          sessionStorage.setItem("role", user.role);
+          localStorage.setItem("userRole", user.role);
+          sessionStorage.setItem("userRole", user.role);
+        }
+        if (user.name) {
+          localStorage.setItem("name", user.name);
+          sessionStorage.setItem("name", user.name);
+          localStorage.setItem("userName", user.name);
+          sessionStorage.setItem("userName", user.name);
+        }
       }
       
       state.loading = false;

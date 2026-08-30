@@ -49,44 +49,12 @@ export default function OrganizerRegister() {
     upi_id: "",
   });
 
-  // Read ?step= Query Param & Load Active Profile on Mount
+  // Read ?step= Query Param on Mount
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const targetStep = queryParams.get("step");
     if (targetStep && ["1", "2", "3"].includes(targetStep)) {
       setActiveStep(parseInt(targetStep, 10));
-    }
-
-    const userId = sessionStorage.getItem("id") || localStorage.getItem("id");
-    if (userId) {
-      getUserProfile(userId)
-        .then((res) => {
-          const userObj = res.data?.data || res.data || res;
-          if (userObj && userObj.id) {
-            setFormData((prev) => ({
-              ...prev,
-              name: userObj.name || prev.name,
-              email: userObj.email || prev.email,
-              mobile: userObj.mobile || prev.mobile,
-              company_name: userObj.company_name || userObj.organization_name || prev.company_name,
-              gstin: userObj.gstin || prev.gstin,
-              pan_number: userObj.pan_number || prev.pan_number,
-              business_address: userObj.business_address || userObj.address || prev.business_address,
-              city: userObj.city || prev.city,
-              state: userObj.state || prev.state,
-              website_url: userObj.website_url || prev.website_url,
-              bank_name: userObj.bank_name || prev.bank_name,
-              account_number: userObj.account_number || prev.account_number,
-              ifsc_code: userObj.ifsc_code || prev.ifsc_code,
-              account_holder: userObj.account_holder || prev.account_holder,
-            }));
-
-            if (userObj.email) setIsOtpVerified(true);
-          }
-        })
-        .catch((err) => {
-          console.log("Organizer profile prefill note:", err?.message || err);
-        });
     }
   }, []);
 

@@ -218,7 +218,7 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
               <table className="w-full text-left border-collapse relative bg-white">
                 <thead>
                   <tr>
-                    <th className={`${tableHeaderClasses} w-16 text-center`}>Parent</th>
+                    <th className={`${tableHeaderClasses} w-24 text-center`} title="Check if this add-on requires a main event ticket purchase">Linked Ticket</th>
                     <th className={tableHeaderClasses}>Add-On Name</th>
                     <th className={`${tableHeaderClasses} w-28`}>Price (₹)</th>
                     <th className={`${tableHeaderClasses} w-14 text-right`}>Action</th>

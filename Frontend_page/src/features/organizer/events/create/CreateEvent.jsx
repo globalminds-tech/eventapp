@@ -94,12 +94,15 @@ const CreateEvent = ({ onBack, editData, isView }) => {
       };
     });
 
-    return {
-      eventDetails: {
-        eventName: details.eventName || details.event_name || "",
-        eventCode: details.eventCode || details.event_code || "",
-        category: details.category || "",
-        subCategory: details.subCategory || details.sub_category || "",
+      const subCatVal = details.subCategory || details.sub_category || details.subcategory || raw.subCategory || raw.sub_category || raw.subcategory || "";
+      return {
+        eventDetails: {
+          eventName: details.eventName || details.event_name || "",
+          eventCode: details.eventCode || details.event_code || "",
+          category: details.category || raw.category || "",
+          subCategory: subCatVal,
+          sub_category: subCatVal,
+          subcategory: subCatVal,
         eventType: details.eventType || details.event_type || "OneTime",
         startDate: details.startDate || details.start_date || "",
         endDate: details.endDate || details.end_date || "",

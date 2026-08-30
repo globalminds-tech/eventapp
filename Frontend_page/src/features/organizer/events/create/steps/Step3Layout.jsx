@@ -445,16 +445,17 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
               </span>
             </div>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="overallSpaceSqFt"
               placeholder="e.g. 50000"
-              value={formData.layout?.overallSpaceSqFt || formData.eventDetails?.venue_total_area_sqft || 50000}
+              value={formData.layout?.overallSpaceSqFt !== undefined ? formData.layout.overallSpaceSqFt : (formData.eventDetails?.venue_total_area_sqft || "")}
               onChange={(e) => {
-                const val = parseFloat(e.target.value) || 0;
+                const val = e.target.value.replace(/\D/g, "");
                 setFormData((prev) => ({
                   ...prev,
                   layout: { ...prev.layout, overallSpaceSqFt: val },
-                  eventDetails: { ...prev.eventDetails, venue_total_area_sqft: val }
+                  eventDetails: { ...prev.eventDetails, venue_total_area_sqft: val ? parseFloat(val) || 0 : "" }
                 }));
               }}
               className="w-full h-9 bg-white border border-cyan-300 rounded-lg px-3 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-cyan-500"
@@ -708,16 +709,17 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                 <input
                   name="personPass"
                   type="text"
-                  value={formData.layout?.personPass || ""}
+                  placeholder="2"
+                  value={formData.layout?.personPass !== undefined ? formData.layout.personPass : "2"}
                   inputMode="numeric"
                   maxLength={5}
                   onChange={(e) => {
                     let value = e.target.value.replace(/\D/g, "");
                     handleChange({ target: { name: "personPass", value } });
                   }}
-                  className={`${inputClasses} ${showStep3Errors && !formData.layout?.personPass ? "border-red-500 ring-2 ring-red-100" : ""}`}
+                  className={`${inputClasses} ${showStep3Errors && (formData.layout?.personPass === "" || formData.layout?.personPass === null) ? "border-red-500 ring-2 ring-red-100" : ""}`}
                 />
-                {showStep3Errors && !formData.layout?.personPass && (
+                {showStep3Errors && (formData.layout?.personPass === "" || formData.layout?.personPass === null) && (
                   <p className="text-red-500 text-xs mt-1.5 ml-4">No. of Person Passes Allowed is required</p>
                 )}
               </div>
@@ -892,6 +894,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     <tr>
                       <th className={tableHeaderClasses}>Action</th>
                       <th className={tableHeaderClasses}>Stall Name</th>
+                      <th className={`${tableHeaderClasses} text-center`}>Qty</th>
                       <th className={tableHeaderClasses}>Size</th>
                       <th className={tableHeaderClasses}>Visibility</th>
                       <th className={tableHeaderClasses}>Type</th>
@@ -903,7 +906,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                   <tbody>
                     {stallList.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="p-12 text-center text-gray-400 italic bg-gray-50/30">
+                        <td colSpan="9" className="p-12 text-center text-gray-400 italic bg-gray-50/30">
                           No stalls added yet. Start by filling the form on the left.
                         </td>
                       </tr>
@@ -929,6 +932,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                               </button>
                             </td>
                             <td className={`${tableCellClasses} font-semibold text-purple-700`}>{stall.stallName || stall.stall_name}</td>
+                            <td className={`${tableCellClasses} font-extrabold text-cyan-800 text-center`}>{stall.stallQuantity || stall.quantity || stall.stall_count || 1}</td>
                             <td className={tableCellClasses}>{stall.size || stall.stall_size}</td>
                             <td className={tableCellClasses}>
                               <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${stall.visibility === "Public" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>

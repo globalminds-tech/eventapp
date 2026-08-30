@@ -366,8 +366,8 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
               onClick={() => setSubcategoryOpen(!subcategoryOpen)}
               className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-cyan-400"
             >
-              <span className={formData.eventDetails?.sub_category ? "text-slate-900 font-medium" : "text-slate-400"}>
-                {formData.eventDetails?.sub_category || "Select Subcategory"}
+              <span className={(formData.eventDetails?.sub_category || formData.eventDetails?.subCategory || formData.eventDetails?.subcategory) ? "text-slate-900 font-medium" : "text-slate-400"}>
+                {(formData.eventDetails?.sub_category || formData.eventDetails?.subCategory || formData.eventDetails?.subcategory) || "Select Subcategory"}
               </span>
               <ChevronDown size={14} className={`text-slate-400 transition-transform ${subcategoryOpen ? "rotate-180" : ""}`} />
             </div>
@@ -396,11 +396,13 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                           key={sub}
                           onClick={() => {
                             update("sub_category", sub);
+                            update("subCategory", sub);
+                            update("subcategory", sub);
                             setSubcategoryOpen(false);
                             setSubcategorySearch("");
                           }}
                           className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
-                            formData.eventDetails?.sub_category === sub
+                            (formData.eventDetails?.sub_category === sub || formData.eventDetails?.subCategory === sub)
                               ? "bg-cyan-50 text-cyan-800 font-bold"
                               : "text-slate-700 hover:bg-slate-50"
                           }`}

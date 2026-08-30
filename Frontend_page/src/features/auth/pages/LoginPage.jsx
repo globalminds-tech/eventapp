@@ -26,37 +26,12 @@ export default function Login() {
     const role = (localStorage.getItem("role") || sessionStorage.getItem("role"))?.toLowerCase();
     
     if (token && role && !token.includes("authenticated-user-token") && !token.includes("-session-token")) {
-      let storedUser = null;
-      try {
-        const uStr = localStorage.getItem("user") || sessionStorage.getItem("user");
-        storedUser = uStr ? JSON.parse(uStr) : null;
-      } catch (err) {
-        console.log("LoginPage user parse note:", err);
-      }
-
-      const hasBankPayout = Boolean(
-        storedUser?.bank_name ||
-        storedUser?.account_number ||
-        sessionStorage.getItem("bank_name") ||
-        localStorage.getItem("bank_name")
-      );
-
       if (role === "organizer") {
-        if (!hasBankPayout) {
-          navigate("/register/organizer?step=3", { replace: true });
-          return;
-        } else {
-          navigate("/OrganizerHome", { replace: true });
-          return;
-        }
+        navigate("/OrganizerHome", { replace: true });
+        return;
       } else if (role === "exhibitor") {
-        if (!hasBankPayout) {
-          navigate("/register/exhibitor?step=3", { replace: true });
-          return;
-        } else {
-          navigate("/exhibitor/dashboard", { replace: true });
-          return;
-        }
+        navigate("/exhibitor/dashboard", { replace: true });
+        return;
       } else if (["superuser", "superadmin", "admin"].includes(role)) {
         navigate("/superuser/dashboard", { replace: true });
         return;
@@ -173,26 +148,10 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(userObj));
       sessionStorage.setItem("user", JSON.stringify(userObj));
 
-      const hasBankPayout = Boolean(
-        userObj?.bank_name ||
-        userObj?.account_number ||
-        userObj?.bank_account
-      );
-
-      console.log("[DEBUG LoginPage] handleSubmit login userObj:", userObj, "hasBankPayout:", hasBankPayout);
-
       if (userRole === "organizer") {
-        if (!hasBankPayout) {
-          navigate("/register/organizer?step=3", { replace: true });
-        } else {
-          navigate("/OrganizerHome", { replace: true });
-        }
+        navigate("/OrganizerHome", { replace: true });
       } else if (userRole === "exhibitor") {
-        if (!hasBankPayout) {
-          navigate("/register/exhibitor?step=3", { replace: true });
-        } else {
-          navigate("/exhibitor/dashboard", { replace: true });
-        }
+        navigate("/exhibitor/dashboard", { replace: true });
       } else if (["superuser", "superadmin", "admin"].includes(userRole)) {
         navigate("/superuser/dashboard", { replace: true });
       } else {

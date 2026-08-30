@@ -1,33 +1,58 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+const getInitialUser = () => {
+  try {
+    const userStr = localStorage.getItem("user") || sessionStorage.getItem("user");
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u && u.id) {
+        return {
+          id: u.id || "",
+          name: u.name || "",
+          email: u.email || "",
+          role: u.role || "",
+          mobile: u.mobile || "",
+          organization_name: u.organization_name || u.company_name || "",
+          profile_image: u.profile_image || "",
+        };
+      }
+    }
+  } catch (e) {}
+
+  return {
+    id: localStorage.getItem("id") || sessionStorage.getItem("id") || localStorage.getItem("userId") || sessionStorage.getItem("userId") || "",
+    name: localStorage.getItem("name") || sessionStorage.getItem("name") || "",
+    email: localStorage.getItem("email") || sessionStorage.getItem("email") || "",
+    role: localStorage.getItem("role") || sessionStorage.getItem("role") || "",
+    mobile: localStorage.getItem("mobile") || sessionStorage.getItem("mobile") || "",
+    organization_name: localStorage.getItem("organization_name") || sessionStorage.getItem("organization_name") || "",
+    profile_image: localStorage.getItem("profile_image") || sessionStorage.getItem("profile_image") || "",
+  };
+};
+
 const userSlice = createSlice({
   name: "user",
-  initialState: {
-    id: sessionStorage.getItem("id") || "",
-    name: sessionStorage.getItem("name") || "",
-    email: sessionStorage.getItem("email") || "",
-    role: sessionStorage.getItem("role") || "",
-    mobile: sessionStorage.getItem("mobile") || "",
-    organization_name: sessionStorage.getItem("organization_name") || "",
-    profile_image: sessionStorage.getItem("profile_image") || "",
-  },
+  initialState: getInitialUser(),
   reducers: {
     setUser: (state, action) => {
-      state.id = action.payload.id || state.id;
-      state.name = action.payload.name || state.name;
-      state.email = action.payload.email || state.email;
-      state.role = action.payload.role || state.role;
-      state.mobile = action.payload.mobile || state.mobile;
-      state.organization_name = action.payload.organization_name || state.organization_name;
-      state.profile_image = action.payload.profile_image || state.profile_image;
+      const p = action.payload || {};
+      state.id = p.id || state.id;
+      state.name = p.name || state.name;
+      state.email = p.email || state.email;
+      state.role = p.role || state.role;
+      state.mobile = p.mobile || state.mobile;
+      state.organization_name = p.organization_name || p.company_name || state.organization_name;
+      state.profile_image = p.profile_image || state.profile_image;
 
-      if (action.payload.id) sessionStorage.setItem("id", action.payload.id);
-      if (action.payload.name) sessionStorage.setItem("name", action.payload.name);
-      if (action.payload.email) sessionStorage.setItem("email", action.payload.email);
-      if (action.payload.role) sessionStorage.setItem("role", action.payload.role);
-      if (action.payload.mobile) sessionStorage.setItem("mobile", action.payload.mobile);
-      if (action.payload.organization_name) sessionStorage.setItem("organization_name", action.payload.organization_name);
-      if (action.payload.profile_image) sessionStorage.setItem("profile_image", action.payload.profile_image);
+      const keysToSync = ["id", "name", "email", "role", "mobile", "organization_name", "profile_image"];
+      keysToSync.forEach((k) => {
+        if (state[k]) {
+          localStorage.setItem(k, state[k]);
+          sessionStorage.setItem(k, state[k]);
+        }
+      });
+      localStorage.setItem("user", JSON.stringify(state));
+      sessionStorage.setItem("user", JSON.stringify(state));
     },
     clearUser: (state) => {
       state.id = "";
@@ -37,13 +62,12 @@ const userSlice = createSlice({
       state.mobile = "";
       state.organization_name = "";
       state.profile_image = "";
-      sessionStorage.removeItem("id");
-      sessionStorage.removeItem("name");
-      sessionStorage.removeItem("email");
-      sessionStorage.removeItem("role");
-      sessionStorage.removeItem("mobile");
-      sessionStorage.removeItem("organization_name");
-      sessionStorage.removeItem("profile_image");
+
+      const keysToClear = ["id", "name", "email", "role", "mobile", "organization_name", "profile_image", "user", "token", "userId"];
+      keysToClear.forEach((k) => {
+        localStorage.removeItem(k);
+        sessionStorage.removeItem(k);
+      });
     }
   }
 });
