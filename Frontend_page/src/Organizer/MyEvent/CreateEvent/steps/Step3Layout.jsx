@@ -175,6 +175,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
     const visibility = layout.visibility || "Public";
     const stallType = layout.stallType || "Paid";
     const sizeRange = layout.sizeRange || (layout.length && layout.width ? `${layout.length}/${layout.width}` : "");
+    const stallQty = parseInt(layout.stallQty || "1", 10) || 1;
 
     // Validation: Empty not allowed
     if (!layout.stallName?.trim()) return showModal("Stall Name is required");
@@ -182,6 +183,29 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
     const parts = sizeRange.split("/");
     if (parts.length < 2 || !parts[0] || !parts[1]) {
       return showModal("Please enter both Length and Width dimensions (e.g. 10/10)");
+    }
+
+    const lengthFt = parseFloat(parts[0]) || 10;
+    const widthFt = parseFloat(parts[1]) || 10;
+    const singleStallAreaSqFt = lengthFt * widthFt;
+    const totalNewStallAreaSqFt = singleStallAreaSqFt * stallQty;
+
+    // Overall venue space calculation & hard restriction
+    const overallSpaceLimit = parseFloat(formData.eventDetails?.venue_total_area_sqft || formData.layout?.overallSpaceSqFt || "50000") || 50000;
+    
+    // Calculate current total allocated space
+    const currentAllocatedSqFt = stallList.reduce((acc, s) => {
+      const sQty = parseInt(s.qty || s.quantity || s.stallQty || 1, 10) || 1;
+      const sParts = (s.sizeRange || "10/10").split("/");
+      const l = parseFloat(sParts[0]) || 10;
+      const w = parseFloat(sParts[1]) || 10;
+      return acc + (l * w * sQty);
+    }, 0);
+
+    if (currentAllocatedSqFt + totalNewStallAreaSqFt > overallSpaceLimit) {
+      return showModal(
+        `🚫 Space Limit Exceeded! Adding ${totalNewStallAreaSqFt} sq.ft (${stallQty} stalls) would bring total allocated space to ${currentAllocatedSqFt + totalNewStallAreaSqFt} sq.ft, which exceeds the venue's overall space capacity of ${overallSpaceLimit} sq.ft.`
+      );
     }
 
     if (stallType === "Paid") {
@@ -199,6 +223,10 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
       stallName: layout.stallName.trim(),
       size: `${parts[0]}/${parts[1]} ${layout.stallSize || "Feet"}`,
       sizeRange: sizeRange,
+      quantity: stallQty,
+      stallQty: stallQty,
+      singleAreaSqFt: singleStallAreaSqFt,
+      totalAreaSqFt: totalNewStallAreaSqFt,
       visibility: visibility,
       type: stallType,
       priceINR: stallType === "Free" ? "Free" : (layout.priceINR || "Free"),
@@ -210,7 +238,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
       amenities: stallAmenities,
     };
 
-    // Validation: Same value not allowed (Duplicate Name) - ONLY for new stalls
+    // Validation: Duplicate Name Check
     const isDuplicate = stallList.some(
       (s) => s.stallName?.toLowerCase() === layout.stallName.trim().toLowerCase()
     );
@@ -228,6 +256,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
         // Clear inputs after adding
         stallName: "",
         sizeRange: "",
+        stallQty: "1",
         priceINR: "",
         primeSeat: false,
         primePriceINR: "",
@@ -403,7 +432,67 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* LEFT SIDE: FORM */}
         <div className={`${cardClasses} space-y-4`}>
-          <h2 className={sectionTitleClasses}>Layout Information</h2>
+          <h2 className={sectionTitleClasses}>Layout Information & Overall Space Capacity</h2>
+
+          {/* OVERALL VENUE SPACE CAPACITY INPUT */}
+          <div className="bg-gradient-to-r from-cyan-50 to-blue-50 p-3.5 rounded-xl border border-cyan-200/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-extrabold text-cyan-900">
+                Overall Exhibition Venue Space (in sq.ft) <span className="text-red-500">*</span>
+              </label>
+              <span className="text-[11px] font-bold text-cyan-700">
+                {formData.eventDetails?.venue ? `Venue: ${formData.eventDetails.venue}` : "Default Hall Limit"}
+              </span>
+            </div>
+            <input
+              type="number"
+              name="overallSpaceSqFt"
+              placeholder="e.g. 50000"
+              value={formData.layout?.overallSpaceSqFt || formData.eventDetails?.venue_total_area_sqft || 50000}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                setFormData((prev) => ({
+                  ...prev,
+                  layout: { ...prev.layout, overallSpaceSqFt: val },
+                  eventDetails: { ...prev.eventDetails, venue_total_area_sqft: val }
+                }));
+              }}
+              className="w-full h-9 bg-white border border-cyan-300 rounded-lg px-3 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+
+            {/* LIVE SPACE CAPACITY PROGRESS BAR */}
+            {(() => {
+              const limitSqFt = parseFloat(formData.layout?.overallSpaceSqFt || formData.eventDetails?.venue_total_area_sqft || 50000) || 50000;
+              const allocatedSqFt = stallList.reduce((acc, s) => {
+                const sQty = parseInt(s.quantity || s.stallQty || s.qty || 1, 10) || 1;
+                const sParts = (s.sizeRange || "10/10").split("/");
+                const l = parseFloat(sParts[0]) || 10;
+                const w = parseFloat(sParts[1]) || 10;
+                return acc + (l * w * sQty);
+              }, 0);
+              const percent = Math.min(Math.round((allocatedSqFt / limitSqFt) * 100), 100);
+              const isOverflow = allocatedSqFt > limitSqFt;
+
+              return (
+                <div className="space-y-1 pt-1">
+                  <div className="flex justify-between text-[10px] font-bold">
+                    <span className={isOverflow ? "text-red-600" : "text-slate-600"}>
+                      Allocated: {allocatedSqFt.toLocaleString()} sq.ft / {limitSqFt.toLocaleString()} sq.ft ({percent}%)
+                    </span>
+                    <span className={isOverflow ? "text-red-600 font-extrabold" : "text-emerald-600 font-extrabold"}>
+                      {isOverflow ? `⚠️ OVERFLOW by ${(allocatedSqFt - limitSqFt).toLocaleString()} sq.ft` : `Available: ${(limitSqFt - allocatedSqFt).toLocaleString()} sq.ft`}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-cyan-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${isOverflow ? "bg-red-500" : percent > 85 ? "bg-amber-500" : "bg-gradient-to-r from-cyan-500 to-blue-600"}`}
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
 
           {/* Flooring & Booking Options Side-by-Side */}
           <div className="grid grid-cols-2 gap-4">
@@ -453,9 +542,9 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
             </div>
           </div>
 
-          {/* Stall Name & Size */}
+          {/* Stall Name, Quantity & Size */}
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-2">
               <div>
                 <label className={labelClasses}>Stall Name / Booth ID <span className="text-red-500">*</span></label>
                 <input
@@ -463,6 +552,20 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                   name="stallName"
                   placeholder="e.g. A1 - Premium Booth"
                   value={formData.layout?.stallName || ""}
+                  onChange={handleChange}
+                  className={inputClasses}
+                />
+              </div>
+
+              <div>
+                <label className={labelClasses}>Stall Quantity (Count) <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  name="stallQty"
+                  min="1"
+                  max="100"
+                  placeholder="e.g. 5"
+                  value={formData.layout?.stallQty || "1"}
                   onChange={handleChange}
                   className={inputClasses}
                 />

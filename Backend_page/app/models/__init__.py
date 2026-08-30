@@ -19,9 +19,10 @@ from .support import FeedbackEvent, Complaint, ChatHistory, FAQ
 from .todo import TodoTask, MessageGreeting, Contact
 
 from .category import CategoryMaster
+from .category_request import CategoryRequest
 
 __all__ = [
-    'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster',
+    'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster', 'CategoryRequest',
     'EventDetails', 'EventBookingDetails', 'EventLayout',
     'EventFile', 'EventTerm', 'EventGuest',
     'Venue', 'VenueDocument', 'Country', 'State', 'City',

@@ -83,7 +83,7 @@ class AdminRepository:
             return []
 
     @staticmethod
-    def create_or_update_category(name: str, subcategories: str, icon_name: str = "Tag", status: str = "Active"):
+    def create_or_update_category(name: str, subcategories: str, icon_name: str = "Tag", category_image: str = "", status: str = "Active"):
         from app.models.category import CategoryMaster
         stmt = select(CategoryMaster).where(CategoryMaster.name == name)
         existing = db.session.scalar(stmt)
@@ -92,13 +92,48 @@ class AdminRepository:
             existing.status = status
             if icon_name:
                 existing.icon_name = icon_name
+            if category_image:
+                existing.category_image = category_image
             db.session.commit()
             return existing
         else:
-            cat = CategoryMaster(name=name, subcategories=subcategories, icon_name=icon_name, status=status)
+            cat = CategoryMaster(name=name, subcategories=subcategories, icon_name=icon_name, category_image=category_image, status=status)
             db.session.add(cat)
             db.session.commit()
             return cat
+
+    @staticmethod
+    def update_category_by_id(cat_id: int, data: dict):
+        from app.models.category import CategoryMaster
+        cat = db.session.get(CategoryMaster, cat_id)
+        if not cat:
+            return None
+        if "name" in data:
+            cat.name = data["name"]
+        if "subcategories" in data:
+            subs = data["subcategories"]
+            if isinstance(subs, list):
+                cat.subcategories = ", ".join(subs)
+            else:
+                cat.subcategories = str(subs)
+        if "icon_name" in data:
+            cat.icon_name = data["icon_name"]
+        if "category_image" in data:
+            cat.category_image = data["category_image"]
+        if "status" in data:
+            cat.status = data["status"]
+        db.session.commit()
+        return cat
+
+    @staticmethod
+    def delete_category_by_id(cat_id: int):
+        from app.models.category import CategoryMaster
+        cat = db.session.get(CategoryMaster, cat_id)
+        if cat:
+            db.session.delete(cat)
+            db.session.commit()
+            return True
+        return False
 
     @staticmethod
     def get_pending_organizers():

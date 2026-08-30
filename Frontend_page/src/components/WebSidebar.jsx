@@ -84,11 +84,11 @@ export default function WebSidebar({ role }) {
   // Flat sidebar navigation items without 7-step item (event creation is launched from Dashboard button)
   const navigationItems = {
     superuser: [
-      { label: "Overview", path: "/superuser/dashboard?tab=overview", icon: BarChart3 },
-      { label: "Approvals Queue", path: "/superuser/dashboard?tab=approvals", icon: CheckCircle2 },
-      { label: "Category Master", path: "/superuser/dashboard?tab=categories", icon: Layers },
-      { label: "KYC Verification", path: "/superuser/dashboard?tab=kyc", icon: UserCheck },
-      { label: "Payouts Queue", path: "/superuser/dashboard?tab=payouts", icon: Landmark },
+      { label: "Overview", path: "/superuser/dashboard", icon: BarChart3 },
+      { label: "Approvals Queue", path: "/superuser/approvals", icon: CheckCircle2 },
+      { label: "Category Master", path: "/superuser/categories", icon: Layers },
+      { label: "KYC Verification", path: "/superuser/kyc", icon: UserCheck },
+      { label: "Payouts Queue", path: "/superuser/payouts", icon: Landmark },
     ],
     exhibitor: [
       { label: "Booth Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
@@ -239,7 +239,7 @@ export default function WebSidebar({ role }) {
       {/* ── MAIN CONTENT CONTAINER (FULL CANVAS VIEWPORT) ── */}
       <main className="flex-1 h-full overflow-hidden flex flex-col bg-[#f8fafc]">
         {/* Child Router Viewport */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col h-full">
           <Outlet />
         </div>
       </main>

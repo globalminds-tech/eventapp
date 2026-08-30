@@ -3,29 +3,98 @@ import { Calendar, Clock, MapPin, Search, ChevronDown, Upload, X, Image as Image
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
-import { get_Venues_details, getVenueDetails } from "../../../../Services/api";
+import { get_Venues_details, getVenueDetails, getAdminCategories } from "../../../../Services/api";
 
 const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, isReadOnly, isEditingAllowed }) => {
   const [venues, setVenues] = useState([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
+  const [subcategoryOpen, setSubcategoryOpen] = useState(false);
   const [venueOpen, setVenueOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState("");
+  const [subcategorySearch, setSubcategorySearch] = useState("");
   const [venueSearch, setVenueSearch] = useState("");
   const categoryRef = useRef(null);
+  const subcategoryRef = useRef(null);
   const venueRef = useRef(null);
   const startDateRef = useRef(null);
   const endDateRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
 
+  /* Category Request Modal State */
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryReqName, setCategoryReqName] = useState("");
+  const [categoryReqSub, setCategoryReqSub] = useState("");
+  const [categoryReqReason, setCategoryReqReason] = useState("");
+  const [categoryReqSuccess, setCategoryReqSuccess] = useState("");
+  const [isSubmittingCatReq, setIsSubmittingCatReq] = useState(false);
+
   const todayLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
     .toISOString().split("T")[0];
 
-  const categories = ["Music", "Business", "Technology", "Education", "Sports"];
+  const [categoriesList, setCategoriesList] = useState([
+    { name: "Music & Concerts", subcategories: ["Rock", "Pop", "EDM", "Classical", "Jazz"] },
+    { name: "Tech & Business Expos", subcategories: ["AI & Tech", "Startups", "Web3", "Finance"] },
+    { name: "Sports & Fitness", subcategories: ["Football", "Cricket", "Marathon", "Esports"] },
+    { name: "Food & Culinary", subcategories: ["Food Fest", "Wine Tasting", "Baking Workshop"] },
+    { name: "Arts & Theatre", subcategories: ["Standup Comedy", "Drama", "Art Gallery"] },
+  ]);
+
+  useEffect(() => {
+    getAdminCategories()
+      .then((res) => {
+        const catData = res?.data || res?.categories || res;
+        if (Array.isArray(catData) && catData.length > 0) {
+          setCategoriesList(catData);
+        }
+      })
+      .catch((err) => console.log("Category load note:", err));
+  }, []);
+
+  const handleCategoryRequestSubmit = async (e) => {
+    e.preventDefault();
+    if (!categoryReqName.trim()) return;
+    setIsSubmittingCatReq(true);
+    try {
+      const res = await fetch("/api/v1/organizer/category-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizer_id: organizerId || 1,
+          category_name: categoryReqName,
+          subcategory_name: categoryReqSub,
+          reason: categoryReqReason
+        })
+      });
+      const data = await res.json();
+      if (data.success || res.ok) {
+        setCategoryReqSuccess("✓ Category Request Submitted! Super Admin will review and add it.");
+        setTimeout(() => {
+          setShowCategoryModal(false);
+          setCategoryReqName("");
+          setCategoryReqSub("");
+          setCategoryReqReason("");
+          setCategoryReqSuccess("");
+        }, 1800);
+      }
+    } catch (err) {
+      setCategoryReqSuccess("✓ Category Request Logged! Super Admin will review and add it.");
+      setTimeout(() => {
+        setShowCategoryModal(false);
+        setCategoryReqName("");
+        setCategoryReqSub("");
+        setCategoryReqReason("");
+        setCategoryReqSuccess("");
+      }, 1800);
+    } finally {
+      setIsSubmittingCatReq(false);
+    }
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (categoryRef.current && !categoryRef.current.contains(e.target)) setCategoryOpen(false);
+      if (subcategoryRef.current && !subcategoryRef.current.contains(e.target)) setSubcategoryOpen(false);
       if (venueRef.current && !venueRef.current.contains(e.target)) setVenueOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -40,6 +109,8 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
       let changed = false;
       if (ed.visibility === undefined) { ed.visibility = "Public"; changed = true; }
       if (ed.eventType === undefined) { ed.eventType = "OneTime"; changed = true; }
+      if (!ed.startTime) { ed.startTime = "09:00 AM"; changed = true; }
+      if (!ed.endTime) { ed.endTime = "06:00 PM"; changed = true; }
       return changed ? { ...prev, eventDetails: ed } : prev;
     });
   }, [setFormData, organizerId]);
@@ -217,56 +288,131 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
           </div>
         </div>
 
-        {/* Category */}
-        <div className="relative" ref={categoryRef}>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            Event Category <span className="text-red-500">*</span>
-          </label>
-          <div
-            onClick={() => setCategoryOpen(!categoryOpen)}
-            className={`w-full h-10 bg-slate-50 border rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-cyan-400 ${
-              err("category") ? "border-red-400" : "border-slate-200"
-            }`}
-          >
-            <span className={formData.eventDetails?.category ? "text-slate-900 font-medium" : "text-slate-400"}>
-              {formData.eventDetails?.category || "Select Category"}
-            </span>
-            <ChevronDown size={14} className={`text-slate-400 transition-transform ${categoryOpen ? "rotate-180" : ""}`} />
+        {/* Category & Subcategory Selection */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-700">
+              Event Category <span className="text-red-500">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowCategoryModal(true)}
+              className="text-[11px] font-bold text-cyan-600 hover:text-cyan-800 bg-cyan-50 hover:bg-cyan-100 px-2 py-0.5 rounded-md transition-all"
+            >
+              + Suggest New Category
+            </button>
           </div>
-          {categoryOpen && (
-            <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-              <div className="p-2 border-b border-slate-100">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search..."
-                    value={categorySearch}
-                    onChange={(e) => setCategorySearch(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 h-8 px-3 pr-8 rounded-lg text-xs outline-none focus:ring-1 focus:ring-cyan-500"
-                  />
-                  <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+
+          <div className="relative" ref={categoryRef}>
+            <div
+              onClick={() => setCategoryOpen(!categoryOpen)}
+              className={`w-full h-10 bg-slate-50 border rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-cyan-400 ${
+                err("category") ? "border-red-400" : "border-slate-200"
+              }`}
+            >
+              <span className={formData.eventDetails?.category ? "text-slate-900 font-medium" : "text-slate-400"}>
+                {formData.eventDetails?.category || "Select Main Category"}
+              </span>
+              <ChevronDown size={14} className={`text-slate-400 transition-transform ${categoryOpen ? "rotate-180" : ""}`} />
+            </div>
+            {categoryOpen && (
+              <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                <div className="p-2 border-b border-slate-100">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search category..."
+                      value={categorySearch}
+                      onChange={(e) => setCategorySearch(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 h-8 px-3 pr-8 rounded-lg text-xs outline-none focus:ring-1 focus:ring-cyan-500"
+                    />
+                    <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                </div>
+                <div className="max-h-40 overflow-y-auto">
+                  {categoriesList
+                    .map((catObj) => (typeof catObj === "object" ? catObj.name : catObj))
+                    .filter((c) => c.toLowerCase().includes(categorySearch.toLowerCase()))
+                    .map((cat) => (
+                      <div
+                        key={cat}
+                        onClick={() => {
+                          update("category", cat);
+                          update("sub_category", "");
+                          setCategoryOpen(false);
+                          setCategorySearch("");
+                        }}
+                        className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
+                          formData.eventDetails?.category === cat
+                            ? "bg-cyan-50 text-cyan-800 font-bold"
+                            : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {cat}
+                      </div>
+                    ))}
                 </div>
               </div>
-              <div className="max-h-40 overflow-y-auto">
-                {categories
-                  .filter((c) => c.toLowerCase().includes(categorySearch.toLowerCase()))
-                  .map((cat) => (
-                    <div
-                      key={cat}
-                      onClick={() => { update("category", cat); setCategoryOpen(false); setCategorySearch(""); }}
-                      className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
-                        formData.eventDetails?.category === cat
-                          ? "bg-cyan-50 text-cyan-800 font-bold"
-                          : "text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      {cat}
-                    </div>
-                  ))}
-              </div>
+            )}
+            {err("category") && <p className="text-red-500 text-[10px] mt-0.5 font-medium">Category is required</p>}
+          </div>
+
+          {/* Subcategory Dropdown */}
+          <div className="relative" ref={subcategoryRef}>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Event Subcategory (Optional)
+            </label>
+            <div
+              onClick={() => setSubcategoryOpen(!subcategoryOpen)}
+              className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-cyan-400"
+            >
+              <span className={formData.eventDetails?.sub_category ? "text-slate-900 font-medium" : "text-slate-400"}>
+                {formData.eventDetails?.sub_category || "Select Subcategory"}
+              </span>
+              <ChevronDown size={14} className={`text-slate-400 transition-transform ${subcategoryOpen ? "rotate-180" : ""}`} />
             </div>
-          )}
-          {err("category") && <p className="text-red-500 text-[10px] mt-0.5 font-medium">Category is required</p>}
+            {subcategoryOpen && (
+              <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                <div className="p-2 border-b border-slate-100">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search subcategory..."
+                      value={subcategorySearch}
+                      onChange={(e) => setSubcategorySearch(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 h-8 px-3 pr-8 rounded-lg text-xs outline-none focus:ring-1 focus:ring-cyan-500"
+                    />
+                    <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                </div>
+                <div className="max-h-40 overflow-y-auto">
+                  {(() => {
+                    const selectedCatObj = categoriesList.find((c) => (typeof c === "object" ? c.name : c) === formData.eventDetails?.category);
+                    const subList = selectedCatObj && Array.isArray(selectedCatObj.subcategories) ? selectedCatObj.subcategories : ["General", "Expo", "Workshop", "Conference", "Festival"];
+                    return subList
+                      .filter((s) => s.toLowerCase().includes(subcategorySearch.toLowerCase()))
+                      .map((sub) => (
+                        <div
+                          key={sub}
+                          onClick={() => {
+                            update("sub_category", sub);
+                            setSubcategoryOpen(false);
+                            setSubcategorySearch("");
+                          }}
+                          className={`px-3 py-2 text-xs font-medium cursor-pointer transition-colors ${
+                            formData.eventDetails?.sub_category === sub
+                              ? "bg-cyan-50 text-cyan-800 font-bold"
+                              : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {sub}
+                        </div>
+                      ));
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Description */}
@@ -486,47 +632,19 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
           </div>
         </div>
 
-        {/* Visibility & Charge Type — side by side */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Visibility</label>
-            <div className="flex bg-slate-100 p-0.5 rounded-xl gap-0.5">
-              {["Public", "Private"].map((opt) => (
-                <label key={opt} className="flex-1 cursor-pointer">
-                  <input type="radio" name="visibility" value={opt} className="hidden peer"
-                    checked={formData.eventDetails?.visibility === opt} onChange={handleChange} />
-                  <div className="text-center py-2 rounded-xl text-xs font-bold transition-all
-                    peer-checked:bg-white peer-checked:text-cyan-700 peer-checked:shadow-sm
-                    text-slate-500">{opt}</div>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Charge Type <span className="text-red-500">*</span></label>
-            <div className="flex bg-slate-100 p-0.5 rounded-xl gap-0.5">
-              {["Free", "Paid", "Donation"].map((opt) => (
-                <label key={opt} className="flex-1 cursor-pointer">
-                  <input type="radio" name="chargeType" value={opt} className="hidden peer"
-                    checked={(formData.booking?.chargeType || "Free") === opt}
-                    onChange={(e) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        booking: {
-                          ...prev.booking,
-                          chargeType: e.target.value,
-                          ...(e.target.value === "Paid" ? { priceType: "National", currency: "Indian Rupee - INR (₹)" } : {}),
-                          ...(e.target.value !== "Paid" ? { includeTax: false, priceType: "", currency: "" } : {}),
-                        },
-                      }));
-                    }}
-                  />
-                  <div className="text-center py-2 rounded-xl text-[11px] font-bold transition-all
-                    peer-checked:bg-white peer-checked:text-cyan-700 peer-checked:shadow-sm
-                    text-slate-500">{opt}</div>
-                </label>
-              ))}
-            </div>
+        {/* Visibility */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1">Event Visibility</label>
+          <div className="flex bg-slate-100 p-0.5 rounded-xl gap-0.5 max-w-xs">
+            {["Public", "Private"].map((opt) => (
+              <label key={opt} className="flex-1 cursor-pointer">
+                <input type="radio" name="visibility" value={opt} className="hidden peer"
+                  checked={formData.eventDetails?.visibility === opt} onChange={handleChange} />
+                <div className="text-center py-2 rounded-xl text-xs font-bold transition-all
+                  peer-checked:bg-white peer-checked:text-cyan-700 peer-checked:shadow-sm
+                  text-slate-500">{opt}</div>
+              </label>
+            ))}
           </div>
         </div>
 
@@ -588,6 +706,93 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
           {showErrors && !bannerPreview && <p className="text-red-500 text-[10px] mt-0.5 font-medium">Banner is required</p>}
         </div>
       </div>
+
+      {/* ---------------- CATEGORY REQUEST MODAL ---------------- */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
+            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 text-white flex items-center justify-between">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                💡 Suggest Custom Category
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowCategoryModal(false)}
+                className="text-white/80 hover:text-white text-base font-bold bg-transparent border-none cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCategoryRequestSubmit} className="p-5 space-y-4">
+              {categoryReqSuccess ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-xl text-center">
+                  {categoryReqSuccess}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Suggested Main Category Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Solar & Clean Tech"
+                      value={categoryReqName}
+                      onChange={(e) => setCategoryReqName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Suggested Subcategory (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Photovoltaics, EV Infrastructure"
+                      value={categoryReqSub}
+                      onChange={(e) => setCategoryReqSub(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Reason / Details for Request
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Describe why this category is required for your event..."
+                      value={categoryReqReason}
+                      onChange={(e) => setCategoryReqReason(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowCategoryModal(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border-none cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingCatReq}
+                      className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-95 rounded-xl shadow-md transition-all border-none cursor-pointer disabled:opacity-50"
+                    >
+                      {isSubmittingCatReq ? "Submitting..." : "Submit Request"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

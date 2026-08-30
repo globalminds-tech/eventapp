@@ -39,14 +39,18 @@ const CreateEvent = ({ onBack, editData, isView }) => {
   const location = useLocation();
   const { id: urlParamId } = useParams();
   const targetEventId = urlParamId || editData?.id || location.state?.eventData?.id || location.state?.eventId;
-  const initialReadOnly = location.state?.isReadOnly ?? Boolean(isView);
+  const isEditRoute = location.pathname.includes("/EditEvent") || Boolean(editData) || Boolean(location.state?.mode === "edit");
+  const isViewRoute = location.pathname.includes("/ViewEvent") || Boolean(isView) || Boolean(location.state?.isReadOnly);
+
+  const initialReadOnly = isViewRoute && !isEditRoute;
+  const initialEditAllowed = isEditRoute || Boolean(editData) || Boolean(targetEventId && !isViewRoute);
 
   const [step, setStep] = useState(1);
   const [showErrors, setShowErrors] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isReadOnlyMode, setIsReadOnlyMode] = useState(initialReadOnly);
-  const [isEditingAllowed, setIsEditingAllowed] = useState(false);
+  const [isEditingAllowed, setIsEditingAllowed] = useState(initialEditAllowed);
 
   const handleBack = () => {
     if (onBack) {
@@ -509,7 +513,11 @@ const CreateEvent = ({ onBack, editData, isView }) => {
               <ArrowLeft size={16} />
             </button>
             <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">
-              {isReadOnlyMode && !isEditingAllowed ? "View Event (Read-Only)" : isEditingAllowed ? "Edit Event" : editData ? "Edit Event" : "Create New Event"}
+              {isReadOnlyMode && !isEditingAllowed
+                ? "View Event (Read-Only)"
+                : isEditRoute || isEditingAllowed || editData || targetEventId
+                ? "Edit Event"
+                : "Create New Event"}
             </h1>
             <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold text-[10px]">
               5-Step Wizard
@@ -519,7 +527,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
                 👁️ Read Only Mode
               </Badge>
             )}
-            {isEditingAllowed && (
+            {(isEditingAllowed || isEditRoute || editData || targetEventId) && !isReadOnlyMode && (
               <Badge variant="secondary" className="font-semibold text-[10px] bg-emerald-100 text-emerald-800 border-emerald-200">
                 ✏️ Edit Mode Active
               </Badge>
@@ -650,7 +658,11 @@ const CreateEvent = ({ onBack, editData, isView }) => {
                 }`}
               >
                 <CheckCircle2 size={14} className="mr-1.5" />
-                <span>{isSubmitting ? "Publishing..." : "Publish Event"}</span>
+                <span>
+                  {isSubmitting
+                    ? (isEditRoute || editData || targetEventId ? "Updating..." : "Publishing...")
+                    : (isEditRoute || editData || targetEventId ? "Update Event" : "Publish Event")}
+                </span>
               </Button>
             )
           )}

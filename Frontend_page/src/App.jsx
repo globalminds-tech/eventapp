@@ -39,7 +39,12 @@ import Exhibitorstall from "./Exhibitor/Stall_Booking"
 import Exhibitormybooking from "./Exhibitor/Mybooking"
 import ExhibitorUpcomingEvent from "./Exhibitor/UpcomingEvent"
 
-import SuperEventsPage from "./Super_User/Super_user_Home"
+import SuperUserDashboard from "./Super_User/SuperUserDashboard";
+import EventApprovalQueue from "./Super_User/EventApprovalQueue";
+import EventInspectionDetail from "./Super_User/EventInspectionDetail";
+import CategoryMaster from "./Super_User/CategoryMaster";
+import KycVerification from "./Super_User/KycVerification";
+import PayoutsQueue from "./Super_User/PayoutsQueue";
 
 import ForgotPassword from "./pages/Forgetpsw"
 
@@ -148,7 +153,14 @@ export default function App() {
         <Route path="/book-stall/:id" element={<ProtectedRoute allowedRoles={["exhibitor"]}><Exhibitorstall /></ProtectedRoute>} />
 
         <Route path="/superuser" element={<ProtectedRoute allowedRoles={["superuser"]}><WebSidebar role="superuser" /></ProtectedRoute>}>
-          <Route path="dashboard" element={<SuperEventsPage />} />
+          <Route index element={<SuperUserDashboard />} />
+          <Route path="dashboard" element={<SuperUserDashboard />} />
+          <Route path="approvals" element={<EventApprovalQueue />} />
+          <Route path="event/:eventId" element={<EventInspectionDetail />} />
+          <Route path="approvals/:eventId" element={<EventInspectionDetail />} />
+          <Route path="categories" element={<CategoryMaster />} />
+          <Route path="kyc" element={<KycVerification />} />
+          <Route path="payouts" element={<PayoutsQueue />} />
         </Route>
       </Routes>
       {location.pathname === "/" && <Chatbot />}

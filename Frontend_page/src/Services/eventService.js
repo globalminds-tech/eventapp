@@ -129,3 +129,13 @@ export const updateEventStatus = async (id, status) => {
   const res = await apiClient.put(`/superuser/update-status/${id}`, { status });
   return res.data;
 };
+
+export const getDashboardStats = async (period = "30d") => {
+  const res = await apiClient.get(`/superuser/dashboard-stats?period=${period}`);
+  return res.data;
+};
+
+export const getAllUsers = async () => {
+  const res = await apiClient.get("/superuser/users");
+  return res.data;
+};

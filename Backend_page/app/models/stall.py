@@ -18,6 +18,9 @@ class EventStall(db.Model):
     prime_seat: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     prime_price_inr: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     prime_price_usd: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    quantity: Mapped[Optional[int]] = mapped_column(Integer, default=1, nullable=True)
+    single_area_sqft: Mapped[Optional[float]] = mapped_column(nullable=True, default=100.0)
+    total_area_sqft: Mapped[Optional[float]] = mapped_column(nullable=True, default=100.0)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
 
 class StallAmenity(db.Model):

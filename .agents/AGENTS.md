@@ -72,3 +72,6 @@
 
 ## 7. Universal Device Responsiveness
 - All layouts, headers, sidebars, grids, forms, and data tables must seamlessly adapt to all screen sizes (Desktops, Laptops, Tablets, Mobile Devices) without horizontal scroll clipping or element overlap.
+
+<!-- Email: bookmyevent2026@gmail.com
+Password: admin@#$123 -->

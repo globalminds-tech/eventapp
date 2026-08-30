@@ -155,7 +155,7 @@ export const deleteFeedback = async (id) => {
 
 export const getAdminCategories = async () => {
   try {
-    const res = await apiClient.get("/api/admin/categories");
+    const res = await apiClient.get("/superadmin/api/categories");
     return res.data;
   } catch {
     return { success: false, categories: [] };
@@ -163,7 +163,17 @@ export const getAdminCategories = async () => {
 };
 
 export const createAdminCategory = async (payload) => {
-  const res = await apiClient.post("/api/admin/categories", payload);
+  const res = await apiClient.post("/superadmin/api/categories", payload);
+  return res.data;
+};
+
+export const updateAdminCategory = async (catId, payload) => {
+  const res = await apiClient.put(`/superadmin/api/categories/${catId}`, payload);
+  return res.data;
+};
+
+export const deleteAdminCategory = async (catId) => {
+  const res = await apiClient.delete(`/superadmin/api/categories/${catId}`);
   return res.data;
 };
 
