@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { chatWithBot } from "../Services/api";
+import { chatWithBot } from "@/Services/api";
 
 // ─── Inline Styles (no external CSS needed) ───────────────────────────────────
 const S = {

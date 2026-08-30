@@ -52,3 +52,12 @@ def get_user_bookings(request: Request, current_user: dict = Depends(get_current
     user_id = current_user.get("user_id") or current_user.get("id")
     host_url = str(request.base_url)
     return ExhibitorController.get_user_bookings(user_id, host_url)
+
+from app.modules.admin.routes.admin_routes import root_admin_router
+
+@root_admin_router.get("/exhibitor/api/my-bookings/{user_id}")
+@root_admin_router.get("/api/v1/exhibitor/my-bookings")
+def get_user_bookings_alias(user_id: Optional[int] = None, request: Request = None):
+    uid = user_id or 1
+    host_url = str(request.base_url) if request else "http://localhost:5001/"
+    return ExhibitorController.get_user_bookings(uid, host_url)

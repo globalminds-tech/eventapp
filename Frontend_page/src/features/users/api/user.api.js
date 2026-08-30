@@ -1,4 +1,4 @@
-import axiosClient from "../../../shared/api/axiosClient";
+import axiosClient from "@/shared/api/axiosClient";
 import { USER_ENDPOINTS } from "./user.endpoints";
 
 export const userApi = {

@@ -14,11 +14,10 @@ app = create_app()
 @app.on_event("startup")
 def on_startup():
     try:
-        db.create_all()
         AdminRepository.create_default_superuser()
         backfill_missing_slugs(db.session)
     except Exception as e:
-        print(f"Notice: Database initialization during startup: {e}")
+        print(f"Notice: Startup check: {e}")
 
 @app.get("/", tags=["Health"])
 def root():

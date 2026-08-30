@@ -1,77 +1,74 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WebSidebar from "./components/WebSidebar";
 
-import Home from "./pages/Home";
-import AllEvents from "./pages/AllEvents";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import OrganizerRegister from "./pages/OrganizerRegister";
-import ExhibitorRegister from "./pages/ExhibitorRegister";
-import { Sidebar } from "./Organizer/Homepage"
-import { LiveDashboard } from "./Organizer/Dashboard/LiveDashboard";
-import { LiveFoodDashboard } from "./Organizer/Dashboard/LiveFooddashboard";
-import { Organizerdashboard } from "./Organizer/Dashboard/Organizerdashboard";
-import ComplaintPage from "./Organizer/Help&support/ComplaintFrom";
-import  Feedback  from "./Organizer/Help&support/Feedback"
-import CreateProgram  from "./Organizer/Program/CreateProgram"
-import { Receipt } from "./Organizer/Accounts/Receipt"
-import { EventReports } from "./Organizer/Reports/EventReports"
-import { AbstractVerification } from "./Organizer/Program/Abstract"
-import { ManageStall } from "./Organizer/Stall/Manage-stall"
-import { SponsorshipPage } from "./Organizer/Master/Sponsorship"
-import AdminApproval from "./Organizer/Approval/Approval"
-import { Billing } from "./Organizer/User Setting/Billing"
-import { Contacts } from "./Organizer/User Setting/My_contact"
-import { ProgramCheckin } from "./Organizer/Program/ProgramCheckin"
-import { ProgramVerification } from "./Organizer/Program/program_verification"
-import BulkPassPage  from "./Organizer/Program/Bulk"
-import { Venuepage } from "./Organizer/Master/VenueList"
-import { VendorPage } from "./Organizer/Master/Vendor"
-import { PolicyPage } from "./Organizer/Master/policy"
-import Createvent from "./Organizer/MyEvent/CreateEvent/EventsPage"
-import { Userbooking } from "./users/users"
+import Home from "./features/public/pages/HomePage";
+import AllEvents from "./features/events/pages/AllEventsPage";
+import Login from "./features/auth/pages/LoginPage";
+import Register from "./features/auth/pages/RegisterPage";
+import OrganizerRegister from "./features/auth/pages/OrganizerRegisterPage";
+import ExhibitorRegister from "./features/auth/pages/ExhibitorRegisterPage";
+import { LiveDashboard } from "./features/organizer/dashboard/pages/LiveDashboardPage";
+import { LiveFoodDashboard } from "./features/organizer/dashboard/pages/LiveFoodDashboardPage";
+import { Organizerdashboard } from "./features/organizer/dashboard/pages/OrganizerDashboardPage";
+import ComplaintPage from "./features/organizer/support/pages/ComplaintPage";
+import Feedback from "./features/organizer/support/pages/FeedbackPage";
+import CreateProgram from "./features/organizer/programs/pages/CreateProgramPage";
+import { Receipt } from "./features/organizer/settings/pages/ReceiptPage";
+import { EventReports } from "./features/organizer/reports/pages/EventReportsPage";
+import { AbstractVerification } from "./features/organizer/programs/pages/AbstractPage";
+import { ManageStall } from "./features/organizer/stalls/pages/ManageStallPage";
+import { SponsorshipPage } from "./features/sponsor/pages/SponsorshipPage";
+import AdminApproval from "./features/organizer/settings/pages/ApprovalPage";
+import { Billing } from "./features/organizer/settings/pages/BillingPage";
+import { Contacts } from "./features/organizer/settings/pages/MyContactPage";
+import { ProgramCheckin } from "./features/organizer/programs/pages/ProgramCheckinPage";
+import { ProgramVerification } from "./features/organizer/programs/pages/ProgramVerificationPage";
+import BulkPassPage from "./features/organizer/programs/pages/BulkPage";
+import { Venuepage } from "./features/venue/pages/VenueListPage";
+import { VendorPage } from "./features/vendor/pages/VendorPage";
+import { PolicyPage } from "./features/organizer/settings/pages/PolicyPage";
+import Createvent from "./features/organizer/events/create/EventsPage";
+import { Userbooking } from "./features/users/pages/UserBookingPage";
 
-import { OrganizerWelcome } from "./Organizer/OrganizerWelcome";
+import ExhibitorHome from "./features/exhibitor/pages/ExhibitorHomePage";
+import Exhibitorstall from "./features/exhibitor/pages/StallBookingPage";
+import Exhibitormybooking from "./features/exhibitor/pages/MyBookingPage";
+import ExhibitorUpcomingEvent from "./features/exhibitor/pages/UpcomingEventsPage";
 
-import ExhibitorHome from "./Exhibitor/Exhibitor_Home"
-import Exhibitorstall from "./Exhibitor/Stall_Booking"
-import Exhibitormybooking from "./Exhibitor/Mybooking"
-import ExhibitorUpcomingEvent from "./Exhibitor/UpcomingEvent"
+import SuperUserDashboard from "./features/superuser/pages/SuperUserDashboardPage";
+import EventApprovalQueue from "./features/admin/approvals/pages/EventApprovalQueuePage";
+import EventInspectionDetail from "./features/superuser/pages/EventInspectionDetailPage";
+import CategoryMaster from "./features/catalog/pages/CategoryMasterPage";
+import KycVerification from "./features/admin/kyc/pages/KycVerificationPage";
+import PayoutsQueue from "./features/superuser/pages/PayoutsQueuePage";
 
-import SuperUserDashboard from "./Super_User/SuperUserDashboard";
-import EventApprovalQueue from "./Super_User/EventApprovalQueue";
-import EventInspectionDetail from "./Super_User/EventInspectionDetail";
-import CategoryMaster from "./Super_User/CategoryMaster";
-import KycVerification from "./Super_User/KycVerification";
-import PayoutsQueue from "./Super_User/PayoutsQueue";
+import ForgotPassword from "./features/auth/pages/ForgotPasswordPage";
 
-import ForgotPassword from "./pages/Forgetpsw"
+import Coupon from "./features/organizer/events/pages/CouponPage";
+import EventCheckIn from "./features/organizer/checkins/pages/EventCheckInPage";
+import FoodCheckIn from "./features/organizer/checkins/pages/FoodCheckInPage";
+import Messagesgreeting from "./features/organizer/events/pages/MessagesPage";
+import Pass from "./features/organizer/events/pages/PassPage";
+import Todo_task from "./features/organizer/events/pages/TodoTaskPage";
+import Verify_Event from "./features/organizer/events/pages/VerifyEventPage";
+import MyProfile from "./features/organizer/settings/pages/MyProfilePage";
+import Myplan from "./features/organizer/settings/pages/MyPlanPage";
+import Exhibitorspotregistration from "./features/users/pages/ExhibitorSpotRegistrationPage";
+import Exhibitor from "./features/users/pages/ExhibitorPage";
 
-import Coupon from "./Organizer/MyEvent/Coupon"
-import EventCheckIn from "./Organizer/MyEvent/EventCheckin&Checkout"
-import FoodCheckIn from "./Organizer/MyEvent/FoodCheckin&Checkout"
-import Messagesgreeting from "./Organizer/MyEvent/Messages_&_greeting"
-import Pass from "./Organizer/MyEvent/pass"
-import Todo_task from "./Organizer/MyEvent/Todo_task"
-import Verify_Event from "./Organizer/MyEvent/Verify_Event"
-import MyProfile from "./Organizer/User Setting/My Profile"
-import Myplan from "./Organizer/User Setting/My Plan"
-import Exhibitorspotregistration from "./Organizer/Users/Exhibitor spot registration"
-import Exhibitor from "./Organizer/Users/Exhibitor";
-
-import Rolescreen from "./Organizer/Users/Rolescreen";
-import UserScreen from "./Organizer/Users/UserScreen";
-import User from "./Organizer/Users/User";
-import Addoncheckinout from "./Organizer/MyEvent/Addon_Chekin&out";
-import Sportbooking from "./Organizer/MyEvent/Sportbooking";
-import QRValidation from "./pages/QRValidation";
-import Terms  from "./pages/Term";
-import Help from "./pages/Help_Center"
-import Cancellation from "./pages/cancellation"
+import Rolescreen from "./features/users/pages/RoleScreenPage";
+import UserScreen from "./features/users/pages/UserScreenPage";
+import User from "./features/users/pages/UserPage";
+import Addoncheckinout from "./features/organizer/checkins/pages/AddonCheckInPage";
+import Sportbooking from "./features/organizer/events/pages/SportBookingPage";
+import QRValidation from "./features/events/pages/QRValidationPage";
+import Terms from "./features/public/pages/TermsPage";
+import Help from "./features/public/pages/HelpCenterPage";
+import Cancellation from "./features/public/pages/CancellationPage";
 import Chatbot from "./components/chatbot";
-import EventDetail from "./pages/EventDetail";
-import Profile from "./pages/Profile";
+import EventDetail from "./features/events/pages/EventDetailPage";
+import Profile from "./features/organizer/settings/pages/ProfilePage";
 
 export default function App() {
   const location = useLocation();
@@ -96,6 +93,7 @@ export default function App() {
         <Route path="/Cancellation" element={<Cancellation />} />
         <Route path="/usersbooking/:id" element={<Userbooking />} />
         <Route path="/validate-booking/:id" element={<QRValidation />} />
+        <Route path="/CreateEvent" element={<Navigate to="/OrganizerHome/CreateEvent" replace />} />
         <Route path="/OrganizerHome" element={<ProtectedRoute allowedRoles={["organizer"]}><WebSidebar role="organizer" /></ProtectedRoute>}>
           <Route index element={<ProtectedRoute allowedRoles={["organizer"]}><Organizerdashboard /></ProtectedRoute>} />
           <Route path="livedashboard" element={<ProtectedRoute allowedRoles={["organizer"]}><LiveDashboard /></ProtectedRoute>} />

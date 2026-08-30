@@ -32,10 +32,10 @@ def create_app() -> FastAPI:
         redoc_url="/redoc"
     )
 
-    # Enable CORS
+    # Enable Production CORS with Credential Support
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origin_regex=r"https?://.*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

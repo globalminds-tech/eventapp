@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { clearUser } from "../Redux/userSlice";
+import { clearUser } from "@/app/store/userSlice";
 import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
   ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+
+import { performLogout } from "@/shared/services/authHelper";
 
 export default function WebSidebar({ role }) {
   const navigate = useNavigate();
@@ -49,19 +51,12 @@ export default function WebSidebar({ role }) {
     roleLabel: "Member",
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("role");
-    sessionStorage.removeItem("id");
-    sessionStorage.removeItem("name");
-    sessionStorage.removeItem("userId");
-    sessionStorage.removeItem("userName");
-    sessionStorage.removeItem("profile_image");
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("name");
-    dispatch(clearUser());
-    navigate("/Login");
+  const handleLogout = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    performLogout(dispatch, navigate);
   };
 
   // Determine active state of menu items
@@ -222,15 +217,14 @@ export default function WebSidebar({ role }) {
               </div>
             )}
 
-            {!isCollapsed && (
-              <button
-                onClick={handleLogout}
-                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg cursor-pointer transition border-none bg-transparent"
-                title="Logout"
-              >
-                <LogOut size={14} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg cursor-pointer transition border-none bg-transparent shrink-0"
+              title="Logout / Sign Out"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
 

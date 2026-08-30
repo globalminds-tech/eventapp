@@ -154,6 +154,9 @@ class AuthService:
                 if key not in ["id", "user_id"] and val:
                     user_dict[key] = val
 
+        has_bank = bool(user_dict.get("bank_name") and user_dict.get("account_number"))
+        user_dict["onboarding_completed"] = has_bank
+
         return user_dict
 
     @staticmethod
