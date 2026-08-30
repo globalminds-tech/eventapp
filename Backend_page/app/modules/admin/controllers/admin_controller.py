@@ -34,6 +34,22 @@ class AdminController:
         }
 
     @staticmethod
+    def update_category(cat_id: int, raw_data: dict):
+        category = AdminService.update_category(cat_id, raw_data)
+        return {
+            "success": True,
+            "data": category
+        }
+
+    @staticmethod
+    def delete_category(cat_id: int):
+        result = AdminService.delete_category(cat_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
     def get_pending_organizers():
         organizers = AdminService.get_pending_organizers()
         return {
@@ -44,6 +60,46 @@ class AdminController:
     @staticmethod
     def update_organizer_kyc_status(user_id: int, raw_data: dict):
         result = AdminService.update_organizer_kyc_status(user_id, raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def get_dashboard_stats(period: str = "30d"):
+        stats = AdminService.get_dashboard_stats(period=period)
+        return {
+            "success": True,
+            "data": stats
+        }
+
+    @staticmethod
+    def get_all_users():
+        users = AdminService.get_all_users()
+        return {
+            "success": True,
+            "data": users
+        }
+
+    @staticmethod
+    def get_category_requests():
+        requests = AdminService.get_category_requests()
+        return {
+            "success": True,
+            "data": requests
+        }
+
+    @staticmethod
+    def submit_category_request(raw_data: dict):
+        result = AdminService.submit_category_request(raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def update_category_request_status(request_id: int, raw_data: dict):
+        result = AdminService.update_category_request_status(request_id, raw_data)
         return {
             "success": True,
             "data": result

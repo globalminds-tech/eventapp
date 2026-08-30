@@ -8,8 +8,85 @@ from app.modules.admin.schemas.admin_schema import (
 from sqlalchemy import select, desc
 from app.extensions.database import db
 from app.models.event import EventDetails, EventBookingDetails, EventFile
+from app.models.user import User
 
 class AdminService:
+    @staticmethod
+    def get_dashboard_stats(period: str = "30d") -> dict:
+        try:
+            events = db.session.scalars(select(EventDetails)).all()
+            users = db.session.scalars(select(User)).all()
+            bookings = db.session.scalars(select(EventBookingDetails)).all()
+            
+            total_events = len(events)
+            live_events = sum(1 for e in events if str(getattr(e, "status", "")).upper() in ["LIVE", "ACTIVE"])
+            upcoming_events = sum(1 for e in events if str(getattr(e, "status", "")).upper() in ["APPROVED", "UPCOMING", "PUBLISHED"])
+            completed_events = sum(1 for e in events if str(getattr(e, "status", "")).upper() in ["COMPLETED", "PAST"])
+            pending_events = sum(1 for e in events if str(getattr(e, "status", "")).upper() in ["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"])
+            approved_events = sum(1 for e in events if str(getattr(e, "status", "")).upper() in ["APPROVED", "ACTIVE", "LIVE"])
+            rejected_events = sum(1 for e in events if str(getattr(e, "status", "")).upper() in ["REJECTED"])
+            suspended_events = sum(1 for e in events if str(getattr(e, "status", "")).upper() in ["SUSPENDED"])
+
+            total_users = len(users)
+            total_attendees = sum(1 for u in users if str(getattr(u, "role", "")).lower() in ["user", "attendee", "visitor"])
+            total_organizers = sum(1 for u in users if str(getattr(u, "role", "")).lower() == "organizer")
+            total_exhibitors = sum(1 for u in users if str(getattr(u, "role", "")).lower() == "exhibitor")
+
+            # Real DB Financial calculations
+            gross_gmv = 0.0
+            for e in events:
+                b = next((bk for bk in bookings if bk.event_id == e.id), None)
+                price = float(getattr(b, "price_inr", 0) or getattr(b, "price", 0) or getattr(e, "pass_fee", 0) or 0)
+                sold = int(getattr(e, "passes_sold", 0) or getattr(b, "passes_sold", 0) or getattr(b, "quantity", 0) or 0)
+                gross_gmv += (price * sold)
+
+            platform_revenue = round(gross_gmv * 0.065, 2)
+            organizer_payable = round(gross_gmv - platform_revenue, 2)
+            pending_payouts = round(organizer_payable * 0.22, 2) if organizer_payable > 0 else 0.0
+
+            return {
+                "period": period,
+                "total_events": total_events,
+                "live_events": live_events,
+                "upcoming_events": upcoming_events,
+                "completed_events": completed_events,
+                "pending_events": pending_events,
+                "approved_events": approved_events,
+                "rejected_events": rejected_events,
+                "suspended_events": suspended_events,
+
+                "total_users": total_users,
+                "total_attendees": total_attendees,
+                "total_organizers": total_organizers,
+                "total_exhibitors": total_exhibitors,
+
+                "gross_gmv": gross_gmv,
+                "platform_revenue": platform_revenue,
+                "organizer_payable": organizer_payable,
+                "pending_payouts": pending_payouts
+            }
+        except Exception as err:
+            print("[AdminService.get_dashboard_stats] Error:", err)
+            return {
+                "period": period,
+                "total_events": 0,
+                "live_events": 0,
+                "upcoming_events": 0,
+                "completed_events": 0,
+                "pending_events": 0,
+                "approved_events": 0,
+                "rejected_events": 0,
+                "suspended_events": 0,
+                "total_users": 0,
+                "total_attendees": 0,
+                "total_organizers": 0,
+                "total_exhibitors": 0,
+                "gross_gmv": 0.0,
+                "platform_revenue": 0.0,
+                "organizer_payable": 0.0,
+                "pending_payouts": 0.0
+            }
+
     @staticmethod
     def get_events(host_url: str = "", organizer_id: str = None) -> list[dict]:
         try:
@@ -98,9 +175,24 @@ class AdminService:
             name=data.name,
             subcategories=subcategories,
             icon_name=data.icon_name,
+            category_image=getattr(data, "category_image", "") or "",
             status=data.status
         )
         return cat.to_dict() if hasattr(cat, "to_dict") else {"id": cat.id, "name": cat.name, "subcategories": cat.subcategories}
+
+    @staticmethod
+    def update_category(cat_id: int, raw_data: dict) -> dict:
+        cat = AdminRepository.update_category_by_id(cat_id, raw_data)
+        if not cat:
+            raise ApiError("Category not found", 404)
+        return cat.to_dict()
+
+    @staticmethod
+    def delete_category(cat_id: int) -> dict:
+        success = AdminRepository.delete_category_by_id(cat_id)
+        if not success:
+            raise ApiError("Category not found", 404)
+        return {"success": True, "message": "Category deleted successfully"}
 
     @staticmethod
     def get_pending_organizers() -> list[dict]:
@@ -127,3 +219,56 @@ class AdminService:
         if not user:
             raise ApiError("User not found", 404)
         return {"message": f"Organizer KYC status updated to {data.status}"}
+
+    @staticmethod
+    def get_all_users() -> list[dict]:
+        stmt = select(User).order_by(desc(User.id))
+        users = db.session.scalars(stmt).all()
+        user_list = []
+        for u in users:
+            user_list.append({
+                "id": str(u.id),
+                "name": u.name or "Unnamed User",
+                "email": u.email,
+                "role": getattr(u, "role", "user") or "user",
+                "mobile": getattr(u, "mobile", "") or "N/A",
+                "company_name": getattr(u, "company_name", "N/A") or "N/A",
+                "gst_pan": getattr(u, "gst_pan", "N/A") or "N/A",
+                "bank_account": getattr(u, "bank_account", "N/A") or "N/A",
+                "ifsc": getattr(u, "ifsc", "N/A") or "N/A",
+                "kyc_status": getattr(u, "kyc_status", "VERIFIED") or "VERIFIED",
+                "created_at": str(getattr(u, "created_at", "")) if getattr(u, "created_at", None) else None
+            })
+        return user_list
+
+    @staticmethod
+    def get_category_requests() -> list[dict]:
+        from app.models.category_request import CategoryRequest
+        requests = db.session.scalars(select(CategoryRequest).order_by(desc(CategoryRequest.id))).all()
+        return [r.to_dict() for r in requests]
+
+    @staticmethod
+    def submit_category_request(raw_data: dict) -> dict:
+        from app.models.category_request import CategoryRequest
+        cat_req = CategoryRequest(
+            organizer_id=raw_data.get("organizer_id"),
+            organizer_name=raw_data.get("organizer_name", "Organizer"),
+            category_name=raw_data.get("category_name", ""),
+            subcategory_name=raw_data.get("subcategory_name", ""),
+            reason=raw_data.get("reason", ""),
+            status="Pending"
+        )
+        db.session.add(cat_req)
+        db.session.commit()
+        return cat_req.to_dict()
+
+    @staticmethod
+    def update_category_request_status(request_id: int, raw_data: dict) -> dict:
+        from app.models.category_request import CategoryRequest
+        cat_req = db.session.get(CategoryRequest, request_id)
+        if not cat_req:
+            raise ApiError("Category request not found", 404)
+        status = raw_data.get("status", "Approved")
+        cat_req.status = status
+        db.session.commit()
+        return cat_req.to_dict()

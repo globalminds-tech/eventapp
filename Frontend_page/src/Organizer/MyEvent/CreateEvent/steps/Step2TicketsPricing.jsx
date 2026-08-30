@@ -244,14 +244,14 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
           </p>
         </div>
 
-        {/* Pass Type */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Pass Type</label>
+        {/* Pass Type Redesign */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-slate-700">Pass Type</label>
           <div className="flex bg-slate-100 p-0.5 rounded-xl gap-0.5">
             {["Single Pass", "Group Pass"].map((opt) => (
               <label key={opt} className="flex-1 cursor-pointer">
                 <input type="radio" name="passType" value={opt} className="hidden peer"
-                  checked={formData.booking?.passType === opt}
+                  checked={(formData.booking?.passType || "Single Pass") === opt}
                   onChange={(e) => updateBooking("passType", e.target.value)} />
                 <div className="text-center py-2 rounded-xl text-xs font-bold transition-all
                   peer-checked:bg-white peer-checked:text-cyan-700 peer-checked:shadow-sm text-slate-500">
@@ -260,76 +260,43 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
               </label>
             ))}
           </div>
+
+          {/* If Group Pass selected, show Group Member Limit input */}
+          {formData.booking?.passType === "Group Pass" && (
+            <div className="p-3 bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl space-y-1.5 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-cyan-900">
+                  Group Member Limit (Per Pass) <span className="text-red-500">*</span>
+                </label>
+                <span className="text-[10px] font-bold text-cyan-700">Max headcount per ticket</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="2"
+                  max="50"
+                  name="groupMemberLimit"
+                  placeholder="e.g. 5 members"
+                  value={formData.booking?.groupMemberLimit || "5"}
+                  onChange={(e) => updateBooking("groupMemberLimit", e.target.value)}
+                  className="w-full h-9 bg-white border border-cyan-300 rounded-lg px-3 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+              <p className="text-[10px] text-cyan-800 font-medium leading-tight">
+                👥 <strong>Group Pass Rule:</strong> 1 purchase grants gate access for up to {formData.booking?.groupMemberLimit || 5} members under 1 master QR pass.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Attendee Badge & Professional Information (Optional) */}
-        {formData.booking?.passType === "Single Pass" && (
-          <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-900 block">Attendee Badge Information</span>
-                <span className="text-[10px] text-slate-500 font-medium block">
-                  Enable optional fields for Business Expos, Conferences & B2B Events
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-1">
-              {[
-                { id: "enableTitle", key: "titleType", label: "Title / Honorific (e.g. Dr./Mr./Ms.)" },
-                { id: "enableDesignation", key: "designationType", label: "Job Designation / Role" },
-                { id: "enableCompany", key: "companyType", label: "Company / Organization Name" },
-              ].map((field) => {
-                const isEnabled = Boolean(formData.booking?.[field.id]);
-                const mode = formData.booking?.[field.key] || "Editable";
-
-                return (
-                  <div key={field.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200/80">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={isEnabled}
-                        onChange={(e) => updateBooking(field.id, e.target.checked)}
-                        className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
-                      />
-                      <span className={`text-xs font-bold ${isEnabled ? "text-slate-900" : "text-slate-500"}`}>
-                        {field.label}
-                      </span>
-                    </label>
-
-                    {isEnabled && (
-                      <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                        {["Editable", "Selection"].map((opt) => (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => updateBooking(field.key, opt)}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase transition-all border-none cursor-pointer ${
-                              mode === opt
-                                ? "bg-cyan-600 text-white shadow-xs"
-                                : "text-slate-400 hover:text-slate-700 bg-transparent"
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Entry Type */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">Entry Type</label>
+        {/* Entry Type Redesign */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-slate-700">Entry Type</label>
           <div className="flex bg-slate-100 p-0.5 rounded-xl gap-0.5">
             {["Single Entry", "Multi Entry"].map((opt) => (
               <label key={opt} className="flex-1 cursor-pointer">
                 <input type="radio" name="entryType" value={opt} className="hidden peer"
-                  checked={formData.booking?.entryType === opt}
+                  checked={(formData.booking?.entryType || "Single Entry") === opt}
                   onChange={(e) => updateBooking("entryType", e.target.value)} />
                 <div className="text-center py-2 rounded-xl text-xs font-bold transition-all
                   peer-checked:bg-white peer-checked:text-cyan-700 peer-checked:shadow-sm text-slate-500">
@@ -338,6 +305,34 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
               </label>
             ))}
           </div>
+
+          {/* If Multi Entry selected, show Re-entry Scan Tracking Options */}
+          {formData.booking?.entryType === "Multi Entry" && (
+            <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl space-y-1.5 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-purple-900">
+                  Multi-Entry Scan Tracking & Limit
+                </label>
+                <span className="text-[10px] font-bold text-purple-700">Gate re-entry counter</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  name="maxReentries"
+                  value={formData.booking?.maxReentries || "Unlimited"}
+                  onChange={(e) => updateBooking("maxReentries", e.target.value)}
+                  className="w-full h-9 bg-white border border-purple-300 rounded-lg px-3 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                >
+                  <option value="Unlimited">Unlimited Re-entries (tracked with timestamps)</option>
+                  <option value="2">Max 2 Scans (1 Exit + 1 Re-entry)</option>
+                  <option value="3">Max 3 Scans per Day</option>
+                  <option value="5">Max 5 Scans per Event</option>
+                </select>
+              </div>
+              <p className="text-[10px] text-purple-800 font-medium leading-tight">
+                📲 <strong>Gate Tracking:</strong> Every entry scan is logged with live timestamps. Gate Scanner staff will see real-time counter: <em>"Scan #3 Logged"</em>.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

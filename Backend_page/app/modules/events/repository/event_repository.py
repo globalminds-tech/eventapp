@@ -482,7 +482,7 @@ class EventRepository:
         event.event_type = event_details.get("eventType") or event_details.get("event_type") or raw_data.get("event_type") or "OneTime"
         event.occurrence = event_details.get("occurrence") or raw_data.get("occurrence") or ""
         event.visibility = event_details.get("visibility") or raw_data.get("visibility") or "Public"
-        event.status = raw_data.get("status") or "Active"
+        event.status = raw_data.get("status") or "Pending"
         
         # Checkbox & facility toggles
         event.mail = bool(event_details.get("mail"))

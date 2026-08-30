@@ -8,6 +8,7 @@ class CategorySchema(BaseModel):
     name: str = Field(..., min_length=1)
     subcategories: Optional[Union[str, List[str]]] = ""
     icon_name: Optional[str] = "Tag"
+    category_image: Optional[str] = ""
     status: Optional[str] = "Active"
 
 class UpdateKycStatusSchema(BaseModel):

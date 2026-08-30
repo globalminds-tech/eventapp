@@ -32,12 +32,29 @@ class Venue(db.Model):
     city_name: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     pin_code: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     venue_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    total_area_sqft: Mapped[Optional[float]] = mapped_column(nullable=True, default=50000.0)
     status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     organizer_id: Mapped[Optional[int]] = mapped_column(nullable=True)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
     created_by: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     modified_by: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     modified_on: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "venue_code": self.venue_code or "",
+            "venue_name": self.venue_name or "",
+            "address": self.address or "",
+            "country_name": self.country_name or "",
+            "state_name": self.state_name or "",
+            "city_name": self.city_name or "",
+            "pin_code": self.pin_code or "",
+            "venue_image": self.venue_image or "",
+            "total_area_sqft": self.total_area_sqft or 50000.0,
+            "status": self.status or "Active",
+            "organizer_id": self.organizer_id
+        }
 
 class VenueDocument(db.Model):
     __tablename__ = 'venue_documents'

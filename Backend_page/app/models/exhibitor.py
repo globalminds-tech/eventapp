@@ -28,4 +28,7 @@ class ExhibitorStallBooking(db.Model):
     products: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     visiting_card: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), default='pending')
+    approval_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    payment_expiry_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
