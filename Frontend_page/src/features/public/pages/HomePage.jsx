@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import MediaRenderer from "@/components/MediaRenderer";
 import { getHomeEventshow } from "@/Services/api";
 import { getRedirectPathForUser } from "@/shared/services/authHelper";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /* ─────────────── Brand Logo ─────────────── */
 const BrandLogo = ({ textColor = "#0f172a" }) => (
@@ -559,10 +560,17 @@ const App = () => {
           </button>
         </div>
 
-        {/* Loading feed */}
+        {/* Skeleton Loading Feed */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-10 h-10 border-4 border-orange-100 border-t-orange-500 rounded-full animate-spin" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="bg-white rounded-2xl p-3 border border-slate-100 space-y-3 shadow-xs">
+                <Skeleton className="w-full aspect-[4/3] rounded-xl" />
+                <Skeleton className="h-4 w-3/4 rounded-lg" />
+                <Skeleton className="h-3 w-1/2 rounded-lg" />
+                <Skeleton className="h-7 w-full rounded-lg" />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
@@ -571,7 +579,7 @@ const App = () => {
                 <div
                   key={ev.id}
                   className="grid-card cursor-pointer"
-                  onClick={() => navigate(`/usersbooking/${ev.id}`)}
+                  onClick={() => navigate(`/event-detail/${ev.id}`)}
                 >
                   {/* Card Banner */}
                   <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 relative">
@@ -611,7 +619,7 @@ const App = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/usersbooking/${ev.id}`);
+                        navigate(`/event-detail/${ev.id}`);
                       }}
                       className="bg-[#f97316] hover:bg-orange-600 active:scale-95 text-white font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm shadow-orange-500/10"
                     >
@@ -632,8 +640,89 @@ const App = () => {
 
       </div>
 
+      {/* ── WHY BOOK WITH BOOKMYEVENT ── */}
+      <div className="max-w-6xl mx-auto px-5 pt-16">
+        <div className="text-center mb-8">
+          <span className="text-[11px] font-black uppercase text-orange-500 tracking-wider">✦ TRUSTED EVENT PLATFORM ✦</span>
+          <h2 className="text-2xl font-black text-slate-900 mt-1">Why Book With BookMyEvent?</h2>
+        </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-extrabold text-lg">🎟️</div>
+            <h4 className="font-extrabold text-slate-900 text-sm">Instant E-Tickets &amp; QR</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Direct entry passes delivered to your email with instant gate QR validation.</p>
+          </div>
 
+          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-extrabold text-lg">🛡️</div>
+            <h4 className="font-extrabold text-slate-900 text-sm">Verified Organizers</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Every organizer undergoes 3-step business GST &amp; KYC verification before publishing.</p>
+          </div>
+
+          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-extrabold text-lg">💳</div>
+            <h4 className="font-extrabold text-slate-900 text-sm">Razorpay Secure Checkout</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Encrypted 256-bit payments supporting UPI, NetBanking, and credit/debit cards.</p>
+          </div>
+
+          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-extrabold text-lg">⚡</div>
+            <h4 className="font-extrabold text-slate-900 text-sm">24/7 Gate Scanner Support</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Dedicated gate check-in support for seamless event entry experience.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── PARTNER CTA BANNER ── */}
+      <div className="max-w-6xl mx-auto px-5 pt-12">
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-8 shadow-xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <div className="space-y-2">
+            <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">ORGANIZER &amp; EXHIBITOR PARTNERSHIPS</span>
+            <h3 className="text-2xl font-black text-white">Host Your Event or Reserve Stall Spaces</h3>
+            <p className="text-xs text-slate-300 font-medium leading-relaxed">
+              Join thousands of verified event creators and booth exhibitors reaching millions of attendees across India.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 md:justify-end">
+            <button
+              onClick={() => navigate("/register/organizer")}
+              className="px-5 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs shadow-md border-none cursor-pointer transition-all"
+            >
+              Host Event As Organizer →
+            </button>
+            <button
+              onClick={() => navigate("/register/exhibitor")}
+              className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-extrabold text-xs cursor-pointer transition-all"
+            >
+              Become An Exhibitor →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── PUBLIC FOOTER ── */}
+      <footer className="max-w-6xl mx-auto px-5 pt-16 border-t border-slate-200 mt-16 text-slate-500 text-xs">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="space-y-1 text-center md:text-left">
+            <BrandLogo textColor="#0f172a" />
+            <p className="text-slate-400 font-medium text-[11px]">India's premier live events discovery &amp; ticketing platform.</p>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-6 font-bold text-slate-600">
+            <button onClick={() => navigate("/all-events")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">All Events</button>
+            <button onClick={() => navigate("/Terms")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">Terms of Service</button>
+            <button onClick={() => navigate("/Cancellation")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">Cancellation Policy</button>
+            <button onClick={() => navigate("/Help_Center")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">Help Center</button>
+          </div>
+        </div>
+
+        <div className="pt-8 mt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-2">
+          <span>© 2026 BookMyEvent Technologies Pvt Ltd. All rights reserved.</span>
+          <span>Support Email: <a href="mailto:bookmyevent2026@gmail.com" className="text-orange-500 font-semibold hover:underline">bookmyevent2026@gmail.com</a></span>
+        </div>
+      </footer>
     </div>
   );
 };

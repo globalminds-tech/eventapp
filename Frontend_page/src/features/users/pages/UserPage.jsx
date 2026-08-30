@@ -1,718 +1,343 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
-  Eye,
-  Pencil,
-  Trash2,
-  Plus,
-  Save,
-  Search,
-  X,
-  Upload,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
+  Users, Search, Filter, QrCode, CheckCircle2, Clock, Eye, Send, Mail, Phone,
+  Calendar, Ticket, UserCheck, Sparkles, XCircle, ShieldCheck
 } from "lucide-react";
-
-const ROLE_OPTIONS = ["Super Admin", "Event Manager"];
-const STATUS_OPTIONS = ["Active", "Inactive"];
-
-const initialUsers = [
-  {
-    id: 1,
-    userName: "arunkumar",
-    password: "Arun@123",
-    roleName: "Super Admin",
-    mailId: "arunak16112000@gmail.com",
-    contactNumber: "9361826137",
-    status: "Active",
-    createdBy: "Sakthi",
-    createdOn: "10/03/2026",
-    modifiedBy: "Sakthi",
-    modifiedOn: "10/03/2026",
-    profileImage:
-      "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: 2,
-    userName: "Parthi",
-    password: "Parthi@123",
-    roleName: "Super Admin",
-    mailId: "jbparthi07@gmail.com",
-    contactNumber: "9677440785",
-    status: "Active",
-    createdBy: "Sakthi",
-    createdOn: "08/03/2026",
-    modifiedBy: "Sakthi",
-    modifiedOn: "08/03/2026",
-    profileImage:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: 3,
-    userName: "Vikas",
-    password: "Vikas@123",
-    roleName: "Event Manager",
-    mailId: "vikas19052004@gmail.com",
-    contactNumber: "8531938400",
-    status: "Active",
-    createdBy: "Sakthi",
-    createdOn: "08/03/2026",
-    modifiedBy: "Sakthi",
-    modifiedOn: "08/03/2026",
-    profileImage:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: 4,
-    userName: "Sakthi",
-    password: "Sakthi@123",
-    roleName: "Super Admin",
-    mailId: "sakthivelganesan@gmail.com",
-    contactNumber: "8056897132",
-    status: "Active",
-    createdBy: "Leiten Technologies Pvt Ltd",
-    createdOn: "03/03/2025",
-    modifiedBy: "Sakthi",
-    modifiedOn: "07/03/2026",
-    profileImage:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80",
-  },
-];
-
-const emptyForm = {
-  id: null,
-  userName: "",
-  password: "",
-  roleName: "",
-  mailId: "",
-  contactNumber: "",
-  status: "Active",
-  createdBy: "Sakthi",
-  createdOn: "",
-  modifiedBy: "Sakthi",
-  modifiedOn: "",
-  profileImage: "",
-};
-
-const todayString = () => {
-  const today = new Date();
-  const day = String(today.getDate()).padStart(2, "0");
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const year = today.getFullYear();
-  return `${day}/${month}/${year}`;
-};
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent } from "@/components/ui/Card";
 
 export default function User() {
-  const [page, setPage] = useState("list"); // list | form | view
-  const [users, setUsers] = useState(initialUsers);
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [formData, setFormData] = useState(emptyForm);
-  const [errors, setErrors] = useState({});
-  const [viewUser, setViewUser] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedEventFilter, setSelectedEventFilter] = useState("all");
+  const [selectedStatusTab, setSelectedStatusTab] = useState("all");
+  const [selectedAttendee, setSelectedAttendee] = useState(null);
+  const [resendNotification, setResendNotification] = useState("");
 
-  const fileInputRef = useRef(null);
-
-  const filteredUsers = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase();
-    if (!keyword) return users;
-
-    return users.filter((user) =>
-      [
-        user.userName,
-        user.roleName,
-        user.contactNumber,
-        user.mailId,
-        user.status,
-        user.createdBy,
-        user.modifiedBy,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(keyword)
-    );
-  }, [users, searchKeyword]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const resetForm = () => {
-    setFormData({ ...emptyForm, createdBy: "Sakthi", modifiedBy: "Sakthi" });
-    setErrors({});
-    setShowPassword(false);
-  };
-
-  const handleAdd = () => {
-    resetForm();
-    setPage("form");
-  };
-
-  const handleEdit = (user) => {
-    setFormData({ ...user });
-    setErrors({});
-    setPage("form");
-  };
-
-  const handleView = (user) => {
-    setViewUser(user);
-    setPage("view");
-  };
-
-  const handleDelete = (id) => {
-    const confirmed = window.confirm("Are you sure you want to delete this user?");
-    if (!confirmed) return;
-
-    const updatedUsers = users.filter((user) => user.id !== id);
-    setUsers(updatedUsers);
-    if ((currentPage - 1) * itemsPerPage >= updatedUsers.length && currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
+  const attendeeList = [
+    {
+      id: 1,
+      name: "Arun Kumar",
+      email: "arunkumar1611@gmail.com",
+      mobile: "9361826137",
+      event_name: "Cultural Fest 2026",
+      ticket_type: "VIP All-Access Pass",
+      booking_code: "BKG-88341",
+      checkin_status: "Checked In",
+      checkin_time: "Today, 10:45 AM",
+      price_paid: 1500,
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"
+    },
+    {
+      id: 2,
+      name: "Parthiban J",
+      email: "jbparthi07@gmail.com",
+      mobile: "9677440785",
+      event_name: "Cultural Fest 2026",
+      ticket_type: "General Day Pass",
+      booking_code: "BKG-88342",
+      checkin_status: "Not Arrived",
+      checkin_time: "-",
+      price_paid: 500,
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80"
+    },
+    {
+      id: 3,
+      name: "Vikas Sharma",
+      email: "vikas1905@gmail.com",
+      mobile: "8531938400",
+      event_name: "LOGMAT Logistics & Supply Chain Expo",
+      ticket_type: "Exhibition Visitor Pass",
+      booking_code: "BKG-99410",
+      checkin_status: "Checked In",
+      checkin_time: "Today, 09:15 AM",
+      price_paid: 0,
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80"
+    },
+    {
+      id: 4,
+      name: "Sakthivel G",
+      email: "sakthivelganesan@gmail.com",
+      mobile: "8056897132",
+      event_name: "LOGMAT Logistics & Supply Chain Expo",
+      ticket_type: "VIP All-Access Pass",
+      booking_code: "BKG-99411",
+      checkin_status: "Checked In",
+      checkin_time: "Today, 11:30 AM",
+      price_paid: 2000,
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80"
     }
+  ];
+
+  const handleResendPass = (attendee) => {
+    setResendNotification(`✓ Entry Pass QR code resent to ${attendee.email}`);
+    setTimeout(() => setResendNotification(""), 3000);
   };
 
-  const validateForm = () => {
-    const newErrors = {};
+  const filteredAttendees = attendeeList.filter((att) => {
+    const matchesSearch = searchTerm === "" ||
+      att.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      att.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      att.booking_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      att.mobile.includes(searchTerm);
 
-    if (!formData.userName.trim()) newErrors.userName = "User Name is required";
-    if (!formData.password.trim()) newErrors.password = "Password is required";
-    if (!formData.roleName) newErrors.roleName = "Role Name is required";
-    if (!formData.mailId.trim()) {
-      newErrors.mailId = "Mail ID is required";
-    } else if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(formData.mailId.trim())) {
-      newErrors.mailId = "Mail ID must end with @gmail.com";
-    }
+    const matchesEvent = selectedEventFilter === "all" || att.event_name === selectedEventFilter;
 
-    if (!formData.contactNumber.trim()) {
-      newErrors.contactNumber = "Contact Number is required";
-    } else if (!/^\d{10}$/.test(formData.contactNumber.trim())) {
-      newErrors.contactNumber = "Contact Number must be exactly 10 digits";
-    }
+    const st = att.checkin_status.toLowerCase();
+    let matchesStatus = true;
+    if (selectedStatusTab === "checkedin") matchesStatus = st === "checked in";
+    if (selectedStatusTab === "notarrived") matchesStatus = st === "not arrived";
+    if (selectedStatusTab === "vip") matchesStatus = att.ticket_type.includes("VIP");
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    return matchesSearch && matchesEvent && matchesStatus;
+  });
 
-  const handleSave = () => {
-    if (!validateForm()) return;
-
-    const today = todayString();
-
-    if (formData.id) {
-      const updatedUsers = users.map((user) =>
-        user.id === formData.id
-          ? {
-            ...formData,
-            modifiedBy: "Sakthi",
-            modifiedOn: today,
-          }
-          : user
-      );
-      setUsers(updatedUsers);
-    } else {
-      const newUser = {
-        ...formData,
-        id: Date.now(),
-        createdBy: "Sakthi",
-        createdOn: today,
-        modifiedBy: "Sakthi",
-        modifiedOn: today,
-      };
-      setUsers([newUser, ...users]);
-    }
-
-    resetForm();
-    setPage("list");
-    setCurrentPage(1);
-  };
-
-  const handleImageUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const validTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!validTypes.includes(file.type)) {
-      setErrors((prev) => ({
-        ...prev,
-        profileImage: "Only JPG, PNG and WEBP files are allowed",
-      }));
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormData((prev) => ({ ...prev, profileImage: reader.result }));
-      setErrors((prev) => ({ ...prev, profileImage: "" }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
+  const totalRegistered = attendeeList.length;
+  const checkedInCount = attendeeList.filter(a => a.checkin_status === "Checked In").length;
+  const vipCount = attendeeList.filter(a => a.ticket_type.includes("VIP")).length;
+  const checkinPercentage = Math.round((checkedInCount / totalRegistered) * 100);
 
   return (
-    <div className="min-h-screen bg-[#eef3fb] px-6 py-4 md:p-6">
-      <div className="mx-auto w-full rounded-[6px] border border-[#d9dee8] bg-[#eef3fb]">
-        <div className="flex items-center justify-between border-b border-[#d9dee8] bg-[#f7f9fc] px-4 py-3 md:px-5">
-          <h1 className="text-[28px] font-semibold leading-none text-[#35507a] md:text-[34px]">
-            User
-          </h1>
+    <div className="space-y-6 pb-12 select-none font-sans text-slate-800">
+      {/* ── NOTIFICATION TOAST ── */}
+      {resendNotification && (
+        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-2 animate-bounce">
+          <CheckCircle2 size={16} className="text-emerald-400" />
+          <span>{resendNotification}</span>
+        </div>
+      )}
 
-          {page === "list" && (
-            <button
-              onClick={handleAdd}
-              className="flex h-11 w-11 items-center justify-center rounded-[8px] border border-[#cfd7e6] bg-white text-[#4a6390] transition hover:bg-[#f4f7fc]"
-            >
-              <Plus size={24} />
-            </button>
-          )}
+      {/* ── PAGE HEADER ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Attendee & User Monitoring Portal
+            </h1>
+            <Badge className="bg-blue-50 text-blue-800 border-blue-200 px-2.5 py-0.5 font-bold text-[11px]">
+              Live Gate Analytics
+            </Badge>
+          </div>
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Monitor real-time attendee registrations, gate scanner check-ins, and digital pass verifications.
+          </p>
+        </div>
+      </div>
 
-          {page === "form" && (
-            <div className="flex items-center gap-3">
+      {/* ── KPI METRICS STRIP ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Registered Attendees</p>
+            <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{totalRegistered} Attendees</h3>
+            <p className="text-[11px] font-medium text-slate-400 mt-0.5">Across active events</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+            <Users size={22} />
+          </div>
+        </Card>
+
+        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gate Check-Ins Completed</p>
+            <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{checkedInCount} Checked In</h3>
+            <p className="text-[11px] font-medium text-emerald-600 mt-0.5">{checkinPercentage}% Attendance Rate</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+            <UserCheck size={22} />
+          </div>
+        </Card>
+
+        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">VIP Ticket Holders</p>
+            <h3 className="text-2xl font-extrabold text-purple-600 mt-1">{vipCount} VIP Guests</h3>
+            <p className="text-[11px] font-medium text-purple-600 mt-0.5">Priority Gate Entry</p>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 shrink-0">
+            <Sparkles size={22} />
+          </div>
+        </Card>
+      </div>
+
+      {/* ── ATTENDEE MONITORING TABLE ── */}
+      <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Status Tabs */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+            {[
+              { label: "All Attendees", value: "all" },
+              { label: "Checked-In", value: "checkedin" },
+              { label: "Not Arrived Yet", value: "notarrived" },
+              { label: "VIP Pass Holders", value: "vip" },
+            ].map((t) => (
               <button
-                onClick={handleSave}
-                className="flex h-11 w-11 items-center justify-center rounded-[8px] border border-[#cfd7e6] bg-white text-[#4a6390] transition hover:bg-[#f4f7fc]"
+                key={t.value}
+                onClick={() => setSelectedStatusTab(t.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                  selectedStatusTab === t.value
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
-                <Save size={22} />
+                {t.label}
               </button>
-              <button
-                onClick={() => {
-                  resetForm();
-                  setPage("list");
-                }}
-                className="flex h-11 w-11 items-center justify-center rounded-[8px] border border-[#cfd7e6] bg-white text-[#4a6390] transition hover:bg-[#f4f7fc]"
-              >
-                <Trash2 size={22} />
-              </button>
-              <button
-                onClick={() => {
-                  if (formData.id) {
-                    handleView(formData);
-                  }
-                }}
-                className="flex h-11 w-11 items-center justify-center rounded-[8px] border border-[#cfd7e6] bg-white text-[#4a6390] transition hover:bg-[#f4f7fc]"
-              >
-                <Search size={22} />
-              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+              <input
+                type="text"
+                placeholder="Search name, code, email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
-          )}
-
-          {page === "view" && (
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setPage("list")}
-                className="rounded-[8px] border border-[#cfd7e6] bg-white px-4 py-2 text-sm font-medium text-[#4a6390] hover:bg-[#f4f7fc]"
-              >
-                Back
-              </button>
-            </div>
-          )}
+          </div>
         </div>
 
-        {page === "list" && (
-          <div className="px-6 py-4 md:p-6">
-            <div className="rounded-[6px] border border-[#d9dee8] bg-white px-6 py-4 md:p-5">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div className="relative w-full max-w-[315px]">
-                  <input
-                    type="text"
-                    value={searchKeyword}
-                    onChange={(e) => {
-                      setSearchKeyword(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Search Keyword"
-                    className="h-[50px] w-full rounded-[4px] border border-[#cfd7e6] bg-white px-4 text-[15px] text-[#394a6d] outline-none placeholder:text-[#7c8ba7] focus:border-[#6f8cdb]"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-[#cfd7e6] bg-white text-[#4a6390] hover:bg-[#f4f7fc]">
-                    <Trash2 size={16} />
-                  </button>
-                  <button className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-[#cfd7e6] bg-white text-[#4a6390] hover:bg-[#f4f7fc]">
-                    <Save size={16} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto">
-                <table className="w-full min-w-max">
-                  <thead>
-                    <tr className="bg-sky-600 text-white">
-                      {[
-                        "Action",
-                        "User Name ⇅",
-                        "Role ⇅",
-                        "Contact Number ⇅",
-                        "Email Id ⇅",
-                        "Status ⇅",
-                        "Created By ⇅",
-                        "Created On ⇅",
-                        "Modified By ⇅",
-                        "Modified On ⇅",
-                      ].map((header) => (
-                        <th key={header}
-                          className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider whitespace-nowrap"
-                        >
-                          {header}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {paginatedUsers.length > 0 ? (
-                      paginatedUsers.map((user) => (
-                        <tr key={user.id} className="hover:bg-sky-50/50 transition-colors duration-200 group bg-white">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <button
-                                onClick={() => handleView(user)}
-                                className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#d7deea] bg-white text-[#5d7298] hover:bg-[#f4f7fc]"
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleEdit(user)}
-                                className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#d7deea] bg-white text-[#5d7298] hover:bg-[#f4f7fc]"
-                              >
-                                <Pencil size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(user.id)}
-                                className="flex h-8 w-8 items-center justify-center rounded-[6px] border border-[#d7deea] bg-white text-[#5d7298] hover:bg-[#f4f7fc]"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 font-medium text-sky-900 whitespace-nowrap">{user.userName}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.roleName}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.contactNumber}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.mailId}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.status}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.createdBy}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.createdOn}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.modifiedBy}</td>
-                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">{user.modifiedOn}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr className="hover:bg-sky-50/50 transition-colors duration-200 group">
-                        <td
-                          colSpan={10}
-                          className="px-6 py-8 text-center text-sm text-slate-500"
-                        >
-                          No users found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Controls */}
-              {filteredUsers.length > 0 && (
-                <div className="flex flex-col sm:flex-row justify-between items-center mt-8 mb-4 gap-4 px-4 py-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <p className="text-slate-500 text-sm font-medium">
-                      Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} entries
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-500 text-sm font-medium">Records per page:</span>
-                      <select
-                        value={itemsPerPage}
-                        onChange={(e) => {
-                          setItemsPerPage(Number(e.target.value));
-                          setCurrentPage(1);
-                        }}
-                        className="p-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer shadow-sm"
-                      >
-                        <option value={10}>10</option>
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {totalPages > 1 && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-sky-50 disabled:opacity-40 transition-all shadow-sm"
-                      >
-                        <ChevronLeft size={20} className="text-slate-600" />
-                      </button>
-                      {[...Array(totalPages)].map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(i + 1)}
-                          className={`w-10 h-10 rounded-xl font-bold transition-all ${currentPage === i + 1 ? "bg-sky-600 text-white shadow-lg shadow-sky-200" : "bg-white text-slate-600 border border-slate-200 hover:bg-sky-50"}`}
-                        >
-                          {i + 1}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                        className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-sky-50 disabled:opacity-40 transition-all shadow-sm"
-                      >
-                        <ChevronRight size={20} className="text-slate-600" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {page === "form" && (
-          <div className="px-6 py-4 md:p-6">
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-[570px_minmax(0,1fr)]">
-              <div className="min-h-[650px] rounded-[6px] border border-[#d9dee8] bg-white p-7">
-                <h2 className="mb-5 text-[28px] font-medium text-[#3f5cf4]">Profile Upload</h2>
-
-                <div className="flex flex-col gap-6 md:flex-row md:items-start">
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex h-[190px] w-[190px] flex-col items-center justify-center rounded-[6px] border-2 border-dashed border-[#d4d9e2] bg-[#f7f9fc] text-[#252525] transition hover:bg-[#f1f5fb]"
-                    >
-                      <Upload size={42} className="mb-3 text-[#222]" />
-                      <span className="text-[18px] leading-7">Profile</span>
-                      <span className="text-[18px] leading-7">Upload</span>
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".jpg,.jpeg,.png,.webp"
-                      className="hidden"
-                      onChange={handleImageUpload}
-                    />
-                    <p className="mt-3 text-[15px] text-[#111]">
-                      Supported Files. JPG, PNG, WEBP
-                    </p>
-                    {errors.profileImage && (
-                      <p className="mt-2 text-sm text-red-500">{errors.profileImage}</p>
-                    )}
-                  </div>
-
-                  <div className="h-[190px] w-[190px] overflow-hidden rounded-[4px] bg-[#eef2f8]">
-                    {formData.profileImage ? (
-                      <img
-                        src={formData.profileImage}
-                        alt="Profile preview"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-sm text-[#70809b]">
-                        No Image
+        {/* Table Container */}
+        <div className="rounded-xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                <th className="py-3.5 px-4">Attendee Profile</th>
+                <th className="py-3.5 px-4">Event & Ticket Pass</th>
+                <th className="py-3.5 px-4">Booking Code</th>
+                <th className="py-3.5 px-4">Gate Scanner Status</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white text-xs">
+              {filteredAttendees.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="p-12 text-center text-slate-400 font-semibold text-xs bg-slate-50/50">
+                    No attendee records found matching the filter.
+                  </td>
+                </tr>
+              ) : (
+                filteredAttendees.map((att) => (
+                  <tr key={att.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={att.avatar}
+                          alt={att.name}
+                          className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                        />
+                        <div>
+                          <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{att.name}</h4>
+                          <p className="text-[11px] text-slate-500 font-semibold">{att.email}</p>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 font-bold text-[10px]">
+                          {att.event_name}
+                        </Badge>
+                        <p className="text-[11px] font-semibold text-slate-700 mt-1 flex items-center gap-1">
+                          <Ticket size={12} className="text-blue-600" />
+                          {att.ticket_type}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="font-mono font-extrabold text-xs text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {att.booking_code}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {att.checkin_status === "Checked In" ? (
+                        <div>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                            <CheckCircle2 size={12} /> Checked In
+                          </span>
+                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{att.checkin_time}</p>
+                        </div>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                          <Clock size={12} /> Not Arrived Yet
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setSelectedAttendee(att)}
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
+                          title="View Digital Pass QR"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleResendPass(att)}
+                          className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition cursor-pointer border border-blue-200"
+                          title="Resend Digital Pass SMS/Email"
+                        >
+                          <Send size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* ── DIGITAL PASS INSPECTION MODAL ── */}
+      {selectedAttendee && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-center relative">
+            <button
+              onClick={() => setSelectedAttendee(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+            >
+              <XCircle size={20} />
+            </button>
+
+            <div className="mx-auto w-16 h-16 rounded-full overflow-hidden border-2 border-blue-500 shadow-md">
+              <img src={selectedAttendee.avatar} alt={selectedAttendee.name} className="w-full h-full object-cover" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-extrabold text-slate-900">{selectedAttendee.name}</h3>
+              <p className="text-xs text-slate-500 font-semibold">{selectedAttendee.email}</p>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-left text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-bold">Event:</span>
+                <span className="font-extrabold text-slate-900">{selectedAttendee.event_name}</span>
               </div>
-
-              <div className="min-h-[650px] rounded-[6px] border border-[#d9dee8] bg-white p-5 md:p-7">
-                <h2 className="mb-6 text-[28px] font-medium text-[#3f5cf4]">User Information</h2>
-
-                <div className="grid grid-cols-1 gap-x-5 gap-y-6 xl:grid-cols-3">
-                  <div>
-                    <label className="mb-2 block text-[17px] font-semibold text-black">
-                      User Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.userName}
-                      onChange={(e) => handleInputChange("userName", e.target.value)}
-                      className="h-[48px] w-full rounded-[4px] border border-[#cfd7e6] bg-[#eef3fb] px-4 text-[16px] outline-none focus:border-[#6f8cdb]"
-                    />
-                    {errors.userName && <p className="mt-1 text-sm text-red-500">{errors.userName}</p>}
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-[17px] font-semibold text-black">
-                      Password <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={formData.password}
-                        onChange={(e) => handleInputChange("password", e.target.value)}
-                        className="h-[48px] w-full rounded-[4px] border border-[#cfd7e6] bg-[#eef3fb] px-4 pr-12 text-[16px] outline-none focus:border-[#6f8cdb]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6f7d96]"
-                      >
-                        <Eye size={18} />
-                      </button>
-                    </div>
-                    {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-[17px] font-semibold text-black">
-                      Role Name <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={formData.roleName}
-                        onChange={(e) => handleInputChange("roleName", e.target.value)}
-                        className="h-[48px] w-full appearance-none rounded-[4px] border border-[#cfd7e6] bg-white px-4 pr-12 text-[16px] text-[#66758f] outline-none focus:border-[#6f8cdb]"
-                      >
-                        <option value="">Select Role Name</option>
-                        {ROLE_OPTIONS.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        size={18}
-                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#6f7d96]"
-                      />
-                    </div>
-                    {errors.roleName && <p className="mt-1 text-sm text-red-500">{errors.roleName}</p>}
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-[17px] font-semibold text-black">
-                      Mail ID <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.mailId}
-                      onChange={(e) => handleInputChange("mailId", e.target.value)}
-                      placeholder="Enter Mail ID"
-                      className="h-[48px] w-full rounded-[4px] border border-[#cfd7e6] bg-white px-4 text-[16px] outline-none placeholder:text-[#7c8ba7] focus:border-[#6f8cdb]"
-                    />
-                    {errors.mailId && <p className="mt-1 text-sm text-red-500">{errors.mailId}</p>}
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-[17px] font-semibold text-black">
-                      Contact Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={10}
-                      value={formData.contactNumber}
-                      onChange={(e) =>
-                        handleInputChange(
-                          "contactNumber",
-                          e.target.value.replace(/\D/g, "")
-                        )
-                      }
-                      placeholder="Enter Contact Number"
-                      className="h-[48px] w-full rounded-[4px] border border-[#cfd7e6] bg-white px-4 text-[16px] outline-none placeholder:text-[#7c8ba7] focus:border-[#6f8cdb]"
-                    />
-                    {errors.contactNumber && (
-                      <p className="mt-1 text-sm text-red-500">{errors.contactNumber}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-[17px] font-semibold text-black">
-                      Status <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={formData.status}
-                        onChange={(e) => handleInputChange("status", e.target.value)}
-                        className="h-[48px] w-full appearance-none rounded-[4px] border border-[#cfd7e6] bg-[#f5f6f8] px-4 pr-12 text-[16px] text-[#7c8595] outline-none focus:border-[#6f8cdb]"
-                      >
-                        {STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        size={18}
-                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#6f7d96]"
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-bold">Pass:</span>
+                <span className="font-bold text-blue-600">{selectedAttendee.ticket_type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-bold">Code:</span>
+                <span className="font-mono font-extrabold text-slate-900">{selectedAttendee.booking_code}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-bold">Status:</span>
+                <span className="font-extrabold text-emerald-600">{selectedAttendee.checkin_status}</span>
               </div>
             </div>
-          </div>
-        )}
 
-        {page === "view" && viewUser && (
-          <div className="px-6 py-4 md:p-6">
-            <div className="rounded-[6px] border border-[#d9dee8] bg-white p-6 md:p-8">
-              <div className="mb-8 flex flex-col gap-6 md:flex-row md:items-center">
-                <div className="h-36 w-36 overflow-hidden rounded-xl border border-[#d4d9e2] bg-[#eef3fb]">
-                  {viewUser.profileImage ? (
-                    <img
-                      src={viewUser.profileImage}
-                      alt={viewUser.userName}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm text-[#70809b]">
-                      No Image
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h2 className="text-3xl font-semibold text-[#35507a]">{viewUser.userName}</h2>
-                  <p className="mt-2 text-base text-[#6a7891]">{viewUser.roleName}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {[
-                  ["User Name", viewUser.userName],
-                  ["Password", viewUser.password],
-                  ["Role Name", viewUser.roleName],
-                  ["Mail ID", viewUser.mailId],
-                  ["Contact Number", viewUser.contactNumber],
-                  ["Status", viewUser.status],
-                  ["Created By", viewUser.createdBy],
-                  ["Created On", viewUser.createdOn],
-                  ["Modified By", viewUser.modifiedBy],
-                  ["Modified On", viewUser.modifiedOn],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-[8px] border border-[#d9dee8] bg-[#f9fbff] px-6 py-4">
-                    <p className="mb-1 text-sm font-medium text-[#7b87a0]">{label}</p>
-                    <p className="break-words text-[17px] font-semibold text-[#33425f]">{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button
-                  onClick={() => handleEdit(viewUser)}
-                  className="rounded-[8px] bg-[#3f5cf4] px-5 py-3 text-sm font-semibold text-white hover:opacity-95"
-                >
-                  Edit User
-                </button>
-                <button
-                  onClick={() => setPage("list")}
-                  className="rounded-[8px] border border-[#cfd7e6] bg-white px-5 py-3 text-sm font-semibold text-[#4a6390] hover:bg-[#f4f7fc]"
-                >
-                  Back to List
-                </button>
-              </div>
+            <div className="pt-2">
+              <Button onClick={() => setSelectedAttendee(null)} className="w-full bg-slate-900 text-white font-extrabold text-xs rounded-xl cursor-pointer">
+                Close Ticket View
+              </Button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

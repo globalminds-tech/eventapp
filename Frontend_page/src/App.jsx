@@ -8,6 +8,7 @@ import Login from "./features/auth/pages/LoginPage";
 import Register from "./features/auth/pages/RegisterPage";
 import OrganizerRegister from "./features/auth/pages/OrganizerRegisterPage";
 import ExhibitorRegister from "./features/auth/pages/ExhibitorRegisterPage";
+import ExhibitorLeadsPage from "./features/exhibitor/pages/ExhibitorLeadsPage";
 import { LiveDashboard } from "./features/organizer/dashboard/pages/LiveDashboardPage";
 import { LiveFoodDashboard } from "./features/organizer/dashboard/pages/LiveFoodDashboardPage";
 import { Organizerdashboard } from "./features/organizer/dashboard/pages/OrganizerDashboardPage";
@@ -147,6 +148,7 @@ export default function App() {
           <Route path="dashboard" element={<ExhibitorHome />} />
           <Route path="my-bookings" element={<Exhibitormybooking />} />
           <Route path="upcoming-events" element={<ExhibitorUpcomingEvent />} />
+          <Route path="leads" element={<ExhibitorLeadsPage />} />
         </Route>
         <Route path="/book-stall/:id" element={<ProtectedRoute allowedRoles={["exhibitor"]}><Exhibitorstall /></ProtectedRoute>} />
 

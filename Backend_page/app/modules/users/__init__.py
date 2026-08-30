@@ -1,3 +1,3 @@
-from app.modules.users.routes.user_routes import users_router
+from app.modules.users.routes.user_routes import users_router, root_users_router
 
-__all__ = ["users_router"]
+__all__ = ["users_router", "root_users_router"]

@@ -61,3 +61,28 @@ def get_user_bookings_alias(user_id: Optional[int] = None, request: Request = No
     uid = user_id or 1
     host_url = str(request.base_url) if request else "http://localhost:5001/"
     return ExhibitorController.get_user_bookings(uid, host_url)
+
+@root_admin_router.get("/superadmin/api/organizer/exhibitor-applications")
+@root_admin_router.get("/api/v1/organizer/exhibitor-applications")
+def get_all_exhibitor_applications():
+    from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
+    rows = ExhibitorRepository.get_all_applications()
+    res = []
+    for b, evt_name in rows:
+        d = b.to_dict() if hasattr(b, "to_dict") else {
+            "id": b.id, "event_id": b.event_id, "company_name": getattr(b, "company_name", ""),
+            "email": b.email, "mobile": getattr(b, "mobile", ""), "stall_area": getattr(b, "stall_area", ""),
+            "status": getattr(b, "status", "Pending")
+        }
+        d["event_name"] = evt_name or "Exhibition Show"
+        res.append(d)
+    return {"success": True, "data": res}
+
+@root_admin_router.put("/superadmin/api/organizer/exhibitor-applications/{application_id}/status")
+@root_admin_router.put("/api/v1/organizer/exhibitor-applications/{application_id}/status")
+async def update_exhibitor_application_status(application_id: int, request: Request):
+    from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
+    body = await request.json()
+    status_val = body.get("status", "Approved")
+    booking = ExhibitorRepository.update_application_status(application_id, status_val)
+    return {"success": True, "message": f"Stall application {status_val.lower()} successfully", "data": booking.to_dict() if booking else None}

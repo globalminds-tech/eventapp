@@ -285,20 +285,20 @@ const Stall = () => {
         <div className="w-full max-w-7xl">
           {/* Header Section - Compact */}
           <div className="text-center mb-4 animate-in fade-in slide-in-from-top-6 duration-700">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 mb-2">
-              <Building2 className="w-3 h-3 text-blue-600" />
-              <span className="text-xs font-semibold text-blue-700">Exhibition Booth</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 mb-2">
+              <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="text-xs font-extrabold text-emerald-800">Exhibition Stall Reservation</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-              {eventName || "Reserve Your Booth"}
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-1">
+              {eventName || "Reserve Your Exhibition Booth"}
             </h1>
-            <p className="text-sm text-gray-600">Showcase your brand at the exhibition</p>
+            <p className="text-sm font-medium text-slate-500">Showcase your brand and products to verified trade visitors</p>
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-bottom-8 duration-700" style={{ backdropFilter: 'blur(10px)' }}>
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-bottom-8 duration-700">
             {/* Form Header Bar */}
-            <div className="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+            <div className="h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-700"></div>
 
             <form onSubmit={handleSubmit} className="p-5 md:p-8">
               {/* Section 1: Personal Information */}
@@ -783,7 +783,7 @@ const Stall = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="py-2.5 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg text-sm flex items-center justify-center gap-2 hover:from-blue-700 hover:to-indigo-700 transform transition-all hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                  className="py-2.5 px-8 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 transform transition-all hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg cursor-pointer"
                 >
                   {loading ? (
                     <>

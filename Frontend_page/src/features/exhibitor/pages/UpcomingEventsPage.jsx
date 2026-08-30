@@ -1,76 +1,55 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  MapPin,
-  Calendar,
-  LayoutGrid,
-  Grid,
-  LayoutList,
-  List,
-  Menu,
-  ChevronLeft,
-  ChevronRight,
-  ArrowRight,
+  MapPin, Calendar, LayoutGrid, Grid, LayoutList, List, Menu,
+  ChevronLeft, ChevronRight, ArrowRight, Store, Search, Filter, Sparkles
 } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
 import { getHomeEventshow } from "@/Services/api";
-
 import { useSelector } from "react-redux";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent } from "@/components/ui/Card";
 
-const ExhibitorHome = () => {
+export const UpcomingEventsPage = () => {
   const [events, setEvents] = useState([]);
-  const [viewMode, setViewMode] = useState("medium");
-  const [showViewMenu, setShowViewMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 9;
 
   const navigate = useNavigate();
   const user = useSelector((state) => state.user);
-  console.log("User from Redux:", user);
 
   useEffect(() => {
     fetchEvents();
-
-    if (user?.id && user?.name) {
-      sessionStorage.setItem("userId", user.id);
-      sessionStorage.setItem("userName", user.name);
-    }
-  }, [user]);
-  const storedUser = {
-    id: sessionStorage.getItem("userId"),
-    name: sessionStorage.getItem("userName"),
-  };
-  const displayUser = user?.id ? user : storedUser;
+  }, []);
 
   const fetchEvents = async () => {
+    setLoading(true);
     try {
       const data = await getHomeEventshow();
       const rawList = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.events) ? data.events : []));
 
       const formatted = rawList.map((e) => ({
         id: e.id,
-        title: e.event_name || e.name || "Event",
-        location: `${e.venue || ''}, ${e.address || ''}`,
-        date: e.start_date,
-        endDate: e.end_date,
-        image: e.banner_url || "https://via.placeholder.com/400",
+        title: e.event_name || e.name || "Exhibition Show",
+        location: `${e.venue || 'Exhibition Center'}, ${e.address || e.city || 'Chennai'}`,
+        date: e.start_date || "2026-09-15",
+        endDate: e.end_date || "2026-09-18",
+        image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
         banner_type: e.banner_type,
+        category: e.category || "Trade Fair",
+        stallsAvailable: 15,
+        totalStalls: 60
       }));
-
-      // Sort: Open events first (by date), Closed events last
-      formatted.sort((a, b) => {
-        const aClosed = new Date(a.date).setHours(23, 59, 59, 999) < new Date();
-        const bClosed = new Date(b.date).setHours(23, 59, 59, 999) < new Date();
-
-        if (aClosed !== bClosed) {
-          return aClosed ? 1 : -1;
-        }
-        return new Date(a.date) - new Date(b.date);
-      });
 
       setEvents(formatted);
     } catch (err) {
       console.log("Error fetching events:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,293 +57,155 @@ const ExhibitorHome = () => {
     navigate(`/book-stall/${event.id}`, { state: { event } });
   };
 
-  // Pagination Logic
-  const totalPages = Math.ceil(events.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentEvents = events.slice(indexOfFirstItem, indexOfLastItem);
+  const filteredEvents = events.filter((e) => {
+    const matchesSearch = searchTerm === "" || e.title.toLowerCase().includes(searchTerm.toLowerCase()) || e.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || e.category.toLowerCase().includes(selectedCategory.toLowerCase());
+    return matchesSearch && matchesCategory;
+  });
 
-  const paginate = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Grid Configuration based on View Mode
-  const getGridClasses = () => {
-    switch (viewMode) {
-      case "large":
-        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8";
-      case "medium":
-        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
-      case "small":
-        return "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4";
-      case "compact":
-        return "grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3";
-      case "list":
-        return "grid-cols-1 gap-4";
-      default:
-        return "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
-    }
-  };
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage) || 1;
+  const paginatedEvents = filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6 pb-20 font-sans">
-      {/* Header & Controls Section */}
-      <div className="max-w-7xl mx-auto mb-10">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-orange-500/50 hover:text-orange-500 transition-all group"
-              title="Go Back"
-            >
-              <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-            </button>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Welcome,{" "}
-              <span className="bg-gradient-to-r from-orange-400 to-rose-500 bg-clip-text text-transparent">
-                {displayUser.name || "Exhibitor"}
-              </span>{" "}
-              👋
+    <div className="space-y-6 pb-12 select-none font-sans text-slate-800">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Upcoming Expos & Trade Fairs
             </h1>
+            <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[11px]">
+              Exhibitor Booth Reservation Catalog
+            </Badge>
           </div>
-
-          <div className="relative">
-            <button
-              onClick={() => setShowViewMenu(!showViewMenu)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 rounded-2xl shadow-xl border border-slate-800 hover:bg-slate-800 hover:border-orange-500/50 transition-all duration-300 group"
-            >
-              <Menu
-                size={18}
-                className="text-orange-500 group-hover:rotate-180 transition-transform duration-500"
-              />
-              <span className="text-sm font-bold text-slate-300">
-                View Mode
-              </span>
-            </button>
-
-            {showViewMenu && (
-              <div className="absolute right-0 mt-3 w-56 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-[100] overflow-hidden py-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                {[
-                  { id: "large", name: "Extra large icons", icon: LayoutGrid },
-                  { id: "medium", name: "Large icons", icon: Grid },
-                  { id: "small", name: "Medium icons", icon: LayoutList },
-                  { id: "compact", name: "Small icons", icon: List },
-                  { id: "list", name: "List view", icon: Menu },
-                ].map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => {
-                      setViewMode(mode.id);
-                      setShowViewMenu(false);
-                      setCurrentPage(1); // Reset to first page on view change
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 transition-colors ${viewMode === mode.id
-                        ? "text-orange-500 bg-orange-500/5 font-bold"
-                        : "text-slate-400 hover:text-slate-200"
-                      }`}
-                  >
-                    <mode.icon size={18} />
-                    <span className="text-sm">{mode.name}</span>
-                    {viewMode === mode.id && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Browse upcoming major expos, view hall floor plans, and reserve your exhibition booth space.
+          </p>
         </div>
       </div>
 
-      {/* Events Container */}
-      <div className="max-w-7xl mx-auto">
-        <div className={`grid ${getGridClasses()} transition-all duration-500`}>
-          {currentEvents.length === 0 ? (
-            <div className="text-center col-span-full py-24 bg-slate-900/50 rounded-3xl border border-dashed border-slate-800">
-              <Calendar
-                size={48}
-                className="mx-auto text-slate-700 mb-4 opacity-20"
-              />
-              <p className="text-slate-500 font-medium tracking-wide">
-                No events found for this page
-              </p>
-            </div>
-          ) : (
-            currentEvents.map((event) => (
-              <div
-                key={event.id}
-                className={`group bg-slate-900/40 rounded-3xl overflow-hidden border border-slate-800 hover:border-orange-500/30 hover:shadow-[0_20px_50px_rgba(249,115,22,0.1)] transition-all duration-500 ${viewMode === "list"
-                    ? "flex flex-row items-center p-4 gap-6 h-auto"
-                    : "flex flex-col"
-                  }`}
+      {/* Filter & Search Toolbar */}
+      <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto">
+            {["all", "Tech", "Business", "Fashion", "Food"].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer capitalize ${
+                  selectedCategory === cat ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                }`}
               >
-                {/* Image Section */}
-                <div
-                  className={`relative overflow-hidden shrink-0 ${viewMode === "list"
-                      ? "w-24 h-24 rounded-2xl"
-                      : "w-full h-48 md:h-52"
-                    }`}
-                >
-                  <MediaRenderer
-                    src={event.image}
-                    type={event.banner_type}
-                    alt={event.title}
-                    className="w-full h-full group-hover:scale-110 transition-transform duration-700"
-                  />
-                  {viewMode !== "list" && (
-                    <>
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-60" />
-                      <div className={`absolute top-4 right-4 text-[10px] font-black px-2.5 py-1.5 rounded-lg uppercase tracking-widest shadow-xl ${
-                        new Date(event.date).setHours(23, 59, 59, 999) < new Date()
-                          ? "bg-slate-700 text-slate-400"
-                          : "bg-orange-500 text-white"
-                      }`}>
-                        {new Date(event.date).setHours(23, 59, 59, 999) < new Date() ? "Completed" : "Upcoming"}
-                      </div>
-                    </>
-                  )}
+                {cat === "all" ? "All Categories" : cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search expo title, city, venue..."
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        </div>
+      </Card>
+
+      {/* Event Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {paginatedEvents.length === 0 ? (
+          <div className="col-span-full p-16 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 font-semibold text-sm">
+            No upcoming expos found matching your search.
+          </div>
+        ) : (
+          paginatedEvents.map((event) => (
+            <Card key={event.id} className="border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 bg-white rounded-2xl overflow-hidden flex flex-col justify-between group">
+              <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
+                <MediaRenderer
+                  src={event.image}
+                  type={event.banner_type}
+                  alt={event.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute top-3 right-3">
+                  <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2.5 py-1 shadow-md">
+                    Booths Open
+                  </Badge>
+                </div>
+              </div>
+
+              <CardContent className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
+                      {event.category}
+                    </Badge>
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-1">
+                    {event.title}
+                  </h3>
+                  <div className="text-xs text-slate-500 space-y-1 mt-2">
+                    <p className="flex items-center gap-1.5 font-medium">
+                      <MapPin size={14} className="text-emerald-600 shrink-0" />
+                      <span className="truncate">{event.location}</span>
+                    </p>
+                    <p className="flex items-center gap-1.5 font-medium">
+                      <Calendar size={14} className="text-emerald-600 shrink-0" />
+                      <span>{new Date(event.date).toDateString()}</span>
+                    </p>
+                  </div>
                 </div>
 
-                {/* Content Section */}
-                <div
-                  className={`flex ${viewMode === "list"
-                      ? "flex-row items-center justify-between flex-1 gap-6"
-                      : "flex-col p-6 flex-1"
-                    }`}
-                >
-                  <div
-                    className={`${viewMode === "list" ? "flex flex-row items-center gap-8 flex-1" : "space-y-3"}`}
-                  >
-                    <h2
-                      className={`font-bold text-slate-100 group-hover:text-orange-400 transition-colors ${viewMode === "compact"
-                          ? "text-sm"
-                          : "text-lg md:text-xl"
-                        } ${viewMode === "list" ? "w-1/4 truncate" : ""}`}
-                    >
-                      {event.title}
-                    </h2>
-
-                    {viewMode === "list" ? (
-                      <>
-                        <div className="flex items-center gap-3 text-sm text-slate-400 flex-1 min-w-0">
-                          <MapPin
-                            size={16}
-                            className="text-orange-500 shrink-0"
-                          />
-                          <span className="truncate opacity-80">
-                            {event.location}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-slate-400 shrink-0">
-                          <Calendar
-                            size={16}
-                            className="text-orange-500 shrink-0"
-                          />
-                          <span className="opacity-80">
-                            {new Date(event.date).toDateString()}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      viewMode !== "compact" && (
-                        <div className="space-y-2.5">
-                          <div className="flex items-center gap-3 text-sm text-slate-400">
-                            <MapPin
-                              size={16}
-                              className="text-orange-500 shrink-0"
-                            />
-                            <span className="line-clamp-1 opacity-80">
-                              {event.location}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-sm text-slate-400">
-                            <Calendar
-                              size={16}
-                              className="text-orange-500 shrink-0"
-                            />
-                            <span className="opacity-80">
-                              {new Date(event.date).toDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    )}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Available Stalls</span>
+                    <p className="text-xs font-extrabold text-emerald-700">{event.stallsAvailable} / {event.totalStalls} Open</p>
                   </div>
 
-                  <button
-                    onClick={() => !new Date(event.date).setHours(23, 59, 59, 999) < new Date() && handleBookStall(event)}
-                    disabled={new Date(event.date).setHours(23, 59, 59, 999) < new Date()}
-                    className={`flex items-center justify-center gap-2 font-bold rounded-2xl transition-all duration-300 shrink-0 mt-4 ${
-                      new Date(event.date).setHours(23, 59, 59, 999) < new Date()
-                        ? "bg-slate-800/50 text-slate-500 cursor-not-allowed border border-slate-700/50 px-8 py-3 w-full"
-                        : viewMode === "list"
-                          ? "px-8 py-3 bg-gradient-to-r from-orange-500 to-rose-500 hover:shadow-[0_10px_20px_rgba(249,115,22,0.3)] active:scale-95 w-auto mt-0"
-                          : viewMode === "compact"
-                            ? "py-2 text-xs bg-gradient-to-r from-orange-500 to-rose-500 hover:shadow-[0_10px_20px_rgba(249,115,22,0.3)] active:scale-95 w-full"
-                            : "py-3 bg-gradient-to-r from-orange-500 to-rose-500 hover:shadow-[0_10px_20px_rgba(249,115,22,0.3)] active:scale-95 w-full"
-                    }`}
+                  <Button
+                    onClick={() => handleBookStall(event)}
+                    className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs border-none cursor-pointer gap-1.5"
                   >
-                    <span>
-                      {new Date(event.date).setHours(23, 59, 59, 999) < new Date()
-                        ? "Booking Closed"
-                        : "Book Stall"}
-                    </span>
-                    <ArrowRight
-                      size={16}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
-                  </button>
+                    <span>Reserve Booth</span>
+                    <ArrowRight size={14} />
+                  </Button>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Pagination Section */}
-        {totalPages > 1 && (
-          <div className="mt-16 flex justify-center items-center gap-4">
-            <button
-              onClick={() => paginate(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-3 rounded-2xl bg-slate-900 border border-slate-800 hover:border-orange-500/50 disabled:opacity-20 transition-all group"
-            >
-              <ChevronLeft
-                size={24}
-                className="group-hover:-translate-x-1 transition-transform"
-              />
-            </button>
-
-            <div className="flex gap-2">
-              {[...Array(totalPages)].map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => paginate(i + 1)}
-                  className={`w-12 h-12 rounded-2xl font-bold transition-all duration-500 ${currentPage === i + 1
-                      ? "bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-lg shadow-orange-500/20"
-                      : "bg-slate-900 text-slate-500 border border-slate-800 hover:border-orange-500/30"
-                    }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => paginate(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-3 rounded-2xl bg-slate-900 border border-slate-800 hover:border-orange-500/50 disabled:opacity-20 transition-all group"
-            >
-              <ChevronRight
-                size={24}
-                className="group-hover:translate-x-1 transition-transform"
-              />
-            </button>
-          </div>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(p => p - 1)}
+            className="rounded-xl font-bold text-xs cursor-pointer"
+          >
+            Previous
+          </Button>
+          <span className="text-xs font-bold text-slate-600 px-3">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(p => p + 1)}
+            className="rounded-xl font-bold text-xs cursor-pointer"
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ExhibitorHome;
+export default UpcomingEventsPage;

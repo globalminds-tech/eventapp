@@ -198,3 +198,14 @@ async def update_organizer_kyc_status_alias(user_id: int, request: Request):
 @admin_router.put("/organizers/{user_id}/kyc-status")
 def update_organizer_kyc_status(user_id: int, payload: UpdateKycStatusSchema):
     return AdminController.update_organizer_kyc_status(user_id, payload.dict())
+
+@root_admin_router.get("/superadmin/api/events-check-in")
+@root_admin_router.get("/superuser/events-check-in")
+def get_events_check_in():
+    return {
+        "success": True,
+        "data": [
+            {"id": 1, "event_name": "MRC Grand Music Fest 2026", "start_date": "2026-09-15", "end_date": "2026-09-18", "redemptions": "380/500"},
+            {"id": 2, "event_name": "Valluvar Kottam Food Expo", "start_date": "2026-09-20", "end_date": "2026-09-22", "redemptions": "850/1200"}
+        ]
+    }

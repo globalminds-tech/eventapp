@@ -88,16 +88,15 @@ export default function WebSidebar({ role }) {
     exhibitor: [
       { label: "Booth Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
       { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store },
-      { label: "Upcoming Events", path: "/exhibitor/upcoming-events", icon: Calendar },
+      { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar },
+      { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users },
     ],
     organizer: [
       { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard },
-      { label: "Live Gate Analytics", path: "/OrganizerHome/livedashboard", icon: LineChart },
       { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode },
       { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils },
       { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store },
       { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users },
-      { label: "Venue Setup", path: "/OrganizerHome/Venu", icon: MapPin },
       { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt },
     ]
   }[role] || [];

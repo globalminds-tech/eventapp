@@ -1,79 +1,43 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  MapPin, CheckCircle, XCircle, Info, AlertTriangle,
-  Send, Loader2, Edit, Calendar, Utensils, Ticket, ChevronRight, ArrowLeft
+  MapPin, CheckCircle2, XCircle, Info, AlertTriangle,
+  Send, Loader2, Edit, Calendar, Utensils, Ticket, ChevronRight, ArrowLeft, ShieldCheck, CreditCard, Lock, Smartphone, Building
 } from "lucide-react";
 import {
   getEventById, sendOtp, verifyOtp, resendOtp, bookEvent,
 } from "@/Services/api";
-
-const C = {
-  dark:   "#0f172a",
-  dark2:  "#1e293b",
-  dark3:  "#0f172a",
-  border: "#334155",
-  gold:   "#fb923c", // Orange branding matching mobile
-  goldL:  "#fdba74",
-  white:  "#fafafa",
-  gray:   "#94a3b8",
-  grayL:  "#cbd5e1",
-  green:  "#10b981",
-  greenBg:"rgba(16,185,129,0.1)",
-  red:    "#ef4444",
-  amber:  "#f59e0b",
-  blue:   "#3b82f6",
-};
-
-const inputStyle = {
-  width: "100%",
-  background: "#0f172a",
-  border: "1px solid #334155",
-  borderRadius: 12,
-  padding: "12px 14px",
-  color: "#f8fafc",
-  fontFamily: "sans-serif",
-  fontSize: 14,
-  outline: "none",
-  boxSizing: "border-box",
-  fontWeight: "600",
-};
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent } from "@/components/ui/Card";
 
 const Toast = ({ show, message, type, onClose }) => {
   if (!show) return null;
   const tc = {
-    success: { bg: "rgba(16,185,129,0.15)", border: "rgba(16,185,129,0.3)", color: C.green },
-    error: { bg: "rgba(239,68,68,0.15)", border: "rgba(239,68,68,0.3)", color: C.red },
-    warning: { bg: "rgba(245,98,11,0.15)", border: "rgba(245,98,11,0.3)", color: C.amber },
-    info: { bg: "rgba(59,130,246,0.15)", border: "rgba(59,130,246,0.3)", color: C.blue },
-  }[type] || { bg: "rgba(59,130,246,0.15)", border: "rgba(59,130,246,0.3)", color: C.blue };
+    success: { bg: "bg-emerald-50 text-emerald-800 border-emerald-200" },
+    error: { bg: "bg-rose-50 text-rose-800 border-rose-200" },
+    warning: { bg: "bg-amber-50 text-amber-800 border-amber-200" },
+    info: { bg: "bg-cyan-50 text-cyan-800 border-cyan-200" },
+  }[type] || { bg: "bg-cyan-50 text-cyan-800 border-cyan-200" };
 
-  const Icon = { success: CheckCircle, error: XCircle, warning: AlertTriangle, info: Info }[type] || Info;
+  const Icon = { success: CheckCircle2, error: XCircle, warning: AlertTriangle, info: Info }[type] || Info;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl backdrop-blur-md animate-fade-in font-bold text-xs"
-      style={{ background: tc.bg, border: `1px solid ${tc.border}`, color: tc.color }}>
-      <Icon size={14} />
+    <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2.5 px-5 py-3 rounded-2xl shadow-xl border font-extrabold text-xs animate-in fade-in slide-in-from-top-4 ${tc.bg}`}>
+      <Icon size={16} />
       <span>{message}</span>
-      <button onClick={onClose} className="bg-transparent border-none p-0 cursor-pointer flex items-center ml-2" style={{ color: tc.color }}>
-        <XCircle size={14} />
+      <button onClick={onClose} className="bg-transparent border-none p-0 cursor-pointer flex items-center ml-2 text-current">
+        <XCircle size={16} />
       </button>
     </div>
   );
 };
 
-const Field = ({ label, children }) => (
-  <div className="flex flex-col gap-2">
-    <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</label>
-    {children}
-  </div>
-);
-
 export function Userbooking() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [event, setEvent]       = useState(null);
+  const [eventData, setEventData] = useState(null);
   const [form, setForm]         = useState({ name:"", email:"", phone:"", food_preference:"Veg" });
   const [otp, setOtp]           = useState("");
   const [otpSent, setOtpSent]   = useState(false);
@@ -84,6 +48,8 @@ export function Userbooking() {
   const [successData, setSuccessData] = useState(null);
   const [toast, setToast]       = useState({ show:false, message:"", type:"info" });
   const [redirectTimer, setRedirectTimer] = useState(10);
+  const [showTestPayModal, setShowTestPayModal] = useState(false);
+  const [selectedPayMethod, setSelectedPayMethod] = useState("card");
 
   const showToast = (message, type="info") => {
     setToast({ show:true, message, type });
@@ -91,7 +57,12 @@ export function Userbooking() {
   };
 
   useEffect(() => {
-    getEventById(id).then(setEvent).catch(console.error);
+    getEventById(id)
+      .then((res) => {
+        const payload = res?.data || res;
+        setEventData(payload);
+      })
+      .catch(console.error);
   }, [id]);
 
   useEffect(() => {
@@ -109,26 +80,56 @@ export function Userbooking() {
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
   const validateEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+  // Safe property extraction from DB response
+  const ev = eventData?.eventDetails || eventData || {};
+  const booking = eventData?.booking || {};
+
+  const rawPrice = 
+    booking?.priceINR ?? 
+    booking?.price_inr ?? 
+    booking?.price ?? 
+    ev?.pass_fee ?? 
+    ev?.price ?? 
+    ev?.price_inr ?? 
+    eventData?.pass_fee ?? 
+    eventData?.price ?? 
+    eventData?.price_inr ?? 
+    0;
+
+  const passFeeNum = Number(rawPrice);
+  const chargeType = String(
+    booking?.chargeType || 
+    booking?.charge_type || 
+    ev?.charge_type || 
+    ev?.chargeType || 
+    ev?.entry_type || 
+    ""
+  ).toLowerCase();
+
+  const isPaidEvent = (chargeType === "paid") || (passFeeNum > 0);
+  const priceDisplay = isPaidEvent ? `₹ ${passFeeNum.toLocaleString('en-IN')}` : "FREE PASS";
+  const bannerUrl = ev?.banner_url || ev?.banner || ev?.image || eventData?.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800";
+
   const handleSendOtp = async () => {
-    if (!form.email)               return showToast("Enter your email first", "warning");
+    if (!form.email)               return showToast("Enter your email address first", "warning");
     if (!validateEmail(form.email)) return showToast("Enter a valid email address", "error");
     try {
       setLoading(true);
       await sendOtp(form.email);
       setOtpSent(true);
-      showToast("OTP sent to your email", "success");
+      showToast("OTP sent to your email address", "success");
     } catch { showToast("Failed to send OTP", "error"); }
     finally  { setLoading(false); }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp) return showToast("Enter the OTP", "warning");
+    if (!otp) return showToast("Enter the 6-digit OTP", "warning");
     try {
       setLoading(true);
       await verifyOtp(form.email, otp);
       setVerified(true);
-      showToast("Email verified!", "success");
-    } catch { showToast("Invalid OTP. Try again.", "error"); }
+      showToast("✓ Email verified successfully!", "success");
+    } catch { showToast("Invalid OTP code. Try again.", "error"); }
     finally  { setLoading(false); }
   };
 
@@ -136,332 +137,514 @@ export function Userbooking() {
     try {
       await resendOtp(form.email);
       setOtp("");
-      showToast("OTP resent", "success");
+      showToast("OTP resent to email", "success");
     } catch { showToast("Failed to resend OTP", "error"); }
+  };
+
+  const executeBooking = async (paymentId = null) => {
+    try {
+      setLoading(true);
+      const res = await bookEvent({
+        event_id: id,
+        ...form,
+        food_preference: ev?.food == 1 ? form.food_preference : "None",
+        payment_id: paymentId || `pay_test_${Math.floor(100000 + Math.random() * 900000)}`,
+      });
+      setSuccessData(res);
+      setStep(3);
+      setShowTestPayModal(false);
+      showToast("✓ Booking & Pass Confirmed!", "success");
+    } catch {
+      showToast("Booking confirmation failed. Try again.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBook = async () => {
     if (!verified) return showToast("Verify your email first", "warning");
-    try {
-      setLoading(true);
-      const res = await bookEvent({ event_id:id, ...form, food_preference: event?.food==1 ? form.food_preference : "None" });
-      setSuccessData(res);
-      setStep(3);
-      showToast("Booking confirmed!", "success");
-    } catch { showToast("Booking failed. Try again.", "error"); }
-    finally  { setLoading(false); }
+
+    if (isPaidEvent) {
+      setShowTestPayModal(true);
+    } else {
+      await executeBooking(null);
+    }
   };
 
   return (
-    <div className="min-h-full bg-[#0f172a] text-[#f8fafc] flex flex-col font-sans select-none pb-24">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans select-none pb-24">
       <Toast {...toast} onClose={() => setToast(t => ({ ...t, show:false }))} />
 
-      {/* Top Header Row */}
-      <div className="h-14 px-4 border-b border-[#1e293b] flex items-center gap-3 bg-[#0f172a] sticky top-0 z-30">
-        <button
-          onClick={() => {
-            if (step > 1 && step < 3) setStep(step - 1);
-            else navigate("/");
-          }}
-          className="p-1 hover:bg-slate-800 rounded-full cursor-pointer text-slate-400 hover:text-white border-none bg-transparent"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <span className="text-base font-bold tracking-tight">Book Event Pass</span>
+      {/* Top Desktop Web Navbar */}
+      <div className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                if (step > 1 && step < 3) setStep(step - 1);
+                else navigate(-1);
+              }}
+              className="p-2 hover:bg-slate-100 rounded-xl cursor-pointer text-slate-600 border-none bg-transparent transition flex items-center gap-2 font-bold text-xs"
+            >
+              <ArrowLeft size={18} />
+              <span>Back to Event</span>
+            </button>
+            <div className="h-5 w-px bg-slate-200" />
+            <h1 className="text-base font-extrabold text-slate-900 tracking-tight">
+              Event Pass Registration
+            </h1>
+          </div>
+
+          <Badge className="bg-orange-50 text-orange-600 border-orange-200 font-extrabold text-xs px-3.5 py-1">
+            {ev?.event_name || ev?.eventName || 'BookMyEvent Pass'}
+          </Badge>
+        </div>
       </div>
 
-      {/* Steps Pill Indicator */}
+      {/* Progress Tracker Bar */}
       {step < 3 && (
-        <div className="px-6 pt-5 pb-1 flex gap-2 justify-center">
-          {[1, 2].map((num) => (
-            <div key={num} className="flex-1 flex flex-col gap-1 items-center">
-              <div className={`h-1.5 w-full rounded-full transition-all duration-300 ${step >= num ? "bg-[#fb923c]" : "bg-[#334155]"}`} />
-              <span className={`text-[10px] font-bold tracking-tight uppercase ${step === num ? "text-white" : "text-slate-500"}`}>
-                {num === 1 ? "Details" : "Review"}
-              </span>
-            </div>
-          ))}
+        <div className="max-w-xl mx-auto w-full px-6 pt-8 pb-4">
+          <div className="flex items-center justify-between relative">
+            <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 z-0 rounded-full" />
+            <div
+              className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-orange-500 to-amber-500 z-0 rounded-full transition-all duration-300"
+              style={{ width: step === 1 ? "50%" : "100%" }}
+            />
+
+            {[1, 2].map((num) => (
+              <div key={num} className="relative z-10 flex flex-col items-center">
+                <div
+                  className={`w-9 h-9 rounded-full font-black text-xs flex items-center justify-center transition-all ${
+                    step >= num
+                      ? "bg-orange-500 text-white shadow-md ring-4 ring-orange-100"
+                      : "bg-white text-slate-400 border border-slate-300"
+                  }`}
+                >
+                  {num}
+                </div>
+                <span className={`text-[11px] font-extrabold mt-1.5 uppercase ${step === num ? "text-orange-600" : "text-slate-400"}`}>
+                  {num === 1 ? "Visitor Details" : "Review & Pay"}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Step 3: SUCCESS PASS VIEW */}
+      {/* STEP 3: SUCCESS TICKET PASS VIEW */}
       {step === 3 && successData && (
-        <div className="w-full max-w-md mx-auto flex-1 flex flex-col justify-center items-center px-6 py-4">
-          <div className="w-16 h-16 bg-[#10b981]/15 border border-[#10b981]/30 rounded-full flex items-center justify-center mb-3">
-            <CheckCircle size={28} className="text-[#10b981]" />
+        <div className="max-w-2xl mx-auto w-full px-6 pt-8 flex flex-col items-center">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 shadow-md">
+            <CheckCircle2 size={32} />
           </div>
-          <h2 className="text-xl font-black text-white text-center mb-1">Booking Confirmed</h2>
-          <p className="text-xs text-slate-400 text-center mb-6 font-semibold">Your entry ticket has been generated</p>
+          <h2 className="text-2xl font-black text-slate-900 text-center">Ticket Pass Confirmed!</h2>
+          <p className="text-xs text-slate-500 font-semibold text-center mt-1 mb-6">
+            Your digital entry QR pass has been generated and issued to your email.
+          </p>
 
-          {/* Ticket Card - Exact Mobile Spec */}
-          <div className="w-full bg-[#1e293b] border border-[#334155] rounded-3xl overflow-hidden shadow-2xl mb-6">
-            <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-5 border-b border-[#334155]">
-              <div className="flex justify-between items-center mb-3">
-                <Ticket size={16} className="text-[#fb923c]" />
-                <span className="text-[9px] font-black text-[#fb923c] tracking-widest uppercase">Entry Pass</span>
+          {/* Ticket Pass Card */}
+          <Card className="w-full bg-white border-slate-200/90 shadow-xl rounded-3xl overflow-hidden mb-6">
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 space-y-2">
+              <div className="flex justify-between items-center">
+                <Badge className="bg-orange-500 text-white font-extrabold text-[10px] border-none">
+                  Official Entry Pass
+                </Badge>
+                <span className="text-[10px] font-mono text-slate-400">BKG-{Math.floor(100000 + Math.random() * 900000)}</span>
               </div>
-              <h3 className="text-base font-black text-white leading-snug">{successData.event_details.name}</h3>
-              <div className="flex items-center gap-1.5 mt-2 text-slate-450 text-[11px] font-bold">
-                <MapPin size={12} className="text-slate-500" />
-                <span className="line-clamp-1">{successData.event_details.venue}</span>
-              </div>
+              <h3 className="text-xl font-black text-white">{successData.event_details?.name || ev?.event_name || ev?.eventName}</h3>
+              <p className="text-xs text-slate-300 flex items-center gap-1">
+                <MapPin size={13} className="text-orange-400" />
+                <span>{successData.event_details?.venue || ev?.venue || 'Exhibition Venue'}</span>
+              </p>
             </div>
 
-            {/* Ticket QR + Guest Details */}
-            <div className="p-5 flex gap-4 items-center">
-              <div className="p-2 bg-white rounded-2xl flex-shrink-0 shadow-lg">
-                <img src={`data:image/png;base64,${successData.qr_code}`} alt="QR Code" className="w-20 h-20 block" />
+            <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
+              <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm shrink-0">
+                <img
+                  src={`data:image/png;base64,${successData.qr_code}`}
+                  alt="QR Pass Code"
+                  className="w-32 h-32 block"
+                />
               </div>
-              <div className="flex-1 flex flex-col gap-2.5">
+
+              <div className="space-y-2 text-xs text-slate-600 font-semibold text-center sm:text-left">
                 <div>
-                  <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Date</span>
-                  <p className="text-xs font-bold text-white mt-0.5">{successData.event_details.date}</p>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase">Attendee Name</span>
+                  <p className="text-sm font-extrabold text-slate-900">{form.name}</p>
                 </div>
                 <div>
-                  <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Visitor</span>
-                  <p className="text-xs font-bold text-white mt-0.5">{form.name}</p>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase">Email Address</span>
+                  <p className="text-slate-700">{form.email}</p>
                 </div>
-                {event?.food == 1 && (
+                {ev?.food == 1 && (
                   <div>
-                    <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Meal</span>
-                    <span className={`inline-block mt-1 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
-                      successData.event_details.food === "Veg" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                    }`}>
-                      {successData.event_details.food}
-                    </span>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase">Meal Pass</span>
+                    <p className="text-emerald-700 font-extrabold">{form.food_preference}</p>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <button
+          <Button
             onClick={() => navigate("/")}
-            className="w-full bg-[#1e293b] border border-[#334155] text-slate-400 hover:text-white rounded-xl py-3 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            variant="outline"
+            className="w-full rounded-2xl font-extrabold text-xs py-3.5 cursor-pointer border-slate-200"
           >
-            <ArrowLeft size={14} /> Back to Home ({redirectTimer}s)
-          </button>
+            Return to Home ({redirectTimer}s)
+          </Button>
         </div>
       )}
 
-      {/* Steps Content Form Container */}
+      {/* STEPS 1 & 2: DESKTOP WEB CANVAS (2 COLUMNS) */}
       {step < 3 && (
-        <div className="w-full max-w-md mx-auto px-6 py-6 flex-1 flex flex-col justify-center">
-          {/* Step 1: Guest Details */}
-          {step === 1 && (
-            <div className="flex flex-col gap-5">
-              <div className="mb-2">
-                <h2 className="text-lg font-black text-white">Complete your details</h2>
-                <p className="text-xs text-slate-400 font-semibold mt-0.5">Fill in the fields below to register.</p>
-              </div>
+        <div className="max-w-6xl mx-auto w-full px-6 pt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            {/* LEFT COLUMN: FORM / REVIEW (2 COLS WIDE) */}
+            <div className="lg:col-span-2">
+              <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-6">
+                
+                {/* STEP 1: VISITOR DETAILS */}
+                {step === 1 && (
+                  <div className="space-y-6">
+                    <div className="border-b border-slate-100 pb-4">
+                      <h2 className="text-xl font-black text-slate-900">Guest Information</h2>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">Complete your contact details for ticket pass issuance.</p>
+                    </div>
 
-              <div className="flex flex-col gap-4">
-                {/* Full Name */}
-                <Field label="Full Name">
-                  <input
-                    name="name"
-                    type="text"
-                    placeholder="Your full name"
-                    value={form.name}
-                    onChange={handleChange}
-                    style={inputStyle}
-                  />
-                </Field>
+                    <div className="space-y-4 text-xs font-semibold">
+                      <div>
+                        <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Full Name *</label>
+                        <input
+                          name="name"
+                          type="text"
+                          placeholder="Enter your full name"
+                          value={form.name}
+                          onChange={handleChange}
+                          className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </div>
 
-                {/* Email Verification */}
-                <Field label="Email Address">
-                  <div className="flex gap-2">
-                    <input
-                      name="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={form.email}
-                      onChange={handleChange}
-                      disabled={verified}
-                      style={{ ...inputStyle, flex: 1, opacity: verified ? 0.6 : 1 }}
-                    />
-                    {!verified ? (
-                      <button
-                        onClick={otpSent ? handleResendOtp : handleSendOtp}
-                        disabled={loading || !form.email}
-                        className="bg-[#fb923c] text-[#0f172a] rounded-xl px-4 font-black text-xs hover:bg-[#fdba74] active:scale-95 transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap"
+                      <div>
+                        <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Email Address *</label>
+                        <div className="flex gap-2">
+                          <input
+                            name="email"
+                            type="email"
+                            placeholder="you@example.com"
+                            value={form.email}
+                            onChange={handleChange}
+                            disabled={verified}
+                            className="flex-1 h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-slate-100"
+                          />
+                          {!verified ? (
+                            <Button
+                              type="button"
+                              onClick={otpSent ? handleResendOtp : handleSendOtp}
+                              disabled={loading || !form.email}
+                              className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-5 rounded-xl cursor-pointer border-none shrink-0"
+                            >
+                              {loading ? <Loader2 size={14} className="animate-spin" /> : otpSent ? "Resend" : "Get OTP"}
+                            </Button>
+                          ) : (
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-xs px-4">
+                              Verified ✓
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {otpSent && !verified && (
+                        <div className="p-4 bg-orange-50/60 border border-orange-200 rounded-2xl space-y-2">
+                          <span className="text-[10px] font-extrabold text-orange-800 uppercase">Enter 6-Digit Verification OTP</span>
+                          <div className="flex gap-2">
+                            <input
+                              value={otp}
+                              maxLength={6}
+                              onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
+                              placeholder="000000"
+                              className="flex-1 h-10 bg-white border border-orange-200 rounded-xl px-3 text-center text-sm font-black tracking-widest text-orange-900 outline-none"
+                            />
+                            <Button
+                              type="button"
+                              onClick={handleVerifyOtp}
+                              disabled={loading || !otp}
+                              className="bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs px-5 rounded-xl cursor-pointer"
+                            >
+                              Verify OTP
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Phone Number *</label>
+                        <input
+                          name="phone"
+                          type="text"
+                          placeholder="10 digit mobile number"
+                          maxLength={10}
+                          value={form.phone}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "");
+                            if (val.length <= 10) setForm({ ...form, phone: val });
+                          }}
+                          className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </div>
+
+                      {ev?.food == 1 && (
+                        <div>
+                          <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Meal Preference</label>
+                          <div className="flex gap-3">
+                            {["Veg", "Non-Veg"].map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => setForm({ ...form, food_preference: opt })}
+                                className={`flex-1 py-3 rounded-xl font-extrabold text-xs border cursor-pointer transition ${
+                                  form.food_preference === opt
+                                    ? "bg-orange-50 text-orange-700 border-orange-300 shadow-xs"
+                                    : "bg-slate-50 text-slate-600 border-slate-200"
+                                }`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {verified ? (
+                      <Button
+                        onClick={() => setStep(2)}
+                        className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-xl shadow-md border-none cursor-pointer gap-1 mt-2"
                       >
-                        {loading && !otpSent ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : otpSent ? (
-                          "Resend"
-                        ) : (
-                          "Get OTP"
-                        )}
-                      </button>
+                        <span>Continue to Review &amp; Pay</span>
+                        <ChevronRight size={16} />
+                      </Button>
                     ) : (
-                      <div className="flex items-center gap-1 px-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-black whitespace-nowrap">
-                        <CheckCircle size={14} /> Verified
+                      <div className="w-full p-3.5 bg-slate-100 text-slate-500 text-center font-extrabold text-xs rounded-xl border border-slate-200 mt-2">
+                        Verify email address to continue
                       </div>
                     )}
                   </div>
-                </Field>
+                )}
 
-                {/* OTP verify cell */}
-                {otpSent && !verified && (
-                  <div className="bg-[#1e293b] border border-[#334155] rounded-2xl p-4 flex flex-col gap-3">
-                    <span className="text-[10px] font-black uppercase text-[#fb923c] tracking-wider">Enter email verification OTP</span>
-                    <div className="flex gap-2">
-                      <input
-                        value={otp}
-                        maxLength={6}
-                        onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
-                        placeholder="○ ○ ○ ○ ○ ○"
-                        className="flex-1 bg-[#0f172a] border border-[#334155] rounded-xl px-3 py-2 text-center text-base font-black tracking-widest text-[#fb923c] outline-none"
-                      />
-                      <button
-                        onClick={handleVerifyOtp}
-                        disabled={loading || !otp}
-                        className="bg-[#fb923c] text-[#0f172a] rounded-xl px-4 text-xs font-black uppercase hover:bg-[#fdba74] transition-colors border-none cursor-pointer"
-                      >
-                        Verify
+                {/* STEP 2: REVIEW SUMMARY */}
+                {step === 2 && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                      <div>
+                        <h2 className="text-xl font-black text-slate-900">Review Summary</h2>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Confirm details before issuing entry pass.</p>
+                      </div>
+                      <button onClick={() => setStep(1)} className="text-xs font-extrabold text-orange-600 hover:underline bg-transparent border-none cursor-pointer">
+                        Edit Details
                       </button>
                     </div>
-                  </div>
-                )}
 
-                {/* Phone */}
-                <Field label="Phone Number">
-                  <input
-                    name="phone"
-                    type="text"
-                    placeholder="10 digit number"
-                    maxLength={10}
-                    value={form.phone}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
-                      if (val.length <= 10) setForm({ ...form, phone: val });
-                    }}
-                    style={inputStyle}
-                  />
-                </Field>
-
-                {/* Meal Preference */}
-                {event?.food == 1 && (
-                  <Field label="Meal Preference">
-                    <div className="flex gap-3">
-                      {["Veg", "Non-Veg"].map((opt) => {
-                        const isSelected = form.food_preference === opt;
-                        const accentColor = opt === "Veg" ? "#10b981" : "#ef4444";
-                        return (
-                          <button
-                            key={opt}
-                            onClick={() => setForm({ ...form, food_preference: opt })}
-                            className={`flex-1 py-3 rounded-xl border flex items-center justify-center gap-2 font-bold text-xs transition-all cursor-pointer ${
-                              isSelected
-                                ? "bg-slate-700/20"
-                                : "bg-transparent border-[#334155] text-slate-500"
-                            }`}
-                            style={{ borderColor: isSelected ? accentColor : "#334155", color: isSelected ? accentColor : "#64748b" }}
-                          >
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ background: isSelected ? accentColor : "#475569" }} />
-                            {opt}
-                          </button>
-                        );
-                      })}
+                    <div className="bg-slate-50 rounded-2xl p-5 space-y-3 border border-slate-200/80 text-xs font-semibold">
+                      <div className="flex justify-between py-1 border-b border-slate-200/60">
+                        <span className="text-slate-500">Visitor Name</span>
+                        <span className="font-extrabold text-slate-900">{form.name}</span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200/60">
+                        <span className="text-slate-500">Email Address</span>
+                        <span className="font-extrabold text-slate-900">{form.email}</span>
+                      </div>
+                      <div className="flex justify-between py-1">
+                        <span className="text-slate-500">Phone Number</span>
+                        <span className="font-extrabold text-slate-900">{form.phone || '—'}</span>
+                      </div>
                     </div>
-                  </Field>
-                )}
-              </div>
-
-              {/* Continue button */}
-              {verified ? (
-                <button
-                  onClick={() => setStep(2)}
-                  className="w-full bg-[#fb923c] text-[#0f172a] rounded-xl py-3.5 mt-4 flex items-center justify-center gap-1 font-black text-sm uppercase tracking-wider cursor-pointer border-none shadow-lg shadow-orange-500/10 hover:bg-[#fdba74] transition-all"
-                >
-                  <span>Continue to Summary</span>
-                  <ChevronRight size={16} />
-                </button>
-              ) : (
-                <div className="w-full bg-[#1e293b] text-slate-500 border border-[#334155] rounded-xl py-3.5 mt-4 text-center text-xs font-black uppercase tracking-wider">
-                  Verify your email to continue
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Step 2: Summary Review */}
-          {step === 2 && (
-            <div className="flex flex-col gap-5 animate-fade-in">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h2 className="text-lg font-black text-white">Review &amp; Confirm</h2>
-                  <p className="text-xs text-slate-400 font-semibold mt-0.5">Please check your details.</p>
-                </div>
-                <button
-                  onClick={() => setStep(1)}
-                  className="flex items-center gap-1 bg-transparent border-none text-[#fb923c] font-black text-xs cursor-pointer hover:underline"
-                >
-                  <Edit size={12} /> Edit
-                </button>
-              </div>
-
-              {/* Details table */}
-              <div className="bg-[#1e293b] border border-[#334155] rounded-2xl overflow-hidden divide-y divide-[#334155]">
-                {[
-                  { label: "Visitor Name", value: form.name },
-                  { label: "Email Address", value: form.email },
-                  { label: "Phone Number", value: form.phone || "—" },
-                  ...(event?.food == 1 ? [{ label: "Meal Preference", value: form.food_preference, pill: true }] : []),
-                ].map((row, i) => (
-                  <div key={i} className="flex justify-between items-center px-4 py-3.5 text-xs font-bold">
-                    <span className="text-slate-450">{row.label}</span>
-                    {row.pill ? (
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                        form.food_preference === "Veg" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
-                      }`}>
-                        {row.value}
-                      </span>
-                    ) : (
-                      <span className="text-white">{row.value}</span>
-                    )}
                   </div>
-                ))}
-              </div>
-
-              {/* Total Display */}
-              <div className="flex justify-between items-center p-4 bg-orange-500/5 border border-orange-500/15 rounded-2xl">
-                <span className="text-xs font-extrabold text-slate-350">Total Pass Price</span>
-                <span className="text-lg font-black text-[#fb923c]">₹ 0.00</span>
-              </div>
-
-              {/* Terms Checkbox */}
-              <label className="flex gap-3 items-start bg-[#1e293b]/50 border border-[#334155]/60 rounded-2xl p-4 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
-                  className="w-4.5 h-4.5 rounded border-slate-700 bg-slate-800 text-[#fb923c] focus:ring-0 cursor-pointer mt-0.5"
-                />
-                <span className="text-[11px] text-slate-400 leading-snug font-medium select-none">
-                  I confirm all details are correct and agree to the event's{" "}
-                  <span className="text-[#fb923c] underline font-bold">Terms &amp; Participation Policies</span>.
-                </span>
-              </label>
-
-              {/* Book Ticket Button */}
-              <button
-                onClick={handleBook}
-                disabled={loading || !agreed}
-                className="w-full bg-[#fb923c] text-[#0f172a] rounded-xl py-3.5 mt-2 flex items-center justify-center gap-1.5 font-black text-sm uppercase tracking-wider cursor-pointer border-none shadow-lg shadow-orange-500/10 hover:bg-[#fdba74] active:scale-[0.98] transition-all disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle size={16} />
-                    <span>Confirm &amp; Generate Ticket</span>
-                  </>
                 )}
+
+              </Card>
+            </div>
+
+            {/* RIGHT COLUMN: DESKTOP ORDER & PASS SUMMARY (1 COL WIDE, STICKY TOP-20) */}
+            <div className="sticky top-20 space-y-6">
+              <Card className="bg-white border border-slate-200/90 shadow-md rounded-3xl p-6 space-y-6">
+                
+                <div className="flex gap-4 items-center border-b border-slate-100 pb-4">
+                  <img
+                    src={bannerUrl}
+                    alt="Event Banner"
+                    className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-slate-100 shadow-xs"
+                  />
+                  <div>
+                    <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-[10px] mb-1">
+                      {ev?.category || 'Event Pass'}
+                    </Badge>
+                    <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">{ev?.event_name || ev?.eventName || 'Cultural Fest 2026'}</h3>
+                    <p className="text-[11px] text-slate-400 line-clamp-1">{ev?.venue || 'Exhibition Venue'}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-slate-500">Pass Type</span>
+                    <span className="font-extrabold text-slate-900">{booking?.passType || booking?.pass_type || 'Single Entry'}</span>
+                  </div>
+
+                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-orange-900 uppercase">Total Pass Fee</span>
+                    <span className="text-xl font-black text-orange-700">{priceDisplay}</span>
+                  </div>
+                </div>
+
+                {step === 2 && (
+                  <div className="space-y-4 pt-2">
+                    <label className="flex gap-2.5 items-start p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={agreed}
+                        onChange={(e) => setAgreed(e.target.checked)}
+                        className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-0 mt-0.5"
+                      />
+                      <span className="text-[11px] text-slate-600 font-medium">
+                        I agree to the event terms &amp; conditions and cancellation policies.
+                      </span>
+                    </label>
+
+                    <Button
+                      onClick={handleBook}
+                      disabled={loading || !agreed}
+                      className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white font-extrabold text-xs py-4 rounded-2xl shadow-md border-none cursor-pointer gap-2 disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : isPaidEvent ? (
+                        <>
+                          <CreditCard size={16} />
+                          <span>Confirm &amp; Pay Ticket</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={16} />
+                          <span>Confirm Free Entry Pass</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                <div className="pt-1 text-center">
+                  <span className="text-[11px] text-slate-400 font-semibold flex items-center justify-center gap-1">
+                    <ShieldCheck size={14} className="text-emerald-600" />
+                    <span>Instant E-Pass Generation &amp; QR Access</span>
+                  </span>
+                </div>
+
+              </Card>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── TEST MODE PAYMENT SIMULATOR MODAL ── */}
+      {showTestPayModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <Card className="bg-white border-slate-200 shadow-2xl rounded-3xl max-w-md w-full p-6 space-y-6">
+            
+            <div className="flex justify-between items-start border-b border-slate-100 pb-4">
+              <div>
+                <Badge className="bg-orange-500 text-white font-black text-[10px] border-none mb-1">
+                  Razorpay Test Gateway
+                </Badge>
+                <h3 className="text-lg font-black text-slate-900">Complete Test Payment</h3>
+              </div>
+              <button
+                onClick={() => setShowTestPayModal(false)}
+                className="text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer p-1"
+              >
+                <XCircle size={20} />
               </button>
             </div>
-          )}
+
+            {/* Price Badge */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase text-slate-400 block">Total Amount</span>
+                <span className="text-xs font-bold text-slate-700">{ev?.event_name || 'Event Pass'}</span>
+              </div>
+              <span className="text-2xl font-black text-slate-900">{priceDisplay}</span>
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="space-y-3">
+              <span className="text-xs font-extrabold text-slate-700 uppercase">Select Test Payment Method</span>
+              
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPayMethod("card")}
+                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 text-xs font-extrabold cursor-pointer transition ${
+                    selectedPayMethod === "card"
+                      ? "bg-orange-50 border-orange-400 text-orange-800 shadow-xs"
+                      : "bg-white border-slate-200 text-slate-600"
+                  }`}
+                >
+                  <CreditCard size={18} />
+                  <span className="text-[11px]">Card</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPayMethod("upi")}
+                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 text-xs font-extrabold cursor-pointer transition ${
+                    selectedPayMethod === "upi"
+                      ? "bg-orange-50 border-orange-400 text-orange-800 shadow-xs"
+                      : "bg-white border-slate-200 text-slate-600"
+                  }`}
+                >
+                  <Smartphone size={18} />
+                  <span className="text-[11px]">UPI / GPay</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedPayMethod("netbank")}
+                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 text-xs font-extrabold cursor-pointer transition ${
+                    selectedPayMethod === "netbank"
+                      ? "bg-orange-50 border-orange-400 text-orange-800 shadow-xs"
+                      : "bg-white border-slate-200 text-slate-600"
+                  }`}
+                >
+                  <Building size={18} />
+                  <span className="text-[11px]">NetBanking</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Test Security Note */}
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs font-semibold text-emerald-800">
+              <Lock size={16} className="shrink-0 text-emerald-600" />
+              <span>Razorpay Test Sandbox active. No real funds will be charged.</span>
+            </div>
+
+            {/* Submit Action */}
+            <Button
+              onClick={() => executeBooking(`pay_test_${Math.floor(100000 + Math.random() * 900000)}`)}
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white font-extrabold text-xs py-4 rounded-2xl shadow-lg border-none cursor-pointer gap-2"
+            >
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle2 size={16} />
+                  <span>Simulate Successful Test Payment ({priceDisplay})</span>
+                </>
+              )}
+            </Button>
+
+          </Card>
         </div>
       )}
     </div>
