@@ -2,14 +2,15 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   MapPin, CheckCircle2, XCircle, Info, AlertTriangle,
-  Send, Loader2, Edit, Calendar, Utensils, Ticket, ChevronRight, ArrowLeft, ShieldCheck, CreditCard, Lock, Smartphone, Building
+  Loader2, ChevronRight, ArrowLeft, ShieldCheck, CreditCard, UserCheck, QrCode
 } from "lucide-react";
 import {
-  getEventById, sendOtp, verifyOtp, resendOtp, bookEvent,
+  getEventById, bookEvent, createRazorpayOrder, getUserProfile,
 } from "@/Services/api";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const Toast = ({ show, message, type, onClose }) => {
   if (!show) return null;
@@ -39,40 +40,65 @@ export function Userbooking() {
 
   const [eventData, setEventData] = useState(null);
   const [form, setForm]         = useState({ name:"", email:"", phone:"", food_preference:"Veg" });
-  const [otp, setOtp]           = useState("");
-  const [otpSent, setOtpSent]   = useState(false);
-  const [verified, setVerified] = useState(false);
   const [loading, setLoading]   = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [step, setStep]         = useState(1);
   const [agreed, setAgreed]     = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [toast, setToast]       = useState({ show:false, message:"", type:"info" });
-  const [redirectTimer, setRedirectTimer] = useState(10);
-  const [showTestPayModal, setShowTestPayModal] = useState(false);
-  const [selectedPayMethod, setSelectedPayMethod] = useState("card");
+  const [redirectTimer, setRedirectTimer] = useState(6);
 
   const showToast = (message, type="info") => {
     setToast({ show:true, message, type });
     setTimeout(() => setToast({ show:false, message:"", type:"info" }), 3500);
   };
 
+  // 1. Mandatory User Login Check & Profile Pre-fill
   useEffect(() => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    if (!token) {
+      showToast("Please log in to your account before purchasing event tickets.", "warning");
+      setTimeout(() => {
+        navigate(`/login?redirect=/usersbooking/${id}`);
+      }, 1200);
+      return;
+    }
+
+    // Pre-fill user profile
+    getUserProfile()
+      .then((res) => {
+        const u = res?.data || res || {};
+        setForm((prev) => ({
+          ...prev,
+          name: u.full_name || u.name || u.username || prev.name,
+          email: u.email || prev.email,
+          phone: u.phone || u.phone_number || prev.phone,
+        }));
+      })
+      .catch(console.error);
+  }, [id, navigate]);
+
+  // 2. Fetch Event Data
+  useEffect(() => {
+    setDataLoading(true);
     getEventById(id)
       .then((res) => {
         const payload = res?.data || res;
         setEventData(payload);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setDataLoading(false));
   }, [id]);
 
+  // 3. Auto Redirect to My Account / Bookings after successful purchase
   useEffect(() => {
     let interval;
     if (step === 3 && successData && redirectTimer > 0) {
       interval = setInterval(() => {
         setRedirectTimer((prev) => prev - 1);
       }, 1000);
-    } else if (redirectTimer === 0) {
-      navigate("/");
+    } else if (step === 3 && redirectTimer === 0) {
+      navigate("/profile");
     }
     return () => clearInterval(interval);
   }, [step, successData, redirectTimer, navigate]);
@@ -80,7 +106,7 @@ export function Userbooking() {
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
   const validateEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  // Safe property extraction from DB response
+  // Safe DB Property Extraction
   const ev = eventData?.eventDetails || eventData || {};
   const booking = eventData?.booking || {};
 
@@ -110,66 +136,123 @@ export function Userbooking() {
   const priceDisplay = isPaidEvent ? `₹ ${passFeeNum.toLocaleString('en-IN')}` : "FREE PASS";
   const bannerUrl = ev?.banner_url || ev?.banner || ev?.image || eventData?.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800";
 
-  const handleSendOtp = async () => {
-    if (!form.email)               return showToast("Enter your email address first", "warning");
-    if (!validateEmail(form.email)) return showToast("Enter a valid email address", "error");
-    try {
-      setLoading(true);
-      await sendOtp(form.email);
-      setOtpSent(true);
-      showToast("OTP sent to your email address", "success");
-    } catch { showToast("Failed to send OTP", "error"); }
-    finally  { setLoading(false); }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otp) return showToast("Enter the 6-digit OTP", "warning");
-    try {
-      setLoading(true);
-      await verifyOtp(form.email, otp);
-      setVerified(true);
-      showToast("✓ Email verified successfully!", "success");
-    } catch { showToast("Invalid OTP code. Try again.", "error"); }
-    finally  { setLoading(false); }
-  };
-
-  const handleResendOtp = async () => {
-    try {
-      await resendOtp(form.email);
-      setOtp("");
-      showToast("OTP resent to email", "success");
-    } catch { showToast("Failed to resend OTP", "error"); }
-  };
-
-  const executeBooking = async (paymentId = null) => {
-    try {
-      setLoading(true);
-      const res = await bookEvent({
-        event_id: id,
-        ...form,
-        food_preference: ev?.food == 1 ? form.food_preference : "None",
-        payment_id: paymentId || `pay_test_${Math.floor(100000 + Math.random() * 900000)}`,
-      });
-      setSuccessData(res);
-      setStep(3);
-      setShowTestPayModal(false);
-      showToast("✓ Booking & Pass Confirmed!", "success");
-    } catch {
-      showToast("Booking confirmation failed. Try again.", "error");
-    } finally {
-      setLoading(false);
-    }
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
   };
 
   const handleBook = async () => {
-    if (!verified) return showToast("Verify your email first", "warning");
+    if (!form.name.trim()) return showToast("Enter your full name", "warning");
+    if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
 
     if (isPaidEvent) {
-      setShowTestPayModal(true);
+      try {
+        setLoading(true);
+        const sdkLoaded = await loadRazorpayScript();
+        if (!sdkLoaded) {
+          showToast("Razorpay SDK failed to load. Check internet connection.", "error");
+          setLoading(false);
+          return;
+        }
+
+        let orderRes = null;
+        try {
+          orderRes = await createRazorpayOrder({
+            amount: passFeeNum,
+            currency: "INR",
+            receipt: `rcpt_${Date.now()}`
+          });
+        } catch (e) {
+          console.warn("Backend Razorpay order creation warning:", e);
+        }
+
+        const razorpayData = orderRes?.data || orderRes || {};
+        const razorpayOrder = razorpayData?.order || {};
+        const keyId = razorpayData?.key_id || razorpayOrder?.key_id || "rzp_test_1DP5mmOlF5G5ag";
+
+        const options = {
+          key: keyId,
+          amount: passFeeNum * 100,
+          currency: "INR",
+          name: "BookMyEvent",
+          description: `Entry Ticket: ${ev?.event_name || ev?.eventName || "Event Pass"}`,
+          image: bannerUrl,
+          order_id: razorpayOrder?.id,
+          prefill: {
+            name: form.name,
+            email: form.email,
+            contact: form.phone,
+          },
+          theme: { color: "#f97316" },
+          handler: async function (response) {
+            try {
+              setLoading(true);
+              const res = await bookEvent({
+                event_id: id,
+                ...form,
+                food_preference: ev?.food == 1 ? form.food_preference : "None",
+                payment_id: response.razorpay_payment_id || `pay_rzp_${Date.now()}`,
+                razorpay_order_id: response.razorpay_order_id || "",
+                razorpay_signature: response.razorpay_signature || "",
+              });
+              setSuccessData(res);
+              setStep(3);
+              showToast("✓ Payment & Pass Confirmed!", "success");
+            } catch {
+              showToast("Booking verification failed. Try again.", "error");
+            } finally {
+              setLoading(false);
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              setLoading(false);
+            }
+          }
+        };
+
+        const razorpayInstance = new window.Razorpay(options);
+        razorpayInstance.on("payment.failed", function (response) {
+          console.error("Razorpay Payment Failed:", response.error);
+          showToast(`Payment Failed: ${response.error?.description || "Transaction declined"}`, "error");
+          setLoading(false);
+        });
+        razorpayInstance.open();
+
+      } catch (err) {
+        showToast(`Razorpay launch error: ${err.message || "Failed to initialize payment"}`, "error");
+        setLoading(false);
+      }
     } else {
-      await executeBooking(null);
+      try {
+        setLoading(true);
+        const res = await bookEvent({
+          event_id: id,
+          ...form,
+          food_preference: ev?.food == 1 ? form.food_preference : "None",
+        });
+        setSuccessData(res);
+        setStep(3);
+        showToast("✓ Ticket Pass Confirmed!", "success");
+      } catch {
+        showToast("Booking failed. Try again.", "error");
+      } finally {
+        setLoading(false);
+      }
     }
   };
+
+  // Safe Base64 QR Image Formatting
+  const rawQr = successData?.data?.qr_code || successData?.qr_code;
+  const qrImageSrc = rawQr 
+    ? (rawQr.startsWith("data:") ? rawQr : `data:image/png;base64,${rawQr}`) 
+    : null;
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans select-none pb-24">
@@ -196,37 +279,38 @@ export function Userbooking() {
           </div>
 
           <Badge className="bg-orange-50 text-orange-600 border-orange-200 font-extrabold text-xs px-3.5 py-1">
-            {ev?.event_name || ev?.eventName || 'BookMyEvent Pass'}
+            {dataLoading ? <Skeleton className="h-4 w-28" /> : (ev?.event_name || ev?.eventName || 'BookMyEvent Pass')}
           </Badge>
         </div>
       </div>
 
-      {/* Progress Tracker Bar */}
+      {/* Improved Fit Progress Stepper */}
       {step < 3 && (
-        <div className="max-w-xl mx-auto w-full px-6 pt-8 pb-4">
+        <div className="max-w-md mx-auto w-full px-6 pt-6 pb-2">
           <div className="flex items-center justify-between relative">
-            <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 z-0 rounded-full" />
+            <div className="absolute left-8 right-8 top-4.5 h-1 bg-slate-200 z-0 rounded-full" />
             <div
-              className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-orange-500 to-amber-500 z-0 rounded-full transition-all duration-300"
-              style={{ width: step === 1 ? "50%" : "100%" }}
+              className="absolute left-8 top-4.5 h-1 bg-gradient-to-r from-orange-500 to-amber-500 z-0 rounded-full transition-all duration-300"
+              style={{ width: step === 1 ? "0%" : "calc(100% - 64px)" }}
             />
 
-            {[1, 2].map((num) => (
-              <div key={num} className="relative z-10 flex flex-col items-center">
-                <div
-                  className={`w-9 h-9 rounded-full font-black text-xs flex items-center justify-center transition-all ${
-                    step >= num
-                      ? "bg-orange-500 text-white shadow-md ring-4 ring-orange-100"
-                      : "bg-white text-slate-400 border border-slate-300"
-                  }`}
-                >
-                  {num}
-                </div>
-                <span className={`text-[11px] font-extrabold mt-1.5 uppercase ${step === num ? "text-orange-600" : "text-slate-400"}`}>
-                  {num === 1 ? "Visitor Details" : "Review & Pay"}
-                </span>
+            <div className="relative z-10 flex flex-col items-center">
+              <div className={`w-9 h-9 rounded-full font-black text-xs flex items-center justify-center transition-all ${
+                step >= 1 ? "bg-orange-500 text-white shadow-md ring-4 ring-orange-100" : "bg-white text-slate-400 border border-slate-300"
+              }`}>
+                1
               </div>
-            ))}
+              <span className="text-[11px] font-extrabold mt-1.5 uppercase text-orange-600">Visitor Details</span>
+            </div>
+
+            <div className="relative z-10 flex flex-col items-center">
+              <div className={`w-9 h-9 rounded-full font-black text-xs flex items-center justify-center transition-all ${
+                step >= 2 ? "bg-orange-500 text-white shadow-md ring-4 ring-orange-100" : "bg-white text-slate-400 border border-slate-300"
+              }`}>
+                2
+              </div>
+              <span className={`text-[11px] font-extrabold mt-1.5 uppercase ${step === 2 ? "text-orange-600" : "text-slate-400"}`}>Review &amp; Pay</span>
+            </div>
           </div>
         </div>
       )}
@@ -239,7 +323,7 @@ export function Userbooking() {
           </div>
           <h2 className="text-2xl font-black text-slate-900 text-center">Ticket Pass Confirmed!</h2>
           <p className="text-xs text-slate-500 font-semibold text-center mt-1 mb-6">
-            Your digital entry QR pass has been generated and issued to your email.
+            Your entry ticket pass and digital QR code have been added to your account.
           </p>
 
           {/* Ticket Pass Card */}
@@ -249,7 +333,7 @@ export function Userbooking() {
                 <Badge className="bg-orange-500 text-white font-extrabold text-[10px] border-none">
                   Official Entry Pass
                 </Badge>
-                <span className="text-[10px] font-mono text-slate-400">BKG-{Math.floor(100000 + Math.random() * 900000)}</span>
+                <span className="text-[10px] font-mono text-slate-400">BKG-{successData.booking_id || successData.data?.booking_id || Math.floor(100000 + Math.random() * 900000)}</span>
               </div>
               <h3 className="text-xl font-black text-white">{successData.event_details?.name || ev?.event_name || ev?.eventName}</h3>
               <p className="text-xs text-slate-300 flex items-center gap-1">
@@ -259,12 +343,19 @@ export function Userbooking() {
             </div>
 
             <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
-              <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm shrink-0">
-                <img
-                  src={`data:image/png;base64,${successData.qr_code}`}
-                  alt="QR Pass Code"
-                  className="w-32 h-32 block"
-                />
+              <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm shrink-0 flex items-center justify-center">
+                {qrImageSrc ? (
+                  <img
+                    src={qrImageSrc}
+                    alt="Entry QR Pass Code"
+                    className="w-36 h-36 block object-contain"
+                  />
+                ) : (
+                  <div className="w-36 h-36 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 gap-2">
+                    <QrCode size={40} />
+                    <span className="text-[10px] font-bold">QR Pass Issued</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 text-xs text-slate-600 font-semibold text-center sm:text-left">
@@ -287,11 +378,10 @@ export function Userbooking() {
           </Card>
 
           <Button
-            onClick={() => navigate("/")}
-            variant="outline"
-            className="w-full rounded-2xl font-extrabold text-xs py-3.5 cursor-pointer border-slate-200"
+            onClick={() => navigate("/profile")}
+            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md border-none cursor-pointer"
           >
-            Return to Home ({redirectTimer}s)
+            Go to My Account / Bookings ({redirectTimer}s)
           </Button>
         </div>
       )}
@@ -308,9 +398,15 @@ export function Userbooking() {
                 {/* STEP 1: VISITOR DETAILS */}
                 {step === 1 && (
                   <div className="space-y-6">
-                    <div className="border-b border-slate-100 pb-4">
-                      <h2 className="text-xl font-black text-slate-900">Guest Information</h2>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">Complete your contact details for ticket pass issuance.</p>
+                    <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
+                      <div>
+                        <h2 className="text-xl font-black text-slate-900">Guest Information</h2>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Contact details automatically linked to your account.</p>
+                      </div>
+                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-xs px-3 py-1 gap-1">
+                        <UserCheck size={14} />
+                        <span>Logged In Account</span>
+                      </Badge>
                     </div>
 
                     <div className="space-y-4 text-xs font-semibold">
@@ -328,55 +424,15 @@ export function Userbooking() {
 
                       <div>
                         <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Email Address *</label>
-                        <div className="flex gap-2">
-                          <input
-                            name="email"
-                            type="email"
-                            placeholder="you@example.com"
-                            value={form.email}
-                            onChange={handleChange}
-                            disabled={verified}
-                            className="flex-1 h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-slate-100"
-                          />
-                          {!verified ? (
-                            <Button
-                              type="button"
-                              onClick={otpSent ? handleResendOtp : handleSendOtp}
-                              disabled={loading || !form.email}
-                              className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-5 rounded-xl cursor-pointer border-none shrink-0"
-                            >
-                              {loading ? <Loader2 size={14} className="animate-spin" /> : otpSent ? "Resend" : "Get OTP"}
-                            </Button>
-                          ) : (
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-xs px-4">
-                              Verified ✓
-                            </Badge>
-                          )}
-                        </div>
+                        <input
+                          name="email"
+                          type="email"
+                          placeholder="you@example.com"
+                          value={form.email}
+                          onChange={handleChange}
+                          className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500"
+                        />
                       </div>
-
-                      {otpSent && !verified && (
-                        <div className="p-4 bg-orange-50/60 border border-orange-200 rounded-2xl space-y-2">
-                          <span className="text-[10px] font-extrabold text-orange-800 uppercase">Enter 6-Digit Verification OTP</span>
-                          <div className="flex gap-2">
-                            <input
-                              value={otp}
-                              maxLength={6}
-                              onChange={e => setOtp(e.target.value.replace(/\D/g, ""))}
-                              placeholder="000000"
-                              className="flex-1 h-10 bg-white border border-orange-200 rounded-xl px-3 text-center text-sm font-black tracking-widest text-orange-900 outline-none"
-                            />
-                            <Button
-                              type="button"
-                              onClick={handleVerifyOtp}
-                              disabled={loading || !otp}
-                              className="bg-orange-600 hover:bg-orange-700 text-white font-extrabold text-xs px-5 rounded-xl cursor-pointer"
-                            >
-                              Verify OTP
-                            </Button>
-                          </div>
-                        </div>
-                      )}
 
                       <div>
                         <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Phone Number *</label>
@@ -417,19 +473,17 @@ export function Userbooking() {
                       )}
                     </div>
 
-                    {verified ? (
-                      <Button
-                        onClick={() => setStep(2)}
-                        className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-xl shadow-md border-none cursor-pointer gap-1 mt-2"
-                      >
-                        <span>Continue to Review &amp; Pay</span>
-                        <ChevronRight size={16} />
-                      </Button>
-                    ) : (
-                      <div className="w-full p-3.5 bg-slate-100 text-slate-500 text-center font-extrabold text-xs rounded-xl border border-slate-200 mt-2">
-                        Verify email address to continue
-                      </div>
-                    )}
+                    <Button
+                      onClick={() => {
+                        if (!form.name.trim()) return showToast("Enter your full name", "warning");
+                        if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
+                        setStep(2);
+                      }}
+                      className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-xl shadow-md border-none cursor-pointer gap-1 mt-2"
+                    >
+                      <span>Continue to Review &amp; Pay</span>
+                      <ChevronRight size={16} />
+                    </Button>
                   </div>
                 )}
 
@@ -471,17 +525,30 @@ export function Userbooking() {
               <Card className="bg-white border border-slate-200/90 shadow-md rounded-3xl p-6 space-y-6">
                 
                 <div className="flex gap-4 items-center border-b border-slate-100 pb-4">
-                  <img
-                    src={bannerUrl}
-                    alt="Event Banner"
-                    className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-slate-100 shadow-xs"
-                  />
-                  <div>
-                    <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-[10px] mb-1">
-                      {ev?.category || 'Event Pass'}
-                    </Badge>
-                    <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">{ev?.event_name || ev?.eventName || 'Cultural Fest 2026'}</h3>
-                    <p className="text-[11px] text-slate-400 line-clamp-1">{ev?.venue || 'Exhibition Venue'}</p>
+                  {dataLoading ? (
+                    <Skeleton className="w-16 h-16 rounded-2xl shrink-0" />
+                  ) : (
+                    <img
+                      src={bannerUrl}
+                      alt="Event Banner"
+                      className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-slate-100 shadow-xs"
+                    />
+                  )}
+                  <div className="space-y-1">
+                    {dataLoading ? (
+                      <>
+                        <Skeleton className="h-3 w-20 rounded-md" />
+                        <Skeleton className="h-4 w-32 rounded-md" />
+                      </>
+                    ) : (
+                      <>
+                        <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-[10px] mb-1">
+                          {ev?.category || 'Event Pass'}
+                        </Badge>
+                        <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">{ev?.event_name || ev?.eventName || 'Cultural Fest 2026'}</h3>
+                        <p className="text-[11px] text-slate-400 line-clamp-1">{ev?.venue || 'Exhibition Venue'}</p>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -493,7 +560,11 @@ export function Userbooking() {
 
                   <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-center justify-between">
                     <span className="text-xs font-extrabold text-orange-900 uppercase">Total Pass Fee</span>
-                    <span className="text-xl font-black text-orange-700">{priceDisplay}</span>
+                    {dataLoading ? (
+                      <Skeleton className="h-7 w-24 rounded-lg" />
+                    ) : (
+                      <span className="text-xl font-black text-orange-700">{priceDisplay}</span>
+                    )}
                   </div>
                 </div>
 
@@ -513,8 +584,8 @@ export function Userbooking() {
 
                     <Button
                       onClick={handleBook}
-                      disabled={loading || !agreed}
-                      className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white font-extrabold text-xs py-4 rounded-2xl shadow-md border-none cursor-pointer gap-2 disabled:opacity-50"
+                      disabled={loading || !agreed || dataLoading}
+                      className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-4 rounded-2xl shadow-md border-none cursor-pointer gap-2 disabled:opacity-50"
                     >
                       {loading ? (
                         <Loader2 size={16} className="animate-spin" />
@@ -544,107 +615,6 @@ export function Userbooking() {
             </div>
 
           </div>
-        </div>
-      )}
-
-      {/* ── TEST MODE PAYMENT SIMULATOR MODAL ── */}
-      {showTestPayModal && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <Card className="bg-white border-slate-200 shadow-2xl rounded-3xl max-w-md w-full p-6 space-y-6">
-            
-            <div className="flex justify-between items-start border-b border-slate-100 pb-4">
-              <div>
-                <Badge className="bg-orange-500 text-white font-black text-[10px] border-none mb-1">
-                  Razorpay Test Gateway
-                </Badge>
-                <h3 className="text-lg font-black text-slate-900">Complete Test Payment</h3>
-              </div>
-              <button
-                onClick={() => setShowTestPayModal(false)}
-                className="text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer p-1"
-              >
-                <XCircle size={20} />
-              </button>
-            </div>
-
-            {/* Price Badge */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase text-slate-400 block">Total Amount</span>
-                <span className="text-xs font-bold text-slate-700">{ev?.event_name || 'Event Pass'}</span>
-              </div>
-              <span className="text-2xl font-black text-slate-900">{priceDisplay}</span>
-            </div>
-
-            {/* Payment Method Selector */}
-            <div className="space-y-3">
-              <span className="text-xs font-extrabold text-slate-700 uppercase">Select Test Payment Method</span>
-              
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedPayMethod("card")}
-                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 text-xs font-extrabold cursor-pointer transition ${
-                    selectedPayMethod === "card"
-                      ? "bg-orange-50 border-orange-400 text-orange-800 shadow-xs"
-                      : "bg-white border-slate-200 text-slate-600"
-                  }`}
-                >
-                  <CreditCard size={18} />
-                  <span className="text-[11px]">Card</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedPayMethod("upi")}
-                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 text-xs font-extrabold cursor-pointer transition ${
-                    selectedPayMethod === "upi"
-                      ? "bg-orange-50 border-orange-400 text-orange-800 shadow-xs"
-                      : "bg-white border-slate-200 text-slate-600"
-                  }`}
-                >
-                  <Smartphone size={18} />
-                  <span className="text-[11px]">UPI / GPay</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedPayMethod("netbank")}
-                  className={`p-3 rounded-2xl border flex flex-col items-center gap-1.5 text-xs font-extrabold cursor-pointer transition ${
-                    selectedPayMethod === "netbank"
-                      ? "bg-orange-50 border-orange-400 text-orange-800 shadow-xs"
-                      : "bg-white border-slate-200 text-slate-600"
-                  }`}
-                >
-                  <Building size={18} />
-                  <span className="text-[11px]">NetBanking</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Test Security Note */}
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2 text-xs font-semibold text-emerald-800">
-              <Lock size={16} className="shrink-0 text-emerald-600" />
-              <span>Razorpay Test Sandbox active. No real funds will be charged.</span>
-            </div>
-
-            {/* Submit Action */}
-            <Button
-              onClick={() => executeBooking(`pay_test_${Math.floor(100000 + Math.random() * 900000)}`)}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white font-extrabold text-xs py-4 rounded-2xl shadow-lg border-none cursor-pointer gap-2"
-            >
-              {loading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <>
-                  <CheckCircle2 size={16} />
-                  <span>Simulate Successful Test Payment ({priceDisplay})</span>
-                </>
-              )}
-            </Button>
-
-          </Card>
         </div>
       )}
     </div>
