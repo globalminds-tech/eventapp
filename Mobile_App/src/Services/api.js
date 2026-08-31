@@ -1,9 +1,13 @@
 // src/Services/api.js
 import axios from "axios";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// DEFAULT BACKEND CANDIDATES
-const DEFAULT_BASE_URL = "http://10.133.157.12:5001/"; // Hotspot / Local Network IP
+// DEFAULT BACKEND CANDIDATES (Localhost for Web browser, Hotspot IP for Native mobile)
+const DEFAULT_BASE_URL =
+  Platform.OS === "web"
+    ? "http://localhost:5001/"
+    : "http://10.156.164.12:5001/";
 
 // AXIOS INSTANCE WITH ROBUST TIMEOUT
 const api = axios.create({
@@ -28,6 +32,10 @@ export const setCustomBaseUrl = async (newUrl) => {
 };
 
 export const getCurrentBaseUrl = async () => {
+  if (Platform.OS === "web") {
+    api.defaults.baseURL = "http://localhost:5001/";
+    return "http://localhost:5001/";
+  }
   try {
     const storedUrl = await AsyncStorage.getItem("custom_base_url");
     if (storedUrl) {
@@ -47,11 +55,15 @@ getCurrentBaseUrl();
 api.interceptors.request.use(
   async (req) => {
     try {
-      // Dynamic base URL check
-      const storedUrl = await AsyncStorage.getItem("custom_base_url");
-      if (storedUrl && api.defaults.baseURL !== storedUrl) {
-        api.defaults.baseURL = storedUrl;
-        req.baseURL = storedUrl;
+      if (Platform.OS === "web") {
+        req.baseURL = "http://localhost:5001/";
+        api.defaults.baseURL = "http://localhost:5001/";
+      } else {
+        const storedUrl = await AsyncStorage.getItem("custom_base_url");
+        if (storedUrl && api.defaults.baseURL !== storedUrl) {
+          api.defaults.baseURL = storedUrl;
+          req.baseURL = storedUrl;
+        }
       }
       
       const token = await AsyncStorage.getItem("token");
@@ -416,6 +428,21 @@ export const resendOtp = async (email) => {
 export const bookEvent = async (data) => {
   const res = await api.post("/user/book-event", data);
   return res.data;
+};
+
+export const getUserBookingsApi = async (email, userId) => {
+  try {
+    let url = "/user/my-bookings";
+    const params = [];
+    if (email) params.push(`email=${encodeURIComponent(email)}`);
+    if (userId) params.push(`user_id=${userId}`);
+    if (params.length > 0) url += `?${params.join("&")}`;
+    const res = await api.get(url);
+    return res.data;
+  } catch (err) {
+    console.warn("Failed to fetch user bookings:", err);
+    return { success: false, data: [] };
+  }
 };
 
 // Stall Booking

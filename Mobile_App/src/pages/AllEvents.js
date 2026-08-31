@@ -60,27 +60,28 @@ export default function AllEvents({ route, navigation }) {
   const fetchEvents = async () => {
     setIsLoading(true);
     try {
-      const data = await getHomeEventshow();
-      if (!data || data.length === 0) {
+      const res = await getHomeEventshow();
+      const rawList = res?.data || (Array.isArray(res) ? res : []);
+      if (!rawList || rawList.length === 0) {
         setEvents([]);
         setFilteredEvents([]);
         return;
       }
 
-      const formatted = data.map((e) => {
+      const formatted = rawList.map((e) => {
         const isDonation = e.entry_type === "Donation" || String(e.pass_fee).toLowerCase() === "donation";
         const isFree = e.entry_type === "Free" || (!isDonation && (!e.pass_fee || Number(e.pass_fee) === 0));
         return {
           id: e.id,
-          title: e.event_name,
+          title: e.event_name || e.name || "Live Event",
           category: e.category || "General",
           entry_type: isDonation ? "Donation" : isFree ? "Free" : "Paid",
           price: isDonation || isFree ? 0 : (Number(e.pass_fee) || 0),
-          location: e.venue,
-          fullLocation: `${e.venue}, ${e.address}`,
-          date: e.start_date,
-          endDate: e.end_date,
-          image: e.banner_url || "https://via.placeholder.com/400",
+          location: e.venue || "Venue",
+          fullLocation: `${e.venue || ""}, ${e.address || ""}`,
+          date: e.start_date || "",
+          endDate: e.end_date || "",
+          image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
         };
       });
 

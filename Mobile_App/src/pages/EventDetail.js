@@ -82,11 +82,20 @@ export default function EventDetail({ navigation, route }) {
     </SafeAreaView>
   );
 
-  const { eventDetails: ev, organizer, booking, vendors, sponsors, guests, terms, food_items, layout } = data;
+  const payload = data?.data || data || {};
+  const ev = payload?.eventDetails || payload;
+  const organizer = payload?.organizer || {};
+  const booking = payload?.booking || {};
+  const vendors = payload?.vendors || [];
+  const sponsors = payload?.sponsors || [];
+  const guests = payload?.guests || [];
+  const terms = payload?.terms || [];
+  const food_items = payload?.food_items || [];
+  const layout = payload?.layout || {};
 
-  const bannerUrl = ev?.banner_url || "https://via.placeholder.com/600x300";
-  const entryType = booking?.charge_type || "Free";
-  const isPaid    = entryType?.toLowerCase() === "paid";
+  const bannerUrl = ev?.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800";
+  const entryType = booking?.charge_type || ev?.entry_type || "Free";
+  const isPaid    = entryType?.toLowerCase() === "paid" || (ev?.pass_fee && Number(ev.pass_fee) > 0);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -241,6 +250,14 @@ export default function EventDetail({ navigation, route }) {
           </SectionCard>
         )}
 
+        {/* Book Tickets CTA Button */}
+        <TouchableOpacity
+          style={styles.bookBtn}
+          onPress={() => navigation.navigate("UserBooking", { eventId })}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.bookBtnText}>Book Tickets Now</Text>
+        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>
@@ -248,12 +265,12 @@ export default function EventDetail({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#020617" },
-  center: { flex: 1, backgroundColor: "#020617", alignItems: "center", justifyContent: "center", padding: 20 },
-  loadingText: { color: "#94a3b8", marginTop: 12, fontSize: 14 },
-  errorText: { color: "#f87171", marginTop: 12, fontSize: 14, textAlign: "center" },
+  container: { flex: 1, backgroundColor: "#f8fafc" },
+  center: { flex: 1, backgroundColor: "#f8fafc", alignItems: "center", justifyContent: "center", padding: 20 },
+  loadingText: { color: "#64748b", marginTop: 12, fontSize: 14, fontWeight: "600" },
+  errorText: { color: "#ef4444", marginTop: 12, fontSize: 14, textAlign: "center", fontWeight: "600" },
   backBtn: { marginTop: 20, backgroundColor: "#f97316", paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20 },
-  backBtnText: { color: "#fff", fontWeight: "bold" },
+  backBtnText: { color: "#ffffff", fontWeight: "bold" },
 
   header: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 16,
@@ -261,15 +278,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: "#1e293b",
   },
   backIcon: { marginRight: 12, padding: 4 },
-  headerTitle: { flex: 1, color: "#f8fafc", fontSize: 16, fontWeight: "bold" },
+  headerTitle: { flex: 1, color: "#ffffff", fontSize: 16, fontWeight: "bold" },
 
-  banner: { width: "100%", aspectRatio: 16 / 9, backgroundColor: "#1e293b", justifyContent: "flex-end" },
-  bannerGradient: { position: "absolute", left: 0, right: 0, bottom: 0, height: 120, backgroundColor: "rgba(2,6,23,0.6)" },
+  banner: { width: "100%", aspectRatio: 16 / 9, backgroundColor: "#e2e8f0", justifyContent: "flex-end" },
+  bannerGradient: { position: "absolute", left: 0, right: 0, bottom: 0, height: 120, backgroundColor: "rgba(15,23,42,0.4)" },
 
-  titleBlock: { padding: 16 },
+  titleBlock: { padding: 16, backgroundColor: "#ffffff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", marginBottom: 16 },
   titleRow: { flexDirection: "row", gap: 8, marginBottom: 10, flexWrap: "wrap" },
-  eventName: { color: "#f8fafc", fontSize: 22, fontWeight: "bold", marginBottom: 8 },
-  description: { color: "#94a3b8", fontSize: 14, lineHeight: 22 },
+  eventName: { color: "#0f172a", fontSize: 22, fontWeight: "bold", marginBottom: 8 },
+  description: { color: "#475569", fontSize: 14, lineHeight: 22 },
 
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   badgeText: { fontSize: 11, fontWeight: "bold", textTransform: "uppercase" },
@@ -278,25 +295,26 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 11, fontWeight: "bold", textTransform: "uppercase" },
 
   sectionCard: {
-    backgroundColor: "#0f172a", borderRadius: 16, marginHorizontal: 16,
-    marginBottom: 16, padding: 16, borderWidth: 1, borderColor: "#1e293b",
+    backgroundColor: "#ffffff", borderRadius: 16, marginHorizontal: 16,
+    marginBottom: 16, padding: 16, borderWidth: 1, borderColor: "#e2e8f0",
+    elevation: 2, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6,
   },
   sectionTitle: {
-    color: "#0ea5e9", fontSize: 13, fontWeight: "bold", textTransform: "uppercase",
+    color: "#0284c7", fontSize: 13, fontWeight: "bold", textTransform: "uppercase",
     letterSpacing: 1, marginBottom: 14, paddingBottom: 10,
-    borderBottomWidth: 1, borderBottomColor: "#1e293b",
+    borderBottomWidth: 1, borderBottomColor: "#f1f5f9",
   },
 
   infoRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
-  infoLabel: { color: "#64748b", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
-  infoValue: { color: "#f8fafc", fontSize: 14 },
+  infoLabel: { color: "#94a3b8", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  infoValue: { color: "#0f172a", fontSize: 14, fontWeight: "600" },
 
-  listItem: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#1e293b" },
-  listItemTitle: { color: "#f8fafc", fontSize: 14, fontWeight: "bold" },
+  listItem: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  listItemTitle: { color: "#0f172a", fontSize: 14, fontWeight: "bold" },
   listItemSub: { color: "#64748b", fontSize: 12, marginTop: 2 },
 
   termRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 10 },
-  termName: { color: "#f8fafc", fontSize: 14, fontWeight: "600" },
+  termName: { color: "#0f172a", fontSize: 14, fontWeight: "600" },
   termSub: { color: "#64748b", fontSize: 12, marginTop: 2 },
 
   guestAvatar: { width: 40, height: 40, borderRadius: 20 },
@@ -305,8 +323,9 @@ const styles = StyleSheet.create({
   foodEmoji: { fontSize: 18 },
 
   bookBtn: {
-    marginHorizontal: 16, marginTop: 8, backgroundColor: "#f97316",
-    borderRadius: 16, padding: 16, alignItems: "center",
+    marginHorizontal: 16, marginTop: 8, marginBottom: 24, backgroundColor: "#f97316",
+    borderRadius: 16, padding: 16, alignItems: "center", elevation: 4,
+    shadowColor: "#f97316", shadowOpacity: 0.25, shadowRadius: 8,
   },
-  bookBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  bookBtnText: { color: "#ffffff", fontWeight: "900", fontSize: 16, letterSpacing: 0.5 },
 });
