@@ -5,8 +5,6 @@ import {
 } from "lucide-react";
 import StepFoodProvision from "./StepFoodDetails";
 import StepVehicleProvision from "./StepVehiclePassDetails";
-import Step3LayoutStall from "./Step3Layout";
-import Step4Documents from "./Step4Documents";
 
 // ── Reusable Accordion Section ──
 const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = false, accentColor = "cyan" }) => {
@@ -211,15 +209,6 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
         </div>
       </AccordionSection>
 
-      {/* ── Documents & Media ── */}
-      <AccordionSection icon={FileText} title="Additional Documents" accentColor="rose" defaultOpen={true}>
-        <Step4Documents formData={formData} setFormData={setFormData} showStep4Errors={showErrors} />
-      </AccordionSection>
-
-      {/* ── Stall Layout ── */}
-      <AccordionSection icon={Layers} title="Stall Layout & Configuration" accentColor="emerald" defaultOpen={true}>
-        <Step3LayoutStall formData={formData} setFormData={setFormData} showStep3Errors={showErrors} />
-      </AccordionSection>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Users, ChevronDown } from "lucide-react";
+import { Users, ChevronDown, FileText } from "lucide-react";
 import Step6VendorSponsor from "./Step6VendorSponsor";
+import Step4Documents from "./Step4Documents";
 
 // ── Reusable Accordion Section ──
 const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = true, accentColor = "cyan" }) => {
@@ -10,6 +11,7 @@ const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = tr
     purple: { bg: "bg-purple-50", text: "text-purple-600" },
     emerald: { bg: "bg-emerald-50", text: "text-emerald-600" },
     amber: { bg: "bg-amber-50", text: "text-amber-600" },
+    rose: { bg: "bg-rose-50", text: "text-rose-600" },
   };
   const c = colorMap[accentColor] || colorMap.cyan;
 
@@ -45,7 +47,7 @@ const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = tr
   );
 };
 
-const Step4PartnersTerms = ({ formData, setFormData, isReadOnly }) => {
+const Step4PartnersTerms = ({ formData, setFormData, isReadOnly, showErrors }) => {
   const vendorCount = formData.vendorSponsor?.vendors?.length || 0;
   const sponsorCount = formData.vendorSponsor?.sponsors?.length || 0;
   const guestCount = formData.vendorSponsor?.guests?.length || 0;
@@ -76,6 +78,17 @@ const Step4PartnersTerms = ({ formData, setFormData, isReadOnly }) => {
         defaultOpen={true}
       >
         <Step6VendorSponsor formData={formData} setFormData={setFormData} isReadOnly={isReadOnly} />
+      </AccordionSection>
+
+      {/* ── Documents & Media ── */}
+      <AccordionSection
+        icon={FileText}
+        title="Additional Documents"
+        badge={formData.documents?.additionalDocs?.length > 0 ? `${formData.documents.additionalDocs.length} uploaded` : undefined}
+        accentColor="rose"
+        defaultOpen={true}
+      >
+        <Step4Documents formData={formData} setFormData={setFormData} showStep4Errors={showErrors} isReadOnly={isReadOnly} />
       </AccordionSection>
     </div>
   );

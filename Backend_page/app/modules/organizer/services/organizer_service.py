@@ -31,33 +31,117 @@ class OrganizerService:
                 return [v.to_dict() for v in venues]
         except Exception:
             pass
-        return [
-            { "id": 1, "venue_name": "Grand Convention Center", "city_name": "Chennai", "address": "123 MRC Nagar, Chennai", "total_area_sqft": 50000.0 },
-            { "id": 2, "venue_name": "Cyber City Auditorium", "city_name": "Bangalore", "address": "100 Innovation Way, Cyber City, Bangalore", "total_area_sqft": 35000.0 },
-            { "id": 3, "venue_name": "International Expo Center", "city_name": "Hyderabad", "address": "HITEC City Main Road, Hyderabad", "total_area_sqft": 75000.0 },
-            { "id": 4, "venue_name": "Royal Palace Grounds", "city_name": "Mumbai", "address": "BKC Complex, Bandra East, Mumbai", "total_area_sqft": 100000.0 },
-        ]
+        return []
+
+    @staticmethod
+    def create_venue(venue_data: dict, user_id: int = None) -> dict:
+        from app.extensions.database import db
+        from app.models.venue import Venue
+        try:
+            new_venue = Venue(
+                venue_name=venue_data.get("venue_name"),
+                address=venue_data.get("address"),
+                city_name=venue_data.get("city_name", ""),
+                state_name=venue_data.get("state_name", ""),
+                country_name=venue_data.get("country_name", ""),
+                pin_code=venue_data.get("pin_code", ""),
+                status="Active",
+                organizer_id=user_id or venue_data.get("organizer_id")
+            )
+            db.session.add(new_venue)
+            db.session.commit()
+            return new_venue.to_dict()
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @staticmethod
     def get_vendor_types() -> list[dict]:
-        return [
-            { "vendor_type": "Catering & Beverages" },
-            { "vendor_type": "Audio & Visual Systems" },
-            { "vendor_type": "Security & Bouncers" },
-            { "vendor_type": "Stage & Decoration" },
-            { "vendor_type": "Lighting & Power Backup" },
-            { "vendor_type": "Photography & Videography" },
-        ]
+        from sqlalchemy import select
+        from app.extensions.database import db
+        from app.models.vendor import VendorDetails
+        try:
+            stmt = select(VendorDetails.vendor_type).distinct()
+            types = db.session.scalars(stmt).all()
+            result = [{"vendor_type": t} for t in types if t]
+            if not result:
+                return [
+                    {"vendor_type": "Catering & Beverages"},
+                    {"vendor_type": "Audio & Visual Systems"},
+                    {"vendor_type": "Security & Bouncers"},
+                    {"vendor_type": "Stage & Decoration"}
+                ]
+            return result
+        except Exception:
+            return []
+
+    @staticmethod
+    def get_vendor_names(vendor_type: str = None) -> list[dict]:
+        from sqlalchemy import select
+        from app.extensions.database import db
+        from app.models.vendor import VendorDetails
+        try:
+            stmt = select(VendorDetails)
+            if vendor_type:
+                stmt = stmt.where(VendorDetails.vendor_type == vendor_type)
+            vendors = db.session.scalars(stmt).all()
+            return [{"vendor_name": v.vendor_name, "vendor_type": v.vendor_type} for v in vendors if v.vendor_name]
+        except Exception:
+            return []
 
     @staticmethod
     def get_sponsors() -> list[dict]:
-        return [
-            { "sponsor_name": "Red Bull Energy" },
-            { "sponsor_name": "Tech Corp Global" },
-            { "sponsor_name": "Monster Energy" },
-            { "sponsor_name": "Samsung Electronics" },
-            { "sponsor_name": "Intel Corporation" },
-        ]
+        from sqlalchemy import select
+        from app.extensions.database import db
+        from app.models.sponsor import SponsorDetails
+        try:
+            stmt = select(SponsorDetails)
+            sponsors = db.session.scalars(stmt).all()
+            return [{"sponsor_name": s.sponsor_name} for s in sponsors if s.sponsor_name]
+        except Exception:
+            return []
+
+    @staticmethod
+    def create_vendor(vendor_data: dict, user_id: int = None) -> dict:
+        from app.extensions.database import db
+        from app.models.vendor import VendorDetails
+        try:
+            new_vendor = VendorDetails(
+                vendor_type=vendor_data.get("vendor_type") or vendor_data.get("vendorType"),
+                vendor_name=vendor_data.get("vendor_name") or vendor_data.get("vendorName"),
+                company_name=vendor_data.get("company_name", ""),
+                primary_contact=vendor_data.get("primary_contact", ""),
+                mail_id=vendor_data.get("mail_id", ""),
+                address=vendor_data.get("address", ""),
+                status="Active",
+                organizer_id=user_id or vendor_data.get("organizer_id")
+            )
+            db.session.add(new_vendor)
+            db.session.commit()
+            return {"vendor_name": new_vendor.vendor_name, "vendor_type": new_vendor.vendor_type}
+        except Exception as e:
+            db.session.rollback()
+            raise e
+
+    @staticmethod
+    def create_sponsor(sponsor_data: dict, user_id: int = None) -> dict:
+        from app.extensions.database import db
+        from app.models.sponsor import SponsorDetails
+        try:
+            new_sponsor = SponsorDetails(
+                sponsor_name=sponsor_data.get("sponsor_name") or sponsor_data.get("sponsorName"),
+                primary_contact=sponsor_data.get("primary_contact", ""),
+                mail_id=sponsor_data.get("mail_id", ""),
+                address=sponsor_data.get("address", ""),
+                status="Active",
+                organizer_id=user_id or sponsor_data.get("organizer_id")
+            )
+            db.session.add(new_sponsor)
+            db.session.commit()
+            return {"sponsor_name": new_sponsor.sponsor_name}
+        except Exception as e:
+            db.session.rollback()
+            raise e
 
     @staticmethod
     def get_policies(organizer_id: int = None) -> list[dict]:

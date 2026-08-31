@@ -61,6 +61,7 @@ def ensure_schema_columns():
             conn.execute(text("ALTER TABLE event_stalls ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1;"))
             conn.execute(text("ALTER TABLE event_stalls ADD COLUMN IF NOT EXISTS single_area_sqft FLOAT DEFAULT 100.0;"))
             conn.execute(text("ALTER TABLE event_stalls ADD COLUMN IF NOT EXISTS total_area_sqft FLOAT DEFAULT 100.0;"))
+            conn.execute(text("ALTER TABLE venues ADD COLUMN IF NOT EXISTS total_area_sqft FLOAT DEFAULT 50000.0;"))
             conn.commit()
             print("[INFO] Supabase PostgreSQL schema columns verified.")
     except Exception as err:
