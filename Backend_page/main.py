@@ -5,7 +5,7 @@ import sys
 sys.dont_write_bytecode = True
 
 from app import create_app
-from app.extensions.database import db
+from app.extensions.database import db, ensure_schema_columns
 from app.modules.admin.repository.admin_repository import AdminRepository
 from app.utils.slug import backfill_missing_slugs
 
@@ -14,11 +14,11 @@ app = create_app()
 @app.on_event("startup")
 def on_startup():
     try:
-        db.create_all()
+        ensure_schema_columns()
         AdminRepository.create_default_superuser()
         backfill_missing_slugs(db.session)
     except Exception as e:
-        print(f"Notice: Database initialization during startup: {e}")
+        print(f"Notice: Startup check: {e}")
 
 @app.get("/", tags=["Health"])
 def root():

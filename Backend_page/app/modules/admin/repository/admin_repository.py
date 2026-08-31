@@ -62,25 +62,11 @@ class AdminRepository:
         from app.models.category import CategoryMaster
         try:
             stmt = select(CategoryMaster).order_by(CategoryMaster.name.asc())
-            results = list(db.session.scalars(stmt).all())
-            if not results:
-                defaults = [
-                    ("Music & Concerts", "Rock, Pop, EDM, Classical, Jazz"),
-                    ("Sports & Fitness", "Football, Cricket, Marathon, Esports"),
-                    ("Tech & Business Expos", "AI & Tech, Startups, Web3, Finance"),
-                    ("Food & Culinary", "Food Fest, Wine Tasting, Baking Workshop"),
-                    ("Arts & Theatre", "Standup Comedy, Drama, Art Gallery")
-                ]
-                for name, subs in defaults:
-                    cat = CategoryMaster(name=name, subcategories=subs, icon_name="Tag", status="Active")
-                    db.session.add(cat)
-                db.session.commit()
-                results = list(db.session.scalars(stmt).all())
-            return results
+            return list(db.session.scalars(stmt).all())
         except Exception as e:
-            print(f"[Warning] CategoryMaster query exception handled: {e}")
+            print(f"[Error] CategoryMaster query error: {e}")
             db.session.rollback()
-            return []
+            raise e
 
     @staticmethod
     def create_or_update_category(name: str, subcategories: str, icon_name: str = "Tag", category_image: str = "", status: str = "Active"):

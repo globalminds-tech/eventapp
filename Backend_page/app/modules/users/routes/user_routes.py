@@ -5,6 +5,7 @@ from app.modules.users.schemas.user_schema import BookEventSchema, UpdateProfile
 from app.middleware.auth import get_current_user
 
 users_router = APIRouter(prefix="/api/v1/users", tags=["Users"])
+root_users_router = APIRouter(prefix="", tags=["Users Root Aliases"])
 
 @users_router.get("/profile")
 def get_profile(current_user: dict = Depends(get_current_user)):
@@ -17,16 +18,21 @@ def update_profile(payload: UpdateProfileSchema, current_user: dict = Depends(ge
     return UserController.update_profile(user_id, payload.dict())
 
 @users_router.post("/book-event", status_code=201)
+@root_users_router.post("/user/book-event", status_code=201)
+@root_users_router.post("/api/v1/user/book-event", status_code=201)
 def book_event(payload: BookEventSchema):
     return UserController.book_event(payload.dict())
 
 @users_router.get("/validate-booking/{booking_id}")
+@root_users_router.get("/user/validate-booking/{booking_id}")
 def validate_qr(booking_id: int):
     return UserController.validate_qr(booking_id)
 
 @users_router.get("/my-bookings")
+@root_users_router.get("/user/my-bookings")
 def get_my_bookings(email: Optional[str] = Query(None), current_user: dict = Depends(get_current_user)):
     user_email = email or current_user.get("email")
     if not user_email:
         return {"success": False, "message": "Email is required"}
     return UserController.get_my_bookings(user_email)
+

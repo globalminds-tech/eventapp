@@ -12,8 +12,8 @@ from app.extensions.database import db
 from app.exceptions.handlers import register_error_handlers
 
 from app.modules.auth import auth_router, legacy_auth_router, root_auth_router
-from app.modules.users import users_router
-from app.modules.events import event_router
+from app.modules.users import users_router, root_users_router
+from app.modules.events import event_router, root_events_router
 from app.modules.organizer import organizer_router, root_organizer_router
 from app.modules.bookings import booking_router
 from app.modules.exhibitors import exhibitor_router
@@ -32,10 +32,10 @@ def create_app() -> FastAPI:
         redoc_url="/redoc"
     )
 
-    # Enable CORS
+    # Enable Production CORS with Credential Support
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origin_regex=r"https?://.*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -73,7 +73,9 @@ def create_app() -> FastAPI:
     app.include_router(legacy_auth_router)
     app.include_router(root_auth_router)
     app.include_router(users_router)
+    app.include_router(root_users_router)
     app.include_router(event_router)
+    app.include_router(root_events_router)
     app.include_router(organizer_router)
     app.include_router(root_organizer_router)
     app.include_router(booking_router)

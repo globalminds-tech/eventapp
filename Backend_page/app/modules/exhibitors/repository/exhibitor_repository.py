@@ -9,7 +9,7 @@ class ExhibitorRepository:
         stmt = select(ExhibitorStallBooking).where(
             ExhibitorStallBooking.email == email,
             ExhibitorStallBooking.event_id == event_id
-        )
+        ).with_for_update()
         return db.session.scalar(stmt)
 
     @staticmethod
@@ -32,3 +32,22 @@ class ExhibitorRepository:
     @staticmethod
     def get_booking_by_id(booking_id: int) -> ExhibitorStallBooking | None:
         return db.session.get(ExhibitorStallBooking, booking_id)
+
+    @staticmethod
+    def get_all_applications():
+        stmt = select(
+            ExhibitorStallBooking,
+            EventDetails.event_name
+        ).outerjoin(
+            EventDetails, ExhibitorStallBooking.event_id == EventDetails.id
+        ).order_by(ExhibitorStallBooking.id.desc())
+        return db.session.execute(stmt).all()
+
+    @staticmethod
+    def update_application_status(booking_id: int, status: str):
+        booking = db.session.get(ExhibitorStallBooking, booking_id)
+        if booking:
+            booking.status = status
+            db.session.commit()
+            return booking
+        return None

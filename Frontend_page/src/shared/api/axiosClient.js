@@ -6,7 +6,7 @@ const axiosClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000,
+  timeout: 10000,
 });
 
 // Request Interceptor: Attach Bearer token from localStorage/sessionStorage

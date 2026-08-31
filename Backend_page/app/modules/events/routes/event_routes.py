@@ -4,6 +4,7 @@ from app.modules.events.schemas.event_schema import CreateEventSchema, UpdateEve
 from app.middleware.auth import get_current_user
 
 event_router = APIRouter(prefix="/api/v1/events", tags=["Events"])
+root_events_router = APIRouter(prefix="", tags=["Event Aliases"])
 
 @event_router.get("/")
 def get_all_events():
@@ -14,6 +15,8 @@ def get_events_summary():
     return EventController.get_events_summary()
 
 @event_router.get("/{event_id}")
+@root_events_router.get("/superadmin/booking/event/{event_id}")
+@root_events_router.get("/booking/event/{event_id}")
 def get_event(event_id: str):
     return EventController.get_event(event_id)
 

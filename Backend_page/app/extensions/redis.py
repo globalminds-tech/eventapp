@@ -29,8 +29,8 @@ class RedisCache:
             self.client = redis.Redis.from_url(
                 redis_url,
                 decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5
+                socket_timeout=0.5,
+                socket_connect_timeout=0.5
             )
             self.client.ping()
             logger.info("Connected to Redis / Upstash successfully.")

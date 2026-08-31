@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { clearUser } from "../Redux/userSlice";
+import { clearUser } from "@/app/store/userSlice";
 import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
   ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+
+import { performLogout } from "@/shared/services/authHelper";
 
 export default function WebSidebar({ role }) {
   const navigate = useNavigate();
@@ -49,19 +51,12 @@ export default function WebSidebar({ role }) {
     roleLabel: "Member",
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("role");
-    sessionStorage.removeItem("id");
-    sessionStorage.removeItem("name");
-    sessionStorage.removeItem("userId");
-    sessionStorage.removeItem("userName");
-    sessionStorage.removeItem("profile_image");
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("name");
-    dispatch(clearUser());
-    navigate("/Login");
+  const handleLogout = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    performLogout(dispatch, navigate);
   };
 
   // Determine active state of menu items
@@ -93,16 +88,15 @@ export default function WebSidebar({ role }) {
     exhibitor: [
       { label: "Booth Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
       { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store },
-      { label: "Upcoming Events", path: "/exhibitor/upcoming-events", icon: Calendar },
+      { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar },
+      { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users },
     ],
     organizer: [
       { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard },
-      { label: "Live Gate Analytics", path: "/OrganizerHome/livedashboard", icon: LineChart },
       { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode },
       { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils },
       { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store },
       { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users },
-      { label: "Venue Setup", path: "/OrganizerHome/Venu", icon: MapPin },
       { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt },
     ]
   }[role] || [];
@@ -222,15 +216,14 @@ export default function WebSidebar({ role }) {
               </div>
             )}
 
-            {!isCollapsed && (
-              <button
-                onClick={handleLogout}
-                className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg cursor-pointer transition border-none bg-transparent"
-                title="Logout"
-              >
-                <LogOut size={14} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg cursor-pointer transition border-none bg-transparent shrink-0"
+              title="Logout / Sign Out"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
 
