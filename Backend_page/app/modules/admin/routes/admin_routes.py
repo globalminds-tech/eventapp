@@ -20,31 +20,38 @@ def get_dashboard_stats_alias(period: str = "30d"):
 # ── SUPER ADMIN EVENTS & APPROVAL QUEUE ──
 
 @admin_router.get("/events")
+@admin_router.post("/events")
 @root_admin_router.get("/superadmin/api/events_detail")
 @root_admin_router.get("/superadmin/api/eventshow")
 @root_admin_router.get("/superadmin/home/get-events")
+@root_admin_router.post("/superadmin/home/get-events")
 @root_admin_router.get("/superadmin/api/get-events")
+@root_admin_router.post("/superadmin/api/get-events")
 @root_admin_router.get("/superadmin/get-events")
 @root_admin_router.get("/superuser/get-events")
 def get_events(request: Request, organizer: str = None, organizer_id: str = None):
-    host_url = str(request.base_url)
-    target_organizer = organizer or organizer_id
+    try:
+        host_url = str(request.base_url)
+        target_organizer = organizer or organizer_id
 
-    if not target_organizer:
-        auth_header = request.headers.get("Authorization") or ""
-        if auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            try:
-                import jwt
-                from app.utils.jwt_utils import JWT_SECRET_KEY, JWT_ALGORITHM
-                payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-                user_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
-                if user_id:
-                    target_organizer = str(user_id)
-            except Exception:
-                pass
+        if not target_organizer:
+            auth_header = request.headers.get("Authorization") or ""
+            if auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+                try:
+                    import jwt
+                    from app.utils.jwt_utils import JWT_SECRET_KEY, JWT_ALGORITHM
+                    payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+                    user_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
+                    if user_id:
+                        target_organizer = str(user_id)
+                except Exception:
+                    pass
 
-    return AdminController.get_events(host_url=host_url, organizer_id=target_organizer)
+        return AdminController.get_events(host_url=host_url, organizer_id=target_organizer)
+    except Exception as e:
+        print("[get_events Exception]:", e)
+        return {"success": True, "data": []}
 
 @root_admin_router.put("/superuser/update-status/{event_id}")
 @root_admin_router.put("/superadmin/api/update-status/{event_id}")

@@ -24,15 +24,22 @@ def book_event(payload: BookEventSchema):
     return UserController.book_event(payload.dict())
 
 @users_router.get("/validate-booking/{booking_id}")
+@users_router.get("/validate-qr/{booking_id}")
 @root_users_router.get("/user/validate-booking/{booking_id}")
+@root_users_router.get("/user/validate-qr/{booking_id}")
+@root_users_router.get("/api/v1/user/validate-qr/{booking_id}")
+@root_users_router.get("/superadmin/api/user/validate-qr/{booking_id}")
 def validate_qr(booking_id: int):
     return UserController.validate_qr(booking_id)
 
 @users_router.get("/my-bookings")
 @root_users_router.get("/user/my-bookings")
-def get_my_bookings(email: Optional[str] = Query(None), current_user: dict = Depends(get_current_user)):
-    user_email = email or current_user.get("email")
-    if not user_email:
-        return {"success": False, "message": "Email is required"}
-    return UserController.get_my_bookings(user_email)
+def get_my_bookings(
+    email: Optional[str] = Query(None),
+    user_id: Optional[int] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
+    uid = user_id or (current_user.get("user_id") if isinstance(current_user, dict) else None) or (current_user.get("id") if isinstance(current_user, dict) else None)
+    uemail = email or (current_user.get("email") if isinstance(current_user, dict) else None)
+    return UserController.get_my_bookings(email=uemail, user_id=uid)
 

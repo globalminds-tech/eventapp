@@ -93,65 +93,92 @@ def send_exhibitor_welcome_email(email, name, company_name=None, category=None):
 # 🟢 BOOKING EMAIL FUNCTION (WITH QR PASS & HTML TEMPLATE)
 # =========================================
 def send_booking_email(email, name, event, qr_base64=None, food_preference="Veg"):
-    """Send a professional HTML booking confirmation email with QR code pass."""
+    """Send a BookMyShow-style HTML booking confirmation email."""
     event_name = event.get('event_name', 'Event')
-    order_code = ''.join(filter(str.isdigit, str(event.get('event_code', '000')))) or '1001'
-    subject = f"🎟️ Ticket Confirmed: {event_name} (Order #{order_code})"
+    booking_code = f"BKG-{''.join(filter(str.isdigit, str(event.get('id', '101')))) or '101'}"
+    subject = f"🎟️ Booking Confirmed: {event_name} (ID: {booking_code})"
 
-    food_badge_color = "#e6fffa" if food_preference == "Veg" else "#fff5f5"
-    food_text_color = "#2c7a7b" if food_preference == "Veg" else "#c53030"
+    price_val = event.get('price') or event.get('price_inr') or event.get('pass_fee') or 200.0
+    price_display = f"{float(price_val):.2f}"
+    banner_url = event.get('banner_url') or event.get('image') or "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800"
 
-    content_html = f"""
-    <p style="font-size: 15px; font-weight: 600; color: #1e293b;">Hi {name},</p>
-    <p style="font-size: 14px; color: #475569; line-height: 1.6;">
-        Your booking for <strong>{event_name}</strong> is confirmed! Please present your digital entry pass QR code below at the entrance turnstiles.
-    </p>
-
-    <div style="text-align: center; background-color: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; margin: 20px 0;">
-        <span style="font-size: 11px; font-weight: 800; uppercase; letter-spacing: 1px; color: #0284c7; background: #e0f2fe; padding: 4px 12px; border-radius: 12px;">Digital Entry Pass</span>
-        <div style="margin: 15px 0;">
-            {"<img src='cid:qrcode' style='width: 180px; height: 180px; border-radius: 12px; border: 4px solid #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.1);' alt='QR Ticket'/>" if qr_base64 else "<div style='font-weight: 800; color: #0284c7;'>[QR Ticket Code Generated]</div>"}
-        </div>
-        <p style="font-size: 12px; color: #64748b; margin: 0; font-weight: 600;">Scan at venue entrance for rapid check-in</p>
-    </div>
-
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 20px;">
-        <h4 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 800; color: #0284c7; text-transform: uppercase; letter-spacing: 1px;">Event Summary</h4>
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"/></head>
+    <body style="margin:0; padding:0; background-color:#09090b; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <div style="max-width:560px; margin:20px auto; background-color:#18181b; border:1px solid #27272a; border-radius:24px; overflow:hidden; color:#f4f4f5; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
         
-        <table style="width: 100%; font-size: 13px; color: #475569; border-collapse: collapse;">
-            <tr>
-                <td style="padding: 6px 0; font-weight: 700; color: #1e293b; width: 90px;">Event:</td>
-                <td style="padding: 6px 0; font-weight: 800; color: #0f172a;">{event_name}</td>
-            </tr>
-            <tr>
-                <td style="padding: 6px 0; font-weight: 700; color: #1e293b;">Date & Time:</td>
-                <td style="padding: 6px 0;">{event.get('start_date', 'N/A')}</td>
-            </tr>
-            <tr>
-                <td style="padding: 6px 0; font-weight: 700; color: #1e293b;">Venue:</td>
-                <td style="padding: 6px 0;">{event.get('venue', 'N/A')}</td>
-            </tr>
-            {f'''<tr>
-                <td style="padding: 6px 0; font-weight: 700; color: #1e293b;">Food Pass:</td>
-                <td style="padding: 6px 0;"><span style="background-color: {food_badge_color}; color: {food_text_color}; padding: 3px 10px; border-radius: 12px; font-weight: 800; font-size: 11px;">{food_preference}</span></td>
-            </tr>''' if event.get('food') else ''}
-        </table>
-    </div>
+        <!-- Header -->
+        <div style="text-align:center; padding:28px 24px 20px; border-bottom:1px solid #27272a; background:#111113;">
+          <div style="font-size:22px; font-weight:900; letter-spacing:-0.5px; color:#ffffff; margin-bottom:12px;">
+            book<span style="background:#ef4444; color:#ffffff; padding:2px 8px; border-radius:6px; margin-left:4px; font-size:17px;">my</span>event
+          </div>
+          <div style="color:#22c55e; font-size:20px; font-weight:900; margin-bottom:4px;">Your booking is confirmed!</div>
+          <div style="font-size:12px; color:#a1a1aa; font-weight:700; font-family:monospace;">Booking ID: <strong style="color:#ffffff;">{booking_code}</strong></div>
+        </div>
 
-    <div style="background: #f8fafc; border-left: 4px solid #0284c7; padding: 14px 16px; border-radius: 8px;">
-        <h5 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 800; color: #0f172a;">Instructions for Entry:</h5>
-        <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: #64748b; line-height: 1.6;">
-            <li>Please arrive 15 minutes before event start time.</li>
-            <li>Carry a valid government photo ID along with this ticket.</li>
-            <li>Pass is valid for one-time entrance check-in.</li>
-        </ul>
-    </div>
+        <!-- Event Details Card -->
+        <div style="padding:24px 24px 16px;">
+          <div style="background:#27272a; border:1px solid #3f3f46; border-radius:20px; padding:18px;">
+            <table style="width:100%; border-collapse:collapse;">
+              <tr>
+                <td style="width:76px; vertical-align:top; padding-right:16px;">
+                  <img src="{banner_url}" style="width:76px; height:76px; object-fit:cover; border-radius:14px; border:1px solid #52525b; display:block;" alt="Poster"/>
+                </td>
+                <td style="vertical-align:top;">
+                  <div style="font-size:16px; font-weight:900; color:#ffffff; line-height:1.3; margin-bottom:4px;">{event_name}</div>
+                  <div style="font-size:13px; font-weight:700; color:#ef4444; margin-bottom:4px;">{event.get('start_time', '04:15 PM')} | {event.get('start_date', 'Confirmed Date')}</div>
+                  <div style="font-size:12px; color:#a1a1aa; font-weight:500;">{event.get('venue', 'Exhibition Venue')}</div>
+                </td>
+              </tr>
+            </table>
+
+            {"<div style='margin-top:16px; padding-top:16px; border-top:1px dashed #52525b; text-align:center;'><img src='cid:qrcode' style='width:160px; height:160px; border-radius:14px; border:4px solid #ffffff; background:#ffffff;' alt='QR Ticket'/></div>" if qr_base64 else ""}
+
+            <div style="margin-top:16px; padding-top:14px; border-top:1px dashed #3f3f46; text-align:center;">
+              <a href="http://localhost:5173/my-passes" style="display:inline-block; background:#ef4444; color:#ffffff; font-weight:800; font-size:13px; text-decoration:none; padding:11px 28px; border-radius:12px;">Open Ticket Pass</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rewards Banner -->
+        <div style="margin:0 24px 20px; background:linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); border-radius:20px; padding:20px; color:#ffffff;">
+          <div style="font-size:17px; font-weight:900; margin-bottom:4px;">You've Won Rewards!</div>
+          <div style="font-size:12px; opacity:0.9; margin-bottom:10px;">Hurray! You've unlocked 2 rewards with this ticket transaction.</div>
+          <a href="http://localhost:5173/profile" style="color:#ffffff; font-weight:800; font-size:12px; text-decoration:underline;">Tap to view them now →</a>
+        </div>
+
+        <!-- Order Summary -->
+        <div style="padding:0 24px 24px;">
+          <div style="font-size:11px; font-weight:800; color:#a1a1aa; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Order Summary</div>
+          <div style="background:#27272a; border:1px solid #3f3f46; border-radius:20px; padding:18px; font-size:13px; color:#d4d4d8;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <tr>
+                <td style="padding-bottom:8px; font-weight:700; color:#a1a1aa;">TICKET AMOUNT</td>
+                <td style="padding-bottom:8px; font-weight:800; color:#ffffff; text-align:right;">Rs. {price_display}</td>
+              </tr>
+              <tr style="border-bottom:1px dashed #52525b;">
+                <td style="padding-bottom:10px; font-weight:600; color:#71717a; font-size:12px;">CONVENIENCE FEES</td>
+                <td style="padding-bottom:10px; font-weight:600; color:#71717a; font-size:12px; text-align:right;">Rs. 0.00</td>
+              </tr>
+              <tr>
+                <td style="padding-top:14px; font-weight:900; font-size:15px; color:#ffffff;">AMOUNT PAID</td>
+                <td style="padding-top:14px; font-weight:900; font-size:16px; color:#ef4444; text-align:right;">Rs. {price_display}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align:center; padding:16px 24px 24px; border-top:1px solid #27272a; font-size:11px; color:#71717a;">
+          <p style="margin:0 0 4px 0;">Need Help? Contact BookMyEvent 24x7 Customer Support.</p>
+          <p style="margin:0;">BookMyEvent Intermediary Platform • All Rights Reserved</p>
+        </div>
+
+      </div>
+    </body>
+    </html>
     """
-
-    html = render_email_layout(
-        title=f"Order #{order_code} Confirmed",
-        subtitle="DIGITAL TICKET PASSPORT",
-        content_html=content_html
-    )
 
     send_email(email, subject, html, is_html=True, qr_base64=qr_base64)

@@ -315,7 +315,7 @@ export default function Profile() {
                       </p>
                       <Button
                         size="sm"
-                        onClick={() => navigate(isAuthenticated ? "/" : "/login")}
+                        onClick={() => navigate(isAuthenticated ? "/my-passes" : "/login")}
                         className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
                       >
                         <Ticket size={14} />

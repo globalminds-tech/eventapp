@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.extensions.database import db
+from app.extensions.database import db, db_session
 from app.exceptions.handlers import register_error_handlers
 
 from app.modules.auth import auth_router, legacy_auth_router, root_auth_router
@@ -32,33 +32,45 @@ def create_app() -> FastAPI:
         redoc_url="/redoc"
     )
 
-    # Enable Production CORS with Credential Support
+    # Universal Production CORS with Credential Support
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=r"https?://.*",
+        allow_origins=[
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://localhost:5001",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5001",
+        ],
+        allow_origin_regex=r".*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["*"],
     )
 
-    # Automatic SQLAlchemy session teardown & rollback middleware
+    # Universal Preflight OPTIONS Handler
     @app.middleware("http")
-    async def db_session_middleware(request: Request, call_next):
+    async def preflight_cors_middleware(request: Request, call_next):
+        origin = request.headers.get("origin") or "*"
+        if request.method == "OPTIONS":
+            from fastapi.responses import Response
+            resp = Response(status_code=200)
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+            return resp
+
         try:
             response = await call_next(request)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
-        except Exception as exc:
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
-            raise exc
         finally:
-            try:
-                db.session.remove()
-            except Exception:
-                pass
+            db_session.remove()
+
 
     # Register Exception Handlers
     register_error_handlers(app)

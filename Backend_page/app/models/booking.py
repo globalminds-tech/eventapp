@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, ForeignKey, DateTime
+from sqlalchemy import String, Text, Boolean, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
 
@@ -9,6 +9,7 @@ class UserBookingDetails(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     event_id: Mapped[int] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=False)
+    user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(150), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(15), nullable=True)
