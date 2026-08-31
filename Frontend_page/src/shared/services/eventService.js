@@ -115,8 +115,38 @@ export const getApprovedEvents = async () => {
   return res.data;
 };
 
-export const getHomeEventshow = async () => {
+let homeEventsCache = null;
+let homeEventsCacheTimestamp = 0;
+
+export const getHomeEventshow = async (forceRefresh = false) => {
+  const now = Date.now();
+  if (!forceRefresh && homeEventsCache && (now - homeEventsCacheTimestamp < 180000)) {
+    return homeEventsCache;
+  }
+  try {
+    const stored = sessionStorage.getItem("home_events_cache");
+    if (!forceRefresh && !homeEventsCache && stored) {
+      homeEventsCache = JSON.parse(stored);
+      homeEventsCacheTimestamp = now;
+      // Return cached immediately and refresh in background
+      apiClient.get("/superadmin/home/get-events").then((res) => {
+        if (res?.data) {
+          homeEventsCache = res.data;
+          sessionStorage.setItem("home_events_cache", JSON.stringify(res.data));
+        }
+      }).catch(() => {});
+      return homeEventsCache;
+    }
+  } catch (err) {}
+
   const res = await apiClient.get("/superadmin/home/get-events");
+  if (res?.data) {
+    homeEventsCache = res.data;
+    homeEventsCacheTimestamp = now;
+    try {
+      sessionStorage.setItem("home_events_cache", JSON.stringify(res.data));
+    } catch (e) {}
+  }
   return res.data;
 };
 

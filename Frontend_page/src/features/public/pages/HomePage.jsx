@@ -146,14 +146,55 @@ const getCityFromLocation = (loc) => {
   if (upperLast === "INDIA" || upperLast === "TAMIL NADU" || upperLast === "KARNATAKA") {
     lastPart = parts[parts.length - 2]?.trim() || lastPart;
   }
-
   return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).toLowerCase();
+};
+
+const formatEventsList = (list) => {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  return list.map((e, index) => {
+    const entryType = e.entry_type || "";
+    const passFee = e.pass_fee ?? e.price ?? e.price_inr ?? (e.booking?.priceINR || e.booking?.price_inr || 0);
+    const chargeType = String(e.charge_type || e.booking?.chargeType || e.booking?.charge_type || "").toLowerCase();
+    const isPaid = (chargeType === "paid") || (Number(passFee) > 0);
+    const isFree = !isPaid;
+
+    return {
+      id: e.id,
+      title: e.event_name || e.name,
+      category: e.category || "Live Event",
+      entry_type: isFree ? "Free" : "Paid",
+      price: isFree ? "Free" : `₹${Number(passFee) || 0}`,
+      location: e.venue || "Chennai",
+      fullLocation: `${e.venue || ''}, ${e.address || ''}`,
+      date: e.start_date || "Today",
+      likes: `${(120 + index * 18).toFixed(1)}K+`,
+      rating: (8.6 + (index % 12) * 0.1).toFixed(1),
+      image: e.banner_url || e.banner || e.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
+      banner_type: e.banner_type,
+      bookingEnds: e.end_date || e.start_date + "T23:59:59",
+    };
+  });
 };
 
 const App = () => {
   const navigate = useNavigate();
-  const [events, setEvents] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const getInitialEvents = () => {
+    try {
+      const stored = sessionStorage.getItem("home_events_cache");
+      if (stored) {
+        const list = JSON.parse(stored);
+        if (Array.isArray(list) && list.length > 0) {
+          return formatEventsList(list);
+        }
+      }
+    } catch (e) {}
+    return [];
+  };
+
+  const initialList = getInitialEvents();
+  const [events, setEvents] = useState(initialList);
+  const [isLoading, setIsLoading] = useState(initialList.length === 0);
 
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedCity, setSelectedCity] = useState("");
@@ -174,37 +215,10 @@ const App = () => {
 
   const fetchEvents = async () => {
     try {
-      setIsLoading(true);
+      if (events.length === 0) setIsLoading(true);
       const res = await getHomeEventshow();
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      if (list.length === 0) {
-        setEvents([]);
-        return;
-      }
-
-      const formatted = list.map((e, index) => {
-        const entryType = e.entry_type || "";
-        const passFee = e.pass_fee;
-        const isDonation = entryType === "Donation" || String(passFee).toLowerCase() === "donation";
-        const isFree = entryType === "Free" || (!isDonation && (!passFee || Number(passFee) === 0));
-
-        return {
-          id: e.id,
-          title: e.event_name,
-          category: e.category || "Live Event",
-          entry_type: isDonation ? "Donation" : isFree ? "Free" : "Paid",
-          price: isDonation || isFree ? "Free" : `₹${Number(passFee) || 0}`,
-          location: e.venue || "Chennai",
-          fullLocation: `${e.venue}, ${e.address}`,
-          date: e.start_date || "Today",
-          likes: `${(120 + index * 18).toFixed(1)}K+`,
-          rating: (8.6 + (index % 12) * 0.1).toFixed(1),
-          image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
-          banner_type: e.banner_type,
-          bookingEnds: e.end_date || e.start_date + "T23:59:59",
-        };
-      });
-
+      const formatted = formatEventsList(list);
       setEvents(formatted);
     } catch (err) {
       console.error(err);

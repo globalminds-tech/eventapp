@@ -51,3 +51,8 @@ export const getExhibitorBookings = async () => {
   const res = await apiClient.get("/superadmin/api/exhibitor/bookings_details");
   return res.data;
 };
+
+export const createRazorpayOrder = async (data) => {
+  const res = await apiClient.post("/api/v1/payments/create-order", data);
+  return res.data;
+};

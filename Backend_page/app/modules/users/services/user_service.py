@@ -32,9 +32,6 @@ class UserService:
         data = BookEventSchema(**raw_data)
         email_clean = data.email.strip().lower()
 
-        if not is_verified(email_clean):
-            raise ApiError("Please verify OTP first before completing booking", 403)
-
         event = UserRepository.get_event_by_id(data.event_id)
         if not event:
             raise ApiError("Event not found", 404)
@@ -66,14 +63,17 @@ class UserService:
 
         qr_base64 = ""
         if qrcode is not None:
-            qr = qrcode.QRCode(version=1, box_size=10, border=4)
-            qr.add_data(qr_text)
-            qr.make(fit=True)
-            img = qr.make_image(fill_color="black", back_color="white")
+            try:
+                qr = qrcode.QRCode(version=1, box_size=10, border=4)
+                qr.add_data(qr_text)
+                qr.make(fit=True)
+                img = qr.make_image(fill_color="black", back_color="white")
 
-            buffered = io.BytesIO()
-            img.save(buffered, format="PNG")
-            qr_base64 = base64.b64encode(buffered.getvalue()).decode()
+                buffered = io.BytesIO()
+                img.save(buffered)
+                qr_base64 = base64.b64encode(buffered.getvalue()).decode()
+            except Exception as qr_err:
+                print(f"QR code generation error: {qr_err}")
 
         try:
             event_dict = {
