@@ -16,6 +16,7 @@ import Term from "./src/pages/Term";
 import QRValidation from "./src/pages/QRValidation";
 import Forgetpsw from "./src/pages/Forgetpsw";
 import UserBooking from "./src/pages/UserBooking";
+import MyPasses from "./src/pages/MyPasses";
 
 // Organizer
 import OrganizerWelcome from "./src/Organizer/OrganizerWelcome";
@@ -65,9 +66,14 @@ import Exhibitor_Home from "./src/Exhibitor/Exhibitor_Home";
 import MyBookings from "./src/Exhibitor/Mybooking";
 import UpcomingEvent from "./src/Exhibitor/UpcomingEvent";
 import StallBooking from "./src/Exhibitor/Stall_Booking";
+import ExhibitorLeads from "./src/Exhibitor/ExhibitorLeads";
 
 // Super User
 import Super_user_Home from "./src/super_user/Super_user_Home";
+import EventApprovalQueue from "./src/super_user/EventApprovalQueue";
+import CategoryMaster from "./src/super_user/CategoryMaster";
+import KycVerification from "./src/super_user/KycVerification";
+import PayoutsQueue from "./src/super_user/PayoutsQueue";
 
 const Stack = createNativeStackNavigator();
 
@@ -91,6 +97,7 @@ export default function App() {
             <Stack.Screen name="QRValidation" component={QRValidation} />
             <Stack.Screen name="Forgetpsw" component={Forgetpsw} />
             <Stack.Screen name="UserBooking" component={UserBooking} />
+            <Stack.Screen name="MyPasses" component={MyPasses} />
 
             {/* Organizer Routes */}
             <Stack.Screen
@@ -158,9 +165,14 @@ export default function App() {
             <Stack.Screen name="MyBookings" component={MyBookings} />
             <Stack.Screen name="UpcomingEvent" component={UpcomingEvent} />
             <Stack.Screen name="BookStall" component={StallBooking} />
+            <Stack.Screen name="ExhibitorLeads" component={ExhibitorLeads} />
 
             {/* Super User Routes */}
             <Stack.Screen name="Super_user_Home" component={Super_user_Home} />
+            <Stack.Screen name="EventApprovalQueue" component={EventApprovalQueue} />
+            <Stack.Screen name="CategoryMaster" component={CategoryMaster} />
+            <Stack.Screen name="KycVerification" component={KycVerification} />
+            <Stack.Screen name="PayoutsQueue" component={PayoutsQueue} />
           </Stack.Navigator>
         </NavigationContainer>
       </SafeAreaProvider>

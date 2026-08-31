@@ -34,8 +34,8 @@ class UserController:
         }
 
     @staticmethod
-    def get_my_bookings(email: str):
-        bookings = UserService.get_my_bookings(email)
+    def get_my_bookings(email: str = None, user_id: int = None):
+        bookings = UserService.get_my_bookings(email=email, user_id=user_id)
         return {
             "success": True,
             "data": bookings

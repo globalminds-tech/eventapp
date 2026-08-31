@@ -70,6 +70,7 @@ import Cancellation from "./features/public/pages/CancellationPage";
 import Chatbot from "./components/chatbot";
 import EventDetail from "./features/events/pages/EventDetailPage";
 import Profile from "./features/organizer/settings/pages/ProfilePage";
+import MyPassesPage from "./features/users/pages/MyPassesPage";
 
 export default function App() {
   const location = useLocation();
@@ -82,6 +83,8 @@ export default function App() {
         <Route path="/event-detail/:id" element={<EventDetail />} />
         <Route path="/event/:id" element={<EventDetail />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/my-passes" element={<MyPassesPage />} />
+        <Route path="/my-bookings" element={<MyPassesPage />} />
         <Route path="/Login" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
@@ -94,6 +97,9 @@ export default function App() {
         <Route path="/Cancellation" element={<Cancellation />} />
         <Route path="/usersbooking/:id" element={<Userbooking />} />
         <Route path="/validate-booking/:id" element={<QRValidation />} />
+        <Route path="/validate-booking" element={<QRValidation />} />
+        <Route path="/QRValidation" element={<QRValidation />} />
+        <Route path="/QRValidation/:id" element={<QRValidation />} />
         <Route path="/CreateEvent" element={<Navigate to="/OrganizerHome/CreateEvent" replace />} />
         <Route path="/OrganizerHome" element={<ProtectedRoute allowedRoles={["organizer"]}><WebSidebar role="organizer" /></ProtectedRoute>}>
           <Route index element={<ProtectedRoute allowedRoles={["organizer"]}><Organizerdashboard /></ProtectedRoute>} />

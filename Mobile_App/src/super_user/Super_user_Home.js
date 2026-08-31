@@ -682,7 +682,13 @@ export default function SuperUserHome({ navigation }) {
       <BottomNav
         items={navItems}
         activeKey={activeTab}
-        onTabSelect={(key) => setActiveTab(key)}
+        onTabSelect={(key) => {
+          if (key === "approvals") navigation?.navigate("EventApprovalQueue");
+          else if (key === "categories") navigation?.navigate("CategoryMaster");
+          else if (key === "kyc") navigation?.navigate("KycVerification");
+          else if (key === "payouts") navigation?.navigate("PayoutsQueue");
+          else setActiveTab(key);
+        }}
       />
 
       {/* Add Main Category Modal */}

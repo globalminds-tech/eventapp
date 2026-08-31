@@ -99,6 +99,7 @@ export default function Home({ navigation }) {
   const [selectedCity, setSelectedCity] = useState("Chennai, Tamil Nadu");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("Home");
+  const [showPortalModal, setShowPortalModal] = useState(false);
 
   // Animated Category Theme Transition State
   const [prevTheme, setPrevTheme] = useState(categoryThemes.All);
@@ -113,12 +114,13 @@ export default function Home({ navigation }) {
 
   const fetchEvents = async () => {
     try {
-      const data = await getHomeEventshow();
-      if (!data || data.length === 0) return;
+      const res = await getHomeEventshow();
+      const rawList = res?.data || (Array.isArray(res) ? res : []);
+      if (!rawList || rawList.length === 0) return;
 
-      const formatted = data.map((e, index) => ({
+      const formatted = rawList.map((e, index) => ({
         id: e.id,
-        title: e.event_name,
+        title: e.event_name || e.name || "Live Event",
         category: e.category || "Live Event",
         price: e.pass_fee ? `₹${e.pass_fee}` : "Free",
         location: e.venue || "Chennai",
@@ -211,8 +213,8 @@ export default function Home({ navigation }) {
                   </TouchableOpacity>
                 </View>
 
-                {/* Profile Avatar */}
-                <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => navigation?.navigate("MyProfile")}>
+                {/* Profile Avatar Trigger */}
+                <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => setShowPortalModal(true)}>
                   <User size={20} color="#0f172a" />
                 </TouchableOpacity>
               </View>
@@ -321,7 +323,7 @@ export default function Home({ navigation }) {
         {[
           { label: "Home", icon: HomeIcon, tab: "Home" },
           { label: "Events", icon: Ticket, tab: "Events" },
-          { label: "Explore", icon: Compass, tab: "Explore" },
+          { label: "Passes", icon: Sparkles, tab: "Passes" },
           { label: "Profile", icon: User, tab: "Profile" },
         ].map((item, i) => {
           const IconComponent = item.icon;
@@ -334,6 +336,7 @@ export default function Home({ navigation }) {
                 setActiveTab(item.tab);
                 if (item.tab === "Profile") navigation?.navigate("MyProfile");
                 if (item.tab === "Events") navigation?.navigate("AllEvents");
+                if (item.tab === "Passes") navigation?.navigate("MyPasses");
               }}
             >
               <IconComponent size={20} color={isActive ? "#f97316" : "#64748b"} />
@@ -344,6 +347,112 @@ export default function Home({ navigation }) {
           );
         })}
       </View>
+
+      {/* Portal & Role Switcher Sheet Modal */}
+      <Modal visible={showPortalModal} transparent animationType="slide">
+        <View style={styles.portalModalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowPortalModal(false)} />
+          <View style={styles.portalModalCard}>
+            <View style={styles.portalModalHeader}>
+              <View>
+                <Text style={styles.portalModalTitle}>Select Portal / Role View</Text>
+                <Text style={styles.portalModalSub}>Switch seamlessly across all 4 platform roles:</Text>
+              </View>
+              <TouchableOpacity style={styles.portalCloseBtn} onPress={() => setShowPortalModal(false)}>
+                <Text style={styles.portalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Role 1: User / Attendee */}
+              <TouchableOpacity
+                style={[styles.portalRoleOption, { borderColor: "#0284c7" }]}
+                onPress={() => { setShowPortalModal(false); navigation?.navigate("Home"); }}
+              >
+                <View style={[styles.portalIconWrap, { backgroundColor: "#f0f9ff" }]}>
+                  <User size={22} color="#0284c7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.portalRoleTitle}>Public / Attendee Side</Text>
+                  <Text style={styles.portalRoleSub}>Browse events, book tickets, view passes</Text>
+                </View>
+                <View style={[styles.portalBadge, { backgroundColor: "#e0f2fe" }]}>
+                  <Text style={[styles.portalBadgeText, { color: "#0369a1" }]}>ACTIVE</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Role 2: Organizer */}
+              <TouchableOpacity
+                style={[styles.portalRoleOption, { borderColor: "#f97316" }]}
+                onPress={() => { setShowPortalModal(false); navigation?.navigate("Organizerdashboard"); }}
+              >
+                <View style={[styles.portalIconWrap, { backgroundColor: "#fff7ed" }]}>
+                  <Sparkles size={22} color="#f97316" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.portalRoleTitle}>Organizer Portal</Text>
+                  <Text style={styles.portalRoleSub}>Dashboard, Create Event, Manage Stalls, Gate Check-In</Text>
+                </View>
+                <View style={[styles.portalBadge, { backgroundColor: "#ffedd5" }]}>
+                  <Text style={[styles.portalBadgeText, { color: "#c2410c" }]}>ORGANIZER</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Role 3: Exhibitor */}
+              <TouchableOpacity
+                style={[styles.portalRoleOption, { borderColor: "#16a34a" }]}
+                onPress={() => { setShowPortalModal(false); navigation?.navigate("Exhibitor_Home"); }}
+              >
+                <View style={[styles.portalIconWrap, { backgroundColor: "#f0fdf4" }]}>
+                  <Ticket size={22} color="#16a34a" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.portalRoleTitle}>Exhibitor Portal</Text>
+                  <Text style={styles.portalRoleSub}>Stall booking map, My bookings, Visitor lead scanner</Text>
+                </View>
+                <View style={[styles.portalBadge, { backgroundColor: "#dcfce7" }]}>
+                  <Text style={[styles.portalBadgeText, { color: "#15803d" }]}>EXHIBITOR</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Role 4: Super Admin */}
+              <TouchableOpacity
+                style={[styles.portalRoleOption, { borderColor: "#a855f7" }]}
+                onPress={() => { setShowPortalModal(false); navigation?.navigate("Super_user_Home"); }}
+              >
+                <View style={[styles.portalIconWrap, { backgroundColor: "#faf5ff" }]}>
+                  <Zap size={22} color="#a855f7" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.portalRoleTitle}>Super Admin Portal</Text>
+                  <Text style={styles.portalRoleSub}>Approvals queue, Category master, KYC, Payouts</Text>
+                </View>
+                <View style={[styles.portalBadge, { backgroundColor: "#f3e8ff" }]}>
+                  <Text style={[styles.portalBadgeText, { color: "#7e22ce" }]}>ADMIN</Text>
+                </View>
+              </TouchableOpacity>
+
+              {/* Extras: My Passes & My Profile */}
+              <View style={s.extraDivider} />
+              <TouchableOpacity
+                style={styles.portalExtraOption}
+                onPress={() => { setShowPortalModal(false); navigation?.navigate("MyPasses"); }}
+              >
+                <Ticket size={18} color="#0f172a" />
+                <Text style={styles.portalExtraText}>My Digital Ticket Passes</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.portalExtraOption}
+                onPress={() => { setShowPortalModal(false); navigation?.navigate("MyProfile"); }}
+              >
+                <User size={18} color="#0f172a" />
+                <Text style={styles.portalExtraText}>My Profile & Account Settings</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -690,5 +799,93 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     color: "#64748b",
+  },
+  portalModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "flex-end",
+  },
+  portalModalCard: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: "80%",
+    elevation: 12,
+  },
+  portalModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  portalModalTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0f172a",
+  },
+  portalModalSub: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  portalCloseBtn: {
+    padding: 6,
+    borderRadius: 12,
+    backgroundColor: "#f1f5f9",
+  },
+  portalCloseText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#64748b",
+  },
+  portalRoleOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 10,
+    gap: 12,
+  },
+  portalIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  portalRoleTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  portalRoleSub: {
+    fontSize: 11,
+    color: "#64748b",
+    marginTop: 2,
+  },
+  portalBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  portalBadgeText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  portalExtraOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  portalExtraText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0f172a",
   },
 });

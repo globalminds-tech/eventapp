@@ -19,6 +19,9 @@ def on_startup():
         backfill_missing_slugs(db.session)
     except Exception as e:
         print(f"Notice: Startup check: {e}")
+    finally:
+        db.session.remove()
+
 
 @app.get("/", tags=["Health"])
 def root():
