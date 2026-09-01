@@ -74,8 +74,8 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
     exhibitor: [
       { label: "Booth Dashboard", route: "Exhibitor_Home", icon: LayoutDashboard },
       { label: "My Stall Bookings", route: "MyBookings", icon: Store },
-      { label: "Upcoming Expos", route: "UpcomingEvents", icon: Calendar },
-      { label: "Visitor Leads & Staff", route: "Leads", icon: Users },
+      { label: "Upcoming Expos", route: "UpcomingEvent", icon: Calendar },
+      { label: "Visitor Leads & Staff", route: "ExhibitorLeads", icon: Users },
     ],
     organizer: [
       { label: "Dashboard", route: "Organizerdashboard", icon: LayoutDashboard },
