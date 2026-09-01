@@ -101,12 +101,7 @@ export default function Login({ navigation }) {
       }));
 
       if (userRole === "organizer") {
-        const step1Done = await AsyncStorage.getItem("@organizer_step1_completed");
-        if (step1Done === "true") {
-          navigation.replace("OrganizerWelcome");
-        } else {
-          navigation.replace("OrganizerKYC");
-        }
+        navigation.replace("Organizerdashboard");
       } else if (userRole === "exhibitor") {
         navigation.replace("Exhibitor_Home");
       } else if (userRole === "superuser" || userRole === "superadmin") {
