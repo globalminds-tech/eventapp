@@ -16,7 +16,6 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatusTab, setSelectedStatusTab] = useState("all");
-  const [selectedBooking, setSelectedBooking] = useState(null);
   const [toastMessage, setToastMessage] = useState("");
 
   const reduxUser = useSelector((state) => state.user);
@@ -25,40 +24,6 @@ const MyBookings = () => {
     name: sessionStorage.getItem("userName"),
   };
   const user = reduxUser?.id ? reduxUser : storedUser;
-
-  // Fallback demo bookings dataset if API returns empty
-  const fallbackBookings = [
-    {
-      id: 201,
-      event_name: "Cultural Fest 2026",
-      first_name: "Rajesh",
-      last_name: "Kumar",
-      email: "rajesh.apex@gmail.com",
-      mobile: "9840123456",
-      company_name: "Apex Handicrafts & Decor",
-      stall_area: "Premium Island Stall (20x20 Sq.Ft)",
-      price_paid: 45000,
-      status: "Approved",
-      city: "Chennai",
-      state: "Tamil Nadu",
-      created_at: "2026-08-28"
-    },
-    {
-      id: 202,
-      event_name: "LOGMAT Logistics Expo 2026",
-      first_name: "Priya",
-      last_name: "Sharma",
-      email: "priya@greendrive.com",
-      mobile: "9884055443",
-      company_name: "GreenDrive Electric Vehicles",
-      stall_area: "Heavy Machinery Zone (40x40 Sq.Ft)",
-      price_paid: 120000,
-      status: "Confirmed",
-      city: "Hyderabad",
-      state: "Telangana",
-      created_at: "2026-08-20"
-    }
-  ];
 
   useEffect(() => {
     fetchBookings();
@@ -69,17 +34,17 @@ const MyBookings = () => {
     try {
       if (user?.id) {
         const res = await getMyBookings(user.id);
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           setBookings(res.data);
         } else {
-          setBookings(fallbackBookings);
+          setBookings([]);
         }
       } else {
-        setBookings(fallbackBookings);
+        setBookings([]);
       }
     } catch (err) {
-      console.log("Using fallback exhibitor stall bookings:", err);
-      setBookings(fallbackBookings);
+      console.error("Failed to fetch stall bookings:", err);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -292,7 +257,7 @@ const MyBookings = () => {
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => setSelectedBooking(b)}
+                            onClick={() => navigate(`/exhibitor/my-bookings/${b.id}`)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
                             title="View Booking Details"
                           >
@@ -319,41 +284,6 @@ const MyBookings = () => {
         </div>
       </Card>
 
-      {/* View Details Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-base font-extrabold text-slate-900">{selectedBooking.event_name}</h3>
-                <p className="text-xs text-slate-500">Stall Booking Application Details</p>
-              </div>
-              <button onClick={() => setSelectedBooking(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
-                <XCircle size={20} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Applicant</span>
-                <p className="font-extrabold text-slate-900">{selectedBooking.first_name} {selectedBooking.last_name}</p>
-                <p className="text-slate-600">{selectedBooking.company_name}</p>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Booth Fee</span>
-                <p className="font-extrabold text-emerald-700">₹{Number(selectedBooking.price_paid || 45000).toLocaleString('en-IN')}</p>
-                <p className="text-slate-600">{selectedBooking.stall_area}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <Button onClick={() => setSelectedBooking(null)} className="bg-slate-900 text-white font-extrabold text-xs rounded-xl cursor-pointer">
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

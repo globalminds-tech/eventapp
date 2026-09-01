@@ -92,3 +92,59 @@ class ExhibitorService:
             data.append(b_dict)
 
         return data
+
+    @staticmethod
+    def get_booking_by_id(booking_id: int, host_url: str = "") -> dict:
+        booking = ExhibitorRepository.get_booking_by_id(booking_id)
+        if not booking:
+            raise ApiError("Booking not found", 404)
+        
+        base_url = host_url.rstrip("/")
+        from app.models.event import EventDetails
+        from app.extensions.database import db
+        
+        event = None
+        if booking.event_id:
+            event = db.session.get(EventDetails, booking.event_id)
+            
+        b_dict = {
+            "id": booking.id,
+            "event_id": booking.event_id,
+            "user_id": booking.user_id,
+            "eventName": event.event_name if event else getattr(booking, "eventName", ""),
+            "event_name": event.event_name if event else getattr(booking, "eventName", ""),
+            "event_code": event.event_code if event else None,
+            "title": booking.title,
+            "first_name": booking.first_name,
+            "last_name": booking.last_name,
+            "email": booking.email,
+            "mobile": booking.mobile,
+            "designation": booking.designation,
+            "company_name": booking.company_name,
+            "company_type": getattr(booking, "company_type", ""),
+            "industry_type": getattr(booking, "industry_type", ""),
+            "company_website": getattr(booking, "company_website", ""),
+            "business_description": getattr(booking, "business_description", ""),
+            "country": booking.country,
+            "state": booking.state,
+            "city": booking.city,
+            "address": booking.address,
+            "pin_code": booking.pin_code,
+            "postal_code": booking.pin_code,
+            "stall_area": booking.stall_area,
+            "products": booking.products,
+            "messages": booking.messages,
+            "price_paid": getattr(booking, "price_paid", 45000),
+            "status": booking.status,
+            "visiting_card": booking.visiting_card,
+            "created_at": str(booking.created_at) if booking.created_at else None
+        }
+
+        if booking.visiting_card:
+            file_path = booking.visiting_card.replace("\\", "/")
+            relative_path = file_path.split("/uploads/")[-1] if "/uploads/" in file_path else os.path.basename(file_path)
+            b_dict["visiting_card_url"] = f"{base_url}/uploads/{relative_path}"
+        else:
+            b_dict["visiting_card_url"] = None
+
+        return b_dict
