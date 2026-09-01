@@ -61,7 +61,8 @@ def ensure_schema_columns():
         ("event_stalls", "quantity", "INTEGER DEFAULT 1"),
         ("event_stalls", "single_area_sqft", "FLOAT DEFAULT 100.0"),
         ("event_stalls", "total_area_sqft", "FLOAT DEFAULT 100.0"),
-        ("user_booking_details", "user_id", "INT")
+        ("user_booking_details", "user_id", "INT"),
+        ("venues", "total_area_sqft", "FLOAT DEFAULT 50000.0")
     ]
     try:
         with engine.connect() as conn:

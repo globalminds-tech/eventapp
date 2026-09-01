@@ -7,6 +7,7 @@ import { completeEvent, updateEvent, uploadImage } from "@/Services/api";
 import Step1EventIdentity from "./steps/Step1EventIdentity";
 import Step2TicketsPricing from "./steps/Step2TicketsPricing";
 import Step3FacilitiesLayout from "./steps/Step3FacilitiesLayout";
+import Step3LayoutStall from "./steps/Step3Layout";
 import Step4PartnersTerms from "./steps/Step4PartnersTerms";
 import Step5Terms from "./steps/Step5Terms";
 
@@ -23,14 +24,15 @@ import {
   Sparkles, FileSpreadsheet, Download, CheckCircle2,
   ArrowLeft, ChevronLeft, ChevronRight, Check,
   CalendarDays, Ticket, Settings2, Users, ScrollText,
-  Eye, Pencil, AlertTriangle
+  Eye, Pencil, AlertTriangle, Layers
 } from "lucide-react";
 
 const STEPS = [
   { label: "Event Identity", icon: CalendarDays },
   { label: "Tickets & Pricing", icon: Ticket },
-  { label: "Facilities & Layout", icon: Settings2 },
-  { label: "Partners & Sponsors", icon: Users },
+  { label: "Facilities & Logistics", icon: Settings2 },
+  { label: "Stall Layout", icon: Layers },
+  { label: "Partners & Documents", icon: Users },
   { label: "Terms & Policies", icon: ScrollText },
 ];
 
@@ -467,13 +469,32 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         );
       case 4:
         return (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 bg-emerald-50 rounded-lg">
+                <Layers className="w-4 h-4 text-emerald-600" />
+              </div>
+              <h3 className="text-sm font-extrabold text-slate-900">Stall Layout & Configuration</h3>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-xl p-4">
+              <Step3LayoutStall
+                formData={formData}
+                setFormData={(val) => { if (canEdit) setFormData(val); }}
+                showStep3Errors={showErrors}
+              />
+            </div>
+          </div>
+        );
+      case 5:
+        return (
           <Step4PartnersTerms
             formData={formData}
             setFormData={(val) => { if (canEdit) setFormData(val); }}
             isReadOnly={!canEdit}
+            showErrors={showErrors}
           />
         );
-      case 5:
+      case 6:
         return (
           <Step5Terms
             formData={formData}
@@ -523,7 +544,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
                 : "Create New Event"}
             </h1>
             <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold text-[10px]">
-              5-Step Wizard
+              6-Step Wizard
             </Badge>
             {isReadOnlyMode && !isEditingAllowed && (
               <Badge variant="secondary" className="font-semibold text-[10px] bg-amber-100 text-amber-800 border-amber-200">

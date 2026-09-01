@@ -3,7 +3,7 @@ import { Calendar, Clock, MapPin, Search, ChevronDown, Upload, X, Image as Image
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
-import { get_Venues_details, getVenueDetails, getAdminCategories } from "@/Services/api";
+import { get_Venues_details, getVenueDetails, getAdminCategories, createVenue } from "@/Services/api";
 
 const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, isReadOnly, isEditingAllowed }) => {
   const [venues, setVenues] = useState([]);
@@ -27,6 +27,14 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
   const [categoryReqReason, setCategoryReqReason] = useState("");
   const [categoryReqSuccess, setCategoryReqSuccess] = useState("");
   const [isSubmittingCatReq, setIsSubmittingCatReq] = useState(false);
+
+  /* Venue Creation Modal State */
+  const [showVenueModal, setShowVenueModal] = useState(false);
+  const [newVenueName, setNewVenueName] = useState("");
+  const [newVenueAddress, setNewVenueAddress] = useState("");
+  const [newVenueCity, setNewVenueCity] = useState("");
+  const [newVenueSuccess, setNewVenueSuccess] = useState("");
+  const [isSubmittingVenue, setIsSubmittingVenue] = useState(false);
 
   const todayLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
     .toISOString().split("T")[0];
@@ -87,6 +95,38 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
       }, 1800);
     } finally {
       setIsSubmittingCatReq(false);
+    }
+  };
+
+  const handleCreateVenueSubmit = async (e) => {
+    e.preventDefault();
+    if (!newVenueName.trim() || !newVenueAddress.trim()) return;
+    setIsSubmittingVenue(true);
+    try {
+      const res = await createVenue({
+        venue_name: newVenueName,
+        address: newVenueAddress,
+        city_name: newVenueCity,
+        organizer_id: organizerId || 1
+      });
+      if (res) {
+        setNewVenueSuccess("✓ Venue created successfully!");
+        fetchVenues();
+        setTimeout(() => {
+          setShowVenueModal(false);
+          setNewVenueName("");
+          setNewVenueAddress("");
+          setNewVenueCity("");
+          setNewVenueSuccess("");
+          setVenueOpen(false);
+        }, 1500);
+      }
+    } catch (err) {
+      console.error("Venue creation failed:", err);
+      setNewVenueSuccess("❌ Failed to create venue.");
+      setTimeout(() => setNewVenueSuccess(""), 2000);
+    } finally {
+      setIsSubmittingVenue(false);
     }
   };
 
@@ -437,10 +477,19 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
 
         {/* Venue */}
         <div className="relative" ref={venueRef}>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            <MapPin size={12} className="inline mr-1 text-emerald-600" />
-            Venue <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-bold text-slate-700">
+              <MapPin size={12} className="inline mr-1 text-emerald-600" />
+              Venue <span className="text-red-500">*</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowVenueModal(true)}
+              className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md transition-all"
+            >
+              + Create New Venue
+            </button>
+          </div>
           <div
             onClick={() => setVenueOpen(!venueOpen)}
             className={`w-full h-10 bg-slate-50 border rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-emerald-400 ${
@@ -787,6 +836,94 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                       className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-95 rounded-xl shadow-md transition-all border-none cursor-pointer disabled:opacity-50"
                     >
                       {isSubmittingCatReq ? "Submitting..." : "Submit Request"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- VENUE CREATION MODAL ---------------- */}
+      {showVenueModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white flex items-center justify-between">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <MapPin size={16} /> Create New Venue
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowVenueModal(false)}
+                className="text-white/80 hover:text-white text-base font-bold bg-transparent border-none cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateVenueSubmit} className="p-5 space-y-4">
+              {newVenueSuccess ? (
+                <div className={`p-4 border text-xs font-bold rounded-xl text-center ${newVenueSuccess.includes('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                  {newVenueSuccess}
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Venue Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Grand Expo Center"
+                      value={newVenueName}
+                      onChange={(e) => setNewVenueName(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mumbai"
+                      value={newVenueCity}
+                      onChange={(e) => setNewVenueCity(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Address <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      placeholder="Full venue address..."
+                      value={newVenueAddress}
+                      onChange={(e) => setNewVenueAddress(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowVenueModal(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border-none cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingVenue}
+                      className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 rounded-xl shadow-md transition-all border-none cursor-pointer disabled:opacity-50"
+                    >
+                      {isSubmittingVenue ? "Creating..." : "Create Venue"}
                     </button>
                   </div>
                 </>

@@ -1,341 +1,173 @@
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  StatusBar,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getevent } from "@Services/api";
+import { Picker } from "@react-native-picker/picker";
 import {
-  Coffee,
-  Utensils,
-  Pizza,
-  Moon,
-  Users,
-  Store,
-  UserPlus,
-  ChevronDown,
-  AlertTriangle,
-  Flame,
-  CheckCircle,
+  Coffee, Utensils, Pizza, Moon, Users, Store, UserPlus, ChevronDown
 } from "lucide-react-native";
-import { COLORS } from "../../styles/theme";
-
-const MEAL_TIMES = ["Breakfast", "Lunch", "Snacks", "Dinner"];
-const MEAL_TYPES = ["All Types", "Veg", "Non Veg"];
+import { getevent } from "@Services/api";
 
 export const LiveFoodDashboard = ({ navigation }) => {
   const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [mealTime, setMealTime] = useState("Lunch");
-  const [mealType, setMealType] = useState("All Types");
-  const [showEventModal, setShowEventModal] = useState(false);
+  const [event, setEvent] = useState("");
+  const [mealTime, setMealTime] = useState("");
+  const [mealType, setMealType] = useState("");
 
-  const data = {
-    guests_inside: 185,
-    total_capacity: 250,
-    waiting_outside: 14,
-    veg_served: 110,
-    non_veg_served: 75,
-  };
+  const [data, setData] = useState({
+    guests_inside: 0,
+    total_capacity: 0,
+    waiting_outside: 0
+  });
 
-  const getEvents = async () => {
+  const fetchEvents = async () => {
     try {
       const res = await getevent();
-      const list = res?.data || [
-        { id: "1", event_code: "EVT-2026-001", event_name: "TechInnovate Summit 2026" },
-      ];
-      setEvents(list);
-      if (list.length > 0) setSelectedEvent(list[0]);
-    } catch (err) {
-      console.log("Fallback food events", err);
-      const list = [{ id: "1", event_code: "EVT-2026-001", event_name: "TechInnovate Summit 2026" }];
-      setEvents(list);
-      setSelectedEvent(list[0]);
+      let extractedEvents = [];
+      if (Array.isArray(res)) {
+        extractedEvents = res;
+      } else if (res && Array.isArray(res.data)) {
+        extractedEvents = res.data;
+      } else if (res && res.data && Array.isArray(res.data.data)) {
+        extractedEvents = res.data.data;
+      }
+      setEvents(extractedEvents);
+    } catch (e) {
+      console.log(e);
     }
   };
 
   useEffect(() => {
-    getEvents();
+    fetchEvents();
   }, []);
 
-  const occupancyPercent = Math.round((data.guests_inside / data.total_capacity) * 100);
+  const getFoodCount = async () => {
+    // Mock API call to match frontend logic
+    // const res = await getFoodCountAPI({ event_id: event, meal_time: mealTime, meal_type: mealType });
+    // For now, simulate response based on selection to give realistic UI experience
+    setData({
+      guests_inside: Math.floor(Math.random() * 300),
+      total_capacity: 500,
+      waiting_outside: Math.floor(Math.random() * 50)
+    });
+  };
 
-  const MealIcon = () => {
-    const props = { size: 24, color: COLORS.primary };
-    if (mealTime === "Breakfast") return <Coffee {...props} />;
-    if (mealTime === "Lunch") return <Utensils {...props} />;
-    if (mealTime === "Snacks") return <Pizza {...props} />;
-    return <Moon {...props} />;
+  useEffect(() => {
+    if (event && mealTime && mealType) {
+      getFoodCount();
+    } else {
+      setData({ guests_inside: 0, total_capacity: 0, waiting_outside: 0 });
+    }
+  }, [event, mealTime, mealType]);
+
+  const mealIcon = () => {
+    if (mealTime === "Breakfast") return <Coffee size={40} color="#4f46e5" />;
+    if (mealTime === "Lunch") return <Utensils size={40} color="#4f46e5" />;
+    if (mealTime === "Snacks") return <Pizza size={40} color="#4f46e5" />;
+    if (mealTime === "Dinner") return <Moon size={40} color="#4f46e5" />;
+    return <Store size={40} color="#4f46e5" />;
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerBadge}>CATERING & DINING GATEWAY</Text>
-          <Text style={styles.headerTitle}>Live Dining Hall Analytics</Text>
-        </View>
-
-        <TouchableOpacity style={styles.eventPickerBtn} onPress={() => setShowEventModal(true)}>
-          <Text style={styles.eventPickerBtnText} numberOfLines={1}>
-            {selectedEvent ? selectedEvent.event_code : "Select Event"}
-          </Text>
-          <ChevronDown size={14} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
-
+      <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Filters bar */}
-        <View style={styles.filterCard}>
-          <Text style={styles.filterTitle}>Select Meal Slot</Text>
-          <View style={styles.slotRow}>
-            {MEAL_TIMES.map((slot) => (
-              <TouchableOpacity
-                key={slot}
-                style={[styles.slotPill, mealTime === slot && styles.slotPillActive]}
-                onPress={() => setMealTime(slot)}
-              >
-                <Text style={[styles.slotPillText, mealTime === slot && styles.slotPillTextActive]}>{slot}</Text>
-              </TouchableOpacity>
-            ))}
+        
+        <Text style={styles.title}>Live Food Count</Text>
+
+        <View style={styles.filtersContainer}>
+          <View style={styles.pickerWrapper}>
+            <Picker
+              selectedValue={event}
+              onValueChange={(val) => { setEvent(val); setMealTime(""); setMealType(""); }}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select Event" value="" color="#6b7280" />
+              {events.map((ev) => (
+                <Picker.Item key={ev.id} label={ev.event_name || ev.name} value={ev.id} />
+              ))}
+            </Picker>
+          </View>
+
+          <View style={[styles.pickerWrapper, !event && styles.pickerDisabled]}>
+            <Picker
+              selectedValue={mealTime}
+              onValueChange={(val) => { setMealTime(val); setMealType(""); }}
+              enabled={!!event}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select Meal Time" value="" color="#6b7280" />
+              <Picker.Item label="Breakfast" value="Breakfast" />
+              <Picker.Item label="Lunch" value="Lunch" />
+              <Picker.Item label="Snacks" value="Snacks" />
+              <Picker.Item label="Dinner" value="Dinner" />
+            </Picker>
+          </View>
+
+          <View style={[styles.pickerWrapper, !mealTime && styles.pickerDisabled]}>
+            <Picker
+              selectedValue={mealType}
+              onValueChange={(val) => setMealType(val)}
+              enabled={!!mealTime}
+              style={styles.picker}
+            >
+              <Picker.Item label="Select Meal Type" value="" color="#6b7280" />
+              <Picker.Item label="Veg" value="Veg" />
+              <Picker.Item label="Non Veg" value="Non Veg" />
+            </Picker>
           </View>
         </View>
 
-        {/* Live Occupancy Progress Gauge */}
-        <View style={styles.gaugeCard}>
-          <View style={styles.gaugeHeader}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <MealIcon />
-              <View>
-                <Text style={styles.gaugeSlotName}>{mealTime} Service</Text>
-                <Text style={styles.gaugeSub}>Live Dining Area Capacity</Text>
-              </View>
+        <View style={styles.cardsGrid}>
+          {/* Guests Inside */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Guests Inside Dining Area</Text>
+            <View style={styles.iconContainer}>
+              <Users size={40} color="#4f46e5" />
             </View>
-            <View style={styles.percentBadge}>
-              <Text style={styles.percentBadgeText}>{occupancyPercent}% Full</Text>
+            <Text style={styles.cardValue}>{data.guests_inside}</Text>
+          </View>
+
+          {/* Total Capacity */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Total Dining Capacity</Text>
+            <View style={styles.iconContainer}>
+              {mealIcon()}
             </View>
+            <Text style={styles.cardValue}>{data.total_capacity}</Text>
           </View>
 
-          <View style={styles.gaugeTrack}>
-            <View style={[styles.gaugeFill, { width: `${occupancyPercent}%` }]} />
-          </View>
-
-          <View style={styles.gaugeFooter}>
-            <Text style={styles.gaugeFootText}>{data.guests_inside} Seated</Text>
-            <Text style={styles.gaugeFootText}>{data.total_capacity} Max Tables</Text>
-          </View>
-        </View>
-
-        {/* Stat Cards */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statBox}>
-            <Users size={22} color={COLORS.primary} />
-            <Text style={styles.statVal}>{data.guests_inside}</Text>
-            <Text style={styles.statLabel}>Guests Inside</Text>
-          </View>
-
-          <View style={styles.statBox}>
-            <UserPlus size={22} color={COLORS.accent} />
-            <Text style={styles.statVal}>{data.waiting_outside}</Text>
-            <Text style={styles.statLabel}>Queue Outside</Text>
-          </View>
-
-          <View style={styles.statBox}>
-            <Store size={22} color={COLORS.green} />
-            <Text style={styles.statVal}>{data.total_capacity}</Text>
-            <Text style={styles.statLabel}>Total Capacity</Text>
-          </View>
-        </View>
-
-        {/* Veg vs Non-Veg Count breakdown */}
-        <View style={styles.breakdownCard}>
-          <Text style={styles.breakdownTitle}>Redemption Breakdown ({mealTime})</Text>
-
-          <View style={styles.breakdownRow}>
-            <View style={styles.flexRow}>
-              <View style={[styles.dot, { backgroundColor: COLORS.green }]} />
-              <Text style={styles.breakdownLabel}>Vegetarian Meals Served</Text>
+          {/* Waiting Outside */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Guests Waiting Outside</Text>
+            <View style={styles.iconContainer}>
+              <UserPlus size={40} color="#4f46e5" />
             </View>
-            <Text style={[styles.breakdownVal, { color: COLORS.green }]}>{data.veg_served}</Text>
-          </View>
-
-          <View style={styles.breakdownRow}>
-            <View style={styles.flexRow}>
-              <View style={[styles.dot, { backgroundColor: "#dc2626" }]} />
-              <Text style={styles.breakdownLabel}>Non-Vegetarian Meals Served</Text>
-            </View>
-            <Text style={[styles.breakdownVal, { color: "#dc2626" }]}>{data.non_veg_served}</Text>
+            <Text style={styles.cardValue}>{data.waiting_outside}</Text>
           </View>
         </View>
 
-        {/* Gate Advice Alert */}
-        <View style={styles.adviceCard}>
-          <AlertTriangle size={20} color={COLORS.amber} />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={styles.adviceTitle}>Queue Management Alert</Text>
-            <Text style={styles.adviceSub}>
-              Dining hall reaching 80%+ capacity. Staff should regulate entry at Main Dining Arch.
-            </Text>
-          </View>
-        </View>
       </ScrollView>
-
-      {/* Event Picker Modal */}
-      <Modal visible={showEventModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select Event for Food Analytics</Text>
-            {events.map((e) => (
-              <TouchableOpacity
-                key={e.id}
-                style={[
-                  styles.eventOption,
-                  selectedEvent?.id === e.id && styles.eventOptionSelected,
-                ]}
-                onPress={() => {
-                  setSelectedEvent(e);
-                  setShowEventModal(false);
-                }}
-              >
-                <Text style={styles.eventOptionCode}>{e.event_code}</Text>
-                <Text style={styles.eventOptionName}>{e.event_name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  headerBadge: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 1 },
-  headerTitle: { fontSize: 17, fontWeight: "900", color: COLORS.dark },
-  eventPickerBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#f0f9ff",
-    borderWidth: 1,
-    borderColor: "#bae6fd",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  eventPickerBtnText: { fontSize: 12, fontWeight: "800", color: COLORS.primary },
+  container: { flex: 1, backgroundColor: "#f3f4f6" },
+  scrollContent: { padding: 24, paddingBottom: 60 },
+  title: { fontSize: 24, fontWeight: "800", color: "#111827", marginBottom: 24 },
+  
+  filtersContainer: { gap: 16, marginBottom: 32 },
+  pickerWrapper: { backgroundColor: "#ffffff", borderRadius: 8, borderWidth: 1, borderColor: "#d1d5db", overflow: "hidden" },
+  pickerDisabled: { backgroundColor: "#e5e7eb" },
+  picker: { height: 50, color: "#111827" },
 
-  filterCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
-  filterTitle: { fontSize: 12, fontWeight: "800", color: COLORS.subText, marginBottom: 8 },
-  slotRow: { flexDirection: "row", gap: 6 },
-  slotPill: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#f8fafc",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  slotPillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  slotPillText: { fontSize: 12, fontWeight: "700", color: COLORS.dark },
-  slotPillTextActive: { color: "#ffffff" },
-
-  gaugeCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-  },
-  gaugeHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  gaugeSlotName: { fontSize: 16, fontWeight: "900", color: COLORS.dark },
-  gaugeSub: { fontSize: 12, color: COLORS.subText },
-  percentBadge: { backgroundColor: "#ffedd5", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  percentBadgeText: { fontSize: 12, fontWeight: "900", color: COLORS.accent },
-  gaugeTrack: { height: 10, backgroundColor: "#f1f5f9", borderRadius: 5, overflow: "hidden", marginBottom: 8 },
-  gaugeFill: { height: "100%", backgroundColor: COLORS.accent, borderRadius: 5 },
-  gaugeFooter: { flexDirection: "row", justifyContent: "space-between" },
-  gaugeFootText: { fontSize: 12, fontWeight: "700", color: COLORS.subText },
-
-  statsGrid: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  statBox: {
-    flex: 1,
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
-  statVal: { fontSize: 20, fontWeight: "900", color: COLORS.dark, marginTop: 4 },
-  statLabel: { fontSize: 11, fontWeight: "700", color: COLORS.subText },
-
-  breakdownCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
-  breakdownTitle: { fontSize: 14, fontWeight: "800", color: COLORS.dark, marginBottom: 10 },
-  breakdownRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#f8fafc" },
-  flexRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  breakdownLabel: { fontSize: 13, fontWeight: "700", color: COLORS.dark },
-  breakdownVal: { fontSize: 15, fontWeight: "900" },
-
-  adviceCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff7ed",
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#ffedd5",
-  },
-  adviceTitle: { fontSize: 13, fontWeight: "800", color: COLORS.amber },
-  adviceSub: { fontSize: 12, color: "#9a3412", marginTop: 2 },
-
-  modalOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "center", padding: 20 },
-  modalCard: { backgroundColor: "#ffffff", borderRadius: 20, padding: 20 },
-  modalTitle: { fontSize: 16, fontWeight: "900", color: COLORS.dark, marginBottom: 14 },
-  eventOption: { padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "#e2e8f0", marginBottom: 8 },
-  eventOptionSelected: { borderColor: COLORS.primary, backgroundColor: "#f0f9ff" },
-  eventOptionCode: { fontSize: 11, fontWeight: "800", color: COLORS.primary },
-  eventOptionName: { fontSize: 14, fontWeight: "700", color: COLORS.dark },
+  cardsGrid: { gap: 24 },
+  card: { backgroundColor: "#ffffff", padding: 24, borderRadius: 16, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
+  cardTitle: { fontSize: 16, fontWeight: "600", color: "#374151", marginBottom: 16, textAlign: "center" },
+  iconContainer: { marginBottom: 20 },
+  cardValue: { fontSize: 40, fontWeight: "800", color: "#111827" },
 });
 
 export default LiveFoodDashboard;

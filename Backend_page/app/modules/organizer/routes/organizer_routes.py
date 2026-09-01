@@ -64,6 +64,13 @@ def get_single_venue_detail_alias(venue_id: int):
     matched = next((v for v in venues if v["id"] == venue_id), venues[0])
     return matched
 
+@root_organizer_router.post("/superadmin/api/create_venue")
+async def create_venue_route(request: Request):
+    data = await request.json()
+    user_id = data.get("organizer_id")
+    result = OrganizerController.create_venue(data, user_id)
+    return { "success": True, "message": "Venue created successfully", "data": result }
+
 # ── ORGANIZER VENDORS & SPONSORS ──
 
 @root_organizer_router.get("/superadmin/api/get-vendor-types")
@@ -76,23 +83,21 @@ def get_sponsor_names_alias():
 
 @root_organizer_router.get("/superadmin/api/get-vendor-names/{vendor_type}")
 def get_vendor_names_by_type(vendor_type: str):
-    return [
-        { "vendor_name": "Apex Event Services" },
-        { "vendor_name": "SoundCraft Pro Systems" },
-        { "vendor_name": "Guardian Security Services" },
-        { "vendor_name": "Starlight Decorators" },
-        { "vendor_name": "PowerGrid Electricals" },
-    ]
+    return OrganizerController.get_vendor_names(vendor_type)
 
 @root_organizer_router.post("/superadmin/api/create_vendor")
-async def create_vendor_stub(request: Request):
+async def create_vendor_route(request: Request):
     data = await request.json()
-    return { "success": True, "message": "Vendor created successfully", "data": data }
+    user_id = data.get("organizer_id")
+    result = OrganizerController.create_vendor(data, user_id)
+    return { "success": True, "message": "Vendor created successfully", "data": result }
 
 @root_organizer_router.post("/superadmin/api/sponsorship")
-async def create_sponsor_stub(request: Request):
+async def create_sponsor_route(request: Request):
     data = await request.json()
-    return { "success": True, "message": "Sponsor created successfully", "data": data }
+    user_id = data.get("organizer_id")
+    result = OrganizerController.create_sponsor(data, user_id)
+    return { "success": True, "message": "Sponsor created successfully", "data": result }
 
 # ── ORGANIZER POLICIES ──
 

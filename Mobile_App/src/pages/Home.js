@@ -433,7 +433,7 @@ export default function Home({ navigation }) {
               </TouchableOpacity>
 
               {/* Extras: My Passes & My Profile */}
-              <View style={s.extraDivider} />
+              <View style={{ height: 1, backgroundColor: "#e2e8f0", marginVertical: 12 }} />
               <TouchableOpacity
                 style={styles.portalExtraOption}
                 onPress={() => { setShowPortalModal(false); navigation?.navigate("MyPasses"); }}
