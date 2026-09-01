@@ -6,7 +6,7 @@ export const bookEvent = async (data) => {
 };
 
 export const bookStall = async (formData) => {
-  const res = await apiClient.post("/exhibitor/api/book-stall", formData, {
+  const res = await apiClient.post("/api/v1/exhibitors/book-stall", formData, {
     headers: { "Content-Type": undefined },
   });
   return res.data;

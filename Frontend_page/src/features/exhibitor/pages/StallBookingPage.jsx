@@ -1,9 +1,103 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Upload, User, Mail, Phone, Building2, MapPin, FileText, CheckCircle, AlertCircle, X, ChevronDown } from "lucide-react";
+import {
+  Send, Upload, User, Mail, Phone, Building2, MapPin,
+  X, ChevronDown, Briefcase, Package, Hash, Home,
+  CreditCard, MessageSquare, FileText, Store, ArrowLeft, Loader2, CheckCircle, AlertCircle
+} from "lucide-react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { bookStall, getEventById, getCountries, getStates, getCities } from "@/Services/api";
 import { useSelector } from "react-redux";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 
+/* ── Searchable Dropdown ─────────────────────────────────────────── */
+const SearchableDropdown = ({ label, placeholder, value, options, displayKey, onSelect, onClear, error, disabled, emptyMessage }) => {
+  const [search, setSearch] = useState(value || "");
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => { setSearch(value || ""); }, [value]);
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const filtered = options.filter((o) => o[displayKey].toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="w-full flex flex-col gap-1" ref={ref}>
+      {label && <label className="text-[11px] font-semibold text-slate-600 tracking-wide uppercase">{label}</label>}
+      <div className="relative">
+        <input
+          type="text" value={search} placeholder={placeholder} disabled={disabled}
+          onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          className={`flex h-9 w-full rounded-lg border bg-white px-3 py-2 pr-14 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:opacity-50 transition-all ${error ? "border-red-400" : "border-slate-200"}`}
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          {search && (
+            <button type="button" onClick={() => { setSearch(""); onClear?.(); setOpen(true); }}
+              className="p-0.5 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+              <X size={12} />
+            </button>
+          )}
+          <button type="button" onClick={() => setOpen((o) => !o)} className="p-0.5 text-slate-400">
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+        {open && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-36 overflow-y-auto">
+            {filtered.length > 0 ? filtered.map((item) => (
+              <div key={item.id}
+                onMouseDown={(e) => { e.preventDefault(); onSelect(item); setSearch(item[displayKey]); setOpen(false); }}
+                className={`px-3 py-1.5 text-sm cursor-pointer hover:bg-sky-50 hover:text-sky-700 transition-colors ${item[displayKey] === value ? "bg-sky-50 text-sky-700 font-medium" : "text-slate-700"}`}>
+                {item[displayKey]}
+              </div>
+            )) : (
+              <div className="px-3 py-2 text-xs text-slate-400 italic">{emptyMessage || "No results"}</div>
+            )}
+          </div>
+        )}
+      </div>
+      {error && <span className="text-[10px] text-red-500 font-medium">{error}</span>}
+    </div>
+  );
+};
+
+/* ── Compact Input wrapper with smaller label ─────────────────────── */
+const Field = ({ label, required, children }) => (
+  <div className="flex flex-col gap-1">
+    {label && (
+      <label className="text-[11px] font-semibold text-slate-600 tracking-wide uppercase">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+    )}
+    {children}
+  </div>
+);
+
+/* ── Toast ────────────────────────────────────────────────────────── */
+const Toast = ({ toast, onClose }) => {
+  if (!toast) return null;
+  const ok = toast.type === "success";
+  return (
+    <div className={`fixed top-4 right-4 z-[9999] flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl border-l-4 bg-white max-w-xs animate-in fade-in slide-in-from-right-4 duration-300 ${ok ? "border-emerald-500" : "border-rose-500"}`}>
+      <div className={`p-1 rounded-lg shrink-0 ${ok ? "bg-emerald-100" : "bg-rose-100"}`}>
+        {ok ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-rose-600" />}
+      </div>
+      <div className="flex-1">
+        <p className="text-xs font-bold text-slate-800">{ok ? "Success" : "Error"}</p>
+        <p className="text-[11px] text-slate-500 mt-0.5">{toast.message}</p>
+      </div>
+      <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={13} /></button>
+    </div>
+  );
+};
+
+/* ── Main Component ───────────────────────────────────────────────── */
 const Stall = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -14,830 +108,342 @@ const Stall = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
-
-  const initialFormData = {
-    title: "Mr.",
-    firstName: "",
-    lastName: "",
-    email: "",
-    mobile: "",
-    designation: "",
-    companyName: "",
-    country: "",
-    state: "",
-    city: "",
-    address: "",
-    message: "",
-    pinCode: "",
-    stallArea: "",
-    products: "",
-    visitingCard: null,
+  const initial = {
+    title: "Mr.", firstName: "", lastName: "", email: "", mobile: "",
+    designation: "", companyName: "", country: "", state: "", city: "",
+    address: "", message: "", pinCode: "", stallArea: "", products: "", visitingCard: null,
   };
-
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState(initial);
   const [errors, setErrors] = useState({});
-
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
-  const [countrySearch, setCountrySearch] = useState("");
-  const [stateSearch, setStateSearch] = useState("");
-  const [citySearch, setCitySearch] = useState("");
-  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
-  const [showStateDropdown, setShowStateDropdown] = useState(false);
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const countryRef = useRef(null);
-  const stateRef = useRef(null);
-  const cityRef = useRef(null);
 
   useEffect(() => {
-    if (location.state?.event) {
-      setEventName(location.state.event.title);
-    } else {
-      fetchEvent();
-    }
+    if (location.state?.event) setEventName(location.state.event.title);
+    else fetchEvent();
     loadCountries();
   }, []);
 
-  // Click away listener for dropdowns
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (countryRef.current && !countryRef.current.contains(event.target)) {
-        setShowCountryDropdown(false);
-      }
-      if (stateRef.current && !stateRef.current.contains(event.target)) {
-        setShowStateDropdown(false);
-      }
-      if (cityRef.current && !cityRef.current.contains(event.target)) {
-        setShowCityDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Auto-close toast after 5 seconds
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(timer);
-    }
+    if (toast) { const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }
   }, [toast]);
 
-  const showToast = (message, type = "success") => {
-    setToast({ message, type });
-  };
+  useEffect(() => { if (eventName) setFormData((p) => ({ ...p, eventName })); }, [eventName]);
 
-  const loadCountries = async () => {
-    try {
-      const data = await getCountries();
-      setCountries(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const loadStates = async (countryCode) => {
-    try {
-      const data = await getStates(countryCode);
-      setStates(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const loadCities = async (countryCode, stateCode) => {
-    try {
-      const data = await getCities(countryCode, stateCode);
-      setCities(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  useEffect(() => {
-    if (eventName) {
-      setFormData((prev) => ({
-        ...prev,
-        eventName: eventName,
-      }));
-    }
-  }, [eventName]);
-
-  const fetchEvent = async () => {
-    try {
-      const res = await getEventById(id);
-      setEventName(res.event_name);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-
+  const fetchEvent = async () => { try { const r = await getEventById(id); setEventName(r.event_name); } catch (e) { console.error(e); } };
+  const loadCountries = async () => { try { setCountries(await getCountries()); } catch (e) { console.error(e); } };
+  const loadStates = async (cId) => { try { setStates(await getStates(cId)); setCities([]); } catch (e) { console.error(e); } };
+  const loadCities = async (cId, sId) => { try { setCities(await getCities(cId, sId)); } catch (e) { console.error(e); } };
 
   const handleChange = (e) => {
     let { name, value, type, files } = e.target;
     setErrors({ ...errors, [name]: "" });
-
-    if (type === "file") {
-      setFormData({ ...formData, [name]: files[0] });
-      return;
-    }
-
-    // 1. Spacing Restriction
+    if (type === "file") { setFormData({ ...formData, [name]: files[0] }); return; }
     if (typeof value === "string") {
-      if (name === "email" || name === "mobile" || name === "pinCode") {
-        value = value.replace(/\s/g, ""); // No spaces allowed at all
-      } else {
-        value = value.trimStart(); // No leading spaces allowed
-      }
+      if (["email", "mobile", "pinCode"].includes(name)) value = value.replace(/\s/g, "");
+      else value = value.trimStart();
     }
-
-    // 2. Number field restriction (Contact Number / PinCode)
-    if (name === "mobile" || name === "pinCode") {
-      if (value !== "" && !/^\d*$/.test(value)) {
-        return; // Disallow alphabets/special characters
-      }
+    if (["mobile", "pinCode"].includes(name)) {
+      if (value !== "" && !/^\d*$/.test(value)) return;
       if (name === "mobile" && value.length > 10) return;
       if (name === "pinCode" && value.length > 6) return;
     }
-
-    // 3. Alphabet restriction for specific text fields
-    if (["firstName", "lastName", "city", "state", "country"].includes(name)) {
-      if (value !== "" && !/^[a-zA-Z\s]*$/.test(value)) {
-        return; // Disallow numbers/special characters
-      }
+    if (["firstName", "lastName"].includes(name)) {
+      if (value !== "" && !/^[a-zA-Z\s]*$/.test(value)) return;
     }
-
     setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     const newErrors = {};
-    const requiredFields = ['firstName', 'lastName', 'email', 'mobile', 'companyName', 'country', 'state', 'city', 'address', 'stallArea', 'products', 'pinCode'];
+    const required = ["firstName", "lastName", "email", "mobile", "companyName", "country", "state", "city", "address", "stallArea", "products", "pinCode"];
+    const labels = { firstName: "First Name", lastName: "Last Name", email: "Email", mobile: "Mobile", companyName: "Company", country: "Country", state: "State", city: "City", address: "Address", stallArea: "Stall Area", products: "Products", pinCode: "Pin Code" };
+    required.forEach((f) => { if (!formData[f]?.toString().trim()) newErrors[f] = `${labels[f]} is required`; });
+    if (formData.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) newErrors.email = "Invalid email";
+    if (formData.mobile && !/^\d{10}$/.test(formData.mobile)) newErrors.mobile = "Must be 10 digits";
+    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); setLoading(false); return; }
 
-    const fieldLabels = {
-      firstName: "First Name",
-      lastName: "Last Name",
-      email: "Email",
-      mobile: "Mobile Number",
-      companyName: "Company Name",
-      country: "Country",
-      state: "State",
-      city: "City",
-      address: "Address",
-      stallArea: "Stall Area",
-      products: "Products",
-      pinCode: "Pin Code"
-    };
-
-    requiredFields.forEach(field => {
-      if (!formData[field] || (typeof formData[field] === 'string' && formData[field].trim() === "")) {
-        newErrors[field] = ` ${fieldLabels[field] || field} field is required`;
-      }
-    });
-
-    // Email Pattern Validation
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (formData.mobile && !/^\d{10}$/.test(formData.mobile)) {
-      newErrors.mobile = "Mobile number must be exactly 10 digits";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setLoading(false);
-      return;
-    }
-
-    const submitData = new FormData();
-    Object.keys(formData).forEach((key) => {
-      submitData.append(key, formData[key]);
-    });
-
-    submitData.append("event_id", id);
-    submitData.append("user_id", user.id);
-    submitData.append("eventName", eventName);
+    const fd = new FormData();
+    Object.keys(formData).forEach((k) => fd.append(k, formData[k]));
+    fd.append("event_id", id); fd.append("user_id", user.id); fd.append("eventName", eventName);
 
     try {
-      const res = await bookStall(submitData);
-      showToast("✓ Stall Booked Successfully!", "success");
-      setFormData(initialFormData);
-      
-      // Delay navigation to allow user to see the success toast
-      setTimeout(() => {
-        navigate("/exhibitor/dashboard");
-      }, 3000);
+      await bookStall(fd);
+      setToast({ message: "Stall booked! Redirecting to dashboard…", type: "success" });
+      setFormData(initial);
+      setTimeout(() => navigate("/exhibitor/dashboard"), 3000);
     } catch (err) {
-      console.error(err);
-      showToast(err.response?.data?.message || "Failed to book stall. Please try again.", "error");
-    } finally {
-      setLoading(false);
-    }
+      setToast({ message: err.response?.data?.message || "Failed to book stall.", type: "error" });
+    } finally { setLoading(false); }
   };
 
+  const inp = (name, placeholder, extra = {}) => (
+    <input
+      name={name} value={formData[name]} placeholder={placeholder}
+      onChange={handleChange} {...extra}
+      className={`flex h-9 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 transition-all ${errors[name] ? "border-red-400" : "border-slate-200"}`}
+    />
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
-      {/* TOAST NOTIFICATION */}
-      {toast && (
-        <div
-          className={`fixed top-6 right-6 flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl z-[9999] animate-in fade-in slide-in-from-right duration-300 border-l-4 ${toast.type === "success"
-            ? "bg-white border-emerald-500"
-            : "bg-white border-rose-500"
-            }`}
-        >
-          <div className={`p-2 rounded-xl ${toast.type === "success" ? "bg-emerald-100" : "bg-rose-100"}`}>
-            {toast.type === "success" ? (
-              <CheckCircle size={20} className="text-emerald-600" />
-            ) : (
-              <AlertCircle size={20} className="text-rose-600" />
-            )}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-slate-800 font-bold text-sm tracking-tight">
-              {toast.type === "success" ? "Success" : "Notification"}
-            </span>
-            <span className="text-slate-500 text-xs font-medium">{toast.message}</span>
-          </div>
-          <button
-            onClick={() => setToast(null)}
-            className="ml-4 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
+    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-blue-200 to-transparent rounded-full opacity-20 blur-3xl animate-float"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-indigo-200 to-transparent rounded-full opacity-20 blur-3xl animate-float-slow"></div>
+      {/* ── Top Header Bar ─────────────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center">
+            <Store className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-slate-900 leading-tight">Exhibition Stall Reservation</h1>
+            <p className="text-[11px] text-slate-500 leading-tight">{eventName || "Reserve your exhibition booth"}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">Exhibitor Portal</Badge>
+        </div>
       </div>
 
+      {/* ── 3-Column Form Body ─────────────────────────────── */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-auto px-4 py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full max-w-[1600px] mx-auto">
 
-
-      <div className="relative z-10 w-full flex items-center justify-center px-3 py-4 min-h-screen">
-        <div className="w-full max-w-7xl">
-          {/* Header Section - Compact */}
-          <div className="text-center mb-4 animate-in fade-in slide-in-from-top-6 duration-700">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 mb-2">
-              <Building2 className="w-3.5 h-3.5 text-emerald-700" />
-              <span className="text-xs font-extrabold text-emerald-800">Exhibition Stall Reservation</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-1">
-              {eventName || "Reserve Your Exhibition Booth"}
-            </h1>
-            <p className="text-sm font-medium text-slate-500">Showcase your brand and products to verified trade visitors</p>
-          </div>
-
-          {/* Form Card */}
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-bottom-8 duration-700">
-            {/* Form Header Bar */}
-            <div className="h-1.5 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-700"></div>
-
-            <form onSubmit={handleSubmit} className="p-5 md:p-8">
-              {/* Section 1: Personal Information */}
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <User className="w-4 h-4 text-blue-600" />
-                  <h2 className="text-base font-bold text-gray-900">Personal Information</h2>
+            {/* ── COLUMN 1: Personal Information ─────────── */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col">
+              <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-sky-100 flex items-center justify-center">
+                  <User className="w-3.5 h-3.5 text-sky-600" />
                 </div>
-
-                {/* Name Row */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Title</label>
-                    <select
-                      name="title"
-                      value={formData.title}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all hover:bg-white"
-                    >
-                      <option>Mr.</option>
-                      <option>Ms.</option>
-                      <option>Mrs.</option>
-                      <option>Dr.</option>
+                <span className="text-sm font-bold text-slate-800">Personal Info</span>
+                <Badge variant="default" className="ml-auto text-[10px] py-0">Step 1</Badge>
+              </div>
+              <div className="p-4 flex flex-col gap-3 flex-1">
+                {/* Title + Name */}
+                <div className="grid grid-cols-3 gap-2">
+                  <Field label="Title">
+                    <select name="title" value={formData.title} onChange={handleChange}
+                      className="flex h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 transition-all">
+                      <option>Mr.</option><option>Ms.</option><option>Mrs.</option><option>Dr.</option>
                     </select>
-                  </div>
-
-                  <div className="md:col-span-3 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">First Name <span className="text-red-500">*</span></label>
-                      <input
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        placeholder="John"
-
-                        onChange={handleChange}
-                        className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.firstName ? "border-red-500" : "border-gray-200"}`}
-                      />
-                      {errors.firstName && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.firstName}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">Last Name <span className="text-red-500">*</span></label>
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        placeholder="Doe"
-
-                        onChange={handleChange}
-                        className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.lastName ? "border-red-500" : "border-gray-200"}`}
-                      />
-                      {errors.lastName && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.lastName}</p>}
-                    </div>
-                  </div>
+                  </Field>
+                  <Field label="First Name" required>
+                    {inp("firstName", "John")}
+                    {errors.firstName && <span className="text-[10px] text-red-500">{errors.firstName}</span>}
+                  </Field>
+                  <Field label="Last Name" required>
+                    {inp("lastName", "Doe")}
+                    {errors.lastName && <span className="text-[10px] text-red-500">{errors.lastName}</span>}
+                  </Field>
                 </div>
 
-                {/* Email & Mobile */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                      <Mail className="w-3 h-3" /> Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      placeholder="john@company.com"
+                {/* Email */}
+                <Field label="Email" required>
+                  <div className="relative">
+                    <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input name="email" type="email" value={formData.email} placeholder="john@company.com"
+                      onChange={handleChange}
+                      className={`flex h-9 w-full rounded-lg border bg-white pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 transition-all ${errors.email ? "border-red-400" : "border-slate-200"}`} />
+                  </div>
+                  {errors.email && <span className="text-[10px] text-red-500">{errors.email}</span>}
+                </Field>
 
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.email ? "border-red-500" : "border-gray-200"}`}
-                    />
-                    {errors.email && <p className="text-red-400 text-xs mt-1 relative left-2">{errors.email}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                      <Phone className="w-3 h-3" /> Mobile <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="mobile"
-                      value={formData.mobile}
-                      placeholder="10 Digits"
-                      maxLength="10"
-
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.mobile ? "border-red-500" : "border-gray-200"}`}
-                    />
-                    {errors.mobile && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.mobile}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Designation</label>
-                    <input
-                      type="text"
-                      name="designation"
-                      value={formData.designation}
-                      placeholder="Sales Manager"
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all hover:bg-white"
-                    />
-                  </div>
+                {/* Mobile + Designation */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Mobile" required>
+                    <div className="relative">
+                      <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      <input name="mobile" type="tel" value={formData.mobile} placeholder="10 digits" maxLength="10"
+                        onChange={handleChange}
+                        className={`flex h-9 w-full rounded-lg border bg-white pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 transition-all ${errors.mobile ? "border-red-400" : "border-slate-200"}`} />
+                    </div>
+                    {errors.mobile && <span className="text-[10px] text-red-500">{errors.mobile}</span>}
+                  </Field>
+                  <Field label="Designation">
+                    {inp("designation", "Sales Manager")}
+                  </Field>
                 </div>
 
-
-                {/* Company, Stall Area, Products */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Company <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="companyName"
-                      value={formData.companyName}
-                      placeholder="Your Company"
+                {/* Company */}
+                <Field label="Company Name" required>
+                  <div className="relative">
+                    <Building2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input name="companyName" value={formData.companyName} placeholder="Your company"
                       onChange={handleChange}
-                      className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.companyName ? "border-red-500" : "border-gray-200"}`}
-                    />
-                    {errors.companyName && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.companyName}</p>}
+                      className={`flex h-9 w-full rounded-lg border bg-white pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 transition-all ${errors.companyName ? "border-red-400" : "border-slate-200"}`} />
                   </div>
+                  {errors.companyName && <span className="text-[10px] text-red-500">{errors.companyName}</span>}
+                </Field>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Stall Area <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="stallArea"
-                      value={formData.stallArea}
-                      placeholder="Stall Area"
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.stallArea ? "border-red-500" : "border-gray-200"}`}
-                    />
-                    {errors.stallArea && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.stallArea}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Products <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="products"
-                      value={formData.products}
-                      placeholder="Products"
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.products ? "border-red-500" : "border-gray-200"}`}
-                    />
-                    {errors.products && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.products}</p>}
-                  </div>
+                {/* Stall Area + Products */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Stall Area" required>
+                    {inp("stallArea", "e.g. Hall A, 3×3m")}
+                    {errors.stallArea && <span className="text-[10px] text-red-500">{errors.stallArea}</span>}
+                  </Field>
+                  <Field label="Products" required>
+                    {inp("products", "e.g. Electronics")}
+                    {errors.products && <span className="text-[10px] text-red-500">{errors.products}</span>}
+                  </Field>
                 </div>
               </div>
+            </div>
 
-              <div className="mb-5 pb-5 border-b border-gray-100">
-                <div className="flex items-center gap-2 mb-3">
-                  <MapPin className="w-4 h-4 text-blue-600" />
-                  <h2 className="text-base font-bold text-gray-900">Location <span className="text-red-500">*</span></h2>
+            {/* ── COLUMN 2: Location ──────────────────────── */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col">
+              <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-violet-100 flex items-center justify-center">
+                  <MapPin className="w-3.5 h-3.5 text-violet-600" />
                 </div>
-
-                {/* Country, State, City Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                  <div className="relative" ref={countryRef}>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Country <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search Country"
-                        value={countrySearch}
-                        onChange={(e) => {
-                          setCountrySearch(e.target.value);
-                          setShowCountryDropdown(true);
-                          setErrors(prev => ({ ...prev, country: "" }));
-                        }}
-                        onFocus={() => setShowCountryDropdown(true)}
-                        className={`w-full px-3 py-2 pr-14 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.country ? "border-red-500" : "border-gray-200"
-                          }`}
-                      />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        {countrySearch && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFormData({ ...formData, country: "", state: "", city: "" });
-                              setCountrySearch("");
-                              setStateSearch("");
-                              setCitySearch("");
-                              setShowCountryDropdown(true);
-                              setErrors(prev => ({ ...prev, country: "", state: "", city: "" }));
-                            }}
-                            className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowCountryDropdown(!showCountryDropdown);
-                          }}
-                          className="text-gray-400 hover:text-gray-600 p-0.5 transition-transform"
-                        >
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform duration-200 ${
-                              showCountryDropdown ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                    {showCountryDropdown && (
-                      <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-y-auto shadow-lg">
-                        {countries
-                          .filter((c) =>
-                            c.country_name.toLowerCase().includes(countrySearch.toLowerCase())
-                          )
-                          .map((c) => (
-                            <div
-                              key={c.id}
-                              onClick={() => {
-                                setFormData({ ...formData, country: c.country_name, state: "", city: "" });
-                                setCountrySearch(c.country_name);
-                                setStateSearch("");
-                                setCitySearch("");
-                                setShowCountryDropdown(false);
-                                setErrors(prev => ({ ...prev, country: "", state: "", city: "" }));
-                                loadStates(c.id);
-                              }}
-                              className="p-2 cursor-pointer hover:bg-blue-50 text-sm"
-                            >
-                              {c.country_name}
-                            </div>
-                          ))}
-                        {countries.filter((c) =>
-                          c.country_name.toLowerCase().includes(countrySearch.toLowerCase())
-                        ).length === 0 && (
-                            <div className="p-2 text-gray-400 text-sm">No results found</div>
-                          )}
-                      </div>
-                    )}
-                    {errors.country && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.country}</p>}
-                  </div>
-
-                  <div className="relative" ref={stateRef}>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">State <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search State"
-                        value={stateSearch}
-                        onChange={(e) => {
-                          setStateSearch(e.target.value);
-                          setShowStateDropdown(true);
-                          setErrors(prev => ({ ...prev, state: "" }));
-                        }}
-                        onFocus={() => setShowStateDropdown(true)}
-                        className={`w-full px-3 py-2 pr-14 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.state ? "border-red-500" : "border-gray-200"
-                          }`}
-                      />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        {stateSearch && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFormData({ ...formData, state: "", city: "" });
-                              setStateSearch("");
-                              setCitySearch("");
-                              setShowStateDropdown(true);
-                              setErrors(prev => ({ ...prev, state: "", city: "" }));
-                            }}
-                            className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowStateDropdown(!showStateDropdown);
-                          }}
-                          className="text-gray-400 hover:text-gray-600 p-0.5 transition-transform"
-                        >
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform duration-200 ${
-                              showStateDropdown ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                    {showStateDropdown && (
-                      <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-y-auto shadow-lg">
-                        {states
-                          .filter((s) =>
-                            s.state_name.toLowerCase().includes(stateSearch.toLowerCase())
-                          )
-                          .map((s) => (
-                            <div
-                              key={s.id}
-                              onClick={() => {
-                                setFormData({ ...formData, state: s.state_name, city: "" });
-                                setStateSearch(s.state_name);
-                                setCitySearch("");
-                                setShowStateDropdown(false);
-                                setErrors(prev => ({ ...prev, state: "", city: "" }));
-                                // Find current country code
-                                const country = countries.find(c => c.country_name === formData.country);
-                                if (country) {
-                                  loadCities(country.id, s.id);
-                                }
-                              }}
-                              className="p-2 cursor-pointer hover:bg-blue-50 text-sm"
-                            >
-                              {s.state_name}
-                            </div>
-                          ))}
-                        {states.filter((s) =>
-                          s.state_name.toLowerCase().includes(stateSearch.toLowerCase())
-                        ).length === 0 && (
-                            <div className="p-2 text-gray-400 text-sm italic">
-                              {!formData.country ? "Please select a country first" : "No results found"}
-                            </div>
-                          )}
-                      </div>
-                    )}
-                    {errors.state && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.state}</p>}
-                  </div>
-
-                  <div className="relative" ref={cityRef}>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">City/Location <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search City"
-                        value={citySearch}
-                        onChange={(e) => {
-                          setCitySearch(e.target.value);
-                          setShowCityDropdown(true);
-                          setErrors(prev => ({ ...prev, city: "" }));
-                        }}
-                        onFocus={() => setShowCityDropdown(true)}
-                        className={`w-full px-3 py-2 pr-14 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.city ? "border-red-500" : "border-gray-200"
-                          }`}
-                      />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        {citySearch && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFormData({ ...formData, city: "" });
-                              setCitySearch("");
-                              setShowCityDropdown(true);
-                              setErrors(prev => ({ ...prev, city: "" }));
-                            }}
-                            className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowCityDropdown(!showCityDropdown);
-                          }}
-                          className="text-gray-400 hover:text-gray-600 p-0.5 transition-transform"
-                        >
-                          <ChevronDown
-                            className={`w-4 h-4 transition-transform duration-200 ${
-                              showCityDropdown ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                    {showCityDropdown && (
-                      <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg mt-1 max-h-40 overflow-y-auto shadow-lg">
-                        {cities
-                          .filter((c) =>
-                            c.city_name.toLowerCase().includes(citySearch.toLowerCase())
-                          )
-                          .map((c) => (
-                            <div
-                              key={c.id}
-                              onClick={() => {
-                                setFormData({ ...formData, city: c.city_name });
-                                setCitySearch(c.city_name);
-                                setShowCityDropdown(false);
-                                setErrors(prev => ({ ...prev, city: "" }));
-                              }}
-                              className="p-2 cursor-pointer hover:bg-blue-50 text-sm"
-                            >
-                              {c.city_name}
-                            </div>
-                          ))}
-                        {cities.filter((c) =>
-                          c.city_name.toLowerCase().includes(citySearch.toLowerCase())
-                        ).length === 0 && (
-                            <div className="p-2 text-gray-400 text-sm italic">
-                              {!formData.state ? "Please select a state first" : "No results found"}
-                            </div>
-                          )}
-                      </div>
-                    )}
-                    {errors.city && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.city}</p>}
-                  </div>
-                </div>
-
-                {/* Pin Code Row */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Pin Code <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="pinCode"
-                      value={formData.pinCode}
-                      placeholder="Pin Code"
-                      maxLength="6"
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white ${errors.pinCode ? "border-red-500" : "border-gray-200"}`}
-                    />
-                    {errors.pinCode && <p className="text-red-400 text-xs mt-1 relative left-1">{errors.pinCode}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Address <span className="text-red-500">*</span></label>
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      placeholder="Street address"
-                      maxLength="100"
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 rounded-lg border bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:bg-white h-16 resize-none ${errors.address ? "border-red-500" : "border-gray-200"}`}
-                    />
-                    {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
-                    <p className="text-xs text-gray-400 mt-0.5">{formData.address.length}/100</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                      <Upload className="w-3 h-3" /> Visiting Card
-                    </label>
-                    <input
-                      type="file"
-                      name="visitingCard"
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all hover:bg-white file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-gradient-to-r file:from-blue-500 file:to-indigo-500 file:text-white hover:file:from-blue-600 hover:file:to-indigo-600 cursor-pointer"
-                    />
-                    {formData.visitingCard && (
-                      <p className="text-xs text-blue-600 mt-2 font-medium bg-blue-50 px-2 py-1 inline-block rounded-md border border-blue-100">
-                        File selected: {formData.visitingCard.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <span className="text-sm font-bold text-slate-800">Location</span>
+                <Badge variant="purple" className="ml-auto text-[10px] py-0">Step 2</Badge>
               </div>
-
-              {/* Section 3: Message */}
-              <div className="mb-4">
-                <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1">
-                  <FileText className="w-3 h-3" /> Message
-                </label>
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  placeholder="Any additional details..."
-                  maxLength="100"
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all hover:bg-white h-16 resize-none"
+              <div className="p-4 flex flex-col gap-3 flex-1">
+                <SearchableDropdown
+                  label={<>Country <span className="text-red-500">*</span></>}
+                  placeholder="Search country…"
+                  value={formData.country}
+                  options={countries}
+                  displayKey="country_name"
+                  error={errors.country}
+                  onSelect={(c) => {
+                    setFormData((p) => ({ ...p, country: c.country_name, state: "", city: "" }));
+                    setErrors((p) => ({ ...p, country: "", state: "", city: "" }));
+                    loadStates(c.id);
+                  }}
+                  onClear={() => { setFormData((p) => ({ ...p, country: "", state: "", city: "" })); setStates([]); setCities([]); }}
                 />
-                <p className="text-xs text-gray-400 mt-0.5">{formData.message.length}/100</p>
-              </div>
+                <SearchableDropdown
+                  label={<>State <span className="text-red-500">*</span></>}
+                  placeholder="Search state…"
+                  value={formData.state}
+                  options={states}
+                  displayKey="state_name"
+                  error={errors.state}
+                  disabled={!formData.country}
+                  emptyMessage={!formData.country ? "Select a country first" : "No results"}
+                  onSelect={(s) => {
+                    setFormData((p) => ({ ...p, state: s.state_name, city: "" }));
+                    setErrors((p) => ({ ...p, state: "", city: "" }));
+                    const c = countries.find((c) => c.country_name === formData.country);
+                    if (c) loadCities(c.id, s.id);
+                  }}
+                  onClear={() => { setFormData((p) => ({ ...p, state: "", city: "" })); setCities([]); }}
+                />
+                <SearchableDropdown
+                  label={<>City <span className="text-red-500">*</span></>}
+                  placeholder="Search city…"
+                  value={formData.city}
+                  options={cities}
+                  displayKey="city_name"
+                  error={errors.city}
+                  disabled={!formData.state}
+                  emptyMessage={!formData.state ? "Select a state first" : "No results"}
+                  onSelect={(c) => { setFormData((p) => ({ ...p, city: c.city_name })); setErrors((p) => ({ ...p, city: "" })); }}
+                  onClear={() => setFormData((p) => ({ ...p, city: "" }))}
+                />
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="py-2.5 px-6 bg-gray-100 text-gray-700 font-bold rounded-lg text-sm hover:bg-gray-200 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="py-2.5 px-8 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold rounded-xl text-sm flex items-center justify-center gap-2 transform transition-all hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed shadow-md hover:shadow-lg cursor-pointer"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      Reserve Stall <Send size={14} />
-                    </>
+                {/* Pin Code */}
+                <Field label="Pin Code" required>
+                  <div className="relative">
+                    <Hash className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                    <input name="pinCode" value={formData.pinCode} placeholder="6-digit pin" maxLength="6"
+                      onChange={handleChange}
+                      className={`flex h-9 w-full rounded-lg border bg-white pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 transition-all ${errors.pinCode ? "border-red-400" : "border-slate-200"}`} />
+                  </div>
+                  {errors.pinCode && <span className="text-[10px] text-red-500">{errors.pinCode}</span>}
+                </Field>
+
+                {/* Address */}
+                <Field label="Address" required>
+                  <textarea name="address" value={formData.address} placeholder="Street address, building, area…"
+                    maxLength={100} rows={3} onChange={handleChange}
+                    className={`flex w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 resize-none transition-all ${errors.address ? "border-red-400" : "border-slate-200"}`} />
+                  {errors.address
+                    ? <span className="text-[10px] text-red-500">{errors.address}</span>
+                    : <span className="text-[10px] text-slate-400">{formData.address.length}/100</span>}
+                </Field>
+              </div>
+            </div>
+
+            {/* ── COLUMN 3: Additional + Actions ─────────── */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col">
+              <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-100">
+                <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center">
+                  <FileText className="w-3.5 h-3.5 text-amber-600" />
+                </div>
+                <span className="text-sm font-bold text-slate-800">Details & Submit</span>
+                <Badge variant="warning" className="ml-auto text-[10px] py-0">Step 3</Badge>
+              </div>
+              <div className="p-4 flex flex-col gap-3 flex-1">
+                {/* Visiting Card Upload */}
+                <Field label={<span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Visiting Card <Badge variant="secondary" className="text-[9px] py-0 ml-1">Optional</Badge></span>}>
+                  <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed border-slate-200 rounded-lg bg-slate-50 hover:bg-sky-50 hover:border-sky-300 cursor-pointer transition-all group">
+                    <input type="file" name="visitingCard" onChange={handleChange} className="hidden" accept="image/*,.pdf" />
+                    <Upload className="w-5 h-5 text-slate-400 group-hover:text-sky-500 mb-1 transition-colors" />
+                    <span className="text-xs text-slate-500 group-hover:text-sky-600 font-medium transition-colors text-center px-2">
+                      {formData.visitingCard ? formData.visitingCard.name : "Click to upload"}
+                    </span>
+                    {!formData.visitingCard && <span className="text-[10px] text-slate-400 mt-0.5">PNG, JPG, PDF</span>}
+                  </label>
+                  {formData.visitingCard && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-sky-50 border border-sky-100">
+                      <CheckCircle className="w-3 h-3 text-sky-600 shrink-0" />
+                      <span className="text-[11px] text-sky-700 font-medium truncate">{formData.visitingCard.name}</span>
+                    </div>
                   )}
-                </button>
-              </div>
+                </Field>
 
-              <p className="text-center text-xs text-gray-500 mt-4">
-                By submitting, you agree to our terms
-              </p>
-            </form>
+                {/* Message */}
+                <Field label={<span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> Message</span>}>
+                  <textarea name="message" value={formData.message}
+                    placeholder="Any special requirements or questions…"
+                    maxLength={100} rows={4} onChange={handleChange}
+                    className="flex w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 resize-none transition-all" />
+                  <span className="text-[10px] text-slate-400">{formData.message.length}/100</span>
+                </Field>
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Summary strip */}
+                <div className="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2.5">
+                  <p className="text-[11px] font-semibold text-slate-600 mb-1.5">Booking Summary</p>
+                  <div className="flex flex-col gap-1">
+                    {[
+                      { label: "Event", val: eventName || "—" },
+                      { label: "Exhibitor", val: formData.firstName ? `${formData.title} ${formData.firstName} ${formData.lastName}`.trim() : "—" },
+                      { label: "Company", val: formData.companyName || "—" },
+                      { label: "Stall", val: formData.stallArea || "—" },
+                    ].map(({ label, val }) => (
+                      <div key={label} className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-slate-500">{label}</span>
+                        <span className="text-[10px] font-semibold text-slate-700 truncate max-w-[60%] text-right">{val}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" size="default" onClick={() => navigate(-1)} className="gap-1.5 flex-1">
+                    <ArrowLeft className="w-3.5 h-3.5" /> Cancel
+                  </Button>
+                  <Button type="submit" variant="gradient" size="default" disabled={loading} className="gap-1.5 flex-[2]">
+                    {loading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</> : <><Send className="w-3.5 h-3.5" /> Reserve Stall</>}
+                  </Button>
+                </div>
+                <p className="text-[10px] text-slate-400 text-center">By submitting, you agree to our terms</p>
+              </div>
+            </div>
+
           </div>
         </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-30px); }
-        }
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(30px); }
-        }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        .animate-float-slow {
-          animation: float-slow 8s ease-in-out infinite;
-        }
-        @supports (animation-timeline: view()) {
-          .animate-in {
-            opacity: 0;
-            animation: slideIn 0.6s ease-out forwards;
-          }
-        }
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+      </form>
     </div>
   );
 };

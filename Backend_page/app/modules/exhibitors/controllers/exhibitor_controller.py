@@ -16,3 +16,11 @@ class ExhibitorController:
             "success": True,
             "data": bookings
         }
+
+    @staticmethod
+    def get_booking_by_id(booking_id: int, host_url: str = ""):
+        booking = ExhibitorService.get_booking_by_id(booking_id, host_url)
+        return {
+            "success": True,
+            "data": booking
+        }
