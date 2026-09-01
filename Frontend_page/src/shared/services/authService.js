@@ -78,7 +78,25 @@ export const resetPassword = async (data) => {
 };
 
 export const getUserProfile = async (userId) => {
-  const res = await apiClient.get(`/superadmin/api/user/profile/${userId}`);
+  let targetId = userId;
+  if (!targetId || targetId === "undefined" || targetId === "null") {
+    try {
+      const stored = localStorage.getItem("user") || sessionStorage.getItem("user");
+      if (stored) {
+        const u = JSON.parse(stored);
+        targetId = u.id || u.user_id || u.userId;
+      }
+    } catch (e) {}
+    if (!targetId || targetId === "undefined" || targetId === "null") {
+      targetId = localStorage.getItem("userId") || sessionStorage.getItem("userId") || "me";
+    }
+  }
+
+  const endpoint = (targetId && targetId !== "me" && targetId !== "undefined")
+    ? `/superadmin/api/user/profile/${targetId}`
+    : `/superadmin/api/user/profile/me`;
+
+  const res = await apiClient.get(endpoint);
   return res.data;
 };
 

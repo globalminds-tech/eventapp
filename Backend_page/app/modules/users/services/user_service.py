@@ -1,5 +1,6 @@
 import io
 import base64
+from typing import Optional
 from app.exceptions.api_error import ApiError
 from app.Services.otp_service import is_verified, clear_verified
 from app.Services.mail_service import send_booking_email
@@ -38,6 +39,7 @@ class UserService:
 
         booking = UserRepository.create_booking(
             event_id=data.event_id,
+            user_id=data.user_id,
             name=data.name,
             email=email_clean,
             phone=data.phone,
@@ -120,16 +122,25 @@ class UserService:
         return {
             "status": status_text,
             "message": message_text,
-            "user_name": booking.name,
-            "user_email": booking.email,
-            "user_phone": booking.phone,
-            "food_preference": booking.food_preference,
-            "event_name": event.event_name,
-            "event_venue": event.venue,
-            "event_date": str(event.start_date)
+            "details": {
+                "visitor_name": getattr(booking, "name", "Attendee"),
+                "event_name": getattr(event, "event_name", getattr(event, "name", "Event")),
+                "venue": getattr(event, "venue", getattr(event, "city", "Main Venue")),
+                "date": str(getattr(event, "start_date", getattr(event, "event_date", ""))),
+                "time": str(getattr(event, "start_time", "10:00 AM")),
+                "food": getattr(booking, "food_preference", "Veg"),
+                "include_food": True,
+                "scanned_at": str(getattr(booking, "scanned_at", "")) if getattr(booking, "scanned_at", None) else None
+            },
+            "user_name": getattr(booking, "name", "Attendee"),
+            "user_email": getattr(booking, "email", ""),
+            "user_phone": getattr(booking, "phone", ""),
+            "food_preference": getattr(booking, "food_preference", "Veg"),
+            "event_name": getattr(event, "event_name", getattr(event, "name", "Event")),
+            "event_venue": getattr(event, "venue", getattr(event, "city", "Main Venue")),
+            "event_date": str(getattr(event, "start_date", getattr(event, "event_date", "")))
         }
 
     @staticmethod
-    def get_my_bookings(email: str) -> list[dict]:
-        bookings = UserRepository.get_user_bookings(email)
-        return [b.to_dict() if hasattr(b, "to_dict") else {"id": b.id, "event_id": b.event_id, "qr_data": b.qr_data} for b in bookings]
+    def get_my_bookings(email: Optional[str] = None, user_id: Optional[int] = None) -> list[dict]:
+        return UserRepository.get_user_bookings(email=email, user_id=user_id)

@@ -104,9 +104,11 @@ class AdminService:
 
     @staticmethod
     def get_events(host_url: str = "", organizer_id: str = None) -> list[dict]:
+        from app.extensions.database import SessionLocal
+        session = SessionLocal()
         try:
             stmt = select(EventDetails).order_by(desc(EventDetails.id))
-            events = db.session.scalars(stmt).all()
+            events = session.scalars(stmt).all()
 
             if organizer_id and str(organizer_id).isdigit():
                 org_num = int(organizer_id)
@@ -121,11 +123,22 @@ class AdminService:
                 if filtered:
                     events = filtered
 
+            if not events:
+                return []
+
+            event_ids = [e.id for e in events]
+            
+            # Batch fetch bookings and banner files in 2 fast queries
+            bookings = session.scalars(select(EventBookingDetails).where(EventBookingDetails.event_id.in_(event_ids))).all()
+            booking_map = {b.event_id: b for b in bookings}
+
+            banners = session.scalars(select(EventFile).where(EventFile.event_id.in_(event_ids), EventFile.file_type == "banner")).all()
+            banner_map = {b.event_id: b.file_path for b in banners}
+
             events_list = []
             for event in events:
-                booking = db.session.scalars(select(EventBookingDetails).where(EventBookingDetails.event_id == event.id)).first()
-                banner_file = db.session.scalars(select(EventFile).where(EventFile.event_id == event.id, EventFile.file_type == "banner")).first()
-                b_url = banner_file.file_path if banner_file else ""
+                booking = booking_map.get(event.id)
+                b_url = banner_map.get(event.id, "")
 
                 price_val = float(getattr(booking, "price_inr", 0) or getattr(booking, "price", 0) or getattr(event, "pass_fee", 0) or 0)
                 capacity_val = int(getattr(booking, "capacity", 500) or getattr(event, "total_capacity", 500) or 500)
@@ -168,6 +181,11 @@ class AdminService:
         except Exception as e:
             print("Failed to load events from DB:", e)
             return []
+        finally:
+            try:
+                session.close()
+            except Exception:
+                pass
 
     @staticmethod
     def update_event_status(event_id: int, raw_data: dict) -> dict:

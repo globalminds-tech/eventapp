@@ -3,6 +3,7 @@ from typing import Optional
 
 class BookEventSchema(BaseModel):
     event_id: int
+    user_id: Optional[int] = None
     name: str = Field(..., min_length=1)
     email: str
     phone: Optional[str] = None

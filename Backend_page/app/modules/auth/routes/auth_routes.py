@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request, Response, HTTPException
+from app.exceptions.api_error import ApiError
 from app.modules.auth.controllers.auth_controller import AuthController
 from app.modules.auth.schemas.auth_schema import (
     RegisterSchema, OrganizerRegisterSchema, ExhibitorRegisterSchema,
@@ -100,6 +101,10 @@ def logout(response: Response):
     return {"success": True, "message": "Logged out successfully"}
 
 @auth_router.get("/me")
+@auth_router.get("/profile")
+@auth_router.get("/user/profile")
+@root_auth_router.get("/superadmin/api/user/profile")
+@root_auth_router.get("/superadmin/api/user/profile/me")
 def me(current_user: dict = Depends(get_current_user)):
     user_id = current_user.get("user_id") or current_user.get("id")
     return AuthController.me(user_id)
@@ -108,8 +113,21 @@ def me(current_user: dict = Depends(get_current_user)):
 @auth_router.get("/user/profile/{user_id}")
 @root_auth_router.get("/superadmin/api/user/profile/{user_id}")
 @root_auth_router.get("/api/v1/auth/user/profile/{user_id}")
-def get_user_profile(user_id: int):
-    return AuthController.me(user_id)
+def get_user_profile(user_id: str, request: Request):
+    if str(user_id).lower() in ("undefined", "null", "me", "0", ""):
+        # Extract JWT user_id if token present
+        from app.middleware.auth import get_current_user
+        try:
+            current_user = get_current_user(request)
+            uid = current_user.get("user_id") or current_user.get("id")
+            return AuthController.me(uid)
+        except Exception:
+            raise ApiError("User ID missing and unauthenticated", 400)
+    try:
+        uid = int(user_id)
+        return AuthController.me(uid)
+    except ValueError:
+        raise ApiError("Invalid user ID", 400)
 
 @auth_router.post("/otp/send")
 @auth_router.post("/otp/send-otp")

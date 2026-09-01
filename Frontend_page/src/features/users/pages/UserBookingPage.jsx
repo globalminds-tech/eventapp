@@ -53,6 +53,8 @@ export function Userbooking() {
     setTimeout(() => setToast({ show:false, message:"", type:"info" }), 3500);
   };
 
+  const [userId, setUserId] = useState(null);
+
   // 1. Mandatory User Login Check & Profile Pre-fill
   useEffect(() => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -68,6 +70,10 @@ export function Userbooking() {
     getUserProfile()
       .then((res) => {
         const u = res?.data || res || {};
+        const extractedId = u.id || u.user_id || u.userId || localStorage.getItem("userId") || sessionStorage.getItem("userId");
+        if (extractedId) {
+          setUserId(Number(extractedId));
+        }
         setForm((prev) => ({
           ...prev,
           name: u.full_name || u.name || u.username || prev.name,
@@ -195,6 +201,7 @@ export function Userbooking() {
               setLoading(true);
               const res = await bookEvent({
                 event_id: id,
+                user_id: userId,
                 ...form,
                 food_preference: ev?.food == 1 ? form.food_preference : "None",
                 payment_id: response.razorpay_payment_id || `pay_rzp_${Date.now()}`,
@@ -234,6 +241,7 @@ export function Userbooking() {
         setLoading(true);
         const res = await bookEvent({
           event_id: id,
+          user_id: userId,
           ...form,
           food_preference: ev?.food == 1 ? form.food_preference : "None",
         });

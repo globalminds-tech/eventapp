@@ -84,6 +84,10 @@ class EventRepository:
     def get_full_event_by_id(event_identifier) -> Optional[dict]:
         import json
         import urllib.parse
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         if not event_identifier:
             return None
         if isinstance(event_identifier, int) or (isinstance(event_identifier, str) and str(event_identifier).isdigit()):
