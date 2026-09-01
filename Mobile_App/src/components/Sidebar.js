@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   LayoutDashboard, CalendarPlus, List, QrCode, Store,
-  CreditCard, Settings, LogOut, X, ChevronRight, CheckSquare, MessageSquare, Utensils
+  CreditCard, Settings, LogOut, X, ChevronRight, CheckSquare, MessageSquare, Utensils, Receipt, Users
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -49,15 +49,11 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
 
   const menuItems = [
     { label: "Dashboard", icon: LayoutDashboard, route: "Organizerdashboard" },
-    { label: "Create Event", icon: CalendarPlus, route: "CreateEvent" },
-    { label: "Live Dashboard", icon: List, route: "LiveDashboard" },
-    { label: "Live Food Count", icon: Utensils, route: "LiveFoodDashboard" },
-    { label: "Gate Scanner", icon: QrCode, route: "VerifyEvent" },
-    { label: "Stall Manage", icon: Store, route: "Manage_Stall" },
-    { label: "Approvals", icon: CheckSquare, route: "AdminApproval" },
-    { label: "Messages", icon: MessageSquare, route: "Messages" },
-    { label: "Earnings & Billing", icon: CreditCard, route: "Billing" },
-    { label: "Settings", icon: Settings, route: "MyProfile" },
+    { label: "Gate Scanner", icon: QrCode, route: "EventCheckIn" },
+    { label: "Food Check-In", icon: Utensils, route: "FoodCheckIn" },
+    { label: "Manage Stalls", icon: Store, route: "Manage_Stall" },
+    { label: "Exhibitor Directory", icon: Users, route: "Exhibitor" },
+    { label: "Billings & Receipts", icon: Receipt, route: "Receipt" },
   ];
 
   if (!isVisible && slideAnim._value === -SIDEBAR_WIDTH) return null;
