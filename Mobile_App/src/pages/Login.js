@@ -22,8 +22,25 @@ export default function Login({ navigation }) {
   const [showPartnerModal, setShowPartnerModal] = useState(false);
 
   useEffect(() => {
-    const loadRememberedData = async () => {
+    const checkSessionAndLoadData = async () => {
       try {
+        const token = await AsyncStorage.getItem("token");
+        const role = await AsyncStorage.getItem("role");
+        
+        if (token && role && !token.includes("authenticated-user-token") && !token.includes("-session-token")) {
+          const userRole = role.toLowerCase();
+          if (userRole === "organizer") {
+            navigation.replace("Organizerdashboard");
+            return;
+          } else if (userRole === "exhibitor") {
+            navigation.replace("Exhibitor_Home");
+            return;
+          } else if (["superuser", "superadmin", "admin"].includes(userRole)) {
+            navigation.replace("Super_user_Home");
+            return;
+          }
+        }
+
         const savedEmail = await AsyncStorage.getItem("rememberedEmail");
         const savedRememberMe = await AsyncStorage.getItem("rememberMe");
         if (savedRememberMe === "true" && savedEmail) {
@@ -31,11 +48,11 @@ export default function Login({ navigation }) {
           setRememberMe(true);
         }
       } catch (err) {
-        console.error("Error loading remembered data", err);
+        console.error("Error loading session data", err);
       }
     };
-    loadRememberedData();
-  }, []);
+    checkSessionAndLoadData();
+  }, [navigation]);
 
   const handleChange = (name, value) => {
     setFormData({ ...formData, [name]: value });
