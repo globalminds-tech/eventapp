@@ -140,13 +140,18 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
             {/* Footer */}
             <View style={styles.sidebarFooter}>
               <View style={styles.userInfoRow}>
-                <View style={[styles.avatar, { backgroundColor: activeBg }]}>
-                  <Text style={styles.avatarText}>{username.charAt(0).toUpperCase()}</Text>
-                </View>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userNameText} numberOfLines={1}>{username}</Text>
-                  <Text style={styles.userRoleText}>{roleLabel}</Text>
-                </View>
+                <TouchableOpacity 
+                  style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }} 
+                  onPress={() => handleNavigate("MyProfile")}
+                >
+                  <View style={[styles.avatar, { backgroundColor: activeBg }]}>
+                    <Text style={styles.avatarText}>{username.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userNameText} numberOfLines={1}>{username}</Text>
+                    <Text style={styles.userRoleText}>{roleLabel}</Text>
+                  </View>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
                   <LogOut size={20} color="#94a3b8" />
                 </TouchableOpacity>
