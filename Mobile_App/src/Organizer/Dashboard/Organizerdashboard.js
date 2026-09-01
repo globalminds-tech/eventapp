@@ -327,9 +327,76 @@ export const Organizerdashboard = ({ navigation }) => {
             <TouchableOpacity style={styles.closeModalBtn} onPress={() => setActiveModal(null)}>
               <X size={20} color="#64748b" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Detail Analytics</Text>
-            <Text style={styles.modalDesc}>Check your desktop portal for comprehensive breakdown.</Text>
-            
+
+            {activeModal === 'tickets' && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTitle}>Ticket Sales Details</Text>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Total Tickets Sold</Text><Text style={styles.modalRowValue}>{totalPassesSold.toLocaleString()}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Tickets Available</Text><Text style={styles.modalRowValue}>{totalCapacitySum.toLocaleString()}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Remaining Tickets</Text><Text style={[styles.modalRowValue, {color: '#0284c7'}]}>{Math.max(0, totalCapacitySum - totalPassesSold).toLocaleString()}</Text></View>
+              </View>
+            )}
+
+            {activeModal === 'money' && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTitle}>Ticket Revenue Details</Text>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Ticket Revenue</Text><Text style={[styles.modalRowValue, {color: '#059669'}]}>{formatLakhs(ticketRevenue)}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Platform Fees</Text><Text style={styles.modalRowValue}>₹0.00</Text></View>
+                <View style={styles.modalRowHighlight}><Text style={styles.modalRowLabelHighlight}>Final Collected</Text><Text style={styles.modalRowValueHighlight}>{formatLakhs(ticketRevenue)}</Text></View>
+              </View>
+            )}
+
+            {activeModal === 'stalls' && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTitle}>Stalls & Exhibitors</Text>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Booked Stalls</Text><Text style={[styles.modalRowValue, {color: '#7e22ce'}]}>{stallsBookedCount}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Available Stalls</Text><Text style={styles.modalRowValue}>{stallsAvailable}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Occupancy</Text><Text style={[styles.modalRowValue, {color: '#9333ea'}]}>{stallsPercentage}% Booked</Text></View>
+              </View>
+            )}
+
+            {activeModal === 'earnings' && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTitle}>Earnings Breakdown</Text>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Ticket Sales</Text><Text style={styles.modalRowValue}>{formatLakhs(ticketRevenue)}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Stall Bookings</Text><Text style={[styles.modalRowValue, {color: '#7e22ce'}]}>{formatLakhs(stallRevenue)}</Text></View>
+                <View style={styles.modalRowHighlight}><Text style={styles.modalRowLabelHighlight}>Total Earnings</Text><Text style={styles.modalRowValueHighlight}>{formatLakhs(totalGrossRevenue)}</Text></View>
+              </View>
+            )}
+
+            {activeModal === 'checkin' && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTitle}>Gate Check-In Details</Text>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Checked-in</Text><Text style={[styles.modalRowValue, {color: '#0891b2'}]}>{totalGateScans.toLocaleString()}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Not Checked In</Text><Text style={styles.modalRowValue}>{Math.max(0, totalPassesSold - totalGateScans).toLocaleString()}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Conversion</Text><Text style={[styles.modalRowValue, {color: '#0369a1'}]}>{checkInPercentage}% Arrived</Text></View>
+              </View>
+            )}
+
+            {activeModal === 'meals' && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTitle}>Food Distribution</Text>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Meals Given Out</Text><Text style={[styles.modalRowValue, {color: '#d97706'}]}>{mealsGivenCount.toLocaleString()}</Text></View>
+                <View style={styles.modalRow}><Text style={styles.modalRowLabel}>Pass Utilization</Text><Text style={styles.modalRowValue}>{mealsPercentage}% Used</Text></View>
+              </View>
+            )}
+
+            {activeModal === 'tasks' && (
+              <View style={styles.modalBody}>
+                <Text style={styles.modalTitle}>Things To Do</Text>
+                {thingsToDoCount === 0 ? (
+                  <View style={{padding: 12, backgroundColor: '#ecfdf5', borderRadius: 8, marginTop: 10, alignItems: 'center'}}>
+                    <Text style={{color: '#059669', fontWeight: 'bold'}}>You're all caught up ✓</Text>
+                  </View>
+                ) : (
+                  <View style={{flexDirection: 'row', justifyContent: 'space-between', padding: 12, backgroundColor: '#fffbeb', borderRadius: 8, marginTop: 10, borderWidth: 1, borderColor: '#fde68a'}}>
+                    <Text style={{color: '#78350f', fontWeight: 'bold'}}>Events Awaiting Approval</Text>
+                    <Text style={{color: '#78350f', fontWeight: 'bold'}}>{pendingApprovalsCount}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => setActiveModal(null)}>
               <Text style={styles.modalPrimaryBtnText}>Close</Text>
             </TouchableOpacity>
@@ -418,10 +485,16 @@ const styles = StyleSheet.create({
   emptyCreateBtnText: { fontSize: 13, fontWeight: "800", color: "#ffffff" },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "center", alignItems: "center", padding: 20 },
-  modalContent: { width: "100%", backgroundColor: "#ffffff", borderRadius: 20, padding: 24, alignItems: "center" },
-  closeModalBtn: { position: "absolute", top: 16, right: 16, padding: 4 },
-  modalTitle: { fontSize: 18, fontWeight: "900", color: "#0f172a", marginBottom: 8, marginTop: 10 },
-  modalDesc: { fontSize: 13, color: "#64748b", textAlign: "center", marginBottom: 24 },
+  modalContent: { width: "100%", backgroundColor: "#ffffff", borderRadius: 20, padding: 24 },
+  closeModalBtn: { position: "absolute", top: 16, right: 16, padding: 4, zIndex: 10 },
+  modalBody: { marginBottom: 24 },
+  modalTitle: { fontSize: 18, fontWeight: "900", color: "#0f172a", marginBottom: 16 },
+  modalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  modalRowLabel: { fontSize: 13, fontWeight: '600', color: '#64748b' },
+  modalRowValue: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  modalRowHighlight: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#e2e8f0', marginTop: 8 },
+  modalRowLabelHighlight: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  modalRowValueHighlight: { fontSize: 15, fontWeight: '900', color: '#047857' },
   modalPrimaryBtn: { width: "100%", backgroundColor: "#0f172a", paddingVertical: 14, borderRadius: 14, alignItems: "center" },
   modalPrimaryBtnText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
 });
