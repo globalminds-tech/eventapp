@@ -7,7 +7,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const DEFAULT_BASE_URL =
   Platform.OS === "web"
     ? "http://localhost:5001/"
-    : "http://10.47.130.1:5001/";
+    : "https://funny-yaks-scream.loca.lt/";
 
 // AXIOS INSTANCE WITH ROBUST TIMEOUT
 const api = axios.create({
@@ -15,6 +15,7 @@ const api = axios.create({
   timeout: 15000, // 15s timeout
   headers: {
     "Content-Type": "application/json",
+    "Bypass-Tunnel-Reminder": "true",
   },
 });
 
