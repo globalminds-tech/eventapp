@@ -269,7 +269,7 @@ export default function AllEvents({ route, navigation }) {
                         <TouchableOpacity
                           style={[s.bookBtn, isPast && s.bookBtnDisabled]}
                           disabled={isPast}
-                          onPress={() => navigation?.navigate("UserBooking", { eventId: event.id })}
+                          onPress={() => navigation?.navigate("EventDetail", { eventId: event.id })}
                         >
                           <Text style={[s.bookBtnText, isPast && s.bookBtnTextDisabled]}>
                             {isPast ? "Booking Closed" : "Book Tickets"}

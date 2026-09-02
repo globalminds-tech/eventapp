@@ -13,13 +13,16 @@ import {
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
-    ArrowUpDown
+    ArrowUpDown,
+    Menu
 } from 'lucide-react-native';
+import Sidebar from "../../components/Sidebar";
 
-export const ManageStall = () => {
+export const ManageStall = ({ navigation }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [showRowsDropdown, setShowRowsDropdown] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const tableHeaders = [
         { label: 'Action', sortable: false },
@@ -33,8 +36,19 @@ export const ManageStall = () => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <Sidebar 
+                isVisible={isSidebarOpen} 
+                onClose={() => setIsSidebarOpen(false)} 
+                activeRoute="Manage_Stall"
+                navigation={navigation}
+            />
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                <Text style={styles.pageTitle}>Manage Stall</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+                    <TouchableOpacity onPress={() => setIsSidebarOpen(true)} style={{ marginRight: 12 }}>
+                        <Menu size={24} color="#344767" />
+                    </TouchableOpacity>
+                    <Text style={styles.pageTitle}>Manage Stall</Text>
+                </View>
 
                 <View style={styles.card}>
                     {/* Search Header */}
@@ -135,7 +149,6 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: '#344767',
-        marginBottom: 24,
         letterSpacing: -0.5,
     },
     card: {

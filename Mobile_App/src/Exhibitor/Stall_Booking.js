@@ -550,12 +550,12 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 16, paddingBottom: 40 },
   
   header: { alignItems: 'center', marginBottom: 24, marginTop: 12 },
-  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#dbeafe', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 16, marginBottom: 8 },
+  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#dbeafe', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 24, marginBottom: 8 },
   badgeText: { color: '#1d4ed8', fontSize: 12, fontWeight: 'bold', marginLeft: 4 },
   pageTitle: { fontSize: 24, fontWeight: 'bold', color: '#111827', textAlign: 'center', marginBottom: 4 },
   pageSubtitle: { fontSize: 14, color: '#4b5563', textAlign: 'center' },
 
-  card: { backgroundColor: '#fff', borderRadius: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, overflow: 'hidden' },
+  card: { backgroundColor: '#fff', borderRadius: 24, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, overflow: 'hidden' },
   cardTopBar: { height: 4, backgroundColor: '#3b82f6' }, // Simplified gradient
   cardBody: { padding: 20 },
 
@@ -587,7 +587,7 @@ const styles = StyleSheet.create({
   submitBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   disclaimer: { textAlign: 'center', fontSize: 10, color: '#6b7280', marginTop: 16 },
 
-  toast: { position: 'absolute', top: 40, right: 16, left: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 12, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, borderLeftWidth: 4, zIndex: 9999 },
+  toast: { position: 'absolute', top: 40, right: 16, left: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 32, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, borderLeftWidth: 4, zIndex: 9999 },
   toastSuccess: { borderLeftColor: '#10b981' },
   toastError: { borderLeftColor: '#f43f5e' },
   toastContent: { flex: 1, marginLeft: 12 },

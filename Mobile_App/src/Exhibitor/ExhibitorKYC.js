@@ -32,7 +32,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../styles/theme";
 
-export default function OrganizerKYC({ navigation }) {
+export default function ExhibitorKYC({ navigation }) {
   const [step, setStep] = useState(1);
 
   // Step 1: Contact & Representative Info
@@ -70,7 +70,7 @@ export default function OrganizerKYC({ navigation }) {
 
   const loadSavedKYC = async () => {
     try {
-      const data = await AsyncStorage.getItem("@organizer_kyc_data");
+      const data = await AsyncStorage.getItem("@Exhibitor_kyc_data");
       if (data) {
         const parsed = JSON.parse(data);
         setFullName(parsed.fullName || "");
@@ -135,8 +135,8 @@ export default function OrganizerKYC({ navigation }) {
         upiId,
         kycCompleted: true,
       };
-      await AsyncStorage.setItem("@organizer_kyc_data", JSON.stringify(kycData));
-      await AsyncStorage.setItem("@organizer_step1_completed", "true");
+      await AsyncStorage.setItem("@Exhibitor_kyc_data", JSON.stringify(kycData));
+      await AsyncStorage.setItem("@Exhibitor_step1_completed", "true");
     } catch (e) {
       console.error(e);
     }
@@ -161,8 +161,8 @@ export default function OrganizerKYC({ navigation }) {
         return;
       }
       await handleSaveKYC();
-      Alert.alert("Registration Complete 🎉", "Account setup & KYC registered! Navigating to Organizer Dashboard.", [
-        { text: "Go to Dashboard", onPress: () => navigation?.replace("CreateEvent") },
+      Alert.alert("Registration Complete 🎉", "Account setup & KYC registered! Navigating to Exhibitor Dashboard.", [
+        { text: "Go to Dashboard", onPress: () => navigation?.replace("Exhibitor_Home") },
       ]);
     }
   };
@@ -177,7 +177,7 @@ export default function OrganizerKYC({ navigation }) {
           <ArrowLeft size={20} color="#ffffff" />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.headerSubtitle}>ORGANIZER ONBOARDING</Text>
+          <Text style={styles.headerSubtitle}>Exhibitor ONBOARDING</Text>
           <Text style={styles.headerTitle}>List Your Events & Host Shows</Text>
         </View>
       </View>
@@ -237,7 +237,7 @@ export default function OrganizerKYC({ navigation }) {
             <View style={styles.emailRow}>
               <TextInput
                 style={[styles.input, { flex: 1 }]}
-                placeholder="organizer@company.com"
+                placeholder="Exhibitor@company.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}

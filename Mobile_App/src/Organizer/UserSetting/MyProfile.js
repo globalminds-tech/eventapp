@@ -4,393 +4,366 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   Alert,
+  Platform,
+  Linking,
   Modal
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  HelpCircle,
-  Gift,
-  Tag,
-  CreditCard,
-  Utensils,
-  Home,
-  Settings,
-  Share2,
-  ThumbsUp,
-  FileText,
-  Shield,
-  ChevronRight,
-  User,
-  Edit2,
-  X,
-  Save,
-  LogOut
+  LogOut, ArrowLeft, Mail, Phone, Building, CheckCircle2,
+  Edit2, Search, Building2, Ticket, Sparkles, HelpCircle, Gift, Tag,
+  ChevronRight, Landmark, ShieldCheck, QrCode, X, Shield, Store, ArrowUpRight
 } from "lucide-react-native";
-import { getUserProfile, updateUserProfile, getCountries, getStates, getCities } from "@Services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch } from "react-redux";
 import { setUser } from "@Redux/userSlice";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const MyProfile = ({ navigation }) => {
-  const [profileImage, setProfileImage] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const dispatch = useDispatch();
-
-  const [userId, setUserId] = useState(null);
-
-  const [formData, setFormData] = useState({
-    id: "",
-    name: "Ashok",
-    mobile: "7010085577",
-    email: "pashokbabu.38@gmail.com",
-    address: "",
-    country: "India",
-    state: "Tamil Nadu",
-    city: "Chennai",
-    profile_image: "",
-    organization_name: ""
+  
+  const [user, setUserData] = useState({
+    id: "6",
+    name: "Sneha V",
+    mobile: "+91 0000000000",
+    email: "user@example.com",
+    organization: "Global",
+    role: "organizer"
   });
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
 
   useEffect(() => {
-    const getStoredUserId = async () => {
+    const fetchUserData = async () => {
       try {
-        const id = await AsyncStorage.getItem("userId") || await AsyncStorage.getItem("User_id");
-        const storedName = await AsyncStorage.getItem("name") || await AsyncStorage.getItem("userName");
-        if (id) setUserId(id);
-        if (storedName) setFormData(prev => ({ ...prev, name: storedName }));
-      } catch (err) {
-        console.error("Error reading user id:", err);
+        const id = await AsyncStorage.getItem("userId") || await AsyncStorage.getItem("id");
+        const name = await AsyncStorage.getItem("name");
+        const email = await AsyncStorage.getItem("email");
+        const mobile = await AsyncStorage.getItem("mobile");
+        const org = await AsyncStorage.getItem("organization_name");
+        const role = await AsyncStorage.getItem("role");
+
+        setUserData({
+          id: id || "6",
+          name: name || "Sneha V",
+          email: email || "user@example.com",
+          mobile: mobile || "+91 0000000000",
+          organization: org || "Global",
+          role: role ? role.toLowerCase() : "organizer"
+        });
+      } catch (e) {
+        console.error(e);
       }
     };
-    getStoredUserId();
+    fetchUserData();
   }, []);
-
-  useEffect(() => {
-    if (userId) fetchProfile();
-  }, [userId]);
-
-  const fetchProfile = async () => {
-    setLoading(true);
-    try {
-      const res = await getUserProfile(userId);
-      if (res.status === "success" && res.data) {
-        setFormData({
-          id: res.data.id || userId,
-          name: res.data.name || "Ashok",
-          mobile: res.data.mobile || "7010085577",
-          email: res.data.email || "pashokbabu.38@gmail.com",
-          address: res.data.address || "",
-          country: res.data.country || "India",
-          state: res.data.state || "Tamil Nadu",
-          city: res.data.city || "Chennai",
-          profile_image: res.data.profile_image || "",
-          organization_name: res.data.organization_name || ""
-        });
-        if (res.data.profile_image) setProfileImage(res.data.profile_image);
-      }
-    } catch (err) {
-      console.error("Error fetching profile:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    setSaving(true);
-    try {
-      const res = await updateUserProfile(formData);
-      if (res.status === "success") {
-        Alert.alert("Success", "Profile updated successfully!");
-        await AsyncStorage.setItem("name", formData.name);
-        dispatch(setUser({ id: formData.id, name: formData.name, profile_image: formData.profile_image }));
-        setShowEditModal(false);
-      } else {
-        Alert.alert("Error", "Failed to update profile.");
-      }
-    } catch (err) {
-      Alert.alert("Error", "Could not connect to server.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const [showPartnerModal, setShowPartnerModal] = useState(false);
-  const [showDevRoleModal, setShowDevRoleModal] = useState(false);
-
-  const menuGroup1 = [
-    { title: "Help Centre", icon: HelpCircle, screen: "Complaint_page" },
-    { title: "Rewards", icon: Gift, screen: null },
-    { title: "Offers", icon: Tag, screen: null },
-    { title: "Gift Cards", icon: CreditCard, screen: null },
-    { title: "Food & Beverages", icon: Utensils, screen: null },
-  ];
-
-  const menuGroup2 = [
-    { title: "Partner with Us (List Show / Book Booth)", icon: Home, action: () => setShowPartnerModal(true), isHighlight: true },
-    { title: "Account & Profile Settings", icon: Settings, action: () => setShowEditModal(true) },
-    { title: "⚡ Developer Role Switcher", icon: Shield, action: () => setShowDevRoleModal(true) },
-  ];
-
-  const menuGroup3 = [
-    { title: "Share", icon: Share2, action: () => Alert.alert("Share", "Sharing BookMyEvent app link...") },
-    { title: "Rate Us", icon: ThumbsUp, action: () => Alert.alert("Rate Us", "Thank you for rating us 5 stars!") },
-    { title: "Terms & Conditions", icon: FileText, screen: "Term" },
-    { title: "Privacy Policy", icon: Shield, screen: "cancellation" },
-  ];
-
-  const handleItemPress = (item) => {
-    if (item.action) {
-      item.action();
-    } else if (item.screen && navigation) {
-      navigation.navigate(item.screen);
-    } else {
-      Alert.alert(item.title, `${item.title} feature coming soon!`);
-    }
-  };
 
   const handleLogout = async () => {
     try {
       await AsyncStorage.multiRemove([
-        "token", "role", "id", "name", "userId", "userName", "@organizer_step1_completed"
+        "token", "role", "id", "name", "userId", "email", "mobile", "organization_name", "@organizer_step1_completed"
       ]);
     } catch (e) {
       console.error(e);
     }
     dispatch(setUser({ id: null, name: null, role: null, email: null }));
-    navigation.replace("Login");
+    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 
+  const roleLabel = user.role === "superuser" ? "SUPER ADMIN" : user.role === "exhibitor" ? "EXHIBITOR" : "EVENT ORGANIZER";
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <ArrowLeft size={16} color="#64748b" />
+          <Text style={styles.backBtnText}>Back to Workspace</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>ACCOUNT CONTROL PANEL</Text>
+        <TouchableOpacity style={styles.signOutBtn} onPress={handleLogout}>
+          <LogOut size={14} color="#ef4444" />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* User Header Profile Card */}
-        <View style={styles.userCard}>
-          <View style={styles.userInfoRow}>
-            {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.avatarImg} />
-            ) : (
-              <View style={styles.avatarCircle}>
-                <User size={32} color="#2563eb" />
+        {/* LEFT COLUMN: Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{user.name.charAt(0).toUpperCase()}</Text>
+            </View>
+            <TouchableOpacity style={styles.editBadge}>
+              <Edit2 size={12} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.userName}>{user.name}</Text>
+          <View style={styles.roleBadge}>
+            <Building2 size={12} color="#0ea5e9" />
+            <Text style={styles.roleText}>{roleLabel}</Text>
+          </View>
+
+          <View style={styles.infoList}>
+            <View style={styles.infoItem}>
+              <Mail size={16} color="#0ea5e9" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>EMAIL ADDRESS</Text>
+                <Text style={styles.infoValue} numberOfLines={1}>{user.email}</Text>
               </View>
-            )}
-            <View style={{ flex: 1, marginLeft: 14 }}>
-              <Text style={styles.userNameText}>{formData.name || "Ashok"}</Text>
-              <TouchableOpacity style={styles.editProfileBtn} onPress={() => setShowEditModal(true)}>
-                <Text style={styles.editProfileBtnText}>Edit Profile</Text>
-                <Edit2 size={12} color="#e11d48" style={{ marginLeft: 4 }} />
-              </TouchableOpacity>
+            </View>
+
+            <View style={styles.infoItem}>
+              <Phone size={16} color="#10b981" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>MOBILE CONTACT</Text>
+                <Text style={styles.infoValue}>{user.mobile}</Text>
+              </View>
+            </View>
+
+            <View style={styles.infoItem}>
+              <Building size={16} color="#8b5cf6" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>ORGANIZATION / BUSINESS</Text>
+                <Text style={styles.infoValue}>{user.organization}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.infoItem, styles.accountIdRow]}>
+              <View style={styles.rowCenter}>
+                <CheckCircle2 size={16} color="#10b981" />
+                <Text style={styles.accountIdText}>Account ID #{user.id}</Text>
+              </View>
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>ACTIVE</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Group 1 Card */}
-        <View style={styles.menuGroupCard}>
-          {menuGroup1.map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <TouchableOpacity
-                key={i}
-                style={[styles.menuRow, i < menuGroup1.length - 1 && styles.menuRowBorder]}
-                onPress={() => handleItemPress(item)}
-              >
-                <View style={styles.menuIconWrap}>
-                  <Icon size={20} color="#334155" />
-                </View>
-                <Text style={styles.menuTitleText}>{item.title}</Text>
-                <ChevronRight size={18} color="#94a3b8" />
-              </TouchableOpacity>
-            );
-          })}
+        {/* Assistance Card */}
+        <View style={styles.assistanceCard}>
+          <View style={styles.rowCenter}>
+            <HelpCircle size={18} color="#38bdf8" />
+            <Text style={styles.assistanceTitle}>Need Assistance?</Text>
+          </View>
+          <Text style={styles.assistanceDesc}>
+            Have questions regarding event tickets, QR code check-ins, or partner onboarding? Reach out to support.
+          </Text>
         </View>
 
-        {/* Group 2 Card (List Your Show & Settings) */}
-        <View style={styles.menuGroupCard}>
-          {menuGroup2.map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <TouchableOpacity
-                key={i}
-                style={[styles.menuRow, i < menuGroup2.length - 1 && styles.menuRowBorder]}
-                onPress={() => handleItemPress(item)}
-              >
-                <View style={styles.menuIconWrap}>
-                  <Icon size={20} color={item.isHighlight ? "#e11d48" : "#334155"} />
-                </View>
-                <Text style={[styles.menuTitleText, item.isHighlight && { color: "#e11d48", fontWeight: "700" }]}>
-                  {item.title}
-                </Text>
-                <ChevronRight size={18} color="#94a3b8" />
-              </TouchableOpacity>
-            );
-          })}
+        {/* WORKSPACE ACTION ITEMS */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>WORKSPACE ACTION ITEMS</Text>
+          <View style={[styles.sectionBadge, { backgroundColor: "#cffafe" }]}>
+            <Text style={[styles.sectionBadgeText, { color: "#0369a1" }]}>OPERATIONS</Text>
+          </View>
         </View>
 
-        {/* Group 3 Card (Share, Policy, Terms) */}
-        <View style={styles.menuGroupCard}>
-          {menuGroup3.map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <TouchableOpacity
-                key={i}
-                style={[styles.menuRow, i < menuGroup3.length - 1 && styles.menuRowBorder]}
-                onPress={() => handleItemPress(item)}
-              >
-                <View style={styles.menuIconWrap}>
-                  <Icon size={20} color="#334155" />
-                </View>
-                <Text style={styles.menuTitleText}>{item.title}</Text>
-                <ChevronRight size={18} color="#94a3b8" />
-              </TouchableOpacity>
-            );
-          })}
+        <View style={styles.actionGrid}>
+          {/* Action 1 */}
+          <View style={styles.actionCard}>
+            <View style={styles.actionCardHeader}>
+              <Text style={styles.actionCardTitle}>Account KYC & Legal GST</Text>
+              <View style={[styles.actionCardBadge, { backgroundColor: "#fef3c7" }]}>
+                <Text style={[styles.actionCardBadgeText, { color: "#b45309" }]}>VERIFICATION</Text>
+              </View>
+            </View>
+            <Text style={styles.actionCardDesc}>Manage business GSTIN, PAN details, entity type, and registered office address.</Text>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: "#ea580c" }]}
+              onPress={() => navigation.navigate("OrganizerKYC")}
+            >
+              <Text style={styles.actionBtnText}>Update Legal & KYC Details</Text>
+              <ArrowLeft style={{ transform: [{ rotate: "135deg" }] }} size={14} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Action 2 */}
+          <View style={styles.actionCard}>
+            <View style={styles.actionCardHeader}>
+              <Text style={styles.actionCardTitle}>Bank Payout & Settlement Setup</Text>
+              <View style={[styles.actionCardBadge, { backgroundColor: "#ccfbf1" }]}>
+                <Text style={[styles.actionCardBadgeText, { color: "#0f766e" }]}>PAYOUTS</Text>
+              </View>
+            </View>
+            <Text style={styles.actionCardDesc}>Update bank account number, IFSC code, and instant UPI settlement preference.</Text>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: "#0f172a" }]}>
+              <Landmark size={14} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnText}>Update Bank Account & Payouts</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Action 3 */}
+          <View style={styles.actionCard}>
+            <View style={styles.actionCardHeader}>
+              <Text style={styles.actionCardTitle}>Gate Scanner Staff</Text>
+              <View style={[styles.actionCardBadge, { backgroundColor: "#e0e7ff" }]}>
+                <Text style={[styles.actionCardBadgeText, { color: "#4338ca" }]}>OPERATIONAL</Text>
+              </View>
+            </View>
+            <Text style={styles.actionCardDesc}>Turnstiles & QR scanners ready for attendee validation.</Text>
+            <TouchableOpacity 
+              style={[styles.actionBtn, { backgroundColor: "#6366f1" }]}
+              onPress={() => navigation.navigate("EventCheckIn")}
+            >
+              <QrCode size={14} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.actionBtnText}>Gate Scanner Control</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Prominent Red Logout Card */}
-        <TouchableOpacity style={styles.logoutCardBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <LogOut size={20} color="#ef4444" style={{ marginRight: 10 }} />
-          <Text style={styles.logoutCardBtnText}>Log Out of Account</Text>
-        </TouchableOpacity>
+        {/* ACCOUNT SERVICES & PARTNER HUB */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>ACCOUNT SERVICES & PARTNER HUB</Text>
+        </View>
 
-        {/* BookAChange Banner Card */}
-        <View style={styles.bannerCard}>
-          <Text style={styles.bannerBadge}>BookAChange</Text>
-          <Text style={styles.bannerSub}>Powering Dreams, Amplifying Change</Text>
+        <View style={styles.servicesCard}>
+          <TouchableOpacity style={styles.serviceRow} onPress={() => setShowPartnerModal(true)}>
+            <View style={[styles.serviceIconWrap, { backgroundColor: "#06b6d4" }]}>
+              <Sparkles size={20} color="#fff" />
+            </View>
+            <View style={styles.serviceContent}>
+              <View style={styles.serviceTitleRow}>
+                <Text style={styles.serviceTitleText}>List Your Show & Partner Hub</Text>
+                <View style={styles.partnerBadge}>
+                  <Text style={styles.partnerBadgeText}>PARTNER</Text>
+                </View>
+              </View>
+              <Text style={styles.serviceDescText}>Host events as Organizer or reserve stalls as Exhibitor</Text>
+            </View>
+            <ChevronRight size={20} color="#cbd5e1" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.serviceRow}>
+            <View style={styles.serviceIconWrap}>
+              <HelpCircle size={20} color="#64748b" />
+            </View>
+            <View style={styles.serviceContent}>
+              <Text style={styles.serviceTitleText}>Help Centre & Support</Text>
+              <Text style={styles.serviceDescText}>Get assistance for ticketing, gate check-ins & payouts</Text>
+            </View>
+            <ChevronRight size={20} color="#cbd5e1" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.serviceRow}>
+            <View style={styles.serviceIconWrap}>
+              <Gift size={20} color="#64748b" />
+            </View>
+            <View style={styles.serviceContent}>
+              <Text style={styles.serviceTitleText}>My Rewards & Passports</Text>
+              <Text style={styles.serviceDescText}>View earned loyalty points & event stamps</Text>
+            </View>
+            <ChevronRight size={20} color="#cbd5e1" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.serviceRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.serviceIconWrap}>
+              <Tag size={20} color="#64748b" />
+            </View>
+            <View style={styles.serviceContent}>
+              <Text style={styles.serviceTitleText}>Offers & Promotional Coupons</Text>
+              <Text style={styles.serviceDescText}>Available discount codes & early bird vouchers</Text>
+            </View>
+            <ChevronRight size={20} color="#cbd5e1" />
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
 
-      {/* Edit Profile Modal Dialog */}
-      <Modal visible={showEditModal} animationType="slide" transparent>
+      {/* PARTNER ONBOARDING HUB MODAL */}
+      <Modal visible={showPartnerModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalHeaderTitle}>Edit Profile</Text>
-              <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                <X size={22} color="#64748b" />
-              </TouchableOpacity>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowPartnerModal(false)} />
+          <View style={styles.partnerModalCard}>
+            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowPartnerModal(false)}>
+              <X size={20} color="#94a3b8" />
+            </TouchableOpacity>
+
+            <View style={styles.modalHeaderTop}>
+              <Sparkles size={16} color="#0891b2" />
+              <Text style={styles.modalHeaderBadge}>PARTNER ONBOARDING HUB</Text>
             </View>
+            
+            <Text style={styles.modalMainTitle}>List Your Show or Book Vendor Stalls</Text>
+            <Text style={styles.modalSubTitle}>Select your partner account type to register or sign in to your workspace</Text>
 
-            <ScrollView style={{ padding: 16 }}>
-              <Text style={styles.fieldLabel}>Full Name</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.name}
-                onChangeText={(v) => setFormData(prev => ({ ...prev, name: v }))}
-              />
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {/* ORGANIZER CARD */}
+              <View style={[styles.partnerRoleCard, { borderColor: "#cffafe" }]}>
+                <View style={styles.partnerCardTop}>
+                  <View style={[styles.partnerIconBox, { backgroundColor: "#e0f2fe" }]}>
+                    <Shield size={24} color="#0284c7" />
+                  </View>
+                  <View style={[styles.roleLabelBadge, { backgroundColor: "#cffafe" }]}>
+                    <Text style={[styles.roleLabelText, { color: "#0369a1" }]}>ORGANIZER</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.partnerCardTitle}>List Your Show (As Event Organizer)</Text>
+                <Text style={styles.partnerCardDesc}>
+                  Host concerts, tech expos & workshops. Setup custom ticket tiers, gate scanners & instant bank payouts.
+                </Text>
 
-              <Text style={styles.fieldLabel}>Mobile Number</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.mobile}
-                keyboardType="phone-pad"
-                onChangeText={(v) => setFormData(prev => ({ ...prev, mobile: v }))}
-              />
+                <TouchableOpacity 
+                  style={[styles.primaryActionBtn, { backgroundColor: "#0ea5e9" }]} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("OrganizerKYC"); }}
+                >
+                  <Text style={styles.primaryActionBtnText}>New Organizer? Register</Text>
+                  <ArrowUpRight size={14} color="#fff" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
 
-              <Text style={styles.fieldLabel}>Email Address</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.email}
-                keyboardType="email-address"
-                onChangeText={(v) => setFormData(prev => ({ ...prev, email: v }))}
-              />
+                <TouchableOpacity 
+                  style={styles.secondaryActionBtn} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("Login"); }}
+                >
+                  <Text style={styles.secondaryActionBtnText}>Already Registered? Sign In</Text>
+                </TouchableOpacity>
+              </View>
 
-              <Text style={styles.fieldLabel}>City / Location</Text>
-              <TextInput
-                style={styles.textInput}
-                value={formData.city}
-                onChangeText={(v) => setFormData(prev => ({ ...prev, city: v }))}
-              />
+              {/* EXHIBITOR CARD */}
+              <View style={[styles.partnerRoleCard, { borderColor: "#dcfce7", marginTop: 16 }]}>
+                <View style={styles.partnerCardTop}>
+                  <View style={[styles.partnerIconBox, { backgroundColor: "#dcfce7" }]}>
+                    <Store size={24} color="#16a34a" />
+                  </View>
+                  <View style={[styles.roleLabelBadge, { backgroundColor: "#dcfce7" }]}>
+                    <Text style={[styles.roleLabelText, { color: "#15803d" }]}>EXHIBITOR</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.partnerCardTitle}>Exhibit & Book Stalls (As Exhibitor)</Text>
+                <Text style={styles.partnerCardDesc}>
+                  Reserve booth stalls on interactive floor plans, showcase products, capture trade leads & get tax invoices.
+                </Text>
 
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Profile</Text>}
-              </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.primaryActionBtn, { backgroundColor: "#10b981" }]} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("ExhibitorKYC"); }}
+                >
+                  <Text style={styles.primaryActionBtnText}>New Exhibitor? Register</Text>
+                  <ArrowUpRight size={14} color="#fff" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.secondaryActionBtn} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("Login"); }}
+                >
+                  <Text style={styles.secondaryActionBtnText}>Already Registered? Sign In</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
-      {/* Unified Partner Portal Selection Modal */}
-      <Modal visible={showPartnerModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalHeaderTitle}>Partner Portal Access</Text>
-              <TouchableOpacity onPress={() => setShowPartnerModal(false)}>
-                <X size={22} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ padding: 16, gap: 12 }}>
-              <TouchableOpacity
-                style={[styles.partnerCard, { borderColor: "#f97316", backgroundColor: "#fff7ed" }]}
-                onPress={() => { setShowPartnerModal(false); navigation?.navigate("OrganizerKYC"); }}
-              >
-                <Text style={[styles.partnerTitle, { color: "#c2410c" }]}>🎪 Host & Produce Event (Organizer)</Text>
-                <Text style={styles.partnerSub}>7-Step Event Wizard, Ticket Inventory, Live Gate Scanners & Analytics</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.partnerCard, { borderColor: "#10b981", backgroundColor: "#ecfdf5" }]}
-                onPress={() => { setShowPartnerModal(false); navigation?.navigate("Exhibitor_Home"); }}
-              >
-                <Text style={[styles.partnerTitle, { color: "#047857" }]}>🏬 Book Stall & Exhibit (Exhibitor)</Text>
-                <Text style={styles.partnerSub}>Exhibition Discovery, Interactive Floor Plan Booth Reservation & Staff Passes</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Developer Role Switcher Modal */}
-      <Modal visible={showDevRoleModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalHeaderTitle}>⚡ Developer Role Switcher Hub</Text>
-              <TouchableOpacity onPress={() => setShowDevRoleModal(false)}>
-                <X size={22} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ padding: 16, gap: 10 }}>
-              <TouchableOpacity
-                style={[styles.partnerCard, { borderColor: "#8b5cf6", backgroundColor: "#f5f3ff" }]}
-                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("Super_user_Home"); }}
-              >
-                <Text style={[styles.partnerTitle, { color: "#7c3aed" }]}>👑 Super Admin Portal</Text>
-                <Text style={styles.partnerSub}>Category Master, Event Approvals Queue, Platform Payouts</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.partnerCard, { borderColor: "#0284c7", backgroundColor: "#f0f9ff" }]}
-                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("OrganizerWelcome"); }}
-              >
-                <Text style={[styles.partnerTitle, { color: "#0369a1" }]}>🎪 Organizer Command Center</Text>
-                <Text style={styles.partnerSub}>7-Step Event Wizard, Live Gate Scanners, Live Sales Analytics</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.partnerCard, { borderColor: "#10b981", backgroundColor: "#ecfdf5" }]}
-                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("Exhibitor_Home"); }}
-              >
-                <Text style={[styles.partnerTitle, { color: "#047857" }]}>🏬 Exhibitor Portal</Text>
-                <Text style={styles.partnerSub}>Stall Discovery, Floor Plan Booth Booking, Lead Capture</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.partnerCard, { borderColor: "#f97316", backgroundColor: "#fff7ed" }]}
-                onPress={() => { setShowDevRoleModal(false); navigation?.navigate("Home"); }}
-              >
-                <Text style={[styles.partnerTitle, { color: "#c2410c" }]}>🎟️ Public / Attendee View</Text>
-                <Text style={styles.partnerSub}>Category Event Discovery, Ticket Booking, QR Passes</Text>
+            <View style={styles.modalFooter}>
+              <Text style={styles.footerText}>Already have an Organizer or Exhibitor Account?</Text>
+              <TouchableOpacity onPress={() => { setShowPartnerModal(false); navigation.navigate("Login"); }}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={styles.footerLink}>Sign In to Partner Account</Text>
+                  <ArrowUpRight size={12} color="#0284c7" style={{ marginLeft: 4 }} />
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -400,192 +373,457 @@ export const MyProfile = ({ navigation }) => {
   );
 };
 
-export default MyProfile;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#f8fafc",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    ...(Platform.OS === "ios" ? { zIndex: 10 } : { elevation: 4 }),
+  },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  backBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748b",
+  },
+  headerTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0f172a",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  signOutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "#fff",
+  },
+  signOutText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#ef4444",
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
   },
-  userCard: {
+  profileCard: {
     backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
     elevation: 2,
     shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
   },
-  userInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  avatarWrapper: {
+    position: "relative",
+    marginBottom: 16,
   },
   avatarCircle: {
-    height: 54,
-    width: 54,
-    borderRadius: 27,
-    backgroundColor: "#eff6ff",
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#f8fafc",
+    borderWidth: 4,
+    borderColor: "#8b5cf6", // Purple border like in image
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarImg: {
-    height: 54,
-    width: 54,
-    borderRadius: 27,
+  avatarText: {
+    fontSize: 40,
+    fontWeight: "900",
+    color: "#0f172a",
   },
-  userNameText: {
-    fontSize: 20,
+  editBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  roleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e0f2fe",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    marginBottom: 24,
+  },
+  roleText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0369a1",
+  },
+  infoList: {
+    width: "100%",
+    gap: 12,
+  },
+  infoItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    padding: 14,
+    borderRadius: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94a3b8",
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  accountIdRow: {
+    justifyContent: "space-between",
+  },
+  rowCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  accountIdText: {
+    fontSize: 13,
     fontWeight: "800",
     color: "#0f172a",
   },
-  editProfileBtn: {
+  activeBadge: {
+    backgroundColor: "#dcfce7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activeBadgeText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#166534",
+  },
+  assistanceCard: {
+    backgroundColor: "#0f172a",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+  },
+  assistanceTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#f8fafc",
+  },
+  assistanceDesc: {
+    fontSize: 12,
+    color: "#94a3b8",
+    marginTop: 10,
+    lineHeight: 18,
+  },
+  sectionHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4,
+    justifyContent: "space-between",
+    marginBottom: 16,
+    marginTop: 8,
   },
-  editProfileBtnText: {
+  sectionTitle: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#e11d48",
+    fontWeight: "900",
+    color: "#94a3b8",
+    letterSpacing: 0.5,
   },
-  menuGroupCard: {
+  sectionBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sectionBadgeText: {
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  actionGrid: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  actionCard: {
     backgroundColor: "#ffffff",
-    borderRadius: 14,
-    marginBottom: 14,
-    overflow: "hidden",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
     elevation: 2,
     shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
   },
-  logoutCardBtn: {
+  actionCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  actionCardTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0f172a",
+    flex: 1,
+    paddingRight: 10,
+  },
+  actionCardBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  actionCardBadgeText: {
+    fontSize: 9,
+    fontWeight: "900",
+  },
+  actionCardDesc: {
+    fontSize: 12,
+    color: "#64748b",
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fef2f2",
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  actionBtnText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  servicesCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#fecaca",
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginBottom: 14,
-    elevation: 1,
+    borderColor: "#f1f5f9",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    overflow: "hidden",
   },
-  logoutCardBtnText: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#ef4444",
-  },
-  menuRow: {
+  serviceRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  menuRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  menuIconWrap: {
-    width: 32,
-    alignItems: "center",
-  },
-  menuTitleText: {
-    flex: 1,
-    fontSize: 14,
-    color: "#334155",
-    marginLeft: 10,
-    fontWeight: "500",
-  },
-  bannerCard: {
-    backgroundColor: "#fff0f2",
-    borderRadius: 14,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "#fecdd3",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f8fafc",
+  },
+  serviceIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f1f5f9",
     alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
   },
-  bannerBadge: {
-    fontSize: 15,
+  serviceContent: {
+    flex: 1,
+    marginRight: 10,
+  },
+  serviceTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 2,
+  },
+  serviceTitleText: {
+    fontSize: 14,
     fontWeight: "800",
-    color: "#e11d48",
+    color: "#0f172a",
+    marginBottom: 2,
   },
-  bannerSub: {
+  partnerBadge: {
+    backgroundColor: "#cffafe",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  partnerBadgeText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#0891b2",
+  },
+  serviceDescText: {
     fontSize: 12,
-    color: "#9f1239",
-    marginTop: 2,
+    color: "#64748b",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
     justifyContent: "flex-end",
   },
-  modalContent: {
+  partnerModalCard: {
     backgroundColor: "#ffffff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "80%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: "85%",
   },
-  modalHeader: {
+  closeModalBtn: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    zIndex: 10,
+    padding: 4,
+  },
+  modalHeaderTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  modalHeaderBadge: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#0891b2",
+    marginLeft: 6,
+    letterSpacing: 1,
+  },
+  modalMainTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  modalSubTitle: {
+    fontSize: 13,
+    color: "#64748b",
+    marginBottom: 24,
+  },
+  partnerRoleCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+  },
+  partnerCardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    marginBottom: 16,
   },
-  modalHeaderTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#0f172a",
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#334155",
-    marginBottom: 6,
-    marginTop: 12,
-  },
-  textInput: {
-    backgroundColor: "#f8fafc",
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#0f172a",
-  },
-  saveBtn: {
-    backgroundColor: "#2563eb",
-    borderRadius: 8,
-    paddingVertical: 12,
+  partnerIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
-    marginTop: 24,
+    justifyContent: "center",
+  },
+  roleLabelBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  roleLabelText: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  partnerCardTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  partnerCardDesc: {
+    fontSize: 13,
+    color: "#64748b",
+    lineHeight: 20,
     marginBottom: 20,
   },
-  saveBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
+  primaryActionBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  primaryActionBtnText: {
     fontSize: 14,
-  },
-  partnerCard: {
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  partnerTitle: {
-    fontSize: 15,
     fontWeight: "800",
-    marginBottom: 4,
+    color: "#ffffff",
   },
-  partnerSub: {
-    fontSize: 11,
-    color: "#475569",
-    lineHeight: 16,
+  secondaryActionBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
   },
+  secondaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  modalFooter: {
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    paddingTop: 16,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  footerText: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 6,
+  },
+  footerLink: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0284c7",
+  }
 });
+
+export default MyProfile;

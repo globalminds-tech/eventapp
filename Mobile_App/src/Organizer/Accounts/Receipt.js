@@ -4,12 +4,14 @@ import {
   TextInput, FlatList, Platform 
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Eye, ChevronLeft, ChevronRight, Search, X, Calendar as CalendarIcon } from "lucide-react-native";
+import { Eye, ChevronLeft, ChevronRight, Search, X, Calendar as CalendarIcon, Menu } from "lucide-react-native";
+import Sidebar from "../../components/Sidebar";
 
-export const Receipt = () => {
+export const Receipt = ({ navigation }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [data, setData] = useState([]); // Placeholder for actual data
   const [currentPage, setCurrentPage] = useState(1);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const itemsPerPage = 10;
 
   // Pagination Logic
@@ -78,8 +80,17 @@ export const Receipt = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Sidebar 
+        isVisible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        navigation={navigation} 
+        activeRoute="Receipt"
+      />
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
+          <TouchableOpacity onPress={() => setIsSidebarOpen(true)} style={{ marginRight: 12 }}>
+            <Menu size={24} color="#1e293b" />
+          </TouchableOpacity>
           <Text style={styles.pageTitle}>Receipt Management</Text>
         </View>
 
@@ -152,7 +163,7 @@ export const Receipt = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  header: { marginBottom: 20 },
+  header: { marginBottom: 20, flexDirection: 'row', alignItems: 'center' },
   pageTitle: { fontSize: 24, fontWeight: 'bold', color: '#1e293b' },
   
   filtersContainer: { backgroundColor: '#fff', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 20 },

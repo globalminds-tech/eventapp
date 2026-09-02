@@ -8,7 +8,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Building2, Calendar, Store, QrCode, FileText, ChevronRight, User, Home,
   Flame, TrendingUp, Users, PlusCircle, Sparkles, Filter, CheckCircle2, ArrowRight,
-  LogOut, ArrowUpRight, DollarSign
+  LogOut, ArrowUpRight, DollarSign, Menu
 } from "lucide-react-native";
 
 // Shadcn Primitive Components
@@ -19,6 +19,7 @@ import { Toast } from "../components/ui/Toast";
 import { BottomNav } from "../components/ui/BottomNav";
 import BrandLogo from "../components/ui/BrandLogo";
 import { COLORS } from "../styles/theme";
+import Sidebar from "../components/Sidebar";
 
 const DEFAULT_LEADS = [
   { id: "L-101", name: "Arun Kumar", company: "ABC Technologies", interest: "Enterprise Software", score: 85, temp: "HOT", status: "FOLLOW_UP" },
@@ -34,6 +35,7 @@ const ExhibitorHome = () => {
   const [storedUser, setStoredUser] = useState({ id: null, name: null });
   const [activeTab, setActiveTab] = useState("home");
   const [leads, setLeads] = useState(DEFAULT_LEADS);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Spot Visitor Modal State
   const [showVisitorModal, setShowVisitorModal] = useState(false);
@@ -127,14 +129,15 @@ const ExhibitorHome = () => {
       {/* Deep Emerald Trade Show Curved Header Arch */}
       <View style={styles.headerArch}>
         <View style={styles.headerTopRow}>
-          <View>
-            <BrandLogo />
-            <Text style={styles.headerSub}>Booth Reservations & Visitor Lead Intelligence</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => setIsSidebarOpen(true)} style={{ marginRight: 12 }}>
+              <Menu size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <View>
+              <BrandLogo />
+              <Text style={styles.headerSub}>Booth Reservations & Visitor Lead Intelligence</Text>
+            </View>
           </View>
-
-          <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => navigation.navigate("MyProfile")}>
-            <User size={20} color="#047857" />
-          </TouchableOpacity>
         </View>
 
         {/* Dynamic Metric Stat Banner */}
@@ -418,6 +421,13 @@ const ExhibitorHome = () => {
           </View>
         </Modal>
       )}
+
+      <Sidebar 
+        isVisible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        navigation={navigation} 
+        activeRoute="Exhibitor_Home" 
+      />
     </SafeAreaView>
   );
 };

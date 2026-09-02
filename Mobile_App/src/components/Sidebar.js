@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Dimensions,
   Modal, TouchableWithoutFeedback, ScrollView
@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   LayoutDashboard, CalendarPlus, List, QrCode, Store,
-  CreditCard, Settings, LogOut, X, ChevronRight, CheckSquare, MessageSquare, Utensils
+  CreditCard, Settings, LogOut, X, ChevronRight, CheckSquare, MessageSquare, Utensils, Receipt, Users,
+  BarChart3, CheckCircle2, Layers, UserCheck, Landmark, Calendar, Search
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -15,6 +16,21 @@ const SIDEBAR_WIDTH = width * 0.75;
 
 export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
   const slideAnim = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
+  const [role, setRole] = useState("organizer");
+  const [username, setUsername] = useState("User");
+  const [profileImage, setProfileImage] = useState("");
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const storedRole = await AsyncStorage.getItem("role");
+      const storedName = await AsyncStorage.getItem("name");
+      const storedImage = await AsyncStorage.getItem("profile_image");
+      if (storedRole) setRole(storedRole.toLowerCase());
+      if (storedName) setUsername(storedName);
+      if (storedImage) setProfileImage(storedImage);
+    };
+    fetchUserData();
+  }, []);
 
   useEffect(() => {
     if (isVisible) {
@@ -36,7 +52,7 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
     onClose();
     setTimeout(() => {
       navigation.navigate(route, params);
-    }, 200); // Wait for sidebar to close
+    }, 200); 
   };
 
   const handleLogout = async () => {
@@ -47,18 +63,36 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
     navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 
-  const menuItems = [
-    { label: "Dashboard", icon: LayoutDashboard, route: "Organizerdashboard" },
-    { label: "Create Event", icon: CalendarPlus, route: "CreateEvent" },
-    { label: "Live Dashboard", icon: List, route: "LiveDashboard" },
-    { label: "Live Food Count", icon: Utensils, route: "LiveFoodDashboard" },
-    { label: "Gate Scanner", icon: QrCode, route: "VerifyEvent" },
-    { label: "Stall Manage", icon: Store, route: "Manage_Stall" },
-    { label: "Approvals", icon: CheckSquare, route: "AdminApproval" },
-    { label: "Messages", icon: MessageSquare, route: "Messages" },
-    { label: "Earnings & Billing", icon: CreditCard, route: "Billing" },
-    { label: "Settings", icon: Settings, route: "MyProfile" },
-  ];
+  const navigationItems = {
+    superuser: [
+      { label: "Overview", route: "Super_user_Home", icon: BarChart3 },
+      { label: "Approvals Queue", route: "Approvals", icon: CheckCircle2 },
+      { label: "Category Master", route: "Categories", icon: Layers },
+      { label: "KYC Verification", route: "KYC", icon: UserCheck },
+      { label: "Payouts Queue", route: "Payouts", icon: Landmark },
+    ],
+    exhibitor: [
+      { label: "Booth Dashboard", route: "Exhibitor_Home", icon: LayoutDashboard },
+      { label: "My Stall Bookings", route: "MyBookings", icon: Store },
+      { label: "Upcoming Expos", route: "UpcomingEvent", icon: Calendar },
+      { label: "Visitor Leads & Staff", route: "ExhibitorLeads", icon: Users },
+    ],
+    organizer: [
+        { label: "Dashboard", route: "OrganizerWelcome", icon: LayoutDashboard },
+        { label: "Create Event", route: "CreateEvent", icon: CalendarPlus },
+      { label: "Gate Scanner", route: "EventCheckIn", icon: QrCode },
+      { label: "Food Check-In", route: "FoodCheckIn", icon: Utensils },
+      { label: "Manage Stalls", route: "Manage_Stall", icon: Store },
+      { label: "Exhibitor Directory", route: "Exhibitor", icon: Users },
+      { label: "Billings & Receipts", route: "Receipt", icon: Receipt },
+    ]
+  };
+
+  const menuItems = navigationItems[role] || navigationItems.organizer;
+
+  const roleLabel = role === "superuser" ? "Super Admin" : role === "exhibitor" ? "Exhibitor" : "Organizer";
+  const activeColor = role === "superuser" ? "#9333ea" : role === "exhibitor" ? "#059669" : "#0ea5e9";
+  const activeBg = role === "superuser" ? "#9333ea" : role === "exhibitor" ? "#059669" : "#0ea5e9";
 
   if (!isVisible && slideAnim._value === -SIDEBAR_WIDTH) return null;
 
@@ -75,8 +109,8 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
             {/* Header */}
             <View style={styles.sidebarHeader}>
               <View>
-                <Text style={styles.brandTitle}>Organizer Portal</Text>
-                <Text style={styles.brandSub}>Event Management</Text>
+                <Text style={styles.brandTitle}>BookMyEvent</Text>
+                <Text style={styles.brandSub}>Partner Workspace</Text>
               </View>
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                 <X size={20} color="#64748b" />
@@ -90,16 +124,15 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
                 return (
                   <TouchableOpacity
                     key={index}
-                    style={[styles.menuItem, isActive && styles.menuItemActive]}
+                    style={[styles.menuItem, isActive && { backgroundColor: activeBg }]}
                     onPress={() => handleNavigate(item.route)}
                   >
                     <View style={styles.menuItemLeft}>
-                      <item.icon size={20} color={isActive ? "#0284c7" : "#64748b"} />
+                      <item.icon size={20} color={isActive ? "#ffffff" : "#94a3b8"} />
                       <Text style={[styles.menuItemText, isActive && styles.menuItemTextActive]}>
                         {item.label}
                       </Text>
                     </View>
-                    {isActive && <ChevronRight size={16} color="#0284c7" />}
                   </TouchableOpacity>
                 );
               })}
@@ -107,10 +140,23 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
 
             {/* Footer */}
             <View style={styles.sidebarFooter}>
-              <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-                <LogOut size={20} color="#ef4444" />
-                <Text style={styles.logoutText}>Sign Out</Text>
-              </TouchableOpacity>
+              <View style={styles.userInfoRow}>
+                <TouchableOpacity 
+                  style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }} 
+                  onPress={() => handleNavigate("MyProfile")}
+                >
+                  <View style={[styles.avatar, { backgroundColor: activeBg }]}>
+                    <Text style={styles.avatarText}>{username.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userNameText} numberOfLines={1}>{username}</Text>
+                    <Text style={styles.userRoleText}>{roleLabel}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+                  <LogOut size={20} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
             </View>
 
           </SafeAreaView>
@@ -127,17 +173,17 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15, 23, 42, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   sidebarContainer: {
     width: SIDEBAR_WIDTH,
     height: "100%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#0f172a",
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 10,
+    elevation: 20,
   },
   safeArea: {
     flex: 1,
@@ -148,21 +194,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "rgba(255,255,255,0.05)",
   },
   brandTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "900",
-    color: "#0f172a",
+    color: "#ffffff",
   },
   brandSub: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#0284c7",
+    fontWeight: "700",
+    color: "#38bdf8",
     marginTop: 2,
   },
   closeBtn: {
-    padding: 4,
+    padding: 6,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 8
   },
   menuContainer: {
     padding: 16,
@@ -172,12 +220,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: 12,
-  },
-  menuItemActive: {
-    backgroundColor: "#f0f9ff",
   },
   menuItemLeft: {
     flexDirection: "row",
@@ -186,30 +231,57 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#475569",
+    fontWeight: "700",
+    color: "#cbd5e1",
   },
   menuItemTextActive: {
-    color: "#0284c7",
+    color: "#ffffff",
     fontWeight: "800",
   },
   sidebarFooter: {
-    padding: 20,
+    padding: 16,
     borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
+    borderTopColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
-  logoutBtn: {
+  userInfoRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
   },
-  logoutText: {
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userNameText: {
+    color: "#f8fafc",
     fontSize: 14,
-    fontWeight: "700",
-    color: "#ef4444",
+    fontWeight: "bold",
   },
+  userRoleText: {
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: 2
+  },
+  logoutBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  }
 });
 
 export default Sidebar;

@@ -23,13 +23,16 @@ import {
   CheckCircle2,
   RefreshCw,
   Plus,
+  Menu,
 } from "lucide-react-native";
+import Sidebar from "../components/Sidebar";
 
 export default function ExhibitorLeads({ navigation }) {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fetchLeads = async () => {
     try {
@@ -94,8 +97,8 @@ export default function ExhibitorLeads({ navigation }) {
     <SafeAreaView style={s.safeArea}>
       {/* Top Bar Header */}
       <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation?.goBack()}>
-          <ArrowLeft size={22} color="#ffffff" />
+        <TouchableOpacity style={s.backBtn} onPress={() => setIsSidebarOpen(true)}>
+          <Menu size={22} color="#ffffff" />
         </TouchableOpacity>
         <View style={s.headerTitleWrap}>
           <Text style={s.headerTitle}>Visitor Lead Scanner</Text>
@@ -188,6 +191,12 @@ export default function ExhibitorLeads({ navigation }) {
           )}
         </ScrollView>
       )}
+      <Sidebar 
+        isVisible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        navigation={navigation} 
+        activeRoute="ExhibitorLeads" 
+      />
     </SafeAreaView>
   );
 }

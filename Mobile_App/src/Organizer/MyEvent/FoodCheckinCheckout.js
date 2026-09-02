@@ -24,8 +24,10 @@ import {
   ChevronRight,
   UserCheck,
   ShieldAlert,
+  Menu,
 } from "lucide-react-native";
 import { COLORS } from "../../styles/theme";
+import Sidebar from "../../components/Sidebar";
 import { getevent } from "@Services/api";
 
 const MEAL_SLOTS = ["Breakfast", "Lunch", "Snacks", "Dinner"];
@@ -45,6 +47,7 @@ export default function FoodCheckIn({ navigation }) {
   const [showScanner, setShowScanner] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [manualCode, setManualCode] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const filtered = entries.filter((item) => {
     const matchSearch =
@@ -104,11 +107,18 @@ export default function FoodCheckIn({ navigation }) {
     <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
 
+      <Sidebar 
+        isVisible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        navigation={navigation} 
+        activeRoute="FoodCheckIn"
+      />
+
       {/* Header */}
       <View style={s.header}>
         <View style={s.flexRow}>
-          <TouchableOpacity style={s.backBtn} onPress={() => navigation && navigation.goBack ? navigation.goBack() : null}>
-            <ChevronLeft size={22} color={COLORS.dark} />
+          <TouchableOpacity style={s.backBtn} onPress={() => setIsSidebarOpen(true)}>
+            <Menu size={24} color={COLORS.dark} />
           </TouchableOpacity>
           <View style={{ marginLeft: 8 }}>
             <Text style={s.headerBadge}>DINING HALL GATEWAY</Text>
