@@ -24,6 +24,7 @@ import MediaRenderer from "@/components/MediaRenderer";
 import { getHomeEventshow } from "@/Services/api";
 import { getRedirectPathForUser } from "@/shared/services/authHelper";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { categoryApi } from "@/features/catalog/api/category.api";
 
 /* ─────────────── Brand Logo ─────────────── */
 const BrandLogo = ({ textColor = "#0f172a" }) => (
@@ -188,7 +189,7 @@ const App = () => {
           return formatEventsList(list);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return [];
   };
 
@@ -201,6 +202,7 @@ const App = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("Home");
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [dbCategories, setDbCategories] = useState([]);
 
   // Animated Category Theme Transition State
   const [prevTheme, setPrevTheme] = useState(categoryThemes.All);
@@ -211,7 +213,18 @@ const App = () => {
 
   useEffect(() => {
     fetchEvents();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await categoryApi.getCategories();
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.categories) ? res.categories : (Array.isArray(res) ? res : []));
+      setDbCategories(list);
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
+    }
+  };
 
   const fetchEvents = async () => {
     try {
@@ -229,7 +242,27 @@ const App = () => {
 
   const handleCategorySwitch = (catKey) => {
     if (catKey === selectedCategory) return;
-    const targetTheme = categoryThemes[catKey] || categoryThemes.All;
+    
+    let targetTheme = { ...categoryThemes.All };
+    
+    if (catKey !== "All") {
+      const dbCat = dbCategories.find(c => c.name === catKey);
+      const preTheme = categoryThemes[catKey];
+      
+      if (dbCat) {
+        targetTheme = {
+          key: dbCat.name,
+          label: dbCat.name,
+          background: dbCat.category_image || preTheme?.background || targetTheme.background,
+          primaryColor: preTheme?.primaryColor || "#0284c7",
+          accentColor: preTheme?.accentColor || "#f97316",
+          placeholder: preTheme?.placeholder || `Search "${dbCat.name.toLowerCase()} events..."`,
+          icon: preTheme?.icon || Sparkles
+        };
+      } else if (preTheme) {
+        targetTheme = preTheme;
+      }
+    }
 
     setPrevTheme(currentTheme);
     setCurrentTheme(targetTheme);
@@ -416,19 +449,19 @@ const App = () => {
             transition: "opacity 300ms ease-in-out",
           }}
         />
-        
+
         {/* Soft layout overlay */}
         <div className="overlay-tint" />
 
         {/* Content Safe Container */}
         <div className="relative z-10 max-w-6xl mx-auto w-full px-5 pt-6 flex flex-col justify-between h-full gap-8">
-          
+
           {/* Top Row: Logo, Location Selector, Profile button */}
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-8">
               <div>
                 <BrandLogo textColor="#0f172a" />
-                
+
                 {/* Location Select */}
                 <div className="relative mt-1">
                   <button
@@ -538,17 +571,25 @@ const App = () => {
           {/* Dynamic Horizontal Category Strip */}
           <div className="w-full overflow-x-auto no-scrollbar py-1">
             <div className="flex gap-2.5">
-              {categoryTabs.map((tab) => {
-                const IconComp = tab.icon;
-                const isSelected = selectedCategory === tab.key;
+              <button
+                onClick={() => handleCategorySwitch("All")}
+                className={`category-pill ${selectedCategory === "All" ? "selected" : ""}`}
+              >
+                <Sparkles size={15} />
+                <span>All</span>
+              </button>
+
+              {dbCategories.map((cat) => {
+                const IconComp = categoryThemes[cat.name]?.icon || Sparkles;
+                const isSelected = selectedCategory === cat.name;
                 return (
                   <button
-                    key={tab.key}
-                    onClick={() => handleCategorySwitch(tab.key)}
+                    key={cat.id}
+                    onClick={() => handleCategorySwitch(cat.name)}
                     className={`category-pill ${isSelected ? "selected" : ""}`}
                   >
                     <IconComp size={15} />
-                    <span>{tab.label}</span>
+                    <span>{cat.name}</span>
                   </button>
                 );
               })}
@@ -560,7 +601,7 @@ const App = () => {
 
       {/* EVENTS SHEETS */}
       <div className="max-w-6xl mx-auto px-5 pt-8">
-        
+
         {/* Section title */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-black text-[#0f172a] uppercase tracking-wide">
