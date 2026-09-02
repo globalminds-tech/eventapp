@@ -7,6 +7,7 @@ import MediaRenderer from "../components/MediaRenderer";
 import { getHomeEventshow } from "@Services/api";
 import { useSelector } from "react-redux";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Sidebar from "../components/Sidebar";
 
 const { width } = Dimensions.get('window');
 
@@ -16,6 +17,7 @@ const UpcomingEvent = () => {
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navigation = useNavigation();
   const user = useSelector((state) => state.user);
@@ -97,8 +99,8 @@ const UpcomingEvent = () => {
         {/* Header & Controls Section */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <ChevronLeft size={20} color="#fff" />
+            <TouchableOpacity onPress={() => setIsSidebarOpen(true)} style={styles.backBtn}>
+              <Menu size={20} color="#fff" />
             </TouchableOpacity>
             <View style={styles.welcomeContainer}>
               <Text style={styles.welcomeText}>Welcome,</Text>
@@ -239,6 +241,13 @@ const UpcomingEvent = () => {
         )}
         
       </ScrollView>
+
+      <Sidebar 
+        isVisible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        navigation={navigation} 
+        activeRoute="UpcomingEvent" 
+      />
     </SafeAreaView>
   );
 };

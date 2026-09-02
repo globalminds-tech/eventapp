@@ -63,6 +63,7 @@ import OrganizerKYC from "./src/Organizer/OrganizerKYC";
 
 // Exhibitor
 import Exhibitor_Home from "./src/Exhibitor/Exhibitor_Home";
+import ExhibitorKYC from "./src/Exhibitor/ExhibitorKYC";
 import MyBookings from "./src/Exhibitor/Mybooking";
 import UpcomingEvent from "./src/Exhibitor/UpcomingEvent";
 import StallBooking from "./src/Exhibitor/Stall_Booking";
@@ -162,6 +163,7 @@ export default function App() {
 
             {/* Exhibitor Routes */}
             <Stack.Screen name="Exhibitor_Home" component={Exhibitor_Home} />
+            <Stack.Screen name="ExhibitorKYC" component={ExhibitorKYC} />
             <Stack.Screen name="MyBookings" component={MyBookings} />
             <Stack.Screen name="UpcomingEvent" component={UpcomingEvent} />
             <Stack.Screen name="BookStall" component={StallBooking} />

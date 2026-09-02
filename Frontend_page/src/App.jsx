@@ -157,6 +157,7 @@ export default function App() {
 
 
         <Route path="/exhibitor" element={<ProtectedRoute allowedRoles={["exhibitor"]}><WebSidebar role="exhibitor" /></ProtectedRoute>}>
+          <Route index element={<ExhibitorHome />} />
           <Route path="dashboard" element={<ExhibitorHome />} />
           <Route path="my-bookings" element={<Exhibitormybooking />} />
           <Route path="my-bookings/:id" element={<ExhibitorBookingDetail />} />

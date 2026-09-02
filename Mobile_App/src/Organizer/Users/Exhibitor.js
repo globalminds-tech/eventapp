@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, ListFilter, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react-native";
+import { Search, ListFilter, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, Menu } from "lucide-react-native";
 import { getExhibitorBookings } from "@Services/api";
+import Sidebar from "../../components/Sidebar";
 
 const BADGE_COLORS = {
   Active:    { bg: "#ecfdf5", text: "#065f46" },
@@ -41,7 +42,7 @@ const COLUMNS = [
 
 const POLL_MS = 10000;
 
-export default function ExhibitorTable() {
+export default function ExhibitorTable({ navigation }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -50,6 +51,7 @@ export default function ExhibitorTable() {
   const [pageSize, setPageSize] = useState(10);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const timerRef = useRef(null);
 
   const fetchData = useCallback(async (silent = false) => {
@@ -84,11 +86,20 @@ export default function ExhibitorTable() {
 
   return (
     <SafeAreaView style={s.container}>
+      <Sidebar 
+        isVisible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        navigation={navigation} 
+        activeRoute="Exhibitor"
+      />
       <ScrollView contentContainerStyle={s.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Header */}
         <View style={s.headerRow}>
           <View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <TouchableOpacity onPress={() => setIsSidebarOpen(true)}>
+                <Menu size={24} color="#1f2937" />
+              </TouchableOpacity>
               <Text style={s.pageTitle}>Exhibitor Stall Bookings</Text>
               {isRefreshing && <ActivityIndicator size="small" color="#3b82f6" />}
             </View>

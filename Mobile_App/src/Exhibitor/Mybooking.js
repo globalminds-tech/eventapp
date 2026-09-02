@@ -7,8 +7,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
 import { getMyBookings, getBookingById, updateBooking, getCountries, getStates, getCities } from "@Services/api";
-import { X, ChevronDown, CheckCircle, AlertCircle, Phone, User as UserIcon, Building2 } from "lucide-react-native";
+import { X, ChevronDown, CheckCircle, AlertCircle, Phone, User as UserIcon, Building2, Menu } from "lucide-react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Sidebar from "../components/Sidebar";
 
 // --- Reusable Searchable Dropdown ---
 const SearchableDropdown = ({ visible, onClose, data, search, setSearch, onSelect, placeholder }) => (
@@ -362,6 +363,7 @@ const MyBookings = () => {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
@@ -565,12 +567,17 @@ const MyBookings = () => {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.pageTitle}>My Stall Bookings</Text>
-          <Text style={styles.pageSubtitle}>Manage and view your event stall bookings</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 8 }}>
-            <Text style={styles.backLink}>? Back to Home</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => setIsSidebarOpen(true)} style={{ marginRight: 12 }}>
+            <Menu size={24} color="#0f172a" />
           </TouchableOpacity>
+          <View>
+            <Text style={styles.pageTitle}>My Stall Bookings</Text>
+            <Text style={styles.pageSubtitle}>Manage and view your event stall bookings</Text>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 8 }}>
+              <Text style={styles.backLink}>← Back to Home</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.countBadge}>
           <Text style={styles.countBadgeText}>{bookings.length} Booking{bookings.length !== 1 ? "s" : ""}</Text>
@@ -734,6 +741,13 @@ const MyBookings = () => {
           setForm({...form, city: item.name});
           setCitySearch(""); setShowCityModal(false);
         }}
+      />
+
+      <Sidebar 
+        isVisible={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        navigation={navigation} 
+        activeRoute="MyBookings" 
       />
     </SafeAreaView>
   );

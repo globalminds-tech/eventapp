@@ -135,6 +135,20 @@ class AdminService:
             banners = session.scalars(select(EventFile).where(EventFile.event_id.in_(event_ids), EventFile.file_type == "banner")).all()
             banner_map = {b.event_id: b.file_path for b in banners}
 
+            from app.models.stall import EventStall
+            stalls = session.scalars(select(EventStall).where(EventStall.event_id.in_(event_ids))).all()
+            stall_map = {}
+            for s in stalls:
+                stall_map[s.event_id] = stall_map.get(s.event_id, 0) + (s.quantity or 1)
+                
+            from app.models.exhibitor import ExhibitorStallBooking
+            bookings_list = session.scalars(select(ExhibitorStallBooking).where(ExhibitorStallBooking.event_id.in_(event_ids))).all()
+            stalls_booked_map = {}
+            for b in bookings_list:
+                status = str(b.status or "").lower()
+                if status in ["approved", "confirmed", "paid"]:
+                    stalls_booked_map[b.event_id] = stalls_booked_map.get(b.event_id, 0) + 1
+
             events_list = []
             for event in events:
                 booking = booking_map.get(event.id)
@@ -170,6 +184,8 @@ class AdminService:
                     "gateScans": gate_scans_val,
                     "totalCapacity": capacity_val,
                     "capacity": capacity_val,
+                    "total_stalls": stall_map.get(event.id, 0),
+                    "stalls_booked": stalls_booked_map.get(event.id, 0),
                     "charge_type": (getattr(booking, "charge_type", None) if booking else None) or "Free",
                     "pass_fee": price_val,
                     "banner_url": b_url,

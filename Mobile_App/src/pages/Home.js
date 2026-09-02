@@ -214,7 +214,7 @@ export default function Home({ navigation }) {
                 </View>
 
                 {/* Profile Avatar Trigger */}
-                <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => setShowPortalModal(true)}>
+                <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => navigation.navigate("MyProfile")}>
                   <User size={20} color="#0f172a" />
                 </TouchableOpacity>
               </View>
@@ -283,7 +283,7 @@ export default function Home({ navigation }) {
             <View style={styles.gridWrap}>
               {filteredEvents.length > 0 ? (
                 filteredEvents.map((ev, i) => (
-                  <TouchableOpacity key={i} style={styles.gridCard} onPress={() => navigation?.navigate("UserBooking", { event: ev })}>
+                  <TouchableOpacity key={i} style={styles.gridCard} onPress={() => navigation?.navigate("EventDetail", { eventId: ev.id })}>
                     <Image source={{ uri: ev.image }} style={styles.gridCardImg} />
                     
                     <View style={styles.cardBadgesRow}>

@@ -27,9 +27,11 @@ import {
   Calendar,
   MapPin,
   RefreshCw,
+  Menu
 } from "lucide-react-native";
 import { getEventscheckin } from "@Services/api";
 import { COLORS } from "../../styles/theme";
+import Sidebar from "../../components/Sidebar";
 
 const DUMMY_EVENTS = [
   {
@@ -121,6 +123,7 @@ export default function EventCheckIn({ navigation }) {
   const [scanResult, setScanResult] = useState(null);
   const [scannerCodeInput, setScannerCodeInput] = useState("");
   const [activeTabFilter, setActiveTabFilter] = useState("All");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const ITEMS_PER_PAGE = 6;
 
@@ -211,11 +214,23 @@ export default function EventCheckIn({ navigation }) {
       <SafeAreaView style={s.container} edges={["top", "bottom"]}>
         <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
         
+        <Sidebar 
+          isVisible={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+          navigation={navigation} 
+          activeRoute="EventCheckIn"
+        />
+
         {/* Header */}
         <View style={s.header}>
-          <View>
-            <Text style={s.headerBadge}>LIVE GATE CONTROLLER</Text>
-            <Text style={s.headerTitle}>Event Gate Entry & QR Scanner</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => setIsSidebarOpen(true)} style={{ marginRight: 12 }}>
+              <Menu size={24} color={COLORS.dark} />
+            </TouchableOpacity>
+            <View>
+              <Text style={s.headerBadge}>LIVE GATE CONTROLLER</Text>
+              <Text style={s.headerTitle}>Event Gate Entry & QR Scanner</Text>
+            </View>
           </View>
           <TouchableOpacity style={s.scanHeaderBtn} onPress={() => { setScanResult(null); setShowScanner(true); }}>
             <QrCode size={18} color="#ffffff" />
