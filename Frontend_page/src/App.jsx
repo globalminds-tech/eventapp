@@ -168,6 +168,7 @@ export default function App() {
           <Route path="approvals" element={<EventApprovalQueue />} />
           <Route path="event/:eventId" element={<EventInspectionDetail />} />
           <Route path="approvals/:eventId" element={<EventInspectionDetail />} />
+          <Route path="inspection/:eventId" element={<EventInspectionDetail />} />
           <Route path="categories" element={<CategoryMaster />} />
           <Route path="kyc" element={<KycVerification />} />
           <Route path="payouts" element={<PayoutsQueue />} />
