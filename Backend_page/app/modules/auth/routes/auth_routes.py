@@ -3,6 +3,8 @@ from app.exceptions.api_error import ApiError
 from app.modules.auth.controllers.auth_controller import AuthController
 from app.modules.auth.schemas.auth_schema import (
     RegisterSchema, OrganizerRegisterSchema, ExhibitorRegisterSchema,
+    UpgradeOrganizerStep1Schema, UpgradeOrganizerCompleteSchema,
+    UpgradeExhibitorStep1Schema, UpgradeExhibitorCompleteSchema,
     LoginSchema, SendOTPSchema, VerifyOTPSchema, ResetPasswordSchema
 )
 from app.middleware.auth import get_current_user
@@ -40,9 +42,17 @@ def register_organizer(payload: OrganizerRegisterSchema, response: Response):
     _attach_refresh_cookie(response, res)
     return res
 
+@auth_router.patch("/upgrade/organizer/step/1")
+@auth_router.post("/upgrade/organizer/step/1")
+@root_auth_router.post("/user/upgrade/organizer/step/1")
+def upgrade_organizer_step1(payload: UpgradeOrganizerStep1Schema, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    return AuthController.upgrade_organizer_step1(user_id, payload.dict())
+
+@auth_router.post("/upgrade/organizer/complete")
 @auth_router.post("/upgrade/organizer")
 @root_auth_router.post("/user/upgrade/organizer")
-def upgrade_organizer(payload: OrganizerRegisterSchema, response: Response, current_user: dict = Depends(get_current_user)):
+def upgrade_organizer(payload: UpgradeOrganizerCompleteSchema, response: Response, current_user: dict = Depends(get_current_user)):
     user_id = current_user.get("user_id") or current_user.get("id")
     res = AuthController.upgrade_organizer(user_id, payload.dict())
     _attach_refresh_cookie(response, res)
@@ -55,9 +65,17 @@ def register_exhibitor(payload: ExhibitorRegisterSchema, response: Response):
     _attach_refresh_cookie(response, res)
     return res
 
+@auth_router.patch("/upgrade/exhibitor/step/1")
+@auth_router.post("/upgrade/exhibitor/step/1")
+@root_auth_router.post("/user/upgrade/exhibitor/step/1")
+def upgrade_exhibitor_step1(payload: UpgradeExhibitorStep1Schema, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    return AuthController.upgrade_exhibitor_step1(user_id, payload.dict())
+
+@auth_router.post("/upgrade/exhibitor/complete")
 @auth_router.post("/upgrade/exhibitor")
 @root_auth_router.post("/user/upgrade/exhibitor")
-def upgrade_exhibitor(payload: ExhibitorRegisterSchema, response: Response, current_user: dict = Depends(get_current_user)):
+def upgrade_exhibitor(payload: UpgradeExhibitorCompleteSchema, response: Response, current_user: dict = Depends(get_current_user)):
     user_id = current_user.get("user_id") or current_user.get("id")
     res = AuthController.upgrade_exhibitor(user_id, payload.dict())
     _attach_refresh_cookie(response, res)

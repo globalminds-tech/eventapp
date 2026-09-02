@@ -72,10 +72,20 @@ def ensure_schema_columns():
         ("user_booking_details", "checkout_scanner_id", "VARCHAR(50)"),
         ("user_booking_details", "total_checkins", "INTEGER DEFAULT 0"),
         ("user_booking_details", "total_checkouts", "INTEGER DEFAULT 0"),
-        ("venues", "total_area_sqft", "FLOAT DEFAULT 50000.0")
+        ("venues", "total_area_sqft", "FLOAT DEFAULT 50000.0"),
+        # Unified Identity Auth — User audit columns
+        ("users", "email_verified", "BOOLEAN DEFAULT FALSE"),
+        ("users", "created_at", "TIMESTAMP DEFAULT NOW()"),
+        ("users", "updated_at", "TIMESTAMP"),
+        # Unified Identity Auth — KYC step tracking for organizer profiles
+        ("organizer_profiles", "kyc_step", "INTEGER DEFAULT 0"),
+        ("organizer_profiles", "kyc_completed_at", "TIMESTAMP"),
+        # Unified Identity Auth — KYC step tracking for exhibitor profiles
+        ("exhibitor_profiles", "kyc_step", "INTEGER DEFAULT 0"),
+        ("exhibitor_profiles", "kyc_completed_at", "TIMESTAMP"),
     ]
     try:
-        with engine.connect() as conn:
+        with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
             for table, col, col_def in columns_to_check:
                 try:
                     check_stmt = text(
@@ -84,10 +94,8 @@ def ensure_schema_columns():
                     )
                     res = conn.execute(check_stmt, {"table": table, "col": col}).fetchone()
                     if not res:
-                        conn.execute(text("SET lock_timeout = '3s';"))
                         alter_stmt = text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_def};")
                         conn.execute(alter_stmt)
-                        conn.commit()
                 except Exception as inner_err:
                     print(f"[WARN] Column check/add for {table}.{col}: {inner_err}")
             print("[INFO] Supabase PostgreSQL schema columns verified.")

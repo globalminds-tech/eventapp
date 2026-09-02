@@ -7,12 +7,14 @@ from app.extensions.database import db
 
 logger = logging.getLogger(__name__)
 
-cors_headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Credentials": "true",
-    "Access-Control-Allow-Methods": "*",
-    "Access-Control-Allow-Headers": "*",
-}
+def get_cors_headers(request: Request) -> dict:
+    origin = request.headers.get("origin") or "http://localhost:5173"
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+    }
 
 def safe_rollback():
     """Safely roll back and clear failed SQLAlchemy sessions."""
@@ -28,7 +30,7 @@ def register_error_handlers(app: FastAPI):
         safe_rollback()
         return JSONResponse(
             status_code=exc.status_code,
-            headers=cors_headers,
+            headers=get_cors_headers(request),
             content={
                 "success": False,
                 "message": exc.message
@@ -42,7 +44,7 @@ def register_error_handlers(app: FastAPI):
         message = errors[0].get("msg", "Validation error") if errors else "Invalid request payload"
         return JSONResponse(
             status_code=422,
-            headers=cors_headers,
+            headers=get_cors_headers(request),
             content={
                 "success": False,
                 "message": message,
@@ -56,7 +58,7 @@ def register_error_handlers(app: FastAPI):
         logger.error(f"Unhandled exception on {request.url}: {exc}", exc_info=True)
         return JSONResponse(
             status_code=500,
-            headers=cors_headers,
+            headers=get_cors_headers(request),
             content={
                 "success": False,
                 "message": f"Server error: {str(exc)}"

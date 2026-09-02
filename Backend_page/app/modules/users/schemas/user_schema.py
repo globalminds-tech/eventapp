@@ -13,3 +13,8 @@ class UpdateProfileSchema(BaseModel):
     name: Optional[str] = None
     mobile: Optional[str] = None
     profile_image: Optional[str] = None
+    address: Optional[str] = None
+    country: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+

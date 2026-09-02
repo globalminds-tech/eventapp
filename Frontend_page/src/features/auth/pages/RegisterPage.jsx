@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { registerUser } from "@/Services/api";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/app/store/userSlice";
+import { setCredentials } from "@/app/store/authSlice";
 import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Compass, ShieldCheck, Zap, AlertCircle } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 
@@ -74,22 +75,14 @@ export default function Register() {
     try {
       const response = await registerUser(formData);
       const data = response.data?.data || response.data;
-      const userRole = (data?.user?.role || data?.role || "user").toLowerCase();
-      const userId = data?.user?.id || data?.User_id || "";
-      const userName = data?.user?.name || data?.name || formData.name;
+      const userObj = data?.user || data;
+      const userRole = (userObj?.role || data?.role || "user").toLowerCase();
+      const userId = userObj?.id || data?.User_id || "";
+      const userName = userObj?.name || data?.name || formData.name;
       const token = data?.token || data?.access_token || "";
-      if (token) {
-        sessionStorage.setItem("token", token);
-        localStorage.setItem("token", token);
-      }
-      sessionStorage.setItem("role", userRole);
-      sessionStorage.setItem("id", userId.toString());
-      sessionStorage.setItem("name", userName);
 
-      localStorage.setItem("role", userRole);
-      localStorage.setItem("name", userName);
-
-      dispatch(setUser({ id: userId, name: userName, role: userRole, email: formData.email }));
+      dispatch(setCredentials({ user: userObj, token: token, role: userRole }));
+      dispatch(setUser({ id: userId, name: userName, role: userRole, email: formData.email, profile_image: userObj.profile_image || "" }));
 
       setMessage("Account created successfully! Logging you in...");
       setTimeout(() => navigate("/", { replace: true }), 1000);

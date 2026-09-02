@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Compass, ShieldCheck, Zap, Store } from "lucide-react";
 import { loginUser } from "@/Services/api";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,6 +13,8 @@ import { getRedirectPathForUser } from "@/shared/services/authHelper";
 export default function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
   const { isAuthenticated, accessToken, role: authRole } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -32,16 +34,12 @@ export default function Login() {
     const role = (authRole || localStorage.getItem("role") || sessionStorage.getItem("role"))?.toLowerCase();
     
     if (isAuthenticated && accessToken) {
-      if (role === "organizer") {
-        navigate("/OrganizerHome", { replace: true });
-        return;
-      } else if (role === "exhibitor") {
-        navigate("/exhibitor/dashboard", { replace: true });
-        return;
-      } else if (["superuser", "superadmin", "admin"].includes(role)) {
-        navigate("/superuser/dashboard", { replace: true });
+      if (returnUrl) {
+        navigate(returnUrl, { replace: true });
         return;
       }
+      navigate("/", { replace: true });
+      return;
     }
 
     // 2. Remembered Email Initialization
@@ -161,20 +159,16 @@ export default function Login() {
         })
       );
 
-      // Multi-Role Check: If user has > 1 role, open Role Selection Modal
-      if (detectedRoles.length > 1) {
+      // Multi-Role Check: If user has > 1 role and no explicit returnUrl, open Role Selection Modal
+      if (detectedRoles.length > 1 && !returnUrl) {
         setUserRoles(detectedRoles);
         setLoggedInUser(userObj);
         setIsRoleModalOpen(true);
         return;
       }
 
-      if (userRole === "organizer") {
-        navigate("/OrganizerHome", { replace: true });
-      } else if (userRole === "exhibitor") {
-        navigate("/exhibitor/dashboard", { replace: true });
-      } else if (["superuser", "superadmin", "admin"].includes(userRole)) {
-        navigate("/superuser/dashboard", { replace: true });
+      if (returnUrl) {
+        navigate(returnUrl, { replace: true });
       } else {
         navigate("/", { replace: true });
       }
@@ -408,7 +402,7 @@ export default function Login() {
 
             <div className="space-y-3">
               <button
-                onClick={() => { setShowPartnerModal(false); navigate("/register/partner"); }}
+                onClick={() => { setShowPartnerModal(false); navigate("/register"); }}
                 className="w-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-black text-xs py-3.5 rounded-2xl border-none cursor-pointer shadow-md shadow-cyan-500/20 hover:brightness-105 transition flex items-center justify-center gap-2"
               >
                 <span>Register as Partner →</span>

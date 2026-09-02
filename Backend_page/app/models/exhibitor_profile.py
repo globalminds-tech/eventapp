@@ -42,5 +42,5 @@ class ExhibitorProfile(db.Model):
             "ifsc_code": self.ifsc_code,
             "account_holder": self.account_holder,
             "upi_id": self.upi_id,
-            "kyc_status": self.kyc_status
+            "kyc_status": self.kyc_status,
         }

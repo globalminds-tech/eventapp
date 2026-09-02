@@ -5,6 +5,7 @@ import { clearUser, setUser } from "@/app/store/userSlice";
 import { logout } from "@/app/store/authSlice";
 import { performLogout } from "@/shared/services/authHelper";
 import { getUserProfile } from "@/Services/api";
+import { authApi } from "@/features/auth/api/auth.api";
 import {
   HelpCircle, Gift, Tag, CreditCard, Utensils,
   Home, Settings, Shield, Store, Share2, ThumbsUp,
@@ -19,14 +20,14 @@ import { Card, CardContent } from "@/components/ui/Card";
 export default function Profile() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const fileInputRef = React.useRef(null);
 
   const reduxUser = useSelector((state) => state.user);
+  const reduxAuth = useSelector((state) => state.auth);
   const [showPartnerModal, setShowPartnerModal] = useState(false);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
 
-  const isAuthenticated = Boolean(
-    (sessionStorage.getItem("token") || localStorage.getItem("token")) &&
-    (reduxUser.id || sessionStorage.getItem("id") || localStorage.getItem("id"))
-  );
+  const isAuthenticated = Boolean(reduxAuth.isAuthenticated || reduxAuth.accessToken || reduxUser.id);
 
   const [userProfile, setUserProfile] = useState({
     id: reduxUser.id || sessionStorage.getItem("id") || localStorage.getItem("id") || "",
@@ -35,23 +36,26 @@ export default function Profile() {
     role: (reduxUser.role || sessionStorage.getItem("role") || localStorage.getItem("role") || "user").toLowerCase(),
     mobile: reduxUser.mobile || sessionStorage.getItem("mobile") || "",
     organization_name: reduxUser.organization_name || sessionStorage.getItem("organization_name") || "",
+    profile_image: reduxUser.profile_image || "",
     status: isAuthenticated ? "ACTIVE" : "GUEST",
   });
 
   useEffect(() => {
-    const userId = userProfile.id;
-    if (userId && isAuthenticated) {
-      getUserProfile(userId)
+    if (isAuthenticated) {
+      authApi.getMe()
         .then((res) => {
-          const fetched = res.data?.data || res.data || res;
-          if (fetched && fetched.id) {
+          const fetched = res.data || res;
+          if (fetched && (fetched.id || fetched.email)) {
             const updated = {
-              id: fetched.id,
+              id: fetched.id || userProfile.id,
               name: fetched.name || userProfile.name,
               email: fetched.email || userProfile.email,
               role: (fetched.role || userProfile.role).toLowerCase(),
               mobile: fetched.mobile || userProfile.mobile,
               organization_name: fetched.organization_name || userProfile.organization_name,
+              profile_image: fetched.profile_image || userProfile.profile_image || "",
+              roles: fetched.roles || [userProfile.role],
+              profiles: fetched.profiles || {},
               status: fetched.status || "ACTIVE",
             };
             setUserProfile(updated);
@@ -62,7 +66,36 @@ export default function Profile() {
           console.log("Profile API fetch note:", err?.message || err);
         });
     }
-  }, [userProfile.id, isAuthenticated, dispatch]);
+  }, [isAuthenticated, dispatch]);
+
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file (JPEG, PNG, WEBP, GIF)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size must be under 5MB");
+      return;
+    }
+
+    setIsAvatarUploading(true);
+    try {
+      const res = await authApi.uploadAvatar(file);
+      const newUrl = res?.data?.profile_image || res?.url;
+      if (newUrl) {
+        setUserProfile((prev) => ({ ...prev, profile_image: newUrl }));
+        dispatch(setUser({ ...userProfile, profile_image: newUrl }));
+      }
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      alert(err?.response?.data?.detail || err?.message || "Failed to upload profile photo");
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  };
 
   const handleLogout = (e) => {
     if (e) {
@@ -72,64 +105,39 @@ export default function Profile() {
     performLogout(dispatch, navigate);
   };
 
-  const isSuperuser = isAuthenticated && (userProfile.role === "superuser" || userProfile.role === "superadmin" || userProfile.role === "admin");
-  const isOrganizer = isAuthenticated && userProfile.role === "organizer";
-  const isExhibitor = isAuthenticated && userProfile.role === "exhibitor";
-  const isPublicUser = !isSuperuser && !isOrganizer && !isExhibitor;
+  const hasOrganizer = isAuthenticated && (
+    userProfile.role === "organizer" ||
+    Boolean(userProfile.profiles?.organizer) ||
+    (Array.isArray(userProfile.roles) && userProfile.roles.includes("organizer"))
+  );
 
-  const getBackRoute = () => {
-    if (isSuperuser) return "/superuser/dashboard";
-    if (isOrganizer) return "/OrganizerHome";
-    if (isExhibitor) return "/exhibitor/dashboard";
-    return "/";
-  };
+  const hasExhibitor = isAuthenticated && (
+    userProfile.role === "exhibitor" ||
+    Boolean(userProfile.profiles?.exhibitor) ||
+    (Array.isArray(userProfile.roles) && userProfile.roles.includes("exhibitor"))
+  );
+
+  const isSuperuser = isAuthenticated && (
+    userProfile.role === "superuser" ||
+    userProfile.role === "superadmin" ||
+    userProfile.role === "admin"
+  );
 
   const getRoleBadge = () => {
     if (!isAuthenticated) return "🎟️ PUBLIC GUEST";
     if (isSuperuser) return "👑 Super Admin";
-    if (isOrganizer) return "🎪 Event Organizer";
-    if (isExhibitor) return "🏬 Exhibitor Vendor";
+    if (hasOrganizer && hasExhibitor) return "🎪 Organizer & Vendor";
+    if (hasOrganizer) return "🎪 Event Organizer";
+    if (hasExhibitor) return "🏬 Exhibitor Vendor";
     return "🎟️ Platform Member";
   };
 
   const accountServicesList = [
     {
-      title: "List Your Show & Partner Hub",
-      subtitle: "Host events as Organizer or reserve stalls as Exhibitor",
-      icon: Sparkles,
-      isHighlight: true,
-      badge: "PARTNER",
-      action: () => setShowPartnerModal(true),
-    },
-    {
       title: "Help Centre & Support",
       subtitle: "Get assistance for ticketing, gate check-ins & payouts",
       icon: HelpCircle,
       path: "/Help_Center",
-    },
-    {
-      title: "My Rewards & Passports",
-      subtitle: "View earned loyalty points & event stamps",
-      icon: Gift,
-      path: null,
-    },
-    {
-      title: "Offers & Promotional Coupons",
-      subtitle: "Available discount codes & early bird vouchers",
-      icon: Tag,
-      path: null,
-    },
-    {
-      title: "Gift Cards & Credits",
-      subtitle: "Manage event voucher gift balances",
-      icon: CreditCard,
-      path: null,
-    },
-    {
-      title: "Food & Beverage Tokens",
-      subtitle: "Active meal passes & pre-booked food vouchers",
-      icon: Utensils,
-      path: null,
     },
     {
       title: "Terms, Conditions & Privacy",
@@ -151,17 +159,24 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans pb-10 select-none">
-      
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleAvatarFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* Sleek Header Navbar */}
       <header className="bg-white border-b border-slate-200/80 shadow-xs sticky top-0 z-40">
         <div className="w-full max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate(getBackRoute())}
+              onClick={() => navigate("/")}
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer border-none bg-transparent font-bold text-xs"
             >
-              <ArrowLeft size={16} />
-              <span>{isPublicUser ? "Back to Events" : "Back to Workspace"}</span>
+              <Home size={16} className="text-cyan-600" />
+              <span>Back to User Home</span>
             </button>
             <div className="w-px h-6 bg-slate-200" />
             <h1 className="text-base font-black text-slate-900 uppercase tracking-wider">Account Control Panel</h1>
@@ -197,13 +212,17 @@ export default function Profile() {
           <div className="bg-white rounded-3xl p-7 border border-slate-200/80 shadow-xs flex flex-col items-center text-center">
             
             {/* Avatar */}
-            <div className="relative group">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-400 via-indigo-500 to-purple-600 p-1 shadow-md flex items-center justify-center">
-                <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-slate-800 font-black text-3xl">
-                  {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : <User size={44} className="stroke-[1.5]" />}
-                </div>
+            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-400 via-indigo-500 to-purple-600 p-1 shadow-md flex items-center justify-center overflow-hidden">
+                {userProfile.profile_image ? (
+                  <img src={userProfile.profile_image} alt="" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-slate-800 font-black text-3xl">
+                    {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : <User size={44} className="stroke-[1.5]" />}
+                  </div>
+                )}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 cursor-pointer hover:text-cyan-600 transition">
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-500 cursor-pointer hover:text-cyan-600 transition" title="Upload Profile Photo">
                 <Edit3 size={14} />
               </div>
             </div>
@@ -301,225 +320,243 @@ export default function Profile() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* PUBLIC ATTENDEE ROLE VIEW */}
-              {isPublicUser && (
-                <>
-                  <Card className="border-slate-200/80 shadow-xs hover:border-cyan-300 transition-all bg-gradient-to-br from-white to-cyan-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">My Tickets & Entry Passes</span>
-                        <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 text-[10px] font-extrabold">PASSES</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        View confirmed event passes and digital QR codes for entrance check-in.
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate(isAuthenticated ? "/my-passes" : "/login")}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
-                      >
-                        <Ticket size={14} />
-                        <span>{isAuthenticated ? "View My Passes" : "Sign In to View Passes"}</span>
-                      </Button>
-                    </CardContent>
-                  </Card>
+              
+              {/* 1. ACTIVE WORKSPACE CARDS */}
 
-                  <Card className="border-slate-200/80 shadow-xs hover:border-emerald-300 transition-all bg-gradient-to-br from-white to-emerald-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">Discover Live Events</span>
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">DISCOVER</Badge>
+              {/* Organizer Active Workspace */}
+              {hasOrganizer && (
+                <Card className="border-cyan-300 shadow-md hover:border-cyan-500 transition-all bg-gradient-to-br from-cyan-500/10 via-sky-500/5 to-white border-2 col-span-1 sm:col-span-2">
+                  <CardContent className="p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white flex items-center justify-center font-bold shadow-md">
+                          <Sparkles size={20} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-extrabold text-slate-900">Event Organizer Workspace</h4>
+                          <p className="text-[11px] text-slate-500">Manage published shows, event check-in scanner & payouts</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Browse music concerts, tech expos, food carnivals, and cultural shows.
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate("/")}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
-                      >
-                        <Compass size={14} />
-                        <span>Discover Events</span>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
+                      <Badge className="bg-cyan-500 text-white text-[9px] font-black uppercase">ORGANIZER</Badge>
+                    </div>
 
-              {/* ORGANIZER ROLE VIEW */}
-              {isOrganizer && (
-                <>
-                  <Card className="border-slate-200/80 shadow-xs hover:border-amber-300 transition-all bg-gradient-to-br from-white to-amber-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">Account KYC & Legal GST</span>
-                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-extrabold">VERIFICATION</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Manage business GSTIN, PAN details, entity type, and registered office address.
-                      </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
                       <Button
                         size="sm"
-                        onClick={() => navigate("/register/organizer?step=2")}
-                        className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                        onClick={() => navigate("/OrganizerHome")}
+                        className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:brightness-105 text-white font-extrabold text-xs py-2 px-4 rounded-xl border-none cursor-pointer gap-1.5 shadow-md shadow-cyan-500/20 flex-1"
                       >
-                        <span>Update Legal & KYC Details</span>
-                        <ArrowUpRight size={14} />
+                        <Sparkles size={14} />
+                        <span>Go to Organizer Dashboard →</span>
                       </Button>
-                    </CardContent>
-                  </Card>
 
-                  <Card className="border-slate-200/80 shadow-xs hover:border-cyan-300 transition-all bg-gradient-to-br from-white to-cyan-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">Bank Payout & Settlement Setup</span>
-                        <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 text-[10px] font-extrabold">PAYOUTS</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Update bank account number, IFSC code, and instant UPI settlement preference.
-                      </p>
                       <Button
                         size="sm"
-                        onClick={() => navigate("/register/organizer?step=3")}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                        variant="outline"
+                        onClick={() => navigate("/upgrade/organizer")}
+                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs py-2 px-3 rounded-xl border border-slate-200 cursor-pointer gap-1"
                       >
-                        <Landmark size={14} />
-                        <span>Update Bank Account & Payouts</span>
+                        <span>Update KYC Details</span>
+                        <ArrowUpRight size={13} />
                       </Button>
-                    </CardContent>
-                  </Card>
 
-                  <Card className="border-slate-200/80 shadow-xs hover:border-indigo-300 transition-all bg-gradient-to-br from-white to-indigo-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">Gate Scanner Staff</span>
-                        <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px] font-extrabold">OPERATIONAL</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Turnstiles & QR scanners ready for attendee validation.
-                      </p>
                       <Button
                         size="sm"
+                        variant="outline"
                         onClick={() => navigate("/OrganizerHome/EventCheckIn")}
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                        className="bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs py-2 px-3 rounded-xl border border-indigo-200 cursor-pointer gap-1"
                       >
-                        <QrCode size={14} />
-                        <span>Gate Scanner Control</span>
+                        <QrCode size={13} />
+                        <span>Gate Scanner</span>
                       </Button>
-                    </CardContent>
-                  </Card>
-                </>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
-              {/* EXHIBITOR ROLE VIEW */}
-              {isExhibitor && (
-                <>
-                  <Card className="border-slate-200/80 shadow-xs hover:border-emerald-300 transition-all bg-gradient-to-br from-white to-emerald-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">GSTIN & Tax Invoices</span>
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">TAX PROFILE</Badge>
+              {/* Exhibitor Active Workspace */}
+              {hasExhibitor && (
+                <Card className="border-emerald-300 shadow-md hover:border-emerald-500 transition-all bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white border-2 col-span-1 sm:col-span-2">
+                  <CardContent className="p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-center font-bold shadow-md">
+                          <Store size={20} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-extrabold text-slate-900">Exhibitor Vendor Portal</h4>
+                          <p className="text-[11px] text-slate-500">Manage stall bookings, booth badges & visitor lead scans</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Manage vendor business GSTIN and download stall tax invoices.
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate("/register/exhibitor?step=2")}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
-                      >
-                        <span>Update Vendor Profile</span>
-                        <ArrowUpRight size={14} />
-                      </Button>
-                    </CardContent>
-                  </Card>
+                      <Badge className="bg-emerald-600 text-white text-[9px] font-black uppercase">EXHIBITOR</Badge>
+                    </div>
 
-                  <Card className="border-slate-200/80 shadow-xs hover:border-cyan-300 transition-all bg-gradient-to-br from-white to-cyan-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">Bank Payout & Vendor Settlement</span>
-                        <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 text-[10px] font-extrabold">PAYOUTS</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Manage bank account details for refund settlements & vendor payouts.
-                      </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
                       <Button
                         size="sm"
-                        onClick={() => navigate("/register/exhibitor?step=3")}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
-                      >
-                        <Landmark size={14} />
-                        <span>Update Bank Payout Setup</span>
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-slate-200/80 shadow-xs hover:border-cyan-300 transition-all bg-gradient-to-br from-white to-cyan-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">My Booth Reservations</span>
-                        <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 text-[10px] font-extrabold">STALL PASSES</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        View booth numbers, floor layout plans, and badge passes.
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate("/exhibitor/my-bookings")}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                        onClick={() => navigate("/exhibitor/dashboard")}
+                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 text-white font-extrabold text-xs py-2 px-4 rounded-xl border-none cursor-pointer gap-1.5 shadow-md shadow-emerald-600/20 flex-1"
                       >
                         <Store size={14} />
-                        <span>View Stall Bookings</span>
+                        <span>Go to Exhibitor Portal →</span>
                       </Button>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
 
-              {/* SUPERUSER ROLE VIEW */}
-              {isSuperuser && (
-                <>
-                  <Card className="border-slate-200/80 shadow-xs hover:border-purple-300 transition-all bg-gradient-to-br from-white to-purple-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">Event Approvals Queue</span>
-                        <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-[10px] font-extrabold">ADMIN</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Review organizer submitted event details and publish events live.
-                      </p>
                       <Button
                         size="sm"
-                        onClick={() => navigate("/superuser/dashboard?tab=approvals")}
-                        className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                        variant="outline"
+                        onClick={() => navigate("/exhibitor/my-bookings")}
+                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs py-2 px-3 rounded-xl border border-slate-200 cursor-pointer gap-1"
+                      >
+                        <span>My Stall Bookings</span>
+                        <ArrowUpRight size={13} />
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate("/upgrade/exhibitor")}
+                        className="bg-white hover:bg-slate-50 text-emerald-700 font-bold text-xs py-2 px-3 rounded-xl border border-emerald-200 cursor-pointer gap-1"
+                      >
+                        <span>Update Vendor Profile</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Superuser Active Workspace */}
+              {isSuperuser && (
+                <Card className="border-purple-300 shadow-md hover:border-purple-500 transition-all bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-white border-2 col-span-1 sm:col-span-2">
+                  <CardContent className="p-5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
+                          <UserCheck size={20} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-extrabold text-slate-900">Super Admin Control Center</h4>
+                          <p className="text-[11px] text-slate-500">Approve event submissions, verify KYC & manage categories</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-purple-600 text-white text-[9px] font-black uppercase">SUPER ADMIN</Badge>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        onClick={() => navigate("/superuser/dashboard")}
+                        className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-105 text-white font-extrabold text-xs py-2 px-4 rounded-xl border-none cursor-pointer gap-1.5 shadow-md shadow-purple-600/20 flex-1"
                       >
                         <UserCheck size={14} />
-                        <span>Approvals Queue</span>
+                        <span>Go to Admin Dashboard →</span>
                       </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-slate-200/80 shadow-xs hover:border-indigo-300 transition-all bg-gradient-to-br from-white to-indigo-50/20">
-                    <CardContent className="p-4.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-800">Category Master</span>
-                        <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px] font-extrabold">MASTER</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 leading-snug">
-                        Manage categories/subcategories and bulk import Excel templates.
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => navigate("/superuser/dashboard?tab=categories")}
-                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
-                      >
-                        <Landmark size={14} />
-                        <span>Category Master</span>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
+
+
+              {/* 2. PARTNER UPGRADE OPPORTUNITIES */}
+
+              {/* Upgrade to Organizer (if not an organizer yet) */}
+              {!hasOrganizer && (
+                <Card className="border-cyan-200 shadow-xs hover:border-cyan-400 transition-all bg-gradient-to-br from-white to-cyan-50/30">
+                  <CardContent className="p-4.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                        <Sparkles size={16} className="text-cyan-600" />
+                        <span>Become an Event Organizer</span>
+                      </span>
+                      <Badge className="bg-cyan-500 text-white text-[9px] font-black uppercase">KYC VERIFIED</Badge>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-snug">
+                      Host concerts, tech summits & festivals. Verify business KYC to publish events and sell passes.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate(isAuthenticated ? "/upgrade/organizer" : "/login")}
+                      className="w-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:brightness-105 text-white font-extrabold text-xs py-2 rounded-xl border-none cursor-pointer gap-1.5 shadow-md shadow-cyan-500/20"
+                    >
+                      <span>Become an Organizer →</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Upgrade to Exhibitor (if not an exhibitor yet) */}
+              {!hasExhibitor && (
+                <Card className="border-emerald-200 shadow-xs hover:border-emerald-400 transition-all bg-gradient-to-br from-white to-emerald-50/30">
+                  <CardContent className="p-4.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                        <Store size={16} className="text-emerald-600" />
+                        <span>Become an Exhibitor Vendor</span>
+                      </span>
+                      <Badge className="bg-emerald-600 text-white text-[9px] font-black uppercase">KYC VERIFIED</Badge>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-snug">
+                      Reserve vendor booth spaces, showcase products & connect with attendees at upcoming expos.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => navigate(isAuthenticated ? "/upgrade/exhibitor" : "/login")}
+                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 text-white font-extrabold text-xs py-2 rounded-xl border-none cursor-pointer gap-1.5 shadow-md shadow-emerald-600/20"
+                    >
+                      <span>Become an Exhibitor →</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+
+              {/* 3. ATTENDEE SHORTCUTS */}
+
+              <Card className="border-slate-200/80 shadow-xs hover:border-slate-300 transition-all bg-gradient-to-br from-white to-slate-50/50">
+                <CardContent className="p-4.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Ticket size={15} className="text-cyan-600" />
+                      <span>My Booked Passes</span>
+                    </span>
+                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[9px] font-extrabold">PASSES</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    View confirmed event passes and digital QR codes for entrance check-in.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(isAuthenticated ? "/my-passes" : "/login")}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                  >
+                    <Ticket size={14} />
+                    <span>{isAuthenticated ? "View My Passes" : "Sign In to View Passes"}</span>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200/80 shadow-xs hover:border-slate-300 transition-all bg-gradient-to-br from-white to-slate-50/50">
+                <CardContent className="p-4.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Compass size={15} className="text-emerald-600" />
+                      <span>Discover Live Events</span>
+                    </span>
+                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[9px] font-extrabold">DISCOVER</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">
+                    Browse music concerts, tech expos, food carnivals, and cultural shows.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate("/")}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
+                  >
+                    <Compass size={14} />
+                    <span>Discover Events</span>
+                  </Button>
+                </CardContent>
+              </Card>
+
             </div>
           </div>
 

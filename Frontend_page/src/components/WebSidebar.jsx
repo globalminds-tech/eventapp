@@ -5,7 +5,7 @@ import { clearUser } from "@/app/store/userSlice";
 import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
-  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck
+  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -84,12 +84,14 @@ export default function WebSidebar({ role }) {
       { label: "Category Master", path: "/superuser/categories", icon: Layers },
       { label: "KYC Verification", path: "/superuser/kyc", icon: UserCheck },
       { label: "Payouts Queue", path: "/superuser/payouts", icon: Landmark },
+      { label: "User Home", path: "/", icon: Home },
     ],
     exhibitor: [
       { label: "Booth Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
       { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store },
       { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar },
       { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users },
+      { label: "User Home", path: "/", icon: Home },
     ],
     organizer: [
       { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard },
@@ -98,6 +100,7 @@ export default function WebSidebar({ role }) {
       { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store },
       { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users },
       { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt },
+      { label: "User Home", path: "/", icon: Home },
     ]
   }[role] || [];
 

@@ -5,6 +5,7 @@ import {
   Star,
   ChevronDown,
   User,
+  Bell,
   Sparkles,
   Music,
   Mic,
@@ -17,12 +18,21 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  ArrowUp
+  ArrowUp,
+  LogIn,
+  LogOut,
+  Store,
+  Camera,
+  UserCheck,
+  ShieldCheck
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import MediaRenderer from "@/components/MediaRenderer";
 import { getHomeEventshow } from "@/Services/api";
-import { getRedirectPathForUser } from "@/shared/services/authHelper";
+import { getRedirectPathForUser, performLogout, getUserInitials, getUserAvailableRoles, hasProfile } from "@/shared/services/authHelper";
+import { authApi } from "@/features/auth/api/auth.api";
+import { setUser } from "@/app/store/userSlice";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { categoryApi } from "@/features/catalog/api/category.api";
 
@@ -197,12 +207,56 @@ const App = () => {
   const [events, setEvents] = useState(initialList);
   const [isLoading, setIsLoading] = useState(initialList.length === 0);
 
+  const dispatch = useDispatch();
+  const fileInputRef = useRef(null);
+  const reduxAuth = useSelector((state) => state.auth);
+  const reduxUser = useSelector((state) => state.user);
+  const isAuthenticated = Boolean(reduxAuth?.isAuthenticated || reduxAuth?.accessToken || reduxUser?.id);
+  const currentUser = reduxAuth?.user || reduxUser;
+
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedCity, setSelectedCity] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("Home");
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [isCityModalOpen, setIsCityModalOpen] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("India");
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(2);
   const [dbCategories, setDbCategories] = useState([]);
+
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Please select a valid image file (JPEG, PNG, WEBP, GIF)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size must be under 5MB");
+      return;
+    }
+
+    setIsAvatarUploading(true);
+    try {
+      const res = await authApi.uploadAvatar(file);
+      const newUrl = res?.data?.profile_image || res?.url;
+      if (newUrl) {
+        dispatch(setUser({ ...currentUser, profile_image: newUrl }));
+      }
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      alert(err?.response?.data?.detail || err?.message || "Failed to upload profile photo");
+    } finally {
+      setIsAvatarUploading(false);
+    }
+  };
 
   // Animated Category Theme Transition State
   const [prevTheme, setPrevTheme] = useState(categoryThemes.All);
@@ -273,6 +327,63 @@ const App = () => {
       setOpacity(1);
     }, 50);
   };
+
+  const handleDetectLocation = async () => {
+    setIsDetectingLocation(true);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            const res = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            const data = await res.json();
+            const detected = data.city || data.locality || data.principalSubdivision || "Chennai";
+            const cleanName = detected.split(" ")[0];
+            setSelectedCity(cleanName);
+          } catch (err) {
+            setSelectedCity("Chennai");
+          } finally {
+            setIsDetectingLocation(false);
+            setIsCityModalOpen(false);
+          }
+        },
+        () => {
+          setIsDetectingLocation(false);
+          setSelectedCity("Chennai");
+          setIsCityModalOpen(false);
+        },
+        { timeout: 5000 }
+      );
+    } else {
+      setIsDetectingLocation(false);
+      setSelectedCity("Chennai");
+      setIsCityModalOpen(false);
+    }
+  };
+
+  const countryOptions = [
+    { code: "India", label: "India", flag: "🇮🇳" },
+    { code: "US", label: "United States", flag: "🇺🇸" },
+    { code: "UAE", label: "UAE", flag: "🇦🇪" },
+    { code: "Singapore", label: "Singapore", flag: "🇸🇬" },
+    { code: "Malaysia", label: "Malaysia", flag: "🇲🇾" },
+    { code: "Thailand", label: "Thailand", flag: "🇹🇭" },
+    { code: "Europe", label: "Europe", flag: "🇪🇺" },
+    { code: "Australia", label: "Australia", flag: "🇦🇺" },
+  ];
+
+  const popularCities = [
+    { name: "Bengaluru", icon: "🏛️", desc: "Tech Capital" },
+    { name: "Chennai", icon: "🏰", desc: "Coastal Hub" },
+    { name: "Coimbatore", icon: "⚙️", desc: "Textile Hub" },
+    { name: "Hyderabad", icon: "🕌", desc: "Pearl City" },
+    { name: "Kochi", icon: "⛵", desc: "Port City" },
+    { name: "Kolkata", icon: "🛺", desc: "City of Joy" },
+    { name: "New Delhi", icon: "🏛️", desc: "Capital Region" },
+    { name: "Mumbai", icon: "🏙️", desc: "Financial Hub" },
+  ];
 
   // Get unique cities list from events
   const citiesList = Array.from(
@@ -427,8 +538,8 @@ const App = () => {
       `}</style>
 
       {/* CURVED HEADER WITH BG TRANSITION */}
-      <div className="curved-header min-h-[340px] flex flex-col justify-between">
-        {/* Dynamic transition background layers */}
+      <div className="curved-header min-h-[260px] md:min-h-[280px] flex flex-col justify-between relative overflow-hidden">
+        {/* Layer 0: Dynamic transition background layers */}
         <div
           style={{
             position: "absolute",
@@ -436,6 +547,7 @@ const App = () => {
             backgroundImage: `url(${prevTheme.background})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
+            zIndex: 0,
           }}
         />
         <div
@@ -447,130 +559,200 @@ const App = () => {
             backgroundPosition: "center",
             opacity: opacity,
             transition: "opacity 300ms ease-in-out",
+            zIndex: 0,
           }}
         />
 
-        {/* Soft layout overlay */}
-        <div className="overlay-tint" />
+        {/* Layer 1: Single-color top shade overlay for Row 1 text contrast */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "95px",
+            background: "linear-gradient(to bottom, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0) 100%)",
+            zIndex: 1,
+          }}
+        />
 
-        {/* Content Safe Container */}
-        <div className="relative z-10 max-w-6xl mx-auto w-full px-5 pt-6 flex flex-col justify-between h-full gap-8">
+        {/* Layer 2: Header Content Safe Container */}
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 pt-5 pb-4 flex flex-col justify-between h-full gap-5">
 
-          {/* Top Row: Logo, Location Selector, Profile button */}
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-8">
+          {/* LINE 1 (TOP BAR): Logo, Location Button, Navigation Links, Notification Bell, Profile */}
+          <div className="flex items-center justify-between gap-4 w-full relative z-20">
+            
+            {/* Left: Brand Logo & Location Modal Button */}
+            <div className="flex items-center gap-4 sm:gap-6 shrink-0">
               <div>
-                <BrandLogo textColor="#0f172a" />
-
-                {/* Location Select */}
-                <div className="relative mt-1">
-                  <button
-                    onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-                    className="flex items-center gap-1 text-[13px] font-extrabold text-[#334155] cursor-pointer bg-transparent border-none outline-none select-none hover:text-[#0f172a] transition-colors"
-                  >
-                    <MapPin size={13} className="text-[#f97316]" />
-                    <span>{selectedCity || "Select City"}</span>
-                    <ChevronDown size={13} className="text-[#0f172a]" />
-                  </button>
-
-                  {isCityDropdownOpen && (
-                    <>
-                      <div className="fixed inset-0 z-30" onClick={() => setIsCityDropdownOpen(false)} />
-                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 z-40 p-2 py-1 max-h-60 overflow-y-auto no-scrollbar animate-fadeIn">
-                        <div
-                          onClick={() => {
-                            setSelectedCity("");
-                            setIsCityDropdownOpen(false);
-                          }}
-                          className={`px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors ${!selectedCity ? 'bg-orange-50 text-orange-600' : 'text-slate-700 hover:bg-slate-50'}`}
-                        >
-                          All Cities
-                        </div>
-                        {citiesList.map(city => (
-                          <div
-                            key={city}
-                            onClick={() => {
-                              setSelectedCity(city);
-                              setIsCityDropdownOpen(false);
-                            }}
-                            className={`px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors ${selectedCity === city ? 'bg-orange-50 text-orange-600' : 'text-slate-700 hover:bg-slate-50'}`}
-                          >
-                            {city}
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
+                <BrandLogo textColor="#ffffff" />
+                <button
+                  onClick={() => setIsCityModalOpen(true)}
+                  className="flex items-center gap-1.5 text-xs font-extrabold text-slate-200 hover:text-white cursor-pointer bg-transparent border-none outline-none select-none transition-colors mt-0.5"
+                >
+                  <MapPin size={13} className="text-orange-400 shrink-0" />
+                  <span>{selectedCity || "Select City"}</span>
+                  <ChevronDown size={12} className="text-slate-300 shrink-0" />
+                </button>
               </div>
 
-              {/* Desktop Header Navigation Links */}
-              <div className="hidden sm:flex items-center gap-5 ml-4">
+              {/* Navigation Links */}
+              <div className="hidden lg:flex items-center gap-5 border-l border-white/20 pl-5">
                 <button
-                  onClick={() => {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  className="text-xs font-black text-slate-200 hover:text-orange-400 cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
                 >
                   Home
                 </button>
                 <button
                   onClick={() => navigate("/all-events")}
-                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                  className="text-xs font-black text-slate-200 hover:text-orange-400 cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
                 >
                   Events
                 </button>
                 <button
                   onClick={() => navigate("/all-events")}
-                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                  className="text-xs font-black text-slate-200 hover:text-orange-400 cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
                 >
                   Explore
                 </button>
-              </div>
-            </div>
-
-            {/* Profile Avatar Button */}
-            <div className="flex items-center gap-3">
-              {/* Fallback for smaller screens to have nav items visible in header too */}
-              <div className="flex sm:hidden items-center gap-3">
                 <button
-                  onClick={() => navigate("/all-events")}
-                  className="text-xs font-black text-[#334155] hover:text-[#f97316] cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
+                  onClick={() => navigate("/Help_Center")}
+                  className="text-xs font-black text-slate-200 hover:text-orange-400 cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
                 >
-                  Events
+                  Help
                 </button>
               </div>
-              <button
-                onClick={handleProfileClick}
-                className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/90 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-all text-[#0f172a]"
-              >
-                <User size={20} />
-              </button>
             </div>
-          </div>
 
-          {/* White Search Bar */}
-          <div className="w-full max-w-xl mx-auto shadow-md rounded-2xl overflow-hidden">
-            <div className="bg-white px-4 h-12 flex items-center gap-2 border border-slate-100/50">
-              <Search size={18} className="text-[#64748b]" />
+            {/* Right: Notification Bell & Profile Avatar Buttons */}
+            <div className="flex items-center gap-3 shrink-0 relative z-30">
+              
+              {/* Notification Bell */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                  className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-all relative"
+                  title="Notifications"
+                >
+                  <Bell size={18} />
+                  {unreadNotificationsCount > 0 && (
+                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-amber-400 rounded-full ring-2 ring-slate-900 animate-pulse" />
+                  )}
+                </button>
+
+                {/* Notifications Dropdown - Fixed Floating Popover (z-[250]) */}
+                {isNotificationOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[240]" onClick={() => setIsNotificationOpen(false)} />
+                    <div className="fixed top-16 right-4 sm:right-10 md:right-16 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[250] p-4 animate-fadeIn">
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+                        <div className="flex items-center gap-2">
+                          <Bell size={16} className="text-orange-500" />
+                          <span className="text-xs font-black text-slate-900 uppercase tracking-wide">Notifications</span>
+                        </div>
+                        {unreadNotificationsCount > 0 && (
+                          <button
+                            onClick={() => setUnreadNotificationsCount(0)}
+                            className="text-[10px] font-bold text-orange-600 hover:underline bg-transparent border-none cursor-pointer"
+                          >
+                            Mark all read
+                          </button>
+                        )}
+                      </div>
+                      <div className="space-y-2.5 max-h-64 overflow-y-auto no-scrollbar">
+                        <div className="p-2.5 rounded-xl bg-orange-50/70 border border-orange-100 flex items-start gap-2.5">
+                          <div className="w-2 h-2 rounded-full bg-orange-500 mt-1.5 shrink-0" />
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-black text-slate-900">🎟️ Booking Confirmed!</p>
+                            <p className="text-[11px] text-slate-600 leading-tight">Your pass for Live Music Concert has been generated successfully.</p>
+                            <span className="text-[9px] font-bold text-slate-400">10 mins ago</span>
+                          </div>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+                          <div className="w-2 h-2 rounded-full bg-cyan-500 mt-1.5 shrink-0" />
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-black text-slate-900">📍 Gate Scanner Entry Open</p>
+                            <p className="text-[11px] text-slate-600 leading-tight">Gates open at 5:00 PM for Tech Expo 2026. Show QR at entry.</p>
+                            <span className="text-[9px] font-bold text-slate-400">1 hour ago</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Hidden file input for profile photo upload */}
               <input
-                type="text"
-                placeholder={currentTheme.placeholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-full border-none outline-none font-semibold text-sm text-[#0f172a] placeholder-[#94a3b8]"
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarFileChange}
+                accept="image/*"
+                className="hidden"
               />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="p-1 hover:bg-slate-100 rounded-full">
-                  <X size={14} className="text-slate-400" />
+
+              {!isAuthenticated ? (
+                /* Unauthenticated Guest: Clean Login Pill Button */
+                <button
+                  onClick={() => navigate("/login")}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs shadow-md border-none cursor-pointer transition-all uppercase tracking-wider hover:scale-105 active:scale-95"
+                >
+                  <LogIn size={15} />
+                  <span>Login</span>
+                </button>
+              ) : (
+                /* Authenticated User: Profile Avatar -> Direct Navigate to /profile */
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 border-2 border-white/80 text-white flex items-center justify-center cursor-pointer shadow-md hover:scale-105 active:scale-95 transition-all overflow-hidden font-extrabold text-sm"
+                  title={currentUser.name || "My Account"}
+                >
+                  {currentUser.profile_image ? (
+                    <img
+                      src={currentUser.profile_image}
+                      alt={currentUser.name || "Avatar"}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <span>{getUserInitials(currentUser.name || "User")}</span>
+                  )}
                 </button>
               )}
             </div>
           </div>
 
-          {/* Dynamic Horizontal Category Strip */}
-          <div className="w-full overflow-x-auto no-scrollbar py-1">
-            <div className="flex gap-2.5">
+          {/* LINE 2: Clean Pill Search Bar Alone */}
+          <div className="w-full my-auto py-2">
+            <div className="w-full max-w-xl mx-auto">
+              <div className="bg-white/95 backdrop-blur-md p-1.5 pl-4 rounded-full shadow-xl border border-white/80 flex items-center gap-3">
+                <Search size={18} className="text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder={currentTheme.placeholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-10 border-none outline-none font-bold text-xs md:text-sm text-slate-900 placeholder-slate-400 bg-transparent"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="p-1 hover:bg-slate-100 rounded-full shrink-0">
+                    <X size={14} className="text-slate-400" />
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate("/all-events")}
+                  className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs px-5 py-2.5 rounded-full border-none cursor-pointer shadow-md transition-all shrink-0 uppercase tracking-wider"
+                >
+                  Search
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* LINE 3 (CATEGORY PILLS ROW): Perfectly bridges into event sheets below */}
+          <div className="w-full overflow-x-auto no-scrollbar pt-2 pb-1">
+            <div className="flex items-center gap-2.5 sm:justify-center">
               <button
                 onClick={() => handleCategorySwitch("All")}
                 className={`category-pill ${selectedCategory === "All" ? "selected" : ""}`}
@@ -598,6 +780,128 @@ const App = () => {
 
         </div>
       </div>
+
+      {/* CITY SELECTION MODAL DIALOG (MATCHING BOOKMYSHOW DESIGN) */}
+      {isCityModalOpen && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full p-6 md:p-8 relative max-h-[90vh] overflow-y-auto no-scrollbar">
+            
+            {/* Close button */}
+            <button
+              onClick={() => setIsCityModalOpen(false)}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center border-none cursor-pointer transition-colors"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Title */}
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-black text-slate-900">Select Your City to Continue</h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">Discover live concerts, expos, sports &amp; comedy shows in your area</p>
+            </div>
+
+            {/* Search Input Bar + Detect Location */}
+            <div className="relative mb-5">
+              <div className="bg-slate-50 rounded-2xl p-2.5 px-4 border border-slate-200 flex items-center gap-3">
+                <Search size={18} className="text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search for your city (e.g. Chennai, Bengaluru...)"
+                  value={citySearchQuery}
+                  onChange={(e) => setCitySearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-none outline-none font-bold text-sm text-slate-900 placeholder-slate-400"
+                />
+                {citySearchQuery && (
+                  <button onClick={() => setCitySearchQuery("")} className="p-1 hover:bg-slate-200 rounded-full">
+                    <X size={14} className="text-slate-400" />
+                  </button>
+                )}
+                <button
+                  onClick={handleDetectLocation}
+                  disabled={isDetectingLocation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 font-extrabold text-xs border border-orange-200 cursor-pointer shrink-0 transition-colors"
+                >
+                  <Compass size={14} className={isDetectingLocation ? "animate-spin" : ""} />
+                  <span>{isDetectingLocation ? "Detecting..." : "Detect Location"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Country Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-4 border-b border-slate-100">
+              {countryOptions.map((c) => (
+                <button
+                  key={c.code}
+                  onClick={() => setSelectedCountry(c.code)}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold cursor-pointer transition-all border shrink-0 ${
+                    selectedCountry === c.code
+                      ? "bg-blue-50 text-blue-600 border-blue-200 shadow-xs"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  <span>{c.flag}</span>
+                  <span>{c.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Popular Cities Section */}
+            <div className="mb-5">
+              <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">Popular Cities</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {popularCities.map((city) => {
+                  const isSelected = selectedCity === city.name;
+                  return (
+                    <div
+                      key={city.name}
+                      onClick={() => {
+                        setSelectedCity(city.name);
+                        setIsCityModalOpen(false);
+                      }}
+                      className={`p-3.5 rounded-2xl border text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1 ${
+                        isSelected
+                          ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-100 shadow-sm"
+                          : "bg-slate-50/60 border-slate-100 hover:bg-slate-100/80 hover:border-slate-200"
+                      }`}
+                    >
+                      <div className="text-2xl mb-0.5">{city.icon}</div>
+                      <span className="text-xs font-black text-slate-900">{city.name}</span>
+                      <span className="text-[10px] text-slate-400 font-medium">{city.desc}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Other Cities List / Dropdown */}
+            <div className="pt-3 border-t border-slate-100">
+              <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Events in other cities</p>
+              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto no-scrollbar p-1">
+                {citiesList
+                  .filter((c) => !popularCities.some((p) => p.name === c))
+                  .filter((c) => !citySearchQuery || c.toLowerCase().includes(citySearchQuery.toLowerCase()))
+                  .map((city) => (
+                    <button
+                      key={city}
+                      onClick={() => {
+                        setSelectedCity(city);
+                        setIsCityModalOpen(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer transition-colors ${
+                        selectedCity === city
+                          ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
+                      }`}
+                    >
+                      {city}
+                    </button>
+                  ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* EVENTS SHEETS */}
       <div className="max-w-6xl mx-auto px-5 pt-8">
