@@ -123,6 +123,8 @@ export default function Profile() {
     userProfile.role === "admin"
   );
 
+  const isPublicUser = !isSuperuser && !hasOrganizer && !hasExhibitor;
+
   const getRoleBadge = () => {
     if (!isAuthenticated) return "🎟️ PUBLIC GUEST";
     if (isSuperuser) return "👑 Super Admin";
@@ -530,29 +532,6 @@ export default function Profile() {
                   >
                     <Ticket size={14} />
                     <span>{isAuthenticated ? "View My Passes" : "Sign In to View Passes"}</span>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="border-slate-200/80 shadow-xs hover:border-slate-300 transition-all bg-gradient-to-br from-white to-slate-50/50">
-                <CardContent className="p-4.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Compass size={15} className="text-emerald-600" />
-                      <span>Discover Live Events</span>
-                    </span>
-                    <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[9px] font-extrabold">DISCOVER</Badge>
-                  </div>
-                  <p className="text-xs text-slate-500 leading-snug">
-                    Browse music concerts, tech expos, food carnivals, and cultural shows.
-                  </p>
-                  <Button
-                    size="sm"
-                    onClick={() => navigate("/")}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 rounded-xl border-none cursor-pointer gap-1.5"
-                  >
-                    <Compass size={14} />
-                    <span>Discover Events</span>
                   </Button>
                 </CardContent>
               </Card>
