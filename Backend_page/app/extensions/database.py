@@ -71,7 +71,8 @@ def ensure_schema_columns():
         ("user_booking_details", "checkout_at", "TIMESTAMP"),
         ("user_booking_details", "checkout_scanner_id", "VARCHAR(50)"),
         ("user_booking_details", "total_checkins", "INTEGER DEFAULT 0"),
-        ("user_booking_details", "total_checkouts", "INTEGER DEFAULT 0")
+        ("user_booking_details", "total_checkouts", "INTEGER DEFAULT 0"),
+        ("venues", "total_area_sqft", "FLOAT DEFAULT 50000.0")
     ]
     try:
         with engine.connect() as conn:

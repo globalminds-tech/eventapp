@@ -6,68 +6,49 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   StatusBar,
-  FlatList,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Eye,
   Search,
-  BarChart2,
-  TrendingUp,
-  DollarSign,
-  Ticket,
-  Users,
-  Clock,
-  ChevronDown,
-  ArrowUpRight,
-  Sparkles,
-  Zap,
+  Radio,
+  QrCode,
+  Activity,
 } from "lucide-react-native";
-import { COLORS } from "../../styles/theme";
 import { getevent } from "@Services/api";
 
-const MOCK_LIVE_METRICS = {
-  totalRevenue: "₹ 4,85,000",
-  ticketsSold: 420,
-  totalCapacity: 500,
-  occupancyPercent: 84,
-  peakEntryRate: "34 check-ins/min",
-  vipSold: 80,
-  generalSold: 340,
-};
-
-const MOCK_LIVE_STREAM = [
-  { id: "1", time: "11:22 AM", name: "Alex Morgan", tier: "VIP Pass", status: "Gate 1 Entry" },
-  { id: "2", time: "11:20 AM", name: "Elena Rostova", tier: "VIP Pass", status: "Gate 2 Entry" },
-  { id: "3", time: "11:18 AM", name: "Samantha Reed", tier: "General Admission", status: "Gate 1 Entry" },
-  { id: "4", time: "11:15 AM", name: "David Chen", tier: "Speaker Pass", status: "VIP Gate Entry" },
+const fallbackLiveEvents = [
+  { event_code: "EVT-25", event_name: "MRC Grand Music Fest 2026", totalScans: 850, presentCount: 780, gateStatus: "Live Now" },
+  { event_code: "EVT-22", event_name: "Valluvar Kottam Craft & Food Expo", totalScans: 1420, presentCount: 1190, gateStatus: "Live Now" },
+  { event_code: "EVT-9", event_name: "Furniture & Home Products Expo", totalScans: 310, presentCount: 280, gateStatus: "Live Now" }
 ];
 
 export const LiveDashboard = ({ navigation }) => {
   const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [showEventPicker, setShowEventPicker] = useState(false);
   const [search, setSearch] = useState("");
 
   const fetchEvents = async () => {
     try {
       const res = await getevent();
-      const list = res?.data || [
-        { id: "1", event_code: "EVT-2026-001", event_name: "TechInnovate Summit 2026" },
-        { id: "2", event_code: "EVT-2026-002", event_name: "Global Music & Arts Fest" },
-      ];
-      setEvents(list);
-      if (list.length > 0) setSelectedEvent(list[0]);
+      let extractedEvents = [];
+      if (Array.isArray(res)) {
+        extractedEvents = res;
+      } else if (res && Array.isArray(res.data)) {
+        extractedEvents = res.data;
+      } else if (res && res.data && Array.isArray(res.data.data)) {
+        extractedEvents = res.data.data;
+      }
+
+      if (extractedEvents.length > 0) {
+        setEvents(extractedEvents);
+      } else {
+        setEvents(fallbackLiveEvents);
+      }
     } catch (err) {
-      console.log("Using fallback live dashboard events", err);
-      const fallback = [
-        { id: "1", event_code: "EVT-2026-001", event_name: "TechInnovate Summit 2026" },
-        { id: "2", event_code: "EVT-2026-002", event_name: "Global Music & Arts Fest" },
-      ];
-      setEvents(fallback);
-      setSelectedEvent(fallback[0]);
+      console.log("Using fallback live events", err);
+      setEvents(fallbackLiveEvents);
     }
   };
 
@@ -75,148 +56,121 @@ export const LiveDashboard = ({ navigation }) => {
     fetchEvents();
   }, []);
 
+  const filteredEvents = events.filter((e) =>
+    (e.event_name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (e.event_code || "").toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <View style={styles.livePulseRow}>
-            <View style={styles.livePulseDot} />
-            <Text style={styles.livePulseText}>REAL-TIME ANALYTICS HUB</Text>
-          </View>
-          <Text style={styles.headerTitle}>Live Sales & Gate Dashboard</Text>
-        </View>
-
-        <TouchableOpacity style={styles.eventPickerBtn} onPress={() => setShowEventPicker(true)}>
-          <Text style={styles.eventPickerBtnText} numberOfLines={1}>
-            {selectedEvent ? selectedEvent.event_code : "Select Event"}
-          </Text>
-          <ChevronDown size={14} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Active Event Banner */}
-        {selectedEvent && (
-          <View style={styles.activeEventCard}>
-            <Text style={styles.activeEventLabel}>MONITORING EVENT</Text>
-            <Text style={styles.activeEventName}>{selectedEvent.event_name}</Text>
+        
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            <Text style={styles.headerTitle}>Live Gate Operations Analytics</Text>
           </View>
-        )}
-
-        {/* Executive Stat Cards Grid */}
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { borderLeftColor: COLORS.primary, borderLeftWidth: 4 }]}>
-            <View style={styles.statCardHeader}>
-              <Text style={styles.statCardTitle}>Gross Revenue</Text>
-              <DollarSign size={18} color={COLORS.primary} />
-            </View>
-            <Text style={styles.statCardVal}>{MOCK_LIVE_METRICS.totalRevenue}</Text>
-            <View style={styles.statTrendRow}>
-              <ArrowUpRight size={14} color={COLORS.green} />
-              <Text style={styles.statTrendText}>+18.4% vs last hour</Text>
+          <View style={styles.badgeWrap}>
+            <View style={styles.liveBadge}>
+              <View style={styles.livePulseDot} />
+              <Text style={styles.liveBadgeText}>Real-Time Stream</Text>
             </View>
           </View>
+          <Text style={styles.headerSub}>
+            Real-time venue check-in telemetry, live gate scanning speed, and crowd occupancy density.
+          </Text>
+        </View>
 
-          <View style={[styles.statCard, { borderLeftColor: COLORS.accent, borderLeftWidth: 4 }]}>
-            <View style={styles.statCardHeader}>
-              <Text style={styles.statCardTitle}>Tickets Sold</Text>
-              <Ticket size={18} color={COLORS.accent} />
+        {/* KPI Telemetry Cards */}
+        <View style={styles.kpiContainer}>
+          {/* KPI 1 */}
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>GATE SCAN VELOCITY</Text>
+              <Text style={styles.kpiValueDark}>42 Scans/Min</Text>
+              <Text style={styles.kpiSubEmerald}>Peak Entrance Flow</Text>
             </View>
-            <Text style={styles.statCardVal}>
-              {MOCK_LIVE_METRICS.ticketsSold} <Text style={{ fontSize: 13, color: COLORS.subText }}>/ {MOCK_LIVE_METRICS.totalCapacity}</Text>
-            </Text>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressBar, { width: `${MOCK_LIVE_METRICS.occupancyPercent}%` }]} />
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#ecfeff", borderColor: "#cffafe" }]}>
+              <Activity size={22} color="#0891b2" />
+            </View>
+          </View>
+
+          {/* KPI 2 */}
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>SCANNED TODAY</Text>
+              <Text style={styles.kpiValueEmerald}>2,580 Passes</Text>
+              <Text style={styles.kpiSub}>Across 3 Live Events</Text>
+            </View>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#ecfdf5", borderColor: "#d1fae5" }]}>
+              <QrCode size={22} color="#059669" />
+            </View>
+          </View>
+
+          {/* KPI 3 */}
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiInfo}>
+              <Text style={styles.kpiLabel}>ACTIVE TURNSTILES</Text>
+              <Text style={styles.kpiValueDark}>12 Gate Scanners</Text>
+              <Text style={styles.kpiSubSky}>100% Online Sync</Text>
+            </View>
+            <View style={[styles.kpiIconWrap, { backgroundColor: "#f0f9ff", borderColor: "#e0f2fe" }]}>
+              <Radio size={22} color="#0284c7" />
             </View>
           </View>
         </View>
 
-        {/* Occupancy & Peak Rate Row */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCardSmall}>
-            <Users size={20} color={COLORS.primary} />
-            <Text style={styles.statCardSmallVal}>{MOCK_LIVE_METRICS.occupancyPercent}%</Text>
-            <Text style={styles.statCardSmallLabel}>Gate Occupancy</Text>
-          </View>
-
-          <View style={styles.statCardSmall}>
-            <Zap size={20} color={COLORS.accent} />
-            <Text style={styles.statCardSmallVal}>34/min</Text>
-            <Text style={styles.statCardSmallLabel}>Peak Entry Speed</Text>
-          </View>
-        </View>
-
-        {/* Tier Breakdown Card */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Ticket Tier Breakdown</Text>
-          <View style={styles.tierRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.tierName}>VIP Pass Tier</Text>
-              <Text style={styles.tierVal}>{MOCK_LIVE_METRICS.vipSold} Sold (100% Sold Out)</Text>
-            </View>
-            <View style={styles.tierBadgeVIP}>
-              <Text style={styles.tierBadgeVIPText}>SOLD OUT</Text>
+        {/* Live Events Table (List for Mobile) */}
+        <View style={styles.tableCard}>
+          <View style={styles.tableHeader}>
+            <Text style={styles.tableTitle}>Live Active Event Operations</Text>
+            <View style={styles.searchWrap}>
+              <Search size={16} color="#94a3b8" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search event code or name..."
+                placeholderTextColor="#94a3b8"
+                value={search}
+                onChangeText={setSearch}
+              />
             </View>
           </View>
-          <View style={styles.tierRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.tierName}>General Admission Tier</Text>
-              <Text style={styles.tierVal}>{MOCK_LIVE_METRICS.generalSold} Sold (85% Occupied)</Text>
-            </View>
-            <View style={styles.tierBadgeGen}>
-              <Text style={styles.tierBadgeGenText}>SELLING FAST</Text>
-            </View>
-          </View>
-        </View>
 
-        {/* Real-time Gate Stream */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Real-time Gate Stream</Text>
-            <Clock size={16} color={COLORS.subText} />
-          </View>
-
-          {MOCK_LIVE_STREAM.map((item) => (
-            <View key={item.id} style={styles.streamItem}>
-              <View style={styles.streamDot} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.streamName}>{item.name}</Text>
-                <Text style={styles.streamSub}>{item.tier} • {item.status}</Text>
+          <View style={styles.listContainer}>
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((event, i) => (
+                <View key={i} style={styles.listItem}>
+                  <View style={styles.itemMainRow}>
+                    <View style={styles.codeBadge}>
+                      <Text style={styles.codeBadgeText}>{event.event_code}</Text>
+                    </View>
+                    <View style={styles.statusBadge}>
+                      <Text style={styles.statusBadgeText}>● Live Telemetry</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.eventName}>{event.event_name}</Text>
+                  
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() => Alert.alert("Telemetry", `Opening Live Gate Scanner for ${event.event_name}`)}
+                  >
+                    <Eye size={14} color="#ffffff" />
+                    <Text style={styles.actionBtnText}>Telemetry</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No live events found matching "{search}"</Text>
               </View>
-              <Text style={styles.streamTime}>{item.time}</Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* Event Selector Modal */}
-      <Modal visible={showEventPicker} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Select Event for Live Analytics</Text>
-
-            {events.map((e) => (
-              <TouchableOpacity
-                key={e.id}
-                style={[
-                  styles.eventOption,
-                  selectedEvent?.id === e.id && styles.eventOptionSelected,
-                ]}
-                onPress={() => {
-                  setSelectedEvent(e);
-                  setShowEventPicker(false);
-                }}
-              >
-                <Text style={styles.eventOptionCode}>{e.event_code}</Text>
-                <Text style={styles.eventOptionName}>{e.event_name}</Text>
-              </TouchableOpacity>
-            ))}
+            )}
           </View>
         </View>
-      </Modal>
+
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -224,109 +178,98 @@ export const LiveDashboard = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8fafc" },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  header: {
+  
+  header: { marginBottom: 20 },
+  titleRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  headerTitle: { fontSize: 24, fontWeight: "900", color: "#0f172a" },
+  badgeWrap: { flexDirection: "row", marginBottom: 10 },
+  liveBadge: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    backgroundColor: "#ecfdf5", 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#a7f3d0"
+  },
+  livePulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#10b981", marginRight: 6 },
+  liveBadgeText: { fontSize: 11, fontWeight: "800", color: "#047857" },
+  headerSub: { fontSize: 13, fontWeight: "600", color: "#64748b", lineHeight: 20 },
+
+  kpiContainer: { gap: 12, marginBottom: 20 },
+  kpiCard: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  livePulseRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  livePulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent },
-  livePulseText: { fontSize: 10, fontWeight: "900", color: COLORS.accent, letterSpacing: 1 },
-  headerTitle: { fontSize: 17, fontWeight: "900", color: COLORS.dark },
-
-  eventPickerBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#f0f9ff",
-    borderWidth: 1,
-    borderColor: "#bae6fd",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  eventPickerBtnText: { fontSize: 12, fontWeight: "800", color: COLORS.primary },
-
-  activeEventCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  activeEventLabel: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 0.5 },
-  activeEventName: { fontSize: 16, fontWeight: "800", color: COLORS.dark, marginTop: 2 },
-
-  statsGrid: { flexDirection: "row", gap: 10, marginBottom: 10 },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 14,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-  },
-  statCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  statCardTitle: { fontSize: 12, color: COLORS.subText, fontWeight: "700" },
-  statCardVal: { fontSize: 20, fontWeight: "900", color: COLORS.dark },
-  statTrendRow: { flexDirection: "row", alignItems: "center", marginTop: 4, gap: 2 },
-  statTrendText: { fontSize: 11, color: COLORS.green, fontWeight: "700" },
-
-  progressTrack: { height: 6, backgroundColor: "#f1f5f9", borderRadius: 3, marginTop: 8, overflow: "hidden" },
-  progressBar: { height: "100%", backgroundColor: COLORS.accent, borderRadius: 3 },
-
-  statCardSmall: {
-    flex: 1,
-    backgroundColor: "#ffffff",
-    borderRadius: 14,
-    padding: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#f1f5f9",
-  },
-  statCardSmallVal: { fontSize: 22, fontWeight: "900", color: COLORS.dark, marginTop: 4 },
-  statCardSmallLabel: { fontSize: 11, fontWeight: "700", color: COLORS.subText },
-
-  sectionCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#f1f5f9",
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  sectionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  sectionTitle: { fontSize: 15, fontWeight: "800", color: COLORS.dark },
+  kpiInfo: { flex: 1 },
+  kpiLabel: { fontSize: 11, fontWeight: "700", color: "#64748b", letterSpacing: 0.5, marginBottom: 4 },
+  kpiValueDark: { fontSize: 24, fontWeight: "900", color: "#0f172a", marginBottom: 2 },
+  kpiValueEmerald: { fontSize: 24, fontWeight: "900", color: "#059669", marginBottom: 2 },
+  kpiSub: { fontSize: 11, fontWeight: "600", color: "#64748b" },
+  kpiSubEmerald: { fontSize: 11, fontWeight: "600", color: "#059669" },
+  kpiSubSky: { fontSize: 11, fontWeight: "600", color: "#0284c7" },
+  kpiIconWrap: { width: 50, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center", borderWidth: 1 },
 
-  tierRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f8fafc" },
-  tierName: { fontSize: 13, fontWeight: "800", color: COLORS.dark },
-  tierVal: { fontSize: 12, color: COLORS.subText },
-  tierBadgeVIP: { backgroundColor: "#fee2e2", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  tierBadgeVIPText: { fontSize: 10, fontWeight: "900", color: "#dc2626" },
-  tierBadgeGen: { backgroundColor: "#ffedd5", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  tierBadgeGenText: { fontSize: 10, fontWeight: "900", color: COLORS.amber },
+  tableCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  tableHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  tableTitle: { fontSize: 15, fontWeight: "800", color: "#0f172a", marginBottom: 12 },
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 13, fontWeight: "600", color: "#0f172a" },
 
-  streamItem: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f8fafc", gap: 10 },
-  streamDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.green },
-  streamName: { fontSize: 13, fontWeight: "800", color: COLORS.dark },
-  streamSub: { fontSize: 11, color: COLORS.subText },
-  streamTime: { fontSize: 11, fontWeight: "700", color: COLORS.subText },
-
-  modalOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "center", padding: 20 },
-  modalCard: { backgroundColor: "#ffffff", borderRadius: 20, padding: 20 },
-  modalTitle: { fontSize: 16, fontWeight: "900", color: COLORS.dark, marginBottom: 14 },
-  eventOption: { padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "#e2e8f0", marginBottom: 8 },
-  eventOptionSelected: { borderColor: COLORS.primary, backgroundColor: "#f0f9ff" },
-  eventOptionCode: { fontSize: 11, fontWeight: "800", color: COLORS.primary },
-  eventOptionName: { fontSize: 14, fontWeight: "700", color: COLORS.dark },
+  listContainer: { paddingHorizontal: 16 },
+  listItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  itemMainRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  codeBadge: { backgroundColor: "#f0f9ff", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: "#bae6fd" },
+  codeBadgeText: { fontSize: 11, fontWeight: "800", color: "#0369a1" },
+  statusBadge: { backgroundColor: "#ecfdf5", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: "#a7f3d0" },
+  statusBadgeText: { fontSize: 11, fontWeight: "800", color: "#047857" },
+  eventName: { fontSize: 15, fontWeight: "800", color: "#0f172a", marginBottom: 12 },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0284c7", // Using sky-600 to approximate gradient
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  actionBtnText: { color: "#ffffff", fontSize: 12, fontWeight: "800" },
+  
+  emptyState: { paddingVertical: 32, alignItems: "center" },
+  emptyStateText: { fontSize: 13, color: "#64748b", fontWeight: "600" },
 });
 
 export default LiveDashboard;

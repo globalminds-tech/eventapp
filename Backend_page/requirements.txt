@@ -6,6 +6,7 @@ pydantic
 email-validator
 pyjwt
 passlib[bcrypt]
+werkzeug
 python-dotenv
 python-multipart
 qrcode[pil]

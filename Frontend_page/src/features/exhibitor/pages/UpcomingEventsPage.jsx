@@ -54,7 +54,7 @@ export const UpcomingEventsPage = () => {
   };
 
   const handleBookStall = (event) => {
-    navigate(`/book-stall/${event.id}`, { state: { event } });
+    navigate(`/exhibitor/event/${event.id}`, { state: { event } });
   };
 
   const filteredEvents = events.filter((e) => {
@@ -117,7 +117,30 @@ export const UpcomingEventsPage = () => {
 
       {/* Event Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {paginatedEvents.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden flex flex-col justify-between animate-pulse">
+              <div className="h-48 w-full bg-slate-200" />
+              <CardContent className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="w-16 h-5 bg-slate-200 rounded-md mb-2" />
+                  <div className="w-3/4 h-6 bg-slate-200 rounded-md mb-4" />
+                  <div className="space-y-2 mt-2">
+                    <div className="w-full h-4 bg-slate-200 rounded-md" />
+                    <div className="w-2/3 h-4 bg-slate-200 rounded-md" />
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3 mt-4">
+                  <div className="space-y-1.5">
+                    <div className="w-20 h-3 bg-slate-200 rounded-md" />
+                    <div className="w-16 h-4 bg-slate-200 rounded-md" />
+                  </div>
+                  <div className="w-28 h-8 bg-slate-200 rounded-xl" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : paginatedEvents.length === 0 ? (
           <div className="col-span-full p-16 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 font-semibold text-sm">
             No upcoming expos found matching your search.
           </div>

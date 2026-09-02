@@ -242,17 +242,50 @@ export default function CreateEvent({ route, navigation }) {
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000);
   };
 
-  // Build dynamic step list
+  // Build exactly 6 steps to match the frontend website
   const allSteps = [
-    { label: "Event Details", Component: Step1EventDetails },
-    { label: "Booking", Component: Step2Booking },
-    ...(formData.eventDetails?.food ? [{ label: "Food", Component: StepFoodDetails }] : []),
-    ...(formData.eventDetails?.vehiclePass ? [{ label: "Vehicle", Component: StepVehiclePassDetails }] : []),
-    { label: "Layout & Stall", Component: Step3Layout },
-    { label: "Documents", Component: Step4Documents },
-    { label: "Terms", Component: Step5Terms },
-    { label: "Vendor/Sponsor", Component: Step6VendorSponsor },
-    { label: "Preview", Component: Step7Preview },
+    { label: "Event Identity", Component: Step1EventDetails },
+    { label: "Tickets & Pricing", Component: Step2Booking },
+    { label: "Facilities & Logistics", Component: (props) => (
+        <View style={{ gap: 24 }}>
+          {!props.formData.eventDetails?.food && !props.formData.eventDetails?.vehiclePass && (
+             <View style={{ padding: 16, backgroundColor: '#f1f5f9', borderRadius: 8 }}>
+               <Text style={{ color: '#64748b', fontSize: 13, textAlign: 'center' }}>
+                 Food and Vehicle provisions are disabled for this event. 
+                 You can enable them in Step 1.
+               </Text>
+             </View>
+          )}
+          {props.formData.eventDetails?.food && (
+            <View>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Food Provisions</Text>
+              <StepFoodDetails {...props} />
+            </View>
+          )}
+          {props.formData.eventDetails?.vehiclePass && (
+            <View>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Vehicle Passes</Text>
+              <StepVehiclePassDetails {...props} />
+            </View>
+          )}
+        </View>
+      )
+    },
+    { label: "Stall Layout", Component: Step3Layout },
+    { label: "Partners & Documents", Component: (props) => (
+        <View style={{ gap: 24 }}>
+          <View>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Vendors & Sponsors</Text>
+            <Step6VendorSponsor {...props} />
+          </View>
+          <View>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#0f172a', marginBottom: 10 }}>Event Documents</Text>
+            <Step4Documents {...props} />
+          </View>
+        </View>
+      )
+    },
+    { label: "Terms & Policies", Component: Step5Terms },
   ];
 
 

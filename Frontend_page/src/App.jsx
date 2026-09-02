@@ -37,7 +37,9 @@ import { Userbooking } from "./features/users/pages/UserBookingPage";
 import ExhibitorHome from "./features/exhibitor/pages/ExhibitorHomePage";
 import Exhibitorstall from "./features/exhibitor/pages/StallBookingPage";
 import Exhibitormybooking from "./features/exhibitor/pages/MyBookingPage";
+import ExhibitorBookingDetail from "./features/exhibitor/pages/ExhibitorBookingDetailPage";
 import ExhibitorUpcomingEvent from "./features/exhibitor/pages/UpcomingEventsPage";
+import ExhibitorEventDetail from "./features/exhibitor/pages/ExhibitorEventDetailPage";
 
 import SuperUserDashboard from "./features/superuser/pages/SuperUserDashboardPage";
 import EventApprovalQueue from "./features/admin/approvals/pages/EventApprovalQueuePage";
@@ -156,7 +158,9 @@ export default function App() {
         <Route path="/exhibitor" element={<ProtectedRoute allowedRoles={["exhibitor"]}><WebSidebar role="exhibitor" /></ProtectedRoute>}>
           <Route path="dashboard" element={<ExhibitorHome />} />
           <Route path="my-bookings" element={<Exhibitormybooking />} />
+          <Route path="my-bookings/:id" element={<ExhibitorBookingDetail />} />
           <Route path="upcoming-events" element={<ExhibitorUpcomingEvent />} />
+          <Route path="event/:id" element={<ExhibitorEventDetail />} />
           <Route path="leads" element={<ExhibitorLeadsPage />} />
         </Route>
         <Route path="/book-stall/:id" element={<ProtectedRoute allowedRoles={["exhibitor"]}><Exhibitorstall /></ProtectedRoute>} />
@@ -167,6 +171,7 @@ export default function App() {
           <Route path="approvals" element={<EventApprovalQueue />} />
           <Route path="event/:eventId" element={<EventInspectionDetail />} />
           <Route path="approvals/:eventId" element={<EventInspectionDetail />} />
+          <Route path="inspection/:eventId" element={<EventInspectionDetail />} />
           <Route path="categories" element={<CategoryMaster />} />
           <Route path="kyc" element={<KycVerification />} />
           <Route path="payouts" element={<PayoutsQueue />} />
