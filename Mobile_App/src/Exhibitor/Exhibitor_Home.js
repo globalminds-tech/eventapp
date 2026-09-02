@@ -138,10 +138,6 @@ const ExhibitorHome = () => {
               <Text style={styles.headerSub}>Booth Reservations & Visitor Lead Intelligence</Text>
             </View>
           </View>
-
-          <TouchableOpacity style={styles.profileAvatarBtn} onPress={() => navigation.navigate("MyProfile")}>
-            <User size={20} color="#047857" />
-          </TouchableOpacity>
         </View>
 
         {/* Dynamic Metric Stat Banner */}

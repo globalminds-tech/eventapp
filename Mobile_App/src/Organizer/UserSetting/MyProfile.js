@@ -8,13 +8,14 @@ import {
   Image,
   Alert,
   Platform,
-  Linking
+  Linking,
+  Modal
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   LogOut, ArrowLeft, Mail, Phone, Building, CheckCircle2,
   Edit2, Search, Building2, Ticket, Sparkles, HelpCircle, Gift, Tag,
-  ChevronRight, Landmark, ShieldCheck, QrCode
+  ChevronRight, Landmark, ShieldCheck, QrCode, X, Shield, Store, ArrowUpRight
 } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch } from "react-redux";
@@ -31,6 +32,7 @@ export const MyProfile = ({ navigation }) => {
     organization: "Global",
     role: "organizer"
   });
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -220,7 +222,7 @@ export const MyProfile = ({ navigation }) => {
         </View>
 
         <View style={styles.servicesCard}>
-          <TouchableOpacity style={styles.serviceRow} onPress={() => navigation.navigate("OrganizerKYC")}>
+          <TouchableOpacity style={styles.serviceRow} onPress={() => setShowPartnerModal(true)}>
             <View style={[styles.serviceIconWrap, { backgroundColor: "#06b6d4" }]}>
               <Sparkles size={20} color="#fff" />
             </View>
@@ -271,6 +273,102 @@ export const MyProfile = ({ navigation }) => {
         </View>
 
       </ScrollView>
+
+      {/* PARTNER ONBOARDING HUB MODAL */}
+      <Modal visible={showPartnerModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowPartnerModal(false)} />
+          <View style={styles.partnerModalCard}>
+            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowPartnerModal(false)}>
+              <X size={20} color="#94a3b8" />
+            </TouchableOpacity>
+
+            <View style={styles.modalHeaderTop}>
+              <Sparkles size={16} color="#0891b2" />
+              <Text style={styles.modalHeaderBadge}>PARTNER ONBOARDING HUB</Text>
+            </View>
+            
+            <Text style={styles.modalMainTitle}>List Your Show or Book Vendor Stalls</Text>
+            <Text style={styles.modalSubTitle}>Select your partner account type to register or sign in to your workspace</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {/* ORGANIZER CARD */}
+              <View style={[styles.partnerRoleCard, { borderColor: "#cffafe" }]}>
+                <View style={styles.partnerCardTop}>
+                  <View style={[styles.partnerIconBox, { backgroundColor: "#e0f2fe" }]}>
+                    <Shield size={24} color="#0284c7" />
+                  </View>
+                  <View style={[styles.roleLabelBadge, { backgroundColor: "#cffafe" }]}>
+                    <Text style={[styles.roleLabelText, { color: "#0369a1" }]}>ORGANIZER</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.partnerCardTitle}>List Your Show (As Event Organizer)</Text>
+                <Text style={styles.partnerCardDesc}>
+                  Host concerts, tech expos & workshops. Setup custom ticket tiers, gate scanners & instant bank payouts.
+                </Text>
+
+                <TouchableOpacity 
+                  style={[styles.primaryActionBtn, { backgroundColor: "#0ea5e9" }]} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("OrganizerKYC"); }}
+                >
+                  <Text style={styles.primaryActionBtnText}>New Organizer? Register</Text>
+                  <ArrowUpRight size={14} color="#fff" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.secondaryActionBtn} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("Login"); }}
+                >
+                  <Text style={styles.secondaryActionBtnText}>Already Registered? Sign In</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* EXHIBITOR CARD */}
+              <View style={[styles.partnerRoleCard, { borderColor: "#dcfce7", marginTop: 16 }]}>
+                <View style={styles.partnerCardTop}>
+                  <View style={[styles.partnerIconBox, { backgroundColor: "#dcfce7" }]}>
+                    <Store size={24} color="#16a34a" />
+                  </View>
+                  <View style={[styles.roleLabelBadge, { backgroundColor: "#dcfce7" }]}>
+                    <Text style={[styles.roleLabelText, { color: "#15803d" }]}>EXHIBITOR</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.partnerCardTitle}>Exhibit & Book Stalls (As Exhibitor)</Text>
+                <Text style={styles.partnerCardDesc}>
+                  Reserve booth stalls on interactive floor plans, showcase products, capture trade leads & get tax invoices.
+                </Text>
+
+                <TouchableOpacity 
+                  style={[styles.primaryActionBtn, { backgroundColor: "#10b981" }]} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("ExhibitorKYC"); }}
+                >
+                  <Text style={styles.primaryActionBtnText}>New Exhibitor? Register</Text>
+                  <ArrowUpRight size={14} color="#fff" style={{ marginLeft: 6 }} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.secondaryActionBtn} 
+                  onPress={() => { setShowPartnerModal(false); navigation.navigate("Login"); }}
+                >
+                  <Text style={styles.secondaryActionBtnText}>Already Registered? Sign In</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Text style={styles.footerText}>Already have an Organizer or Exhibitor Account?</Text>
+              <TouchableOpacity onPress={() => { setShowPartnerModal(false); navigation.navigate("Login"); }}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={styles.footerLink}>Sign In to Partner Account</Text>
+                  <ArrowUpRight size={12} color="#0284c7" style={{ marginLeft: 4 }} />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -599,6 +697,133 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748b",
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "flex-end",
+  },
+  partnerModalCard: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    maxHeight: "85%",
+  },
+  closeModalBtn: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    zIndex: 10,
+    padding: 4,
+  },
+  modalHeaderTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  modalHeaderBadge: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#0891b2",
+    marginLeft: 6,
+    letterSpacing: 1,
+  },
+  modalMainTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  modalSubTitle: {
+    fontSize: 13,
+    color: "#64748b",
+    marginBottom: 24,
+  },
+  partnerRoleCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+  },
+  partnerCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  partnerIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  roleLabelBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  roleLabelText: {
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  partnerCardTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  partnerCardDesc: {
+    fontSize: 13,
+    color: "#64748b",
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  primaryActionBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  primaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+  secondaryActionBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+  },
+  secondaryActionBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  modalFooter: {
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    paddingTop: 16,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  footerText: {
+    fontSize: 12,
+    color: "#64748b",
+    marginBottom: 6,
+  },
+  footerLink: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0284c7",
+  }
 });
 
 export default MyProfile;

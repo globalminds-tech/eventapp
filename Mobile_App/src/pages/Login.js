@@ -30,7 +30,7 @@ export default function Login({ navigation }) {
         if (token && role && !token.includes("authenticated-user-token") && !token.includes("-session-token")) {
           const userRole = role.toLowerCase();
           if (userRole === "organizer") {
-            navigation.replace("Organizerdashboard");
+            navigation.replace("OrganizerWelcome");
             return;
           } else if (userRole === "exhibitor") {
             navigation.replace("Exhibitor_Home");
@@ -90,15 +90,29 @@ export default function Login({ navigation }) {
 
     try {
       const response = await loginUser(formData);
-      const data = response.data;
-      const userRole = (data.role || "user").toLowerCase();
+      const data = response.data?.data || response.data;
+      const userRole = (data.user?.role || data.role || "user").toLowerCase();
+      
+      const userId = data.user?.id || data.id || data.user?.User_id || data.User_id || "";
+      const userName = data.user?.name || data.name || "";
+      const userEmail = data.user?.email || data.email || formData.email || "";
+      const userMobile = data.user?.mobile || "";
+      const userOrg = data.user?.organization_name || "";
+      const profileImage = data.user?.profile_image || data.profile_image || "";
+      const token = data.token || data.access_token || "";
 
+      // Save keys that various screens expect (matching web app consistency)
       await AsyncStorage.multiSet([
-        ["token", data.token || ""],
+        ["token", token],
         ["role", userRole],
-        ["id", data.User_id?.toString() || ""],
-        ["name", data.name || ""],
-        ["profile_image", data.profile_image || ""]
+        ["id", userId.toString()],
+        ["userId", userId.toString()],
+        ["name", userName],
+        ["userName", userName],
+        ["email", userEmail],
+        ["mobile", userMobile],
+        ["organization_name", userOrg],
+        ["profile_image", profileImage]
       ]);
 
       if (rememberMe) {
@@ -110,15 +124,17 @@ export default function Login({ navigation }) {
       }
 
       dispatch(setUser({
-        id: data.User_id,
-        name: data.name,
+        id: userId,
+        name: userName,
         role: userRole,
-        email: data.email,
-        profile_image: data.profile_image
+        email: userEmail,
+        mobile: userMobile,
+        organization_name: userOrg,
+        profile_image: profileImage
       }));
 
       if (userRole === "organizer") {
-        navigation.replace("Organizerdashboard");
+        navigation.replace("OrganizerWelcome");
       } else if (userRole === "exhibitor") {
         navigation.replace("Exhibitor_Home");
       } else if (userRole === "superuser" || userRole === "superadmin") {

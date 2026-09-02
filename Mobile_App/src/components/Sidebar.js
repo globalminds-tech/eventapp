@@ -78,7 +78,8 @@ export const Sidebar = ({ isVisible, onClose, navigation, activeRoute }) => {
       { label: "Visitor Leads & Staff", route: "ExhibitorLeads", icon: Users },
     ],
     organizer: [
-      { label: "Dashboard", route: "Organizerdashboard", icon: LayoutDashboard },
+        { label: "Dashboard", route: "OrganizerWelcome", icon: LayoutDashboard },
+        { label: "Create Event", route: "CreateEvent", icon: CalendarPlus },
       { label: "Gate Scanner", route: "EventCheckIn", icon: QrCode },
       { label: "Food Check-In", route: "FoodCheckIn", icon: Utensils },
       { label: "Manage Stalls", route: "Manage_Stall", icon: Store },

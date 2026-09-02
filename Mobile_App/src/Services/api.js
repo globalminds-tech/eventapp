@@ -3,11 +3,23 @@ import axios from "axios";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// DEFAULT BACKEND CANDIDATES (Localhost for Web browser, Hotspot IP for Native mobile)
-const DEFAULT_BASE_URL =
-  Platform.OS === "web"
-    ? "http://localhost:5001/"
-    : "https://funny-yaks-scream.loca.lt/";
+import Constants from "expo-constants";
+
+// Dynamically extract the exact LAN IP that Expo is using to bundle the app
+const getLocalIP = () => {
+  try {
+    const debuggerHost = Constants.expoConfig?.hostUri || Constants.manifest?.debuggerHost;
+    if (debuggerHost) {
+      const ip = debuggerHost.split(":")[0];
+      return `http://${ip}:5001`;
+    }
+  } catch (err) {}
+  
+  // Fallback to the Android Emulator IP if nothing else works
+  return "http://10.0.2.2:5001";
+};
+
+const DEFAULT_BASE_URL = Platform.OS === "web" ? "http://localhost:5001" : getLocalIP();
 
 // AXIOS INSTANCE WITH ROBUST TIMEOUT
 const api = axios.create({
@@ -34,8 +46,8 @@ export const setCustomBaseUrl = async (newUrl) => {
 
 export const getCurrentBaseUrl = async () => {
   if (Platform.OS === "web") {
-    api.defaults.baseURL = "http://localhost:5001/";
-    return "http://localhost:5001/";
+    api.defaults.baseURL = "http://localhost:5001";
+    return "http://localhost:5001";
   }
   try {
     const storedUrl = await AsyncStorage.getItem("custom_base_url");
@@ -57,8 +69,8 @@ api.interceptors.request.use(
   async (req) => {
     try {
       if (Platform.OS === "web") {
-        req.baseURL = "http://localhost:5001/";
-        api.defaults.baseURL = "http://localhost:5001/";
+        req.baseURL = "http://localhost:5001";
+        api.defaults.baseURL = "http://localhost:5001";
       } else {
         const storedUrl = await AsyncStorage.getItem("custom_base_url");
         if (storedUrl && api.defaults.baseURL !== storedUrl) {

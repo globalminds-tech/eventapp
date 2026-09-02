@@ -62,6 +62,11 @@ def get_user_bookings_alias(user_id: Optional[int] = None, request: Request = No
     host_url = str(request.base_url) if request else "http://localhost:5001/"
     return ExhibitorController.get_user_bookings(uid, host_url)
 
+@root_admin_router.get("/exhibitor/api/booking/{booking_id}")
+def get_booking_by_id_alias(booking_id: int, request: Request = None):
+    host_url = str(request.base_url) if request else "http://localhost:5001/"
+    return ExhibitorController.get_booking_by_id(booking_id, host_url)
+
 @root_admin_router.get("/superadmin/api/organizer/exhibitor-applications")
 @root_admin_router.get("/api/v1/organizer/exhibitor-applications")
 def get_all_exhibitor_applications():
