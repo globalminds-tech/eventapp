@@ -1,11 +1,13 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WebSidebar from "./components/WebSidebar";
+import AuthInitializer from "./components/AuthInitializer";
 
 import Home from "./features/public/pages/HomePage";
 import AllEvents from "./features/events/pages/AllEventsPage";
 import Login from "./features/auth/pages/LoginPage";
 import Register from "./features/auth/pages/RegisterPage";
+import PartnerRegister from "./features/auth/pages/PartnerRegisterPage";
 import OrganizerRegister from "./features/auth/pages/OrganizerRegisterPage";
 import ExhibitorRegister from "./features/auth/pages/ExhibitorRegisterPage";
 import ExhibitorLeadsPage from "./features/exhibitor/pages/ExhibitorLeadsPage";
@@ -76,7 +78,7 @@ export default function App() {
   const location = useLocation();
 
   return (
-    <>
+    <AuthInitializer>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/all-events" element={<AllEvents />} />
@@ -89,8 +91,9 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/register/organizer" element={<OrganizerRegister />} />
-        <Route path="/register/exhibitor" element={<ExhibitorRegister />} />
+        <Route path="/register/partner" element={<PartnerRegister />} />
+        <Route path="/register/organizer" element={<PartnerRegister />} />
+        <Route path="/register/exhibitor" element={<PartnerRegister />} />
         <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/Terms" element={<Terms />} />
         <Route path="/Help_Center" element={<Help />} />
@@ -171,7 +174,7 @@ export default function App() {
       </Routes>
       {location.pathname === "/" && <Chatbot />}
 
-    </>
+    </AuthInitializer>
 
   );
 }

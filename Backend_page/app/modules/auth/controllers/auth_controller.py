@@ -18,8 +18,24 @@ class AuthController:
         }
 
     @staticmethod
+    def upgrade_organizer(user_id: int, raw_data: dict):
+        result = AuthService.upgrade_organizer(user_id, raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
     def register_exhibitor(raw_data: dict):
         result = AuthService.register_exhibitor(raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def upgrade_exhibitor(user_id: int, raw_data: dict):
+        result = AuthService.upgrade_exhibitor(user_id, raw_data)
         return {
             "success": True,
             "data": result

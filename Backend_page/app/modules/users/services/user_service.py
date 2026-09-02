@@ -46,6 +46,7 @@ class UserService:
             food_preference=data.food_preference
         )
         booking_id = booking.id
+        ticket_code = booking.ticket_code or UserRepository.generate_ticket_code(data.event_id)
 
         formatted_date = str(event.start_date)
         if event.start_date:
@@ -54,12 +55,8 @@ class UserService:
             except Exception:
                 pass
 
-        qr_text = (
-            f"Event: {event.event_name}\n"
-            f"Date: {formatted_date}\n"
-            f"Food: {data.food_preference}\n"
-            f"Verify: https://events.sportalytics.in/validate-booking/{booking_id}"
-        )
+        # Production Standard QR Payload: Encode ONLY the secure ticket code (or verification URL)
+        qr_text = ticket_code
 
         UserRepository.update_qr_data(booking_id, qr_text)
 
@@ -93,6 +90,7 @@ class UserService:
 
         return {
             "booking_id": booking_id,
+            "ticket_code": ticket_code,
             "qr_code": qr_base64,
             "event_details": {
                 "name": event.event_name,
@@ -105,8 +103,8 @@ class UserService:
         }
 
     @staticmethod
-    def validate_qr(booking_id: int) -> dict:
-        result = UserRepository.get_booking_with_event(booking_id)
+    def validate_qr(code_or_id: str | int) -> dict:
+        result = UserRepository.get_booking_with_event(code_or_id)
         if not result:
             raise ApiError("Invalid Ticket / Booking not found", 404)
 
@@ -115,7 +113,7 @@ class UserService:
             status_text = "already_scanned"
             message_text = "This ticket has already been used"
         else:
-            UserRepository.mark_booking_scanned(booking_id)
+            UserRepository.mark_booking_scanned(code_or_id)
             status_text = "success"
             message_text = "Ticket Verified Successfully"
 
@@ -123,6 +121,7 @@ class UserService:
             "status": status_text,
             "message": message_text,
             "details": {
+                "ticket_code": getattr(booking, "ticket_code", str(booking.id)),
                 "visitor_name": getattr(booking, "name", "Attendee"),
                 "event_name": getattr(event, "event_name", getattr(event, "name", "Event")),
                 "venue": getattr(event, "venue", getattr(event, "city", "Main Venue")),

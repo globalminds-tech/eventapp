@@ -204,9 +204,20 @@ export default function Register() {
 
             {/* Error Banner */}
             {error && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl mb-4 text-xs font-bold text-red-600">
-                <AlertCircle size={16} className="text-red-500 shrink-0" />
-                <span>{error}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-red-50 border border-red-200 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl mb-4 text-xs font-bold text-red-700">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={18} className="text-red-500 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                {(error.toLowerCase().includes("already") || error.toLowerCase().includes("registered")) && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/login")}
+                    className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                  >
+                    Sign In Now →
+                  </button>
+                )}
               </div>
             )}
 

@@ -23,14 +23,14 @@ def update_profile(payload: UpdateProfileSchema, current_user: dict = Depends(ge
 def book_event(payload: BookEventSchema):
     return UserController.book_event(payload.dict())
 
-@users_router.get("/validate-booking/{booking_id}")
-@users_router.get("/validate-qr/{booking_id}")
-@root_users_router.get("/user/validate-booking/{booking_id}")
-@root_users_router.get("/user/validate-qr/{booking_id}")
-@root_users_router.get("/api/v1/user/validate-qr/{booking_id}")
-@root_users_router.get("/superadmin/api/user/validate-qr/{booking_id}")
-def validate_qr(booking_id: int):
-    return UserController.validate_qr(booking_id)
+@users_router.get("/validate-booking/{code_or_id}")
+@users_router.get("/validate-qr/{code_or_id}")
+@root_users_router.get("/user/validate-booking/{code_or_id}")
+@root_users_router.get("/user/validate-qr/{code_or_id}")
+@root_users_router.get("/api/v1/user/validate-qr/{code_or_id}")
+@root_users_router.get("/superadmin/api/user/validate-qr/{code_or_id}")
+def validate_qr(code_or_id: str):
+    return UserController.validate_qr(code_or_id)
 
 @users_router.get("/my-bookings")
 @root_users_router.get("/user/my-bookings")

@@ -26,8 +26,8 @@ class UserController:
         }
 
     @staticmethod
-    def validate_qr(booking_id: int):
-        result = UserService.validate_qr(booking_id)
+    def validate_qr(code_or_id: str):
+        result = UserService.validate_qr(code_or_id)
         return {
             "success": True,
             "data": result

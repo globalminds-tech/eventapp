@@ -61,7 +61,17 @@ def ensure_schema_columns():
         ("event_stalls", "quantity", "INTEGER DEFAULT 1"),
         ("event_stalls", "single_area_sqft", "FLOAT DEFAULT 100.0"),
         ("event_stalls", "total_area_sqft", "FLOAT DEFAULT 100.0"),
-        ("user_booking_details", "user_id", "INT")
+        ("user_booking_details", "user_id", "INT"),
+        ("user_booking_details", "ticket_code", "VARCHAR(60)"),
+        ("user_booking_details", "scanner_id", "VARCHAR(50)"),
+        ("user_booking_details", "is_checked_in", "BOOLEAN DEFAULT FALSE"),
+        ("user_booking_details", "checkin_at", "TIMESTAMP"),
+        ("user_booking_details", "checkin_scanner_id", "VARCHAR(50)"),
+        ("user_booking_details", "is_checked_out", "BOOLEAN DEFAULT FALSE"),
+        ("user_booking_details", "checkout_at", "TIMESTAMP"),
+        ("user_booking_details", "checkout_scanner_id", "VARCHAR(50)"),
+        ("user_booking_details", "total_checkins", "INTEGER DEFAULT 0"),
+        ("user_booking_details", "total_checkouts", "INTEGER DEFAULT 0")
     ]
     try:
         with engine.connect() as conn:

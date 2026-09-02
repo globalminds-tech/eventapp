@@ -26,7 +26,14 @@ class UserRepository:
         return db.session.get(EventDetails, event_id)
 
     @staticmethod
+    def generate_ticket_code(event_id: int) -> str:
+        import uuid
+        hex_token = uuid.uuid4().hex[:8].upper()
+        return f"BME-{event_id}-{hex_token}"
+
+    @staticmethod
     def create_booking(event_id: int, name: str, email: str, phone: str, food_preference: str, qr_data: str = "PENDING", user_id: Optional[int] = None) -> UserBookingDetails:
+        ticket_code = UserRepository.generate_ticket_code(event_id)
         booking = UserBookingDetails(
             event_id=event_id,
             user_id=user_id,
@@ -34,6 +41,7 @@ class UserRepository:
             email=email.strip().lower(),
             phone=phone,
             food_preference=food_preference,
+            ticket_code=ticket_code,
             qr_data=qr_data,
             is_scanned=False
         )
@@ -51,21 +59,97 @@ class UserRepository:
         return None
 
     @staticmethod
-    def get_booking_with_event(booking_id: int):
+    def get_booking_with_event(code_or_id: str | int):
+        from sqlalchemy import or_
+        identifier_str = str(code_or_id).strip()
+        
         stmt = select(UserBookingDetails, EventDetails).join(
             EventDetails, UserBookingDetails.event_id == EventDetails.id
-        ).where(UserBookingDetails.id == booking_id)
+        )
+        
+        if identifier_str.isdigit():
+            stmt = stmt.where(or_(UserBookingDetails.ticket_code == identifier_str, UserBookingDetails.id == int(identifier_str)))
+        else:
+            stmt = stmt.where(UserBookingDetails.ticket_code == identifier_str)
+            
         return db.session.execute(stmt).first()
 
     @staticmethod
-    def mark_booking_scanned(booking_id: int):
-        booking = db.session.get(UserBookingDetails, booking_id)
-        if booking and not booking.is_scanned:
-            booking.is_scanned = True
-            booking.scanned_at = datetime.utcnow()
-            db.session.commit()
-            return True, booking
-        return False, booking
+    def mark_booking_checkin(code_or_id: str | int, scanner_id: Optional[str] = None, gate_name: Optional[str] = None):
+        from app.models.booking import AttendeeCheckinLog
+        result = UserRepository.get_booking_with_event(code_or_id)
+        if not result:
+            return False, None, "Booking not found"
+        booking, event = result
+
+        now = datetime.utcnow()
+        booking.is_scanned = True
+        booking.scanned_at = now
+        booking.is_checked_in = True
+        booking.is_checked_out = False
+        booking.checkin_at = now
+        if scanner_id:
+            booking.checkin_scanner_id = scanner_id
+            booking.scanner_id = scanner_id
+        booking.total_checkins = (booking.total_checkins or 0) + 1
+
+        try:
+            log_entry = AttendeeCheckinLog(
+                booking_id=booking.id,
+                ticket_code=booking.ticket_code,
+                event_id=booking.event_id,
+                action="CHECK_IN",
+                gate_name=gate_name,
+                scanner_id=scanner_id,
+                timestamp=now
+            )
+            db.session.add(log_entry)
+        except Exception as err:
+            print(f"[WARN] Failed to write checkin log: {err}")
+
+        db.session.commit()
+        return True, booking, "Check-in successful"
+
+    @staticmethod
+    def mark_booking_checkout(code_or_id: str | int, scanner_id: Optional[str] = None, gate_name: Optional[str] = None):
+        from app.models.booking import AttendeeCheckinLog
+        result = UserRepository.get_booking_with_event(code_or_id)
+        if not result:
+            return False, None, "Booking not found"
+        booking, event = result
+
+        if not booking.is_checked_in and booking.is_checked_out:
+            return False, booking, "Attendee has already checked out"
+
+        now = datetime.utcnow()
+        booking.is_checked_in = False
+        booking.is_checked_out = True
+        booking.checkout_at = now
+        if scanner_id:
+            booking.checkout_scanner_id = scanner_id
+        booking.total_checkouts = (booking.total_checkouts or 0) + 1
+
+        try:
+            log_entry = AttendeeCheckinLog(
+                booking_id=booking.id,
+                ticket_code=booking.ticket_code,
+                event_id=booking.event_id,
+                action="CHECK_OUT",
+                gate_name=gate_name,
+                scanner_id=scanner_id,
+                timestamp=now
+            )
+            db.session.add(log_entry)
+        except Exception as err:
+            print(f"[WARN] Failed to write checkout log: {err}")
+
+        db.session.commit()
+        return True, booking, "Check-out successful"
+
+    @staticmethod
+    def mark_booking_scanned(code_or_id: str | int, scanner_id: Optional[str] = None):
+        success, booking, msg = UserRepository.mark_booking_checkin(code_or_id, scanner_id=scanner_id)
+        return success, booking
 
     @staticmethod
     def get_user_bookings(email: Optional[str] = None, user_id: Optional[int] = None):

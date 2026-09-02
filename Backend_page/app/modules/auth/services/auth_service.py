@@ -38,18 +38,7 @@ class AuthService:
 
         existing_user = AuthRepository.get_user_by_email(data.email)
         if existing_user:
-            hashed_password = generate_password_hash(data.password) if data.password else ""
-            user = AuthRepository.attach_organizer_profile(existing_user, data.dict(), hashed_password)
-            access_token = generate_access_token(user.id, "organizer")
-            refresh_token = generate_refresh_token(user.id, "organizer")
-
-            return {
-                "message": "Organizer profile updated successfully",
-                "token": access_token,
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "user": AuthService.get_current_user(user.id)
-            }
+            raise ApiError("An account with this email address already exists. Please Sign In to your account.", 400)
 
         hashed_password = generate_password_hash(data.password) if data.password else ""
         user = AuthRepository.create_organizer_user(data.dict(), hashed_password)
@@ -71,24 +60,33 @@ class AuthService:
         }
 
     @staticmethod
+    def upgrade_organizer(user_id: int, raw_data: dict) -> dict:
+        from app.modules.auth.schemas.auth_schema import OrganizerRegisterSchema
+        user = AuthRepository.get_user_by_id(user_id)
+        if not user:
+            raise ApiError("User not found", 404)
+        
+        data = OrganizerRegisterSchema(**raw_data)
+        user = AuthRepository.attach_organizer_profile(user, data.dict())
+        access_token = generate_access_token(user.id, "organizer")
+        refresh_token = generate_refresh_token(user.id, "organizer")
+
+        return {
+            "message": "Organizer profile attached successfully",
+            "token": access_token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": AuthService.get_current_user(user.id)
+        }
+
+    @staticmethod
     def register_exhibitor(raw_data: dict) -> dict:
         from app.modules.auth.schemas.auth_schema import ExhibitorRegisterSchema
         data = ExhibitorRegisterSchema(**raw_data)
 
         existing_user = AuthRepository.get_user_by_email(data.email)
         if existing_user:
-            hashed_password = generate_password_hash(data.password) if data.password else ""
-            user = AuthRepository.attach_exhibitor_profile(existing_user, data.dict(), hashed_password)
-            access_token = generate_access_token(user.id, "exhibitor")
-            refresh_token = generate_refresh_token(user.id, "exhibitor")
-
-            return {
-                "message": "Exhibitor profile updated successfully",
-                "token": access_token,
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-                "user": AuthService.get_current_user(user.id)
-            }
+            raise ApiError("An account with this email address already exists. Please Sign In to your account.", 400)
 
         hashed_password = generate_password_hash(data.password) if data.password else ""
         user = AuthRepository.create_exhibitor_user(data.dict(), hashed_password)
@@ -103,6 +101,26 @@ class AuthService:
 
         return {
             "message": "Exhibitor account created successfully",
+            "token": access_token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": AuthService.get_current_user(user.id)
+        }
+
+    @staticmethod
+    def upgrade_exhibitor(user_id: int, raw_data: dict) -> dict:
+        from app.modules.auth.schemas.auth_schema import ExhibitorRegisterSchema
+        user = AuthRepository.get_user_by_id(user_id)
+        if not user:
+            raise ApiError("User not found", 404)
+        
+        data = ExhibitorRegisterSchema(**raw_data)
+        user = AuthRepository.attach_exhibitor_profile(user, data.dict())
+        access_token = generate_access_token(user.id, "exhibitor")
+        refresh_token = generate_refresh_token(user.id, "exhibitor")
+
+        return {
+            "message": "Exhibitor profile attached successfully",
             "token": access_token,
             "access_token": access_token,
             "refresh_token": refresh_token,

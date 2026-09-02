@@ -40,10 +40,26 @@ def register_organizer(payload: OrganizerRegisterSchema, response: Response):
     _attach_refresh_cookie(response, res)
     return res
 
+@auth_router.post("/upgrade/organizer")
+@root_auth_router.post("/user/upgrade/organizer")
+def upgrade_organizer(payload: OrganizerRegisterSchema, response: Response, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    res = AuthController.upgrade_organizer(user_id, payload.dict())
+    _attach_refresh_cookie(response, res)
+    return res
+
 @auth_router.post("/register/exhibitor", status_code=201)
 @root_auth_router.post("/register/exhibitor", status_code=201)
 def register_exhibitor(payload: ExhibitorRegisterSchema, response: Response):
     res = AuthController.register_exhibitor(payload.dict())
+    _attach_refresh_cookie(response, res)
+    return res
+
+@auth_router.post("/upgrade/exhibitor")
+@root_auth_router.post("/user/upgrade/exhibitor")
+def upgrade_exhibitor(payload: ExhibitorRegisterSchema, response: Response, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    res = AuthController.upgrade_exhibitor(user_id, payload.dict())
     _attach_refresh_cookie(response, res)
     return res
 

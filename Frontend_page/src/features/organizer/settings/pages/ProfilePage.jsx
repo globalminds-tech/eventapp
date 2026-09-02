@@ -571,110 +571,41 @@ export default function Profile() {
         </section>
       </main>
 
-      {/* Partner Hub Onboarding Modal */}
+      {/* Streamlined Partner Onboarding Modal */}
       {showPartnerModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 relative animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setShowPartnerModal(false)}
-              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-100 border-none bg-transparent cursor-pointer transition"
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-100 border-none bg-transparent cursor-pointer transition"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
-            <div className="mb-6">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles size={18} className="text-cyan-500" />
-                <span className="text-xs font-extrabold uppercase tracking-widest text-cyan-600">Partner Onboarding Hub</span>
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-600 font-extrabold text-[11px] uppercase tracking-wider mb-2">
+                <Sparkles size={14} />
+                <span>Partner Network</span>
               </div>
-              <h2 className="text-2xl font-black text-slate-900">List Your Show or Book Vendor Stalls</h2>
-              <p className="text-xs text-slate-500 mt-1">Select your partner account type to register or sign in to your workspace</p>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">Become a Partner</h2>
+              <p className="text-xs text-slate-500 mt-1">Host live events or exhibit products with BookMyEvent.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* Option 1: Event Organizer */}
-              <Card className="border-cyan-200/80 shadow-xs hover:border-cyan-400 transition-all bg-gradient-to-br from-white via-cyan-50/20 to-sky-50/30 flex flex-col justify-between">
-                <CardContent className="p-5 space-y-3 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center">
-                        <Shield size={20} className="stroke-[2.2]" />
-                      </div>
-                      <Badge className="bg-cyan-100 text-cyan-800 border-cyan-200 text-[10px] font-extrabold">ORGANIZER</Badge>
-                    </div>
-                    <h4 className="text-sm font-black text-slate-900">List Your Show (As Event Organizer)</h4>
-                    <p className="text-xs text-slate-500 leading-snug mt-1.5">
-                      Host concerts, tech expos & workshops. Setup custom ticket tiers, gate scanners & instant bank payouts.
-                    </p>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => { setShowPartnerModal(false); navigate("/register/organizer"); }}
-                      className="w-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:brightness-105 text-white font-black text-xs py-2.5 rounded-xl border-none cursor-pointer gap-1.5 shadow-sm shadow-cyan-500/20"
-                    >
-                      <span>New Organizer? Register</span>
-                      <ArrowUpRight size={14} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => { setShowPartnerModal(false); navigate("/login"); }}
-                      className="w-full border-cyan-200 text-cyan-700 hover:bg-cyan-50 font-extrabold text-xs py-2 rounded-xl cursor-pointer"
-                    >
-                      <span>Already Registered? Sign In</span>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Option 2: Exhibitor Vendor */}
-              <Card className="border-emerald-200/80 shadow-xs hover:border-emerald-400 transition-all bg-gradient-to-br from-white via-emerald-50/20 to-teal-50/30 flex flex-col justify-between">
-                <CardContent className="p-5 space-y-3 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-                        <Store size={20} className="stroke-[2.2]" />
-                      </div>
-                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">EXHIBITOR</Badge>
-                    </div>
-                    <h4 className="text-sm font-black text-slate-900">Exhibit & Book Stalls (As Exhibitor)</h4>
-                    <p className="text-xs text-slate-500 leading-snug mt-1.5">
-                      Reserve booth stalls on interactive floor plans, showcase products, capture trade leads & get tax invoices.
-                    </p>
-                  </div>
-                  <div className="mt-3 flex flex-col gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => { setShowPartnerModal(false); navigate("/register/exhibitor"); }}
-                      className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-105 text-white font-black text-xs py-2.5 rounded-xl border-none cursor-pointer gap-1.5 shadow-sm shadow-emerald-500/20"
-                    >
-                      <span>New Exhibitor? Register</span>
-                      <ArrowUpRight size={14} />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => { setShowPartnerModal(false); navigate("/login"); }}
-                      className="w-full border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-extrabold text-xs py-2 rounded-xl cursor-pointer"
-                    >
-                      <span>Already Registered? Sign In</span>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Footer Sign In Banner */}
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-semibold">Already have an Organizer or Exhibitor Account?</span>
-              <button
-                onClick={() => { setShowPartnerModal(false); navigate("/login"); }}
-                className="text-xs font-extrabold text-cyan-600 hover:underline cursor-pointer bg-transparent border-none p-0 flex items-center gap-1"
+            <div className="space-y-3">
+              <Button
+                onClick={() => { setShowPartnerModal(false); navigate("/register/partner"); }}
+                className="w-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:brightness-105 text-white font-black text-xs py-3.5 rounded-2xl border-none cursor-pointer shadow-md shadow-cyan-500/20"
               >
-                <span>Sign In to Partner Account</span>
-                <ArrowUpRight size={14} />
-              </button>
+                <span>Register as Partner →</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => { setShowPartnerModal(false); navigate("/login"); }}
+                className="w-full border-slate-200 text-slate-700 hover:bg-slate-50 font-extrabold text-xs py-2.5 rounded-2xl cursor-pointer"
+              >
+                <span>Already Registered? Sign In</span>
+              </Button>
             </div>
           </div>
         </div>

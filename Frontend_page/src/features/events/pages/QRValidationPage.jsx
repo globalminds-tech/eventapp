@@ -92,6 +92,13 @@ export default function QRValidation() {
            {/* Visitor Info */}
            <div className="p-8 space-y-8">
               
+              {result.details.ticket_code && (
+                <div className="bg-cyan-50 border border-cyan-100 p-3.5 rounded-2xl flex items-center justify-between">
+                   <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Ticket Code</span>
+                   <span className="font-mono font-black text-cyan-700 text-sm tracking-wider">{result.details.ticket_code}</span>
+                </div>
+              )}
+
               <div>
                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-4">Visitor Details</p>
                  <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-3xl">
