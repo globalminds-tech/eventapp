@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Eye, ArrowLeft, Plus, Search, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { createProgram as createProgramAPI, getProgramEvents, getProgramsByEvent } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 import { useSelector } from "react-redux";
 
 export default function CreateProgram() {
@@ -309,20 +310,18 @@ export default function CreateProgram() {
 
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-600 font-medium whitespace-nowrap">View By:</span>
-                  <div className="relative">
-                    <select
-                      value={viewBy}
-                      onChange={(e) => setViewBy(e.target.value)}
-                      className="border border-gray-300 rounded pl-3 pr-8 py-2 appearance-none focus:outline-none focus:border-blue-500 bg-white"
-                    >
-                      <option value="All">All</option>
-                      <option value="Active">Approved</option>
-                      <option value="Inactive">Rejected</option>
-                      <option value="Inprocess">Inprocess</option>
-                    </select>
-                    <ChevronDown size={16} className="absolute right-2 top-2.5 text-gray-500 pointer-events-none" />
-                  </div>
+                  <span className="text-gray-600 font-medium text-xs whitespace-nowrap">View By:</span>
+                  <Select
+                    value={viewBy}
+                    onValueChange={(val) => setViewBy(val)}
+                    className="w-36"
+                    triggerClassName="border-gray-300 rounded-xl h-9 text-xs font-semibold bg-white focus:border-blue-500"
+                  >
+                    <SelectItem value="All">All</SelectItem>
+                    <SelectItem value="Active">Approved</SelectItem>
+                    <SelectItem value="Inactive">Rejected</SelectItem>
+                    <SelectItem value="Inprocess">Inprocess</SelectItem>
+                  </Select>
                 </div>
 
                 <button
@@ -619,12 +618,17 @@ export default function CreateProgram() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-gray-600 mb-1 font-medium">Status</label>
-                    <select name="status" value={formData.status} onChange={handleInputChange} className="w-full border border-gray-300 rounded px-3 py-2 outline-none focus:border-blue-500 bg-white">
-                      <option value="Active">Approved</option>
-                      <option value="Inactive">Rejected</option>
-                      <option value="Inprocess">Inprocess</option>
-                    </select>
+                    <Select
+                      label="Status"
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      triggerClassName="w-full border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold focus:border-blue-500 bg-white h-10"
+                    >
+                      <SelectItem value="Active">Approved</SelectItem>
+                      <SelectItem value="Inactive">Rejected</SelectItem>
+                      <SelectItem value="Inprocess">Inprocess</SelectItem>
+                    </Select>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const ChevronUpDown = () => (
   <svg width="12" height="16" viewBox="0 0 12 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -229,18 +230,13 @@ const FormPage = ({ onBack }) => {
             <h2 className="text-lg font-semibold mb-5" style={{ color: "#2563eb" }}>Basic Details</h2>
 
             <div className="mb-4">
-              <label className={labelClass} style={labelStyle}>Event {required}</label>
-              <div className="relative">
-                <select
-                  className={inputClass}
-                  style={{ ...inputStyle, appearance: "none", paddingRight: 32 }}
-                >
-                  <option value="">Select Event</option>
-                </select>
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <ChevronDown />
-                </span>
-              </div>
+              <Select
+                label={`Event ${required}`}
+                placeholder="Select Event"
+                triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
+              >
+                <SelectItem value="none">No Events Available</SelectItem>
+              </Select>
             </div>
 
             <div className="mb-4">
@@ -254,18 +250,15 @@ const FormPage = ({ onBack }) => {
             </div>
 
             <div className="mb-4">
-              <label className={labelClass} style={labelStyle}>Applicable User {required}</label>
-              <div className="relative">
-                <select
-                  className={inputClass}
-                  style={{ ...inputStyle, appearance: "none", paddingRight: 32 }}
-                >
-                  <option value="">Select User</option>
-                </select>
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <ChevronDown />
-                </span>
-              </div>
+              <Select
+                label={`Applicable User ${required}`}
+                placeholder="Select User"
+                triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
+              >
+                <SelectItem value="all">All Users</SelectItem>
+                <SelectItem value="registered">Registered Attendees</SelectItem>
+                <SelectItem value="vip">VIP Pass Holders</SelectItem>
+              </Select>
             </div>
 
             <div className="mb-4">
@@ -333,19 +326,14 @@ const FormPage = ({ onBack }) => {
             </div>
 
             <div className="mb-2">
-              <label className={labelClass} style={labelStyle}>Status {required}</label>
-              <div className="relative">
-                <select
-                  className={inputClass}
-                  style={{ ...inputStyle, appearance: "none", paddingRight: 32, background: "#f1f5f9" }}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                  <ChevronDown />
-                </span>
-              </div>
+              <Select
+                label={`Status ${required}`}
+                defaultValue="active"
+                triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
+              >
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </Select>
             </div>
           </div>
 

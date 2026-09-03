@@ -3,6 +3,7 @@ import { Ticket, CreditCard, Search, ChevronDown, X } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
   const [isTaxDropdownOpen, setIsTaxDropdownOpen] = useState(false);
@@ -316,17 +317,17 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                 <span className="text-[10px] font-bold text-purple-700">Gate re-entry counter</span>
               </div>
               <div className="flex items-center gap-2">
-                <select
+                <Select
                   name="maxReentries"
                   value={formData.booking?.maxReentries || "Unlimited"}
-                  onChange={(e) => updateBooking("maxReentries", e.target.value)}
-                  className="w-full h-9 bg-white border border-purple-300 rounded-lg px-3 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                  onValueChange={(val) => updateBooking("maxReentries", val)}
+                  triggerClassName="bg-white border-purple-300 rounded-lg h-9 text-xs font-bold text-slate-900 focus:ring-purple-500"
                 >
-                  <option value="Unlimited">Unlimited Re-entries (tracked with timestamps)</option>
-                  <option value="2">Max 2 Scans (1 Exit + 1 Re-entry)</option>
-                  <option value="3">Max 3 Scans per Day</option>
-                  <option value="5">Max 5 Scans per Event</option>
-                </select>
+                  <SelectItem value="Unlimited">Unlimited Re-entries (tracked with timestamps)</SelectItem>
+                  <SelectItem value="2">Max 2 Scans (1 Exit + 1 Re-entry)</SelectItem>
+                  <SelectItem value="3">Max 3 Scans per Day</SelectItem>
+                  <SelectItem value="5">Max 5 Scans per Event</SelectItem>
+                </Select>
               </div>
               <p className="text-[10px] text-purple-800 font-medium leading-tight">
                 📲 <strong>Gate Tracking:</strong> Every entry scan is logged with live timestamps. Gate Scanner staff will see real-time counter: <em>"Scan #3 Logged"</em>.
@@ -389,19 +390,19 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Max Passes Per Booking</label>
-                <select
+                <Select
+                  label="Max Passes Per Booking"
                   name="maxPerUser"
-                  value={formData.booking?.maxPerUser || "5"}
-                  onChange={(e) => updateBooking("maxPerUser", e.target.value)}
-                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+                  value={String(formData.booking?.maxPerUser || "5")}
+                  onValueChange={(val) => updateBooking("maxPerUser", val)}
+                  triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                 >
-                  <option value="1">1 Pass per attendee</option>
-                  <option value="2">2 Passes per attendee</option>
-                  <option value="5">5 Passes per attendee</option>
-                  <option value="10">10 Passes per attendee</option>
-                  <option value="unlimited">Unlimited Passes</option>
-                </select>
+                  <SelectItem value="1">1 Pass per attendee</SelectItem>
+                  <SelectItem value="2">2 Passes per attendee</SelectItem>
+                  <SelectItem value="5">5 Passes per attendee</SelectItem>
+                  <SelectItem value="10">10 Passes per attendee</SelectItem>
+                  <SelectItem value="unlimited">Unlimited Passes</SelectItem>
+                </Select>
               </div>
 
               <div>
@@ -506,17 +507,17 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
 
               {/* Refund Policy */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Refund & Cancellation Terms</label>
-                <select
+                <Select
+                  label="Refund & Cancellation Terms"
                   name="refundPolicy"
                   value={formData.booking?.refundPolicy || "Standard"}
-                  onChange={(e) => updateBooking("refundPolicy", e.target.value)}
-                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-2 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+                  onValueChange={(val) => updateBooking("refundPolicy", val)}
+                  triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                 >
-                  <option value="Standard">100% Refund until 48 hrs before event</option>
-                  <option value="Strict">50% Refund until 7 days before event</option>
-                  <option value="NoRefund">Non-Refundable Ticket</option>
-                </select>
+                  <SelectItem value="Standard">100% Refund until 48 hrs before event</SelectItem>
+                  <SelectItem value="Strict">50% Refund until 7 days before event</SelectItem>
+                  <SelectItem value="NoRefund">Non-Refundable Ticket</SelectItem>
+                </Select>
               </div>
             </div>
           )}

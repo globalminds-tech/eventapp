@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Trash2, Edit, X, Plus } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const Step7FoodProvision = ({ formData, setFormData }) => {
   const foodItems = (formData.foodProvision?.items && formData.foodProvision.items.length > 0)
@@ -137,32 +138,32 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
               </div>
 
               <div>
-                <label className={labelClasses}>Meal Type <span className="text-red-500">*</span></label>
-                <select
+                <Select
+                  label="Meal Type"
                   value={tempInput.mealType}
-                  onChange={(e) => updateTempInput("mealType", e.target.value)}
-                  className={selectClasses}
+                  onValueChange={(val) => updateTempInput("mealType", val)}
+                  triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                 >
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Lunch">Lunch</option>
-                  <option value="Dinner">Dinner</option>
-                  <option value="Snacks">Snacks</option>
-                  <option value="High Tea">High Tea</option>
-                  <option value="All Day">All Day</option>
-                </select>
+                  <SelectItem value="Breakfast">Breakfast</SelectItem>
+                  <SelectItem value="Lunch">Lunch</SelectItem>
+                  <SelectItem value="Dinner">Dinner</SelectItem>
+                  <SelectItem value="Snacks">Snacks</SelectItem>
+                  <SelectItem value="High Tea">High Tea</SelectItem>
+                  <SelectItem value="All Day">All Day</SelectItem>
+                </Select>
               </div>
 
               <div>
-                <label className={labelClasses}>Food Type <span className="text-red-500">*</span></label>
-                <select
+                <Select
+                  label="Food Type"
                   value={tempInput.foodType}
-                  onChange={(e) => updateTempInput("foodType", e.target.value)}
-                  className={selectClasses}
+                  onValueChange={(val) => updateTempInput("foodType", val)}
+                  triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                 >
-                  <option value="Veg">Veg</option>
-                  <option value="Non-Veg">Non-Veg</option>
-                  <option value="Both">Both</option>
-                </select>
+                  <SelectItem value="Veg">Veg</SelectItem>
+                  <SelectItem value="Non-Veg">Non-Veg</SelectItem>
+                  <SelectItem value="Both">Both</SelectItem>
+                </Select>
               </div>
             </div>
 
@@ -301,27 +302,29 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
                 placeholder="Caterer Name"
               />
               <div className="grid grid-cols-2 gap-4">
-                <select
+                <Select
                   value={editModal.data.mealType || ""}
-                  onChange={(e) => setEditModal(prev => ({ ...prev, data: { ...prev.data, mealType: e.target.value } }))}
-                  className={selectClasses}
+                  onValueChange={(val) => setEditModal(prev => ({ ...prev, data: { ...prev.data, mealType: val } }))}
+                  placeholder="Select Meal"
+                  triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
                 >
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Lunch">Lunch</option>
-                  <option value="Dinner">Dinner</option>
-                  <option value="Snacks">Snacks</option>
-                  <option value="High Tea">High Tea</option>
-                  <option value="All Day">All Day</option>
-                </select>
-                <select
+                  <SelectItem value="Breakfast">Breakfast</SelectItem>
+                  <SelectItem value="Lunch">Lunch</SelectItem>
+                  <SelectItem value="Dinner">Dinner</SelectItem>
+                  <SelectItem value="Snacks">Snacks</SelectItem>
+                  <SelectItem value="High Tea">High Tea</SelectItem>
+                  <SelectItem value="All Day">All Day</SelectItem>
+                </Select>
+                <Select
                   value={editModal.data.foodType || ""}
-                  onChange={(e) => setEditModal(prev => ({ ...prev, data: { ...prev.data, foodType: e.target.value } }))}
-                  className={selectClasses}
+                  onValueChange={(val) => setEditModal(prev => ({ ...prev, data: { ...prev.data, foodType: val } }))}
+                  placeholder="Select Food"
+                  triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
                 >
-                  <option value="Veg">Veg</option>
-                  <option value="Non-Veg">Non-Veg</option>
-                  <option value="Both">Both</option>
-                </select>
+                  <SelectItem value="Veg">Veg</SelectItem>
+                  <SelectItem value="Non-Veg">Non-Veg</SelectItem>
+                  <SelectItem value="Both">Both</SelectItem>
+                </Select>
               </div>
               <div>
                 <label className={labelClasses}>Meal Pass Price (₹ INR)</label>

@@ -8,19 +8,11 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { kycApi } from "../api/kyc.api";
 import { userApi } from "../../../users/api/user.api";
 
-const DEFAULT_USERS_DATA = [
-  { id: "1", name: "superuser", role: "superuser", email: "bookmyevent2026@gmail.com", mobile: "+91 9000000000", company_name: "BookMyEvent Admin", gst_pan: "SYSTEM", bank_account: "N/A", ifsc: "N/A", kyc_status: "VERIFIED" },
-  { id: "3", name: "Ashok", role: "user", email: "ashok@gmail.com", mobile: "+91 9123456789", company_name: "N/A", gst_pan: "N/A", bank_account: "N/A", ifsc: "N/A", kyc_status: "VERIFIED" },
-  { id: "4", name: "Alex Vance", role: "organizer", email: "alex@eventcorp.com", mobile: "+91 9876543210", company_name: "Alex Vance Events", gst_pan: "33ABCDE1234F1Z5", bank_account: "918237465012", ifsc: "HDFC0001234", kyc_status: "VERIFIED" },
-  { id: "5", name: "ASHOK BABU P", role: "organizer", email: "pashokbabu.38@gmail.com", mobile: "+91 9876543210", company_name: "DIY Event Corp", gst_pan: "33ABCDE1234F1Z5", bank_account: "918237465099", ifsc: "HDFC0001234", kyc_status: "VERIFIED" },
-  { id: "6", name: "Sneha V", role: "exhibitor", email: "sneha@crafts.in", mobile: "+91 9811223344", company_name: "Sneha Crafts & Stalls", gst_pan: "33SNEHA1234F1Z9", bank_account: "102938475601", ifsc: "ICIC0005678", kyc_status: "VERIFIED" }
-];
-
 export default function KycVerificationPage() {
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") || "all").toLowerCase();
 
-  const [usersList, setUsersList] = useState(DEFAULT_USERS_DATA);
+  const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,10 +37,11 @@ export default function KycVerificationPage() {
       } else {
         const pendingRes = await kycApi.getPendingOrganizers();
         const pendingList = Array.isArray(pendingRes?.data) ? pendingRes.data : [];
-        if (pendingList.length > 0) setUsersList(pendingList);
+        setUsersList(pendingList);
       }
     } catch (err) {
       console.warn("API users fetch warning:", err);
+      setUsersList([]);
     } finally {
       setLoading(false);
     }

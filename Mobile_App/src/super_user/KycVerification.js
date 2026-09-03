@@ -50,8 +50,8 @@ export default function KycVerification({ navigation }) {
     {
       id: 1,
       business_name: "Apex Global Events Pvt Ltd",
-      representative_name: "P. Ashok Babu",
-      email: "pashokbabu.38@gmail.com",
+      representative_name: "Karan Sharma",
+      email: "karan@apexevents.in",
       gst_number: "33AAAAA0000A1Z5",
       pan_number: "ABCDE1234F",
       bank_account: "987654321098",

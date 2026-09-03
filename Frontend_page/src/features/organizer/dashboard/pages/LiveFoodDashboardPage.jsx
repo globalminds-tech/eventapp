@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { getevent } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 import {
   Coffee,
   Utensils,
@@ -96,69 +97,54 @@ export const LiveFoodDashboard = () => {
       <div className="flex gap-4 mb-10">
 
         {/* EVENT */}
-
-        <select
-          className="p-3 border rounded w-60"
+        <Select
           value={event}
-          onChange={(e) => {
-
-            setEvent(e.target.value);
+          onValueChange={(val) => {
+            setEvent(val);
             setMealTime("");
             setMealType("");
-
           }}
+          placeholder="Select Event"
+          className="w-64"
+          triggerClassName="h-11 bg-white border-slate-200 rounded-xl text-xs font-semibold focus:ring-cyan-500"
         >
-
-          <option value="">Select Event</option>
-
           {events.map((ev) => (
-            <option key={ev.id} value={ev.id}>
+            <SelectItem key={ev.id} value={String(ev.id)}>
               {ev.event_name}
-            </option>
+            </SelectItem>
           ))}
-
-        </select>
-
-
+        </Select>
 
         {/* MEAL TIME */}
-
-        <select
+        <Select
           disabled={!event}
-          className="p-3 border rounded w-60 disabled:bg-gray-200"
           value={mealTime}
-          onChange={(e) => {
-
-            setMealTime(e.target.value);
+          onValueChange={(val) => {
+            setMealTime(val);
             setMealType("");
-
           }}
+          placeholder="Select Meal Time"
+          className="w-64"
+          triggerClassName="h-11 bg-white border-slate-200 rounded-xl text-xs font-semibold focus:ring-cyan-500"
         >
-
-          <option value="">Select Meal Time</option>
-          <option>Breakfast</option>
-          <option>Lunch</option>
-          <option>Snacks</option>
-          <option>Dinner</option>
-
-        </select>
-
-
+          <SelectItem value="Breakfast">Breakfast</SelectItem>
+          <SelectItem value="Lunch">Lunch</SelectItem>
+          <SelectItem value="Snacks">Snacks</SelectItem>
+          <SelectItem value="Dinner">Dinner</SelectItem>
+        </Select>
 
         {/* MEAL TYPE */}
-
-        <select
+        <Select
           disabled={!mealTime}
-          className="p-3 border rounded w-60 disabled:bg-gray-200"
           value={mealType}
-          onChange={(e) => setMealType(e.target.value)}
+          onValueChange={(val) => setMealType(val)}
+          placeholder="Select Meal Type"
+          className="w-64"
+          triggerClassName="h-11 bg-white border-slate-200 rounded-xl text-xs font-semibold focus:ring-cyan-500"
         >
-
-          <option value="">Select Meal Type</option>
-          <option>Veg</option>
-          <option>Non Veg</option>
-
-        </select>
+          <SelectItem value="Veg">Veg</SelectItem>
+          <SelectItem value="Non Veg">Non Veg</SelectItem>
+        </Select>
 
       </div>
 
