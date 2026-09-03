@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Trash2, AlertCircle, X, Edit, Plus, Store, ChevronDown } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const formatSizeRange = (val, unit, isDeleting) => {
   // Strip any character that is not a digit or slash
@@ -575,15 +576,16 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
               <div>
                 <label className={labelClasses}>Stall Dimensions <span className="text-red-500">*</span></label>
                 <div className="flex gap-2">
-                  <select
+                  <Select
                     name="stallSize"
                     value={formData.layout?.stallSize || "Feet"}
                     onChange={handleChange}
-                    className={`${selectClasses} flex-1`}
+                    triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
+                    className="flex-1"
                   >
-                    <option>Feet</option>
-                    <option>Inches</option>
-                  </select>
+                    <SelectItem value="Feet">Feet</SelectItem>
+                    <SelectItem value="Inches">Inches</SelectItem>
+                  </Select>
 
                   {/* Automated Length/Width Input */}
                   <input
@@ -1156,12 +1158,10 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
                   {/* Unit */}
                   <div className="space-y-1">
-                    <label className={labelClasses}>Unit</label>
-                    <select
-                      className={selectClasses}
+                    <Select
+                      label="Unit"
                       value={editModal.data.stallSize || "Feet"}
-                      onChange={(e) => {
-                        const newUnit = e.target.value;
+                      onValueChange={(newUnit) => {
                         const limit = newUnit === "Inches" ? 4 : 2;
                         const newLength = (editModal.data.length || "").slice(0, limit);
                         const newWidth = (editModal.data.width || "").slice(0, limit);
@@ -1176,10 +1176,11 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                           }
                         });
                       }}
+                      triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
                     >
-                      <option>Feet</option>
-                      <option>Inches</option>
-                    </select>
+                      <SelectItem value="Feet">Feet</SelectItem>
+                      <SelectItem value="Inches">Inches</SelectItem>
+                    </Select>
                   </div>
 
                   {/* Dimensions */}
@@ -1210,28 +1211,28 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
                   {/* Visibility */}
                   <div className="space-y-1">
-                    <label className={labelClasses}>Visibility</label>
-                    <select
-                      className={selectClasses}
+                    <Select
+                      label="Visibility"
                       value={editModal.data.visibility || "Public"}
-                      onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, visibility: e.target.value } })}
+                      onValueChange={(val) => setEditModal({ ...editModal, data: { ...editModal.data, visibility: val } })}
+                      triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
                     >
-                      <option>Public</option>
-                      <option>Private</option>
-                    </select>
+                      <SelectItem value="Public">Public</SelectItem>
+                      <SelectItem value="Private">Private</SelectItem>
+                    </Select>
                   </div>
 
                   {/* Stall Type */}
                   <div className="space-y-1">
-                    <label className={labelClasses}>Stall Type</label>
-                    <select
-                      className={selectClasses}
+                    <Select
+                      label="Stall Type"
                       value={editModal.data.stallType || "Paid"}
-                      onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, stallType: e.target.value } })}
+                      onValueChange={(val) => setEditModal({ ...editModal, data: { ...editModal.data, stallType: val } })}
+                      triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
                     >
-                      <option>Paid</option>
-                      <option>Free</option>
-                    </select>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="Free">Free</SelectItem>
+                    </Select>
                   </div>
 
                   {/* Price (INR) & Person Passes */}

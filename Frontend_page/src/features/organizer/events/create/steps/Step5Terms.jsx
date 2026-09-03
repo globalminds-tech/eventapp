@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { getPolicies, createPolicy } from "@/Services/api";
 import { useSelector } from "react-redux";
 import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const Step5Terms = ({ formData, setFormData }) => {
   const [policyData, setPolicyData] = useState({});
@@ -652,34 +653,34 @@ const Step5Terms = ({ formData, setFormData }) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Policy Type</label>
-                  <select
+                  <Select
+                    label="Policy Type"
                     value={newPolicy.policy_type}
-                    onChange={(e) => setNewPolicy({ ...newPolicy, policy_type: e.target.value })}
-                    className="w-full px-6 py-4 rounded-full bg-slate-50 border-none focus:ring-2 focus:ring-purple-500 text-sm font-bold text-slate-700 shadow-inner appearance-none"
+                    onValueChange={(val) => setNewPolicy({ ...newPolicy, policy_type: val })}
+                    placeholder="Select Category"
+                    triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-11 text-xs font-semibold focus:ring-cyan-500"
                   >
-                    <option value="">Select Category</option>
-                    <option>Exhibitor</option>
-                    <option>Visitor</option>
-                    <option>Vendor</option>
-                  </select>
+                    <SelectItem value="Exhibitor">Exhibitor</SelectItem>
+                    <SelectItem value="Visitor">Visitor</SelectItem>
+                    <SelectItem value="Vendor">Vendor</SelectItem>
+                  </Select>
                 </div>
                 <div className="md:col-span-2 space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Policy Group</label>
-                  <select
+                  <Select
+                    label="Policy Group"
                     value={newPolicy.policy_group}
-                    onChange={(e) => setNewPolicy({ ...newPolicy, policy_group: e.target.value })}
-                    className="w-full px-6 py-4 rounded-full bg-slate-50 border-none focus:ring-2 focus:ring-purple-500 text-sm font-bold text-slate-700 shadow-inner appearance-none"
+                    onValueChange={(val) => setNewPolicy({ ...newPolicy, policy_group: val })}
+                    placeholder="Select Grouping"
+                    triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-11 text-xs font-semibold focus:ring-cyan-500"
                   >
-                    <option value="">Select Grouping</option>
-                    <option>Cancellation Policy</option>
-                    <option>Refund Policy</option>
-                    <option>Safety Policy</option>
-                    <option>Privacy Policy</option>
-                    <option>Payment Policy</option>
-                    <option>Paper Submission Guidelines</option>
-                    <option>Registration Policy</option>
-                  </select>
+                    <SelectItem value="Cancellation Policy">Cancellation Policy</SelectItem>
+                    <SelectItem value="Refund Policy">Refund Policy</SelectItem>
+                    <SelectItem value="Safety Policy">Safety Policy</SelectItem>
+                    <SelectItem value="Privacy Policy">Privacy Policy</SelectItem>
+                    <SelectItem value="Payment Policy">Payment Policy</SelectItem>
+                    <SelectItem value="Paper Submission Guidelines">Paper Submission Guidelines</SelectItem>
+                    <SelectItem value="Registration Policy">Registration Policy</SelectItem>
+                  </Select>
                 </div>
                 <div className="md:col-span-2 space-y-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Detailed Description</label>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getProgramVerificationEvents } from "@/Services/api";
 import { Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 export const ProgramVerification = () => {
   const [page, setPage] = useState("list");
   const [data, setData] = useState([]);
@@ -189,11 +190,15 @@ export const ProgramVerification = () => {
                 className="border px-4 py-2 rounded"
               />
 
-              <select className="border px-3 py-2 rounded">
-                <option>All</option>
-                <option>Approved</option>
-                <option>Rejected</option>
-              </select>
+              <Select
+                defaultValue="All"
+                className="w-36"
+                triggerClassName="border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold h-10 bg-white focus:ring-blue-500"
+              >
+                <SelectItem value="All">All</SelectItem>
+                <SelectItem value="Approved">Approved</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+              </Select>
 
               <button className="border px-4 py-2 rounded">🔍</button>
             </div>

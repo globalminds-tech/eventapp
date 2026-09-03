@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CheckCircle, Eye, Search, Plus, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { getTasks, createTasks } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const fmtDate = (d) => {
   if (!d) return "";
@@ -488,12 +489,17 @@ function FormView({ onSaved }) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={lbl}>Status {req}</label>
-                <select name="status" value={form.status} onChange={fc} className={inp}>
-                  <option>In-Progress</option>
-                  <option>Completed</option>
-                  <option>Pending</option>
-                </select>
+                <Select
+                  label={`Status ${req}`}
+                  name="status"
+                  value={form.status}
+                  onChange={fc}
+                  triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
+                >
+                  <SelectItem value="In-Progress">In-Progress</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                </Select>
               </div>
               <div>
                 <label className={lbl}>Progress %</label>

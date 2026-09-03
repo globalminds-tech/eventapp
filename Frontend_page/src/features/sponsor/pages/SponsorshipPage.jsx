@@ -6,6 +6,7 @@ import { useSelector } from "react-redux";
 import { saveAs } from "file-saver";
 
 import { getSponsors, getSponsorById, createSponsor, deleteSponsor, updateSponsor, exportSponsorsExcel, exportSponsorsPdf } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export const SponsorshipPage = () => {
   const [sponsors, setSponsors] = useState([]);
@@ -803,19 +804,17 @@ export const SponsorshipPage = () => {
 
                   {/* STATUS */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">
-                      Status
-                    </label>
-                    <select
+                    <Select
+                      label="Status"
                       name="status"
                       value={form.status}
                       onChange={handleChange}
-                      className="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none appearance-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                       disabled={!editId}
+                      triggerClassName="w-full p-4 rounded-2xl h-14 font-semibold text-sm border-slate-200 bg-slate-50 focus:ring-blue-500"
                     >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                    </Select>
                   </div>
                   
                   {/* ADDRESS */}
@@ -855,16 +854,17 @@ export const SponsorshipPage = () => {
                           key={index}
                           className="relative bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-4 items-center"
                         >
-                          <select
+                          <Select
                             name="document_type"
                             value={doc.document_type}
                             onChange={(e) => handleDocChange(e, index)}
-                            className="p-3 w-full md:w-1/3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none text-slate-700 font-medium"
+                            placeholder="Document Type"
+                            className="w-full md:w-1/3"
+                            triggerClassName="h-11 rounded-xl border-slate-200 bg-white text-slate-700 font-medium focus:ring-blue-500"
                           >
-                            <option value="">Document Type</option>
-                            <option value="Aadhar">Aadhar</option>
-                            <option value="PAN">PAN</option>
-                          </select>
+                            <SelectItem value="Aadhar">Aadhar</SelectItem>
+                            <SelectItem value="PAN">PAN</SelectItem>
+                          </Select>
                           
                           <input
                             name="document_number"

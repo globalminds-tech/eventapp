@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export default function EventVerification() {
   const [search, setSearch] = useState("");
@@ -24,17 +25,18 @@ export default function EventVerification() {
 
         {/* Dropdown */}
         <div className="flex items-center space-x-2">
-          <label className="text-gray-700 font-medium">View By:</label>
-          <select
+          <label className="text-gray-700 font-medium text-xs">View By:</label>
+          <Select
             value={viewBy}
-            onChange={(e) => setViewBy(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onValueChange={(val) => setViewBy(val)}
+            className="w-40"
+            triggerClassName="h-9 bg-white border-gray-300 rounded-xl text-xs font-semibold focus:ring-blue-500"
           >
-            <option value="All">All</option>
-            <option value="Verified">Verified</option>
-            <option value="Pending">Pending</option>
-            <option value="Rejected">Rejected</option>
-          </select>
+            <SelectItem value="All">All</SelectItem>
+            <SelectItem value="Verified">Verified</SelectItem>
+            <SelectItem value="Pending">Pending</SelectItem>
+            <SelectItem value="Rejected">Rejected</SelectItem>
+          </Select>
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Save, Trash2, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const RoleWiseScreenMapping = () => {
   const [roleName, setRoleName] = useState("");
@@ -80,52 +81,36 @@ const RoleWiseScreenMapping = () => {
 
             {/* Role Name */}
             <div className="mb-6">
-              <label className="mb-2 block text-[16px] font-semibold text-black">
-                Role Name<span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={roleName}
-                  onChange={(e) => setRoleName(e.target.value)}
-                  className="h-[46px] w-full appearance-none rounded-md border border-[#cfd7e3] bg-white px-4 pr-12 text-[16px] text-[#6b7280] outline-none focus:border-[#8aa4d6]"
-                >
-                  <option value="">Role Name</option>
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={22}
-                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#5b6472]"
-                />
-              </div>
+              <Select
+                label="Role Name *"
+                value={roleName}
+                onValueChange={(val) => setRoleName(val)}
+                placeholder="Role Name"
+                triggerClassName="h-[46px] w-full rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500"
+              >
+                {roleOptions.map((role) => (
+                  <SelectItem key={role} value={role}>
+                    {role}
+                  </SelectItem>
+                ))}
+              </Select>
             </div>
 
             {/* Module Name */}
             <div>
-              <label className="mb-2 block text-[16px] font-semibold text-black">
-                Module Name<span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={moduleName}
-                  onChange={(e) => setModuleName(e.target.value)}
-                  className="h-[46px] w-full appearance-none rounded-md border border-[#cfd7e3] bg-white px-4 pr-12 text-[16px] text-[#6b7280] outline-none focus:border-[#8aa4d6]"
-                >
-                  <option value="">Module Name</option>
-                  {moduleOptions.map((module) => (
-                    <option key={module} value={module}>
-                      {module}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={22}
-                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#5b6472]"
-                />
-              </div>
+              <Select
+                label="Module Name *"
+                value={moduleName}
+                onValueChange={(val) => setModuleName(val)}
+                placeholder="Module Name"
+                triggerClassName="h-[46px] w-full rounded-xl border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-cyan-500"
+              >
+                {moduleOptions.map((module) => (
+                  <SelectItem key={module} value={module}>
+                    {module}
+                  </SelectItem>
+                ))}
+              </Select>
             </div>
           </div>
 

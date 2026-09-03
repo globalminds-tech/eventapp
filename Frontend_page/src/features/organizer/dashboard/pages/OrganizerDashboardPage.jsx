@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export default function OrganizerDashboardPage() {
   const navigate = useNavigate();
@@ -174,21 +175,19 @@ export default function OrganizerDashboardPage() {
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {/* Event Scope Selector Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="appearance-none bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs px-3.5 py-2 pr-8 rounded-xl border border-slate-200 shadow-2xs outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
-            >
-              <option value="all">Overview — All Events</option>
-              {events.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name || e.event_name || `Event #${e.id}`}
-                </option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
+          <Select
+            value={selectedEventId}
+            onValueChange={(val) => setSelectedEventId(val)}
+            className="w-auto min-w-[210px]"
+            triggerClassName="h-9 font-extrabold text-xs bg-white hover:bg-slate-50 border-slate-200 text-slate-800 shadow-2xs rounded-xl focus:ring-cyan-500 focus:border-cyan-500"
+          >
+            <SelectItem value="all">Overview — All Events</SelectItem>
+            {events.map((e) => (
+              <SelectItem key={e.id} value={String(e.id)}>
+                {e.name || e.event_name || `Event #${e.id}`}
+              </SelectItem>
+            ))}
+          </Select>
 
           <Button
             onClick={() => dispatch(fetchEventsThunk({ organizerId: reduxUser.id || sessionStorage.getItem("userId") || localStorage.getItem("id"), force: true }))}

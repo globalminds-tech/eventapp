@@ -25,6 +25,7 @@ import {
   exportPoliciesPdf,
   updatePolicy
 } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export const PolicyPage = () => {
   const [policies, setPolicies] = useState([]);
@@ -656,24 +657,18 @@ export const PolicyPage = () => {
 
                 {/* POLICY TYPE */}
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">
-                    Policy Type <span className="text-red-500">*</span>
-                  </label>
-                  <select
+                  <Select
+                    label="Policy Type *"
                     name="policy_type"
                     value={form.policy_type}
                     onChange={handleChange}
-                    className={`w-full p-4 border-2 rounded-2xl focus:ring-4 transition-all outline-none appearance-none ${fieldErrors.policy_type
-                      ? "border-red-200 bg-red-50 focus:ring-red-100 focus:border-red-400"
-                      : "border-slate-100 bg-slate-50 focus:ring-blue-50 focus:border-blue-500"
-                      }`}
-                    required
+                    placeholder="Select Policy Type"
+                    triggerClassName={`w-full p-4 rounded-2xl h-14 font-semibold text-sm ${fieldErrors.policy_type ? "border-red-300 bg-red-50 focus:ring-red-100" : "border-slate-200 bg-slate-50 focus:ring-blue-500"}`}
                   >
-                    <option value="">Select Policy Type</option>
-                    <option>Exhibitor</option>
-                    <option>Visitor</option>
-                    <option>Vendor</option>
-                  </select>
+                    <SelectItem value="Exhibitor">Exhibitor</SelectItem>
+                    <SelectItem value="Visitor">Visitor</SelectItem>
+                    <SelectItem value="Vendor">Vendor</SelectItem>
+                  </Select>
                   {fieldErrors.policy_type && (
                     <p className="text-red-500 text-xs font-bold ml-1">
                       {fieldErrors.policy_type}
@@ -683,28 +678,22 @@ export const PolicyPage = () => {
 
                 {/* POLICY GROUP */}
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">
-                    Select  Group <span className="text-red-500">*</span>
-                  </label>
-                  <select
+                  <Select
+                    label="Select Group *"
                     name="policy_group"
                     value={form.policy_group}
                     onChange={handleChange}
-                    className={`w-full p-4 border-2 rounded-2xl focus:ring-4 transition-all outline-none appearance-none ${fieldErrors.policy_group
-                      ? "border-red-200 bg-red-50 focus:ring-red-100 focus:border-red-400"
-                      : "border-slate-100 bg-slate-50 focus:ring-blue-50 focus:border-blue-500"
-                      }`}
-                    required
+                    placeholder="Select Policy Group"
+                    triggerClassName={`w-full p-4 rounded-2xl h-14 font-semibold text-sm ${fieldErrors.policy_group ? "border-red-300 bg-red-50 focus:ring-red-100" : "border-slate-200 bg-slate-50 focus:ring-blue-500"}`}
                   >
-                    <option value="">Select Policy Group</option>
-                    <option>Cancellation Policy</option>
-                    <option>Refund Policy</option>
-                    <option>Safety Policy</option>
-                    <option>Privacy Policy</option>
-                    <option>Payment Policy</option>
-                    <option>Paper Submission Guidelines</option>
-                    <option>Registration Policy</option>
-                  </select>
+                    <SelectItem value="Cancellation Policy">Cancellation Policy</SelectItem>
+                    <SelectItem value="Refund Policy">Refund Policy</SelectItem>
+                    <SelectItem value="Safety Policy">Safety Policy</SelectItem>
+                    <SelectItem value="Privacy Policy">Privacy Policy</SelectItem>
+                    <SelectItem value="Payment Policy">Payment Policy</SelectItem>
+                    <SelectItem value="Paper Submission Guidelines">Paper Submission Guidelines</SelectItem>
+                    <SelectItem value="Registration Policy">Registration Policy</SelectItem>
+                  </Select>
                   {fieldErrors.policy_group && (
                     <p className="text-red-500 text-xs font-bold ml-1">
                       {fieldErrors.policy_group}
@@ -714,19 +703,17 @@ export const PolicyPage = () => {
 
                 {/* STATUS */}
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">
-                    Status 
-                  </label>
-                  <select
+                  <Select
+                    label="Status"
                     name="status"
                     value={form.status}
                     onChange={handleChange}
-                    className="w-full p-4 border-2 border-slate-100 bg-slate-50 rounded-2xl focus:ring-4 focus:ring-blue-50 focus:border-blue-500 outline-none appearance-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     disabled={!editId}
+                    triggerClassName="w-full p-4 rounded-2xl h-14 font-semibold text-sm border-slate-200 bg-slate-50 focus:ring-blue-500"
                   >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                  </Select>
                 </div>
               </div>
 

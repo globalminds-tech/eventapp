@@ -67,7 +67,7 @@ export const getAuthUserId = (reduxUser) => {
 };
 
 /**
- * Derives uppercase initials from user's full name (e.g. "Ashok Babu" -> "AB", "Ashok" -> "A")
+ * Derives uppercase initials from user's full name (e.g. "John Doe" -> "JD", "Admin" -> "A")
  */
 export const getUserInitials = (name) => {
   if (!name || typeof name !== "string") return "U";

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useSelector } from "react-redux";
 
 import { getVendors, createVendor, getVendorById, deleteVendor, updateVendor, exportVendorsExcel, exportVendorsPdf, getCountries, getStates, getCities } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export const VendorPage = () => {
   const { t } = useTranslation();
@@ -794,21 +795,19 @@ export const VendorPage = () => {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-bold text-sky-800 mb-1">
-                        Vendor Type <span className="text-red-500">*</span>
-                      </label>
-                      <select
+                      <Select
+                        label="Vendor Type *"
                         name="vendor_type"
                         value={form.vendor_type}
                         onChange={handleChange}
-                        className={`w-full border p-2 rounded bg-white focus:ring-2 focus:ring-sky-500 outline-none ${fieldErrors.vendor_type ? "border-red-500" : "border-sky-200"}`}
+                        placeholder="Select Vendor Type"
+                        triggerClassName={`w-full p-2.5 rounded-xl bg-white text-xs font-semibold ${fieldErrors.vendor_type ? "border-red-500" : "border-slate-200"}`}
                       >
-                        <option value="">Select Vendor Type</option>
-                        <option>Suppliers</option>
-                        <option>Contractors</option>
-                        <option>Distributors</option>
-                        <option>Freelancer</option>
-                      </select>
+                        <SelectItem value="Suppliers">Suppliers</SelectItem>
+                        <SelectItem value="Contractors">Contractors</SelectItem>
+                        <SelectItem value="Distributors">Distributors</SelectItem>
+                        <SelectItem value="Freelancer">Freelancer</SelectItem>
+                      </Select>
                       {fieldErrors.vendor_type && (
                         <p className="text-red-500 text-[10px] mt-0.5">
                           {fieldErrors.vendor_type}
@@ -1409,20 +1408,18 @@ export const VendorPage = () => {
                           </button>
                         )}
                         <div>
-                          <label className="block text-xs font-bold text-sky-600 mb-1 tracking-wider">
-                            Document Type
-                          </label>
-                          <select
+                          <Select
+                            label="Document Type"
                             name="document_type"
                             value={doc.document_type}
                             onChange={(e) => handleDocChange(e, index)}
-                            className="w-full border border-sky-100 p-2 rounded bg-sky-50 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                            placeholder="Select Document Type"
+                            triggerClassName="w-full border-sky-100 p-2 rounded-xl bg-sky-50 text-xs font-semibold focus:ring-sky-500 h-9"
                           >
-                            <option value="">Select Document Type</option>
-                            <option>PAN</option>
-                            <option>Aadhar</option>
-                            <option>GST</option>
-                          </select>
+                            <SelectItem value="PAN">PAN</SelectItem>
+                            <SelectItem value="Aadhar">Aadhar</SelectItem>
+                            <SelectItem value="GST">GST</SelectItem>
+                          </Select>
                         </div>
 
                         <div>

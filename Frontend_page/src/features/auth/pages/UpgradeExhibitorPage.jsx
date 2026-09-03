@@ -5,6 +5,7 @@ import { setCredentials } from "@/app/store/authSlice";
 import { setUser } from "@/app/store/userSlice";
 import { authApi } from "@/features/auth/api/auth.api";
 import BrandLogo from "@/components/ui/BrandLogo";
+import { Select, SelectItem } from "@/components/ui/Select";
 import {
   Store,
   Building2,
@@ -15,8 +16,11 @@ import {
   AlertCircle,
   ShieldCheck,
   CheckCircle2,
-  Lock
+  Lock,
+  Loader2,
+  MapPin
 } from "lucide-react";
+import { lookupPincode } from "@/shared/services/pincodeService";
 
 export default function UpgradeExhibitorPage() {
   const navigate = useNavigate();
@@ -91,9 +95,43 @@ export default function UpgradeExhibitorPage() {
     }
   }, [user, navigate]);
 
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+  const [pincodeSuccess, setPincodeSuccess] = useState(false);
+
+  const handlePincodeLookup = async (pin) => {
+    const clean = String(pin || "").replace(/\D/g, "").slice(0, 6);
+    if (clean.length === 6) {
+      setIsPincodeLoading(true);
+      setPincodeSuccess(false);
+      try {
+        const res = await lookupPincode(clean);
+        if (res.success) {
+          setFormData((prev) => ({
+            ...prev,
+            pincode: clean,
+            city: res.city || prev.city,
+            state: res.state || prev.state,
+          }));
+          setPincodeSuccess(true);
+          setTimeout(() => setPincodeSuccess(false), 3500);
+        }
+      } finally {
+        setIsPincodeLoading(false);
+      }
+    }
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     setError("");
+
+    if (name === "pincode") {
+      const clean = value.replace(/\D/g, "").slice(0, 6);
+      if (clean.length === 6) {
+        handlePincodeLookup(clean);
+      }
+    }
   };
 
   // Step 1 Submission: Partial Save
@@ -309,18 +347,19 @@ export default function UpgradeExhibitorPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Vendor Category</label>
-                  <select
+                  <Select
+                    label="Vendor Category"
                     name="vendor_category"
                     value={formData.vendor_category}
                     onChange={handleChange}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-emerald-500 focus:outline-none transition"
+                    placeholder="Select vendor category"
+                    triggerClassName="bg-slate-50 border-slate-200/90 focus:border-emerald-500 focus:bg-white rounded-xl h-[38px] text-xs font-semibold"
                   >
-                    <option value="Food & Beverage">Food & Beverage</option>
-                    <option value="Handicrafts & Apparel">Handicrafts & Apparel</option>
-                    <option value="Tech & Electronics">Tech & Electronics</option>
-                    <option value="Sponsor / Corporate">Sponsor / Corporate</option>
-                  </select>
+                    <SelectItem value="Food & Beverage">Food & Beverage</SelectItem>
+                    <SelectItem value="Handicrafts & Apparel">Handicrafts & Apparel</SelectItem>
+                    <SelectItem value="Tech & Electronics">Tech & Electronics</SelectItem>
+                    <SelectItem value="Sponsor / Corporate">Sponsor / Corporate</SelectItem>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Contact Mobile Number</label>
@@ -375,6 +414,44 @@ export default function UpgradeExhibitorPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Pincode (First for automatic city/state lookup) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">Pincode</label>
+                    {isPincodeLoading && (
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Fetching...
+                      </span>
+                    )}
+                    {pincodeSuccess && (
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        Auto-filled
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="pincode"
+                      maxLength={6}
+                      value={formData.pincode}
+                      onChange={handleChange}
+                      placeholder="600001"
+                      className="w-full p-2.5 pr-8 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-emerald-500 focus:outline-none transition"
+                    />
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                      {isPincodeLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                      ) : (
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. City */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">City</label>
                   <input
@@ -386,6 +463,8 @@ export default function UpgradeExhibitorPage() {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-emerald-500 focus:outline-none transition"
                   />
                 </div>
+
+                {/* 3. State */}
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">State</label>
                   <input
@@ -394,17 +473,6 @@ export default function UpgradeExhibitorPage() {
                     value={formData.state}
                     onChange={handleChange}
                     placeholder="Tamil Nadu"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-emerald-500 focus:outline-none transition"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Pincode</label>
-                  <input
-                    type="text"
-                    name="pincode"
-                    value={formData.pincode}
-                    onChange={handleChange}
-                    placeholder="600001"
                     className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-emerald-500 focus:outline-none transition"
                   />
                 </div>

@@ -6,6 +6,7 @@ import {
   deleteFeedback,
   getApprovedEvents
 } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 import {
   Plus,
   Search,
@@ -374,22 +375,17 @@ export default function FeedbackModule() {
             <div className="grid grid-cols-1 gap-10">
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-600  tracking-widest mb-3 ml-1">Event Reference <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <select
-                      className={`w-full bg-gray-50 border ${formError ? "border-red-500 ring-1 ring-red-500" : "border-gray-200"} rounded-2xl px-6 py-4 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none cursor-pointer font-medium text-gray-700`}
-                      value={eventId}
-                      onChange={e => { setEventId(e.target.value); setFormError(""); }}
-                    >
-                      <option value="">Select Target Event</option>
-                      {events.map(ev => (
-                        <option key={ev.id} value={ev.id}>{ev.event_name}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                      <ChevronDown size={20} />
-                    </div>
-                  </div>
+                  <Select
+                    label="Event Reference *"
+                    value={eventId}
+                    onValueChange={(val) => { setEventId(val); setFormError(""); }}
+                    placeholder="Select Target Event"
+                    triggerClassName={`w-full bg-gray-50 rounded-2xl h-14 text-sm font-medium ${formError ? "border-red-500 ring-1 ring-red-500" : "border-gray-200"}`}
+                  >
+                    {events.map((ev) => (
+                      <SelectItem key={ev.id} value={String(ev.id)}>{ev.event_name}</SelectItem>
+                    ))}
+                  </Select>
                   {formError && (
                     <p className="text-red-500 text-xs font-bold mt-2 ml-2 flex items-center gap-1.5 animate-pulse">
                       <AlertCircle size={14} />

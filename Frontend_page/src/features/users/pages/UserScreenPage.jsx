@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const roles = ["Event Manager", "Super Admin"];
 const users = ["John Smith", "Jane Doe", "Alice Johnson", "Bob Williams", "Carol White"];
@@ -66,66 +67,45 @@ export default function UserWiseScreenMapping() {
           <h2 className="text-blue-600 font-semibold text-lg mb-4">User Details</h2>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Role Name</label>
-            <div className="relative">
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-500 appearance-none bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-              >
-                <option value="">Role Name</option>
-                {roles.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </div>
+            <Select
+              label="Role Name"
+              value={selectedRole}
+              onValueChange={(val) => setSelectedRole(val)}
+              placeholder="Select Role"
+              triggerClassName="w-full border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 bg-white h-9 focus:ring-1 focus:ring-blue-500"
+            >
+              {roles.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </Select>
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">User Name</label>
-            <div className="relative">
-              <select
-                value={selectedUser}
-                onChange={(e) => setSelectedUser(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-500 appearance-none bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-              >
-                <option value="">User Name</option>
-                {users.map((u) => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </div>
+            <Select
+              label="User Name"
+              value={selectedUser}
+              onValueChange={(val) => setSelectedUser(val)}
+              placeholder="Select User"
+              triggerClassName="w-full border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 bg-white h-9 focus:ring-1 focus:ring-blue-500"
+            >
+              {users.map((u) => (
+                <SelectItem key={u} value={u}>{u}</SelectItem>
+              ))}
+            </Select>
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Module Name</label>
-            <div className="relative">
-              <select
-                value={selectedModule}
-                onChange={(e) => setSelectedModule(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-gray-500 appearance-none bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
-              >
-                <option value="">Module Name</option>
-                {modules.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </div>
+            <Select
+              label="Module Name"
+              value={selectedModule}
+              onValueChange={(val) => setSelectedModule(val)}
+              placeholder="Select Module"
+              triggerClassName="w-full border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 bg-white h-9 focus:ring-1 focus:ring-blue-500"
+            >
+              {modules.map((m) => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+            </Select>
           </div>
 
         </div>

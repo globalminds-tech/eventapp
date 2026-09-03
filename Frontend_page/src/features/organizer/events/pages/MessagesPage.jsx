@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getMessageGreetings, getMessagesByEventId, createMessage, deleteMessage, uploadImage } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 
 
@@ -451,21 +452,15 @@ function Page2() {
 
             {/* Message Group */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Message Group <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <select value={messageGroup} onChange={(e) => setMessageGroup(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-blue-300">
-                  <option value="">Message Group</option>
-                  {MESSAGE_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                  <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+              <Select
+                label="Message Group *"
+                value={messageGroup}
+                onValueChange={(val) => setMessageGroup(val)}
+                placeholder="Message Group"
+                triggerClassName="w-full border-slate-200 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 h-10"
+              >
+                {MESSAGE_GROUPS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+              </Select>
             </div>
 
             {/* Topics */}
