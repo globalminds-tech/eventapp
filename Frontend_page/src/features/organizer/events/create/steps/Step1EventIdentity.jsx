@@ -4,6 +4,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
 import { get_Venues_details, getVenueDetails, getAdminCategories, createVenue } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, isReadOnly, isEditingAllowed }) => {
   const [venues, setVenues] = useState([]);
@@ -614,16 +615,19 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
         {/* Recurring Frequency */}
         {formData.eventDetails?.eventType === "Recurring" && (
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Frequency</label>
-            <select name="occurrence" value={formData.eventDetails?.occurrence || ""}
+            <Select
+              label="Frequency"
+              name="occurrence"
+              value={formData.eventDetails?.occurrence || ""}
               onChange={handleChange}
-              className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 text-sm outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer">
-              <option value="">Select Frequency</option>
-              <option value="Daily">Daily</option>
-              <option value="Weekly">Weekly</option>
-              <option value="Monthly">Monthly</option>
-              <option value="Yearly">Yearly</option>
-            </select>
+              placeholder="Select Frequency"
+              triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-10 text-sm focus:ring-cyan-500"
+            >
+              <SelectItem value="Daily">Daily</SelectItem>
+              <SelectItem value="Weekly">Weekly</SelectItem>
+              <SelectItem value="Monthly">Monthly</SelectItem>
+              <SelectItem value="Yearly">Yearly</SelectItem>
+            </Select>
           </div>
         )}
 

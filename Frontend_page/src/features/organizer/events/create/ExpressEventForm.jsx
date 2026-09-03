@@ -1,6 +1,7 @@
 import React from "react";
 import { Sparkles, Calendar, MapPin, Ticket, Layers, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export default function ExpressEventForm({ formData, setFormData, onSubmit, isSubmitting }) {
   const details = formData.eventDetails || {};
@@ -57,21 +58,19 @@ export default function ExpressEventForm({ formData, setFormData, onSubmit, isSu
         </div>
 
         <div className="space-y-1">
-          <label className="block text-slate-800 font-bold">
-            Main Category <span className="text-rose-500">*</span>
-          </label>
-          <select
+          <Select
+            label="Main Category"
             name="mainCategory"
             value={details.mainCategory || "Music & Concerts"}
             onChange={handleDetailsChange}
-            className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+            triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-9 text-xs font-semibold text-slate-900 focus:ring-cyan-500"
           >
-            <option value="Music & Concerts">Music & Concerts</option>
-            <option value="Expo & Exhibition">Expo & Exhibition</option>
-            <option value="Tech & Corporate">Tech & Corporate</option>
-            <option value="Food & Cultural">Food & Cultural</option>
-            <option value="Sports & Fitness">Sports & Fitness</option>
-          </select>
+            <SelectItem value="Music & Concerts">Music & Concerts</SelectItem>
+            <SelectItem value="Expo & Exhibition">Expo & Exhibition</SelectItem>
+            <SelectItem value="Tech & Corporate">Tech & Corporate</SelectItem>
+            <SelectItem value="Food & Cultural">Food & Cultural</SelectItem>
+            <SelectItem value="Sports & Fitness">Sports & Fitness</SelectItem>
+          </Select>
         </div>
       </div>
 

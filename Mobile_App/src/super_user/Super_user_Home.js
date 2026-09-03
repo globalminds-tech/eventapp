@@ -36,7 +36,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const DEFAULT_ORGANIZERS_KYC = [
-  { id: "101", name: "Ashok Babu", email: "pashokbabu.38@gmail.com", mobile: "+91 7010085577", company_name: "EventCorp India Ltd", gst_pan: "33ABCDE1234F1Z5", bank_account: "918237465012", ifsc: "HDFC0001234", kyc_status: "PENDING" },
+  { id: "101", name: "Karan Sharma", email: "karan@eventcorp.in", mobile: "+91 9876501234", company_name: "EventCorp India Ltd", gst_pan: "33ABCDE1234F1Z5", bank_account: "918237465012", ifsc: "HDFC0001234", kyc_status: "PENDING" },
   { id: "102", name: "Robert Downey", email: "robert@starkevents.com", mobile: "+91 9876543210", company_name: "Stark Expo LLC", gst_pan: "27AAAAA0000A1Z5", bank_account: "102938475601", ifsc: "ICIC0005678", kyc_status: "VERIFIED" },
 ];
 

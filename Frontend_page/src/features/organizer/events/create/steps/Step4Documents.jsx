@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Upload, X, FileText, Trash2, Check, AlertCircle, Plus, Eye } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const Step4Documents = ({ formData, setFormData }) => {
   const [docType, setDocType] = useState("");
@@ -108,23 +109,21 @@ const Step4Documents = ({ formData, setFormData }) => {
       {/* Input Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1">
-            Document / Permit Type
-          </label>
-          <select
+          <Select
+            label="Document / Permit Type"
             value={docType}
-            onChange={(e) => { setDocType(e.target.value); setDocNumber(""); }}
-            className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 text-xs outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+            onValueChange={(val) => { setDocType(val); setDocNumber(""); }}
+            placeholder="Select Document / Permit"
+            triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-9 text-xs focus:ring-cyan-500"
           >
-            <option value="">Select Document / Permit</option>
-            <option value="Police Permission NOC">Police Permission NOC</option>
-            <option value="Sound License">Sound & Loudspeaker License</option>
-            <option value="Fire & Safety NOC">Fire & Safety Clearance</option>
-            <option value="Municipal Trade License">Municipal Trade License</option>
-            <option value="GST Certificate">Organizer GST Certificate</option>
-            <option value="PAN / Aadhar Card">Organizer PAN / Aadhar Card</option>
-            <option value="Other Permit">Other License / Certificate</option>
-          </select>
+            <SelectItem value="Police Permission NOC">Police Permission NOC</SelectItem>
+            <SelectItem value="Sound License">Sound & Loudspeaker License</SelectItem>
+            <SelectItem value="Fire & Safety NOC">Fire & Safety Clearance</SelectItem>
+            <SelectItem value="Municipal Trade License">Municipal Trade License</SelectItem>
+            <SelectItem value="GST Certificate">Organizer GST Certificate</SelectItem>
+            <SelectItem value="PAN / Aadhar Card">Organizer PAN / Aadhar Card</SelectItem>
+            <SelectItem value="Other Permit">Other License / Certificate</SelectItem>
+          </Select>
         </div>
 
         <div>

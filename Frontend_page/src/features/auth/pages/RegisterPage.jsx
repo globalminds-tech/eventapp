@@ -203,7 +203,7 @@ export default function Register() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
-                  placeholder="Ashok Babu"
+                  placeholder="Enter your full name"
                   className={`w-full px-3.5 py-2.5 bg-slate-50 border ${
                     fieldErrors.name ? "border-orange-500" : "border-slate-200 focus:border-orange-500"
                   } rounded-xl text-xs font-medium focus:bg-white focus:outline-none transition-all`}

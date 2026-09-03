@@ -3,6 +3,7 @@ import { Eye, ChevronLeft, ChevronRight, Search, X, Calendar, Receipt as Receipt
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export const Receipt = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -98,25 +99,27 @@ export const Receipt = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Transaction Type
-            </label>
-            <select className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 text-xs font-semibold">
-              <option>All Transactions</option>
-              <option>Ticket Sales Payout</option>
-              <option>Stall Registration Fee</option>
-            </select>
+            <Select
+              label="Transaction Type"
+              defaultValue="All Transactions"
+              triggerClassName="py-2 px-3 rounded-xl bg-slate-50 border-slate-200/80 text-xs font-semibold h-[38px] focus:ring-sky-500"
+            >
+              <SelectItem value="All Transactions">All Transactions</SelectItem>
+              <SelectItem value="Ticket Sales Payout">Ticket Sales Payout</SelectItem>
+              <SelectItem value="Stall Registration Fee">Stall Registration Fee</SelectItem>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              Event Selection
-            </label>
-            <select className="w-full py-2 px-3 rounded-xl bg-slate-50 border border-slate-200/80 focus:ring-2 focus:ring-sky-500 outline-none text-slate-800 text-xs font-semibold">
-              <option>All Events</option>
-              <option>MRC Grand Music Fest 2026</option>
-              <option>Valluvar Kottam Craft Expo</option>
-            </select>
+            <Select
+              label="Event Selection"
+              defaultValue="All Events"
+              triggerClassName="py-2 px-3 rounded-xl bg-slate-50 border-slate-200/80 text-xs font-semibold h-[38px] focus:ring-sky-500"
+            >
+              <SelectItem value="All Events">All Events</SelectItem>
+              <SelectItem value="MRC Grand Music Fest 2026">MRC Grand Music Fest 2026</SelectItem>
+              <SelectItem value="Valluvar Kottam Craft Expo">Valluvar Kottam Craft Expo</SelectItem>
+            </Select>
           </div>
         </div>
       </Card>

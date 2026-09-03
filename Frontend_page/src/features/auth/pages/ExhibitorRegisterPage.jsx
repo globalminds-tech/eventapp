@@ -5,6 +5,7 @@ import { setUser } from "@/app/store/userSlice";
 import { Check, ArrowRight, ArrowLeft, Shield, Store, Landmark, CheckCircle2, AlertCircle, Eye, EyeOff, X } from "lucide-react";
 import { registerExhibitor, sendOtp, verifyOtp, getUserProfile } from "@/Services/api";
 import BrandLogo from "@/components/ui/BrandLogo";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export default function ExhibitorRegister() {
   const navigate = useNavigate();
@@ -504,7 +505,7 @@ export default function ExhibitorRegister() {
                   <input
                     type="text"
                     name="company_name"
-                    placeholder="Ashok Gourmet Stalls"
+                    placeholder="Acme Gourmet Stalls"
                     value={formData.company_name}
                     onChange={handleChange}
                     className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
@@ -512,19 +513,20 @@ export default function ExhibitorRegister() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Vendor Category</label>
-                  <select
+                  <Select
+                    label="Vendor Category"
                     name="vendor_category"
                     value={formData.vendor_category}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-semibold outline-none transition-colors"
+                    placeholder="Select vendor category"
+                    triggerClassName="bg-slate-50 border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl h-[42px]"
                   >
-                    <option value="Food & Beverage">Food & Beverage (F&B)</option>
-                    <option value="Tech & Hardware">Tech & Hardware Expo</option>
-                    <option value="Apparel & Fashion">Apparel & Fashion</option>
-                    <option value="Crafts & Merchandise">Crafts & Merchandise</option>
-                    <option value="Services & Media">Services & Media</option>
-                  </select>
+                    <SelectItem value="Food & Beverage">Food & Beverage (F&B)</SelectItem>
+                    <SelectItem value="Tech & Hardware">Tech & Hardware Expo</SelectItem>
+                    <SelectItem value="Apparel & Fashion">Apparel & Fashion</SelectItem>
+                    <SelectItem value="Crafts & Merchandise">Crafts & Merchandise</SelectItem>
+                    <SelectItem value="Services & Media">Services & Media</SelectItem>
+                  </Select>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -590,7 +592,7 @@ export default function ExhibitorRegister() {
                   <input
                     type="url"
                     name="website_url"
-                    placeholder="https://ashokstalls.com"
+                    placeholder="https://yourbrand.com"
                     value={formData.website_url}
                     onChange={handleChange}
                     className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
@@ -607,7 +609,7 @@ export default function ExhibitorRegister() {
                   <input
                     type="text"
                     name="account_holder"
-                    placeholder="Ashok Gourmet Stalls Ltd"
+                    placeholder="Acme Brand Stalls Ltd"
                     value={formData.account_holder}
                     onChange={handleChange}
                     className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
@@ -655,7 +657,7 @@ export default function ExhibitorRegister() {
                   <input
                     type="text"
                     name="upi_id"
-                    placeholder="ashokstalls@icici"
+                    placeholder="exhibitor@upi"
                     value={formData.upi_id}
                     onChange={handleChange}
                     className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"

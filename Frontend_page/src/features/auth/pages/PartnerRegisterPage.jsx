@@ -6,6 +6,7 @@ import { useDispatch } from "react-redux";
 import { setUser } from "@/app/store/userSlice";
 import { setCredentials } from "@/app/store/authSlice";
 import BrandLogo from "@/components/ui/BrandLogo";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export default function PartnerRegisterPage() {
   const navigate = useNavigate();
@@ -344,33 +345,35 @@ export default function PartnerRegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {partnerRole === "organizer" ? (
                   <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Business Entity Type</label>
-                    <select
+                    <Select
+                      label="Business Entity Type"
                       name="business_type"
                       value={formData.business_type}
                       onChange={handleChange}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                      placeholder="Select entity type"
+                      triggerClassName="bg-slate-50 border-slate-200/90 focus:border-cyan-500 focus:bg-white rounded-xl h-[38px] text-xs font-semibold"
                     >
-                      <option value="Private Limited">Private Limited</option>
-                      <option value="Sole Proprietorship">Sole Proprietorship</option>
-                      <option value="Partnership / LLP">Partnership / LLP</option>
-                      <option value="Individual / Freelancer">Individual / Freelancer</option>
-                    </select>
+                      <SelectItem value="Private Limited">Private Limited</SelectItem>
+                      <SelectItem value="Sole Proprietorship">Sole Proprietorship</SelectItem>
+                      <SelectItem value="Partnership / LLP">Partnership / LLP</SelectItem>
+                      <SelectItem value="Individual / Freelancer">Individual / Freelancer</SelectItem>
+                    </Select>
                   </div>
                 ) : (
                   <div>
-                    <label className="text-xs font-bold text-slate-700 block mb-1">Vendor Category</label>
-                    <select
+                    <Select
+                      label="Vendor Category"
                       name="vendor_category"
                       value={formData.vendor_category}
                       onChange={handleChange}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                      placeholder="Select vendor category"
+                      triggerClassName="bg-slate-50 border-slate-200/90 focus:border-cyan-500 focus:bg-white rounded-xl h-[38px] text-xs font-semibold"
                     >
-                      <option value="Food & Beverage">Food & Beverage</option>
-                      <option value="Handicrafts & Apparel">Handicrafts & Apparel</option>
-                      <option value="Tech & Electronics">Tech & Electronics</option>
-                      <option value="Sponsor / Corporate">Sponsor / Corporate</option>
-                    </select>
+                      <SelectItem value="Food & Beverage">Food & Beverage</SelectItem>
+                      <SelectItem value="Handicrafts & Apparel">Handicrafts & Apparel</SelectItem>
+                      <SelectItem value="Tech & Electronics">Tech & Electronics</SelectItem>
+                      <SelectItem value="Sponsor / Corporate">Sponsor / Corporate</SelectItem>
+                    </Select>
                   </div>
                 )}
 
@@ -497,7 +500,7 @@ export default function PartnerRegisterPage() {
                     name="upi_id"
                     value={formData.upi_id}
                     onChange={handleChange}
-                    placeholder="ashok@hdfcbank"
+                    placeholder="business@upi"
                     className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
                   />
                 </div>

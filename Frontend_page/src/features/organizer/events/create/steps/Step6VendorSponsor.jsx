@@ -22,6 +22,7 @@ import {
   createSponsor
 } from "@/Services/api";
 import { useSelector } from "react-redux";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   // ===========================
@@ -1274,20 +1275,20 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
             <form onSubmit={handleCreateVendor} className="p-8 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Service Category</label>
-                  <select
+                  <Select
+                    label="Service Category"
                     value={newVendor.vendor_type}
-                    onChange={(e) => {
-                      setNewVendor({ ...newVendor, vendor_type: e.target.value });
+                    onValueChange={(val) => {
+                      setNewVendor({ ...newVendor, vendor_type: val });
                       setFieldErrors({ ...fieldErrors, vendor_type: "" });
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.vendor_type ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-bold`}
+                    placeholder="Select Category"
+                    triggerClassName={`rounded-2xl h-11 text-xs font-bold ${fieldErrors.vendor_type ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
                   >
-                    <option value="">Select Category</option>
                     {(vendorTypes.length > 0 ? vendorTypes : demoVendorTypes).map((vt, idx) => (
-                      <option key={idx} value={vt.vendor_type}>{vt.vendor_type}</option>
+                      <SelectItem key={idx} value={vt.vendor_type}>{vt.vendor_type}</SelectItem>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Vendor Name</label>

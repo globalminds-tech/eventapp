@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getComplaints, getApprovedEvents, createComplaint, deleteComplaint } from "@/Services/api";
+import { Select, SelectItem } from "@/components/ui/Select";
 import {
   Trash2,
   Plus,
@@ -247,24 +248,17 @@ export default function ComplaintPage() {
                 {/* Left Column: Event & Explanation */}
                 <div className="space-y-8">
                   <div>
-                    <label className="block text-sm font-bold text-gray-600  tracking-widest mb-3 ml-1">
-                      Event Reference <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        className={`w-full bg-gray-50 border ${errors.event ? "border-red-500 ring-1 ring-red-500" : "border-gray-200"} rounded-2xl px-6 py-4 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all appearance-none cursor-pointer font-medium text-gray-700`}
-                        value={event}
-                        onChange={(e) => { setEvent(e.target.value); setErrors(prev => ({ ...prev, event: "" })); }}
-                      >
-                        <option value="">Select Target Event</option>
-                        {events.map((e) => (
-                          <option key={e.id} value={e.id}>{e.event_name}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                        <ChevronDown size={20} />
-                      </div>
-                    </div>
+                    <Select
+                      label="Event Reference *"
+                      value={event}
+                      onValueChange={(val) => { setEvent(val); setErrors(prev => ({ ...prev, event: "" })); }}
+                      placeholder="Select Target Event"
+                      triggerClassName={`w-full bg-gray-50 rounded-2xl h-14 text-sm font-medium ${errors.event ? "border-red-500 ring-1 ring-red-500" : "border-gray-200"}`}
+                    >
+                      {events.map((e) => (
+                        <SelectItem key={e.id} value={String(e.id)}>{e.event_name}</SelectItem>
+                      ))}
+                    </Select>
                     {errors.event && (
                       <p className="text-red-500 text-xs font-bold mt-2 ml-2 flex items-center gap-1.5 animate-pulse">
                         <AlertCircle size={14} />

@@ -20,6 +20,7 @@ import {
   FileText
 } from "lucide-react";
 import { saveAs } from "file-saver";
+import { lookupPincode } from "@/shared/services/pincodeService";
 import {
   getVenueDetails,
   createVenue,
@@ -1284,11 +1285,22 @@ export const Venuepage = () => {
                       value={form.pin_code}
                       placeholder="Enter 6-digit pin code"
                       maxLength={6}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setForm({ ...form, pin_code: val });
+                      onChange={async (e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        setForm((prev) => ({ ...prev, pin_code: val }));
                         if (fieldErrors.pin_code) {
                           setFieldErrors((prev) => ({ ...prev, pin_code: "" }));
+                        }
+                        if (val.length === 6) {
+                          const res = await lookupPincode(val);
+                          if (res.success) {
+                            setForm((prev) => ({
+                              ...prev,
+                              pin_code: val,
+                              city: res.city || prev.city,
+                              state: res.state || prev.state,
+                            }));
+                          }
                         }
                       }}
                       className={`w-full mt-1 p-2 rounded-lg bg-white border focus:ring-2 focus:ring-sky-500 text-sm outline-none transition ${fieldErrors.pin_code ? "border-red-500" : "border-sky-200"

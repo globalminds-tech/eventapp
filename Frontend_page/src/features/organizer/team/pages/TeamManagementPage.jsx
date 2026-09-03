@@ -6,6 +6,7 @@ import {
   Users, Shield, Plus, Mail, Trash2, CheckCircle, Clock, AlertCircle,
   X, Check, Lock, ChevronRight, UserPlus, Info
 } from "lucide-react";
+import { Select, SelectItem } from "@/components/ui/Select";
 
 export default function TeamManagementPage() {
   const { accessToken } = useSelector((state) => state.auth);
@@ -400,19 +401,19 @@ export default function TeamManagementPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-700">Assign Role *</label>
-                <select
+                <Select
+                  label="Assign Role *"
                   value={inviteRoleId}
-                  onChange={(e) => setInviteRoleId(e.target.value)}
-                  required
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs focus:border-cyan-500 focus:outline-none"
+                  onValueChange={(val) => setInviteRoleId(val)}
+                  placeholder="Select Role"
+                  triggerClassName="rounded-xl border border-slate-200 px-3.5 py-2 text-xs h-9 focus:border-cyan-500"
                 >
                   {roles.map((r) => (
-                    <option key={r.id} value={r.id}>
+                    <SelectItem key={r.id} value={String(r.id)}>
                       {r.name} ({r.is_system_role ? "System" : "Custom"})
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
