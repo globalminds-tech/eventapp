@@ -40,6 +40,10 @@ class UserBookingDetails(db.Model):
     amount_paid: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
 
 class AttendeeCheckinLog(db.Model):
@@ -52,4 +56,6 @@ class AttendeeCheckinLog(db.Model):
     action: Mapped[str] = mapped_column(String(20), nullable=False)  # 'CHECK_IN' or 'CHECK_OUT'
     gate_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     scanner_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())

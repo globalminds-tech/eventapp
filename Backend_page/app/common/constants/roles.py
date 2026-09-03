@@ -1,5 +1,5 @@
 class Roles:
-    SUPER_ADMIN = "superuser"
+    SUPER_ADMIN = "superadmin"
     ORGANIZER = "organizer"
     EXHIBITOR = "exhibitor"
     VISITOR = "visitor"

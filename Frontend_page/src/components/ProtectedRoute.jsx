@@ -40,6 +40,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     }
     if (["superuser", "superadmin", "admin"].includes(currentRole) || ["superuser", "superadmin", "admin"].includes(user?.role?.toLowerCase())) {
       allUserRoles.add("superuser");
+      allUserRoles.add("superadmin");
       allUserRoles.add("organizer");
       allUserRoles.add("exhibitor");
     }

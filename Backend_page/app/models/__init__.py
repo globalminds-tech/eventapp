@@ -20,6 +20,9 @@ from .todo import TodoTask, MessageGreeting, Contact
 
 from .category import CategoryMaster
 from .category_request import CategoryRequest
+from .organization import Organization, OrganizationMember, OrganizationInvitation
+from .rbac import Role, Permission, RolePermission
+from .audit_log import AuditLog
 
 __all__ = [
     'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster', 'CategoryRequest',
@@ -36,5 +39,7 @@ __all__ = [
     'EventVehicleDetail', 'EventVehicleAddon',
     'EventProgram',
     'FeedbackEvent', 'Complaint', 'ChatHistory', 'FAQ',
-    'TodoTask', 'MessageGreeting', 'Contact'
+    'TodoTask', 'MessageGreeting', 'Contact',
+    'Organization', 'OrganizationMember', 'OrganizationInvitation',
+    'Role', 'Permission', 'RolePermission', 'AuditLog'
 ]

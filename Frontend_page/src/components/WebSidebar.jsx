@@ -6,7 +6,7 @@ import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
   ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home, User,
-  ArrowLeftRight
+  ArrowLeftRight, Shield
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -23,6 +23,8 @@ export default function WebSidebar({ role }) {
   const userObj = useSelector((state) => state.user);
   const availableRoles = getUserAvailableRoles(userObj);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
+
+  const activeRoleKey = (role === "superadmin" || role === "superuser") ? "superuser" : role;
 
   // Determine theme styling based on the active role
   const theme = {
@@ -47,7 +49,7 @@ export default function WebSidebar({ role }) {
       hover: "hover:bg-slate-800/80 hover:text-white",
       roleLabel: "Exhibitor",
     }
-  }[role] || {
+  }[activeRoleKey] || {
     active: "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-bold shadow-md shadow-cyan-500/25",
     activeIcon: "text-white",
     inactiveIcon: "text-slate-400 group-hover:text-cyan-400",
@@ -103,14 +105,15 @@ export default function WebSidebar({ role }) {
       { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils },
       { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store },
       { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users },
+      { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield },
       { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt },
       { label: "User Home", path: "/", icon: Home },
     ]
-  }[role] || [];
+  }[activeRoleKey] || [];
 
-  const mainDashboardPath = role === "organizer" 
+  const mainDashboardPath = activeRoleKey === "organizer" 
     ? "/OrganizerHome/Organizerdashboard" 
-    : role === "superuser" 
+    : activeRoleKey === "superuser" 
     ? "/superuser/dashboard" 
     : "/exhibitor/dashboard";
 
