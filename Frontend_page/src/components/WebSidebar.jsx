@@ -5,7 +5,7 @@ import { clearUser } from "@/app/store/userSlice";
 import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
-  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home
+  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home, User
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -184,16 +184,16 @@ export default function WebSidebar({ role }) {
           })}
         </div>
 
-        {/* Footer: Logged User info */}
+        {/* Footer: Logged User Profile Trigger */}
         <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
-          <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-            {/* User Profile Trigger */}
-            <div
-              onClick={() => navigate("/profile")}
-              className="relative cursor-pointer group"
-              title="View Profile & Action Items"
-            >
-              <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md overflow-hidden flex-shrink-0 hover:opacity-90 transition">
+          <div
+            onClick={() => navigate("/profile")}
+            className={`flex items-center gap-3 p-1.5 rounded-xl hover:bg-slate-800/60 transition-all cursor-pointer group ${isCollapsed ? "justify-center" : ""}`}
+            title="Account Overview & Workspaces"
+          >
+            {/* User Profile Avatar */}
+            <div className="relative flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md overflow-hidden group-hover:scale-105 transition-transform">
                 {profileImage ? (
                   <img src={profileImage} alt="User Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -201,32 +201,19 @@ export default function WebSidebar({ role }) {
                 )}
               </div>
               {/* Notification Badge Dot */}
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-amber-400 rounded-full border-2 border-[#0f172a] animate-pulse" title="1 Action Item Pending" />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-[#0f172a] animate-pulse" />
             </div>
 
             {!isCollapsed && (
-              <div
-                onClick={() => navigate("/profile")}
-                className="flex-1 min-w-0 cursor-pointer hover:opacity-80 transition"
-                title="View Profile & Action Items"
-              >
-                <h4 className="text-xs font-semibold text-slate-100 truncate leading-none mb-1">
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-bold text-slate-100 truncate leading-tight group-hover:text-cyan-300 transition-colors">
                   {username}
                 </h4>
-                <p className="text-[10px] font-medium text-slate-400 truncate uppercase tracking-wider">
+                <p className="text-[10px] font-semibold text-slate-400 truncate uppercase tracking-wider mt-0.5">
                   {theme.roleLabel}
                 </p>
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg cursor-pointer transition border-none bg-transparent shrink-0"
-              title="Logout / Sign Out"
-            >
-              <LogOut size={16} />
-            </button>
           </div>
         </div>
 

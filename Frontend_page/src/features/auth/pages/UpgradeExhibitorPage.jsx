@@ -57,6 +57,9 @@ export default function UpgradeExhibitorPage() {
     const sharedKyc = user?.shared_kyc || {};
 
     if (exhProfile?.kyc_status === "VERIFIED") {
+      sessionStorage.setItem("role", "exhibitor");
+      localStorage.setItem("role", "exhibitor");
+      dispatch(setCredentials({ ...reduxAuth, role: "exhibitor" }));
       navigate("/exhibitor/dashboard", { replace: true });
       return;
     }

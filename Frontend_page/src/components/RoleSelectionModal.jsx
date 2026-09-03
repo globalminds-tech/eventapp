@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Store, Ticket, ShieldCheck, ArrowRight, X } from "lucide-react";
+import { Sparkles, Store, Ticket, ShieldCheck, ArrowRight, X, Compass } from "lucide-react";
 
 export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }) {
   const navigate = useNavigate();
@@ -102,6 +102,17 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
               </button>
             );
           })}
+
+          {/* Escape option — skip workspace selection and browse events */}
+          <div className="pt-3 border-t border-slate-800">
+            <button
+              onClick={() => handleSelectRole("/")}
+              className="w-full text-center py-3 rounded-xl text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 font-semibold text-xs transition-all cursor-pointer bg-transparent border border-slate-800/60 hover:border-cyan-500/30 flex items-center justify-center gap-2"
+            >
+              <Compass className="w-4 h-4" />
+              <span>Continue to Event Discovery →</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

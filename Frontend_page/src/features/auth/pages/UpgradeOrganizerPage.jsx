@@ -57,6 +57,9 @@ export default function UpgradeOrganizerPage() {
     const sharedKyc = user?.shared_kyc || {};
 
     if (orgProfile?.kyc_status === "VERIFIED") {
+      sessionStorage.setItem("role", "organizer");
+      localStorage.setItem("role", "organizer");
+      dispatch(setCredentials({ ...reduxAuth, role: "organizer" }));
       navigate("/OrganizerHome", { replace: true });
       return;
     }

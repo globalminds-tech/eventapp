@@ -24,7 +24,9 @@ import {
   Store,
   Camera,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  Flame,
+  Eye
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -35,6 +37,7 @@ import { authApi } from "@/features/auth/api/auth.api";
 import { setUser } from "@/app/store/userSlice";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { categoryApi } from "@/features/catalog/api/category.api";
+import TextType from "@/components/ui/TextType";
 
 /* ─────────────── Brand Logo ─────────────── */
 const BrandLogo = ({ textColor = "#0f172a" }) => (
@@ -129,14 +132,6 @@ const getCityFromLocation = (loc) => {
   if (!loc) return "";
   const cleanLoc = loc.toLowerCase();
 
-  // 1. Check if city name is within parentheses, e.g. "Vishaal Mal (Madurai)"
-  const parenthesized = loc.match(/\(([^)]+)\)/);
-  if (parenthesized && parenthesized[1]) {
-    const pCity = parenthesized[1].trim();
-    return pCity.charAt(0).toUpperCase() + pCity.slice(1).toLowerCase();
-  }
-
-  // 2. Custom checks for known cities
   if (cleanLoc.includes("chennai")) return "Chennai";
   if (cleanLoc.includes("bengaluru") || cleanLoc.includes("bangalore")) return "Bengaluru";
   if (cleanLoc.includes("mumbai")) return "Mumbai";
@@ -150,7 +145,12 @@ const getCityFromLocation = (loc) => {
   if (cleanLoc.includes("raipur")) return "Raipur";
   if (cleanLoc.includes("manipal")) return "Manipal";
 
-  // 3. Fallback split by comma
+  const parenthesized = loc.match(/\(([^)]+)\)/);
+  if (parenthesized && parenthesized[1]) {
+    const pCity = parenthesized[1].trim();
+    return pCity.charAt(0).toUpperCase() + pCity.slice(1).toLowerCase();
+  }
+
   const parts = loc.split(",");
   let lastPart = parts[parts.length - 1]?.trim() || "";
   const upperLast = lastPart.toUpperCase();
@@ -163,7 +163,6 @@ const getCityFromLocation = (loc) => {
 const formatEventsList = (list) => {
   if (!Array.isArray(list) || list.length === 0) return [];
   return list.map((e, index) => {
-    const entryType = e.entry_type || "";
     const passFee = e.pass_fee ?? e.price ?? e.price_inr ?? (e.booking?.priceINR || e.booking?.price_inr || 0);
     const chargeType = String(e.charge_type || e.booking?.chargeType || e.booking?.charge_type || "").toLowerCase();
     const isPaid = (chargeType === "paid") || (Number(passFee) > 0);
@@ -187,6 +186,136 @@ const formatEventsList = (list) => {
   });
 };
 
+/* ─────────────── Reusable Horizontal Carousel Row ─────────────── */
+const EventCarouselSection = ({ title, icon: Icon, badge, events = [], onEventClick, onViewAll }) => {
+  const scrollRef = useRef(null);
+
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const scrollAmount = direction === "left" ? -400 : 400;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  if (!events || events.length === 0) return null;
+
+  return (
+    <div className="mb-12">
+      {/* Section Header */}
+      <div className="flex items-center justify-between mb-4 px-1">
+        <div className="flex items-center gap-2.5">
+          {Icon && (
+            <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold shadow-xs">
+              <Icon size={17} />
+            </div>
+          )}
+          <div>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <span>{title}</span>
+              {badge && (
+                <span className="text-[10px] font-extrabold text-orange-700 bg-orange-100/70 px-2.5 py-0.5 rounded-full border border-orange-200">
+                  {badge}
+                </span>
+              )}
+            </h2>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onViewAll && (
+            <button
+              onClick={onViewAll}
+              className="text-xs font-black text-orange-600 hover:text-orange-700 mr-2 cursor-pointer bg-transparent border-none transition"
+            >
+              See All ›
+            </button>
+          )}
+          <button
+            onClick={() => scroll("left")}
+            className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
+            aria-label="Previous"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={() => scroll("right")}
+            className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
+            aria-label="Next"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Horizontal Carousel Track */}
+      <div
+        ref={scrollRef}
+        className="flex items-stretch gap-4 overflow-x-auto no-scrollbar pb-3 pt-1 px-1 scroll-smooth"
+      >
+        {events.map((ev) => (
+          <div
+            key={ev.id}
+            onClick={() => onEventClick(ev)}
+            className="w-[245px] sm:w-[270px] shrink-0 bg-white/95 rounded-2xl p-3.5 border border-orange-100/90 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
+          >
+            <div>
+              {/* Card Banner */}
+              <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 relative">
+                <img
+                  src={ev.image}
+                  alt={ev.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
+                />
+                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-bold">
+                  {ev.category}
+                </span>
+              </div>
+
+              {/* Likes & Rating */}
+              <div className="flex items-center justify-between mt-2.5 mb-1.5 px-0.5">
+                <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600">
+                  <ThumbsUp size={11} className="stroke-[2.5]" />
+                  <span>{ev.likes}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] font-black text-amber-500">
+                  <Star size={11} className="fill-amber-500 text-amber-500 stroke-[2.5]" />
+                  <span>{ev.rating}</span>
+                </div>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 line-clamp-1 mb-1 px-0.5 group-hover:text-orange-600 transition-colors">
+                {ev.title}
+              </h3>
+
+              {/* Location */}
+              <p className="text-[11px] text-slate-500 font-medium px-0.5 truncate">
+                📍 {getCityFromLocation(ev.fullLocation || ev.location) || "Multiple Cities"}
+              </p>
+            </div>
+
+            {/* Price & Book Button */}
+            <div className="mt-3 pt-2.5 flex items-center justify-between border-t border-slate-100 px-0.5">
+              <span className="text-xs font-black text-slate-900">{ev.price}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEventClick(ev);
+                }}
+                className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 active:scale-95 text-white font-black text-[10px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm shadow-orange-500/25 tracking-wider"
+              >
+                BOOK
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const navigate = useNavigate();
 
@@ -208,62 +337,51 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(initialList.length === 0);
 
   const dispatch = useDispatch();
-  const fileInputRef = useRef(null);
   const reduxAuth = useSelector((state) => state.auth);
   const reduxUser = useSelector((state) => state.user);
   const isAuthenticated = Boolean(reduxAuth?.isAuthenticated || reduxAuth?.accessToken || reduxUser?.id);
   const currentUser = reduxAuth?.user || reduxUser;
 
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
-
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedCity, setSelectedCity] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("Home");
-  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
   const [isCityModalOpen, setIsCityModalOpen] = useState(false);
   const [citySearchQuery, setCitySearchQuery] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("India");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(2);
   const [dbCategories, setDbCategories] = useState([]);
 
-  const handleAvatarFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Recently Viewed events tracking
+  const [recentlyViewed, setRecentlyViewed] = useState([]);
 
-    if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file (JPEG, PNG, WEBP, GIF)");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Image size must be under 5MB");
-      return;
-    }
-
-    setIsAvatarUploading(true);
+  useEffect(() => {
     try {
-      const res = await authApi.uploadAvatar(file);
-      const newUrl = res?.data?.profile_image || res?.url;
-      if (newUrl) {
-        dispatch(setUser({ ...currentUser, profile_image: newUrl }));
+      const stored = localStorage.getItem("bme_recently_viewed");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRecentlyViewed(parsed);
+        }
       }
-    } catch (err) {
-      console.error("Avatar upload failed:", err);
-      alert(err?.response?.data?.detail || err?.message || "Failed to upload profile photo");
-    } finally {
-      setIsAvatarUploading(false);
-    }
+    } catch (e) { }
+  }, []);
+
+  const handleEventClick = (event) => {
+    try {
+      const stored = localStorage.getItem("bme_recently_viewed");
+      let list = stored ? JSON.parse(stored) : [];
+      list = [event, ...list.filter((item) => item.id !== event.id)].slice(0, 10);
+      localStorage.setItem("bme_recently_viewed", JSON.stringify(list));
+      setRecentlyViewed(list);
+    } catch (e) { }
+    navigate(`/event-detail/${event.id}`);
   };
 
   // Animated Category Theme Transition State
   const [prevTheme, setPrevTheme] = useState(categoryThemes.All);
   const [currentTheme, setCurrentTheme] = useState(categoryThemes.All);
   const [opacity, setOpacity] = useState(1);
-
-  const categoryTabs = Object.values(categoryThemes);
 
   useEffect(() => {
     fetchEvents();
@@ -296,20 +414,20 @@ const App = () => {
 
   const handleCategorySwitch = (catKey) => {
     if (catKey === selectedCategory) return;
-    
+
     let targetTheme = { ...categoryThemes.All };
-    
+
     if (catKey !== "All") {
       const dbCat = dbCategories.find(c => c.name === catKey);
       const preTheme = categoryThemes[catKey];
-      
+
       if (dbCat) {
         targetTheme = {
           key: dbCat.name,
           label: dbCat.name,
           background: dbCat.category_image || preTheme?.background || targetTheme.background,
           primaryColor: preTheme?.primaryColor || "#0284c7",
-          accentColor: preTheme?.accentColor || "#f97316",
+          accentColor: "#f97316",
           placeholder: preTheme?.placeholder || `Search "${dbCat.name.toLowerCase()} events..."`,
           icon: preTheme?.icon || Sparkles
         };
@@ -363,17 +481,6 @@ const App = () => {
     }
   };
 
-  const countryOptions = [
-    { code: "India", label: "India", flag: "🇮🇳" },
-    { code: "US", label: "United States", flag: "🇺🇸" },
-    { code: "UAE", label: "UAE", flag: "🇦🇪" },
-    { code: "Singapore", label: "Singapore", flag: "🇸🇬" },
-    { code: "Malaysia", label: "Malaysia", flag: "🇲🇾" },
-    { code: "Thailand", label: "Thailand", flag: "🇹🇭" },
-    { code: "Europe", label: "Europe", flag: "🇪🇺" },
-    { code: "Australia", label: "Australia", flag: "🇦🇺" },
-  ];
-
   const popularCities = [
     { name: "Bengaluru", icon: "🏛️", desc: "Tech Capital" },
     { name: "Chennai", icon: "🏰", desc: "Coastal Hub" },
@@ -385,7 +492,6 @@ const App = () => {
     { name: "Mumbai", icon: "🏙️", desc: "Financial Hub" },
   ];
 
-  // Get unique cities list from events
   const citiesList = Array.from(
     new Set(
       events
@@ -394,6 +500,7 @@ const App = () => {
     )
   ).sort();
 
+  // Categorized event subsets
   const filteredEvents = events.filter((e) => {
     const matchesCategory =
       selectedCategory === "All" ||
@@ -409,18 +516,20 @@ const App = () => {
     return matchesCategory && matchesSearch && matchesCity;
   });
 
-  const handleProfileClick = () => {
-    navigate("/profile");
-  };
+  const popularEvents = [...filteredEvents].sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
+  const trendingEvents = [...filteredEvents].reverse();
+  const musicEvents = filteredEvents.filter(e => e.category.toLowerCase().includes("music") || e.category.toLowerCase().includes("concert"));
+  const expoEvents = filteredEvents.filter(e => e.category.toLowerCase().includes("expo") || e.category.toLowerCase().includes("tech") || e.category.toLowerCase().includes("business"));
+  const comedyEvents = filteredEvents.filter(e => e.category.toLowerCase().includes("comedy") || e.category.toLowerCase().includes("standup"));
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] pb-24 relative select-none">
+    <div className="min-h-screen bg-gradient-to-b from-[#ffffff] via-[#fffbf7] via-35% to-[#fff3e6] text-[#0f172a] pb-24 relative select-none overflow-x-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;700&display=swap');
         
         body {
           font-family: 'Outfit', sans-serif;
-          background-color: #f8fafc;
+          background: linear-gradient(180deg, #ffffff 0%, #fffbf7 30%, #fff6ed 65%, #fff1e0 100%);
           margin: 0;
         }
 
@@ -441,105 +550,38 @@ const App = () => {
           position: relative;
         }
 
-        .overlay-tint {
-          position: absolute;
-          inset: 0;
-          background-color: rgba(255, 255, 255, 0.15);
-          border-bottom-left-radius: 36px;
-          border-bottom-right-radius: 36px;
-          z-index: 2;
-        }
-
         .category-pill {
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 8px 16px;
-          border-radius: 20px;
+          padding: 8px 18px;
+          border-radius: 24px;
           font-size: 13px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.2s ease;
-          border: 1px solid rgba(255, 255, 255, 0.8);
-          background-color: rgba(255, 255, 255, 0.7);
+          border: 1px solid rgba(255, 255, 255, 0.85);
+          background-color: rgba(255, 255, 255, 0.85);
           color: #334155;
           white-space: nowrap;
         }
 
         .category-pill.selected {
-          background-color: #f97316;
+          background: linear-gradient(to right, #f97316, #ea580c);
           color: #ffffff;
           border-color: #f97316;
-          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
-        }
-
-        .grid-card {
-          background-color: #ffffff;
-          border-radius: 16px;
-          padding: 12px;
-          border: 1px solid #f1f5f9;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-          display: flex;
-          flex-direction: column;
-          position: relative;
-        }
-
-        .grid-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
-        }
-
-        .floating-pill-nav {
-          position: fixed;
-          bottom: 24px;
-          left: 50%;
-          transform: translateX(-50%);
-          height: 64px;
-          background-color: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border-radius: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: space-around;
-          padding: 0 16px;
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-          border: 1px solid rgba(241, 245, 249, 0.6);
-          width: 90%;
-          max-width: 500px;
-          z-index: 99;
-        }
-
-        .pill-tab {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 6px 16px;
-          border-radius: 20px;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          color: #64748b;
-          text-decoration: none;
-        }
-
-        .pill-tab.active {
-          background-color: #fff7ed;
-          color: #f97316;
-        }
-
-        .pill-tab-label {
-          font-size: 11px;
-          font-weight: 700;
-          margin-top: 3px;
+          box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
         }
       `}</style>
 
+      {/* Subtle ambient warm sunset glows */}
+      <div className="absolute top-[280px] left-1/2 -translate-x-1/2 w-full max-w-7xl h-[450px] bg-gradient-to-b from-orange-100/40 via-amber-50/30 to-transparent pointer-events-none -z-0 blur-2xl" />
+      <div className="absolute top-[900px] -right-24 w-[500px] h-[500px] bg-orange-200/25 rounded-full pointer-events-none -z-0 blur-3xl" />
+      <div className="absolute top-[1500px] -left-24 w-[500px] h-[500px] bg-amber-200/20 rounded-full pointer-events-none -z-0 blur-3xl" />
+
       {/* CURVED HEADER WITH BG TRANSITION */}
-      <div className="curved-header min-h-[260px] md:min-h-[280px] flex flex-col justify-between relative overflow-hidden">
-        {/* Layer 0: Dynamic transition background layers */}
+      <div className="curved-header min-h-[250px] md:min-h-[270px] flex flex-col justify-between relative overflow-hidden">
+        {/* Layer 0: Dynamic category background layers */}
         <div
           style={{
             position: "absolute",
@@ -563,25 +605,25 @@ const App = () => {
           }}
         />
 
-        {/* Layer 1: Single-color top shade overlay for Row 1 text contrast */}
+        {/* Layer 1: Solid Dark Shade for Row 1 Contrast (NO GLASSMORPHISM) */}
         <div
           style={{
             position: "absolute",
             top: 0,
             left: 0,
             right: 0,
-            height: "95px",
-            background: "linear-gradient(to bottom, rgba(15, 23, 42, 0.72) 0%, rgba(15, 23, 42, 0) 100%)",
+            height: "100px",
+            background: "linear-gradient(to bottom, rgba(9, 13, 22, 0.85) 0%, rgba(9, 13, 22, 0) 100%)",
             zIndex: 1,
           }}
         />
 
-        {/* Layer 2: Header Content Safe Container */}
+        {/* Layer 2: Header Content Container */}
         <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 pt-5 pb-4 flex flex-col justify-between h-full gap-5">
 
-          {/* LINE 1 (TOP BAR): Logo, Location Button, Navigation Links, Notification Bell, Profile */}
+          {/* LINE 1 (TOP BAR): Clean, Solid Surfaces - Zero Glassmorphism */}
           <div className="flex items-center justify-between gap-4 w-full relative z-20">
-            
+
             {/* Left: Brand Logo & Location Modal Button */}
             <div className="flex items-center gap-4 sm:gap-6 shrink-0">
               <div>
@@ -597,7 +639,7 @@ const App = () => {
               </div>
 
               {/* Navigation Links */}
-              <div className="hidden lg:flex items-center gap-5 border-l border-white/20 pl-5">
+              <div className="hidden lg:flex items-center gap-6 border-l border-slate-700/80 pl-6">
                 <button
                   onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                   className="text-xs font-black text-slate-200 hover:text-orange-400 cursor-pointer bg-transparent border-none uppercase tracking-wider transition-colors"
@@ -625,23 +667,23 @@ const App = () => {
               </div>
             </div>
 
-            {/* Right: Notification Bell & Profile Avatar Buttons */}
+            {/* Right: Solid Notification & Profile Elements */}
             <div className="flex items-center gap-3 shrink-0 relative z-30">
-              
-              {/* Notification Bell */}
+
+              {/* Notification Bell - Crisp solid dark button */}
               <div className="relative">
                 <button
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 active:scale-95 transition-all relative"
+                  className="w-10 h-10 rounded-full bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-white flex items-center justify-center cursor-pointer shadow-md hover:scale-105 active:scale-95 transition-all relative"
                   title="Notifications"
                 >
-                  <Bell size={18} />
+                  <Bell size={17} />
                   {unreadNotificationsCount > 0 && (
-                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-amber-400 rounded-full ring-2 ring-slate-900 animate-pulse" />
+                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full ring-2 ring-slate-900 animate-pulse" />
                   )}
                 </button>
 
-                {/* Notifications Dropdown - Fixed Floating Popover (z-[250]) */}
+                {/* Notifications Dropdown */}
                 {isNotificationOpen && (
                   <>
                     <div className="fixed inset-0 z-[240]" onClick={() => setIsNotificationOpen(false)} />
@@ -665,16 +707,8 @@ const App = () => {
                           <div className="w-2 h-2 rounded-full bg-orange-500 mt-1.5 shrink-0" />
                           <div className="space-y-0.5">
                             <p className="text-xs font-black text-slate-900">🎟️ Booking Confirmed!</p>
-                            <p className="text-[11px] text-slate-600 leading-tight">Your pass for Live Music Concert has been generated successfully.</p>
+                            <p className="text-[11px] text-slate-600 leading-tight">Your pass for Live Concert has been generated successfully.</p>
                             <span className="text-[9px] font-bold text-slate-400">10 mins ago</span>
-                          </div>
-                        </div>
-                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
-                          <div className="w-2 h-2 rounded-full bg-cyan-500 mt-1.5 shrink-0" />
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-black text-slate-900">📍 Gate Scanner Entry Open</p>
-                            <p className="text-[11px] text-slate-600 leading-tight">Gates open at 5:00 PM for Tech Expo 2026. Show QR at entry.</p>
-                            <span className="text-[9px] font-bold text-slate-400">1 hour ago</span>
                           </div>
                         </div>
                       </div>
@@ -683,29 +717,20 @@ const App = () => {
                 )}
               </div>
 
-              {/* Hidden file input for profile photo upload */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleAvatarFileChange}
-                accept="image/*"
-                className="hidden"
-              />
-
               {!isAuthenticated ? (
-                /* Unauthenticated Guest: Clean Login Pill Button */
+                /* Unauthenticated Guest: Shiny Orange Button */
                 <button
                   onClick={() => navigate("/login")}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs shadow-md border-none cursor-pointer transition-all uppercase tracking-wider hover:scale-105 active:scale-95"
+                  className="flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 text-white font-black text-xs shadow-md shadow-orange-500/25 border-none cursor-pointer transition-all uppercase tracking-wider hover:scale-105 active:scale-95"
                 >
                   <LogIn size={15} />
                   <span>Login</span>
                 </button>
               ) : (
-                /* Authenticated User: Profile Avatar -> Direct Navigate to /profile */
+                /* Authenticated User Profile Avatar */
                 <button
                   onClick={() => navigate("/profile")}
-                  className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 border-2 border-white/80 text-white flex items-center justify-center cursor-pointer shadow-md hover:scale-105 active:scale-95 transition-all overflow-hidden font-extrabold text-sm"
+                  className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-500 to-amber-600 border-2 border-white text-white flex items-center justify-center cursor-pointer shadow-md hover:scale-105 active:scale-95 transition-all overflow-hidden font-extrabold text-sm"
                   title={currentUser.name || "My Account"}
                 >
                   {currentUser.profile_image ? (
@@ -723,26 +748,46 @@ const App = () => {
             </div>
           </div>
 
-          {/* LINE 2: Clean Pill Search Bar Alone */}
+          {/* LINE 2: Interactive Dynamic Search Bar with TextType */}
           <div className="w-full my-auto py-2">
             <div className="w-full max-w-xl mx-auto">
-              <div className="bg-white/95 backdrop-blur-md p-1.5 pl-4 rounded-full shadow-xl border border-white/80 flex items-center gap-3">
-                <Search size={18} className="text-slate-400 shrink-0" />
-                <input
-                  type="text"
-                  placeholder={currentTheme.placeholder}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-10 border-none outline-none font-bold text-xs md:text-sm text-slate-900 placeholder-slate-400 bg-transparent"
-                />
+              <div className="bg-white p-1.5 pl-4 rounded-full shadow-2xl border border-slate-200/90 flex items-center gap-3 relative">
+                <Search size={18} className="text-orange-500 shrink-0" />
+                <div className="relative w-full flex items-center">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-10 border-none outline-none font-bold text-xs md:text-sm text-slate-900 bg-transparent relative z-10"
+                  />
+                  {!searchQuery && (
+                    <div className="absolute left-0 pointer-events-none text-slate-400 text-xs md:text-sm font-semibold select-none z-0">
+                      <TextType
+                        text={[
+                          'Search "live music concerts & festivals..."',
+                          'Search "standup comedy specials..."',
+                          'Search "tech expos & business summits..."',
+                          'Search "cricket matches & stadium arena..."',
+                          'Search "cultural carnivals & food fairs..."',
+                        ]}
+                        typingSpeed={55}
+                        pauseDuration={2200}
+                        showCursor={true}
+                        cursorCharacter="|"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="p-1 hover:bg-slate-100 rounded-full shrink-0">
+                  <button onClick={() => setSearchQuery("")} className="p-1 hover:bg-slate-100 rounded-full shrink-0 z-10 cursor-pointer border-none bg-transparent">
                     <X size={14} className="text-slate-400" />
                   </button>
                 )}
+
                 <button
                   onClick={() => navigate("/all-events")}
-                  className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs px-5 py-2.5 rounded-full border-none cursor-pointer shadow-md transition-all shrink-0 uppercase tracking-wider"
+                  className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 active:scale-95 text-white font-extrabold text-xs px-5 py-2.5 rounded-full border-none cursor-pointer shadow-md shadow-orange-500/25 transition-all shrink-0 uppercase tracking-wider z-10"
                 >
                   Search
                 </button>
@@ -750,7 +795,7 @@ const App = () => {
             </div>
           </div>
 
-          {/* LINE 3 (CATEGORY PILLS ROW): Perfectly bridges into event sheets below */}
+          {/* LINE 3: Category Pills */}
           <div className="w-full overflow-x-auto no-scrollbar pt-2 pb-1">
             <div className="flex items-center gap-2.5 sm:justify-center">
               <button
@@ -781,12 +826,11 @@ const App = () => {
         </div>
       </div>
 
-      {/* CITY SELECTION MODAL DIALOG (MATCHING BOOKMYSHOW DESIGN) */}
+      {/* ── CITY SELECTION MODAL ── */}
       {isCityModalOpen && (
-        <div className="fixed inset-0 z-[200] bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-[200] bg-slate-900/70 flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full p-6 md:p-8 relative max-h-[90vh] overflow-y-auto no-scrollbar">
-            
-            {/* Close button */}
+
             <button
               onClick={() => setIsCityModalOpen(false)}
               className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center border-none cursor-pointer transition-colors"
@@ -794,28 +838,22 @@ const App = () => {
               <X size={16} />
             </button>
 
-            {/* Title */}
             <div className="text-center mb-6">
-              <h3 className="text-xl font-black text-slate-900">Select Your City to Continue</h3>
-              <p className="text-xs text-slate-500 font-medium mt-1">Discover live concerts, expos, sports &amp; comedy shows in your area</p>
+              <h3 className="text-xl font-black text-slate-900">Select Your City</h3>
+              <p className="text-xs text-slate-500 font-medium mt-1">Discover live shows, concerts, expos & sports in your area</p>
             </div>
 
-            {/* Search Input Bar + Detect Location */}
+            {/* City Search */}
             <div className="relative mb-5">
               <div className="bg-slate-50 rounded-2xl p-2.5 px-4 border border-slate-200 flex items-center gap-3">
                 <Search size={18} className="text-slate-400 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search for your city (e.g. Chennai, Bengaluru...)"
+                  placeholder="Search your city (Chennai, Bengaluru, Mumbai...)"
                   value={citySearchQuery}
                   onChange={(e) => setCitySearchQuery(e.target.value)}
                   className="w-full bg-transparent border-none outline-none font-bold text-sm text-slate-900 placeholder-slate-400"
                 />
-                {citySearchQuery && (
-                  <button onClick={() => setCitySearchQuery("")} className="p-1 hover:bg-slate-200 rounded-full">
-                    <X size={14} className="text-slate-400" />
-                  </button>
-                )}
                 <button
                   onClick={handleDetectLocation}
                   disabled={isDetectingLocation}
@@ -827,25 +865,7 @@ const App = () => {
               </div>
             </div>
 
-            {/* Country Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-4 border-b border-slate-100">
-              {countryOptions.map((c) => (
-                <button
-                  key={c.code}
-                  onClick={() => setSelectedCountry(c.code)}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold cursor-pointer transition-all border shrink-0 ${
-                    selectedCountry === c.code
-                      ? "bg-blue-50 text-blue-600 border-blue-200 shadow-xs"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                  }`}
-                >
-                  <span>{c.flag}</span>
-                  <span>{c.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Popular Cities Section */}
+            {/* Popular Cities */}
             <div className="mb-5">
               <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">Popular Cities</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -858,11 +878,10 @@ const App = () => {
                         setSelectedCity(city.name);
                         setIsCityModalOpen(false);
                       }}
-                      className={`p-3.5 rounded-2xl border text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1 ${
-                        isSelected
-                          ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-100 shadow-sm"
-                          : "bg-slate-50/60 border-slate-100 hover:bg-slate-100/80 hover:border-slate-200"
-                      }`}
+                      className={`p-3.5 rounded-2xl border text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-1 ${isSelected
+                          ? "bg-orange-50 border-orange-500 ring-2 ring-orange-200 shadow-sm"
+                          : "bg-slate-50 border-slate-100 hover:bg-slate-100 hover:border-slate-200"
+                        }`}
                     >
                       <div className="text-2xl mb-0.5">{city.icon}</div>
                       <span className="text-xs font-black text-slate-900">{city.name}</span>
@@ -873,9 +892,9 @@ const App = () => {
               </div>
             </div>
 
-            {/* Other Cities List / Dropdown */}
+            {/* Other Cities */}
             <div className="pt-3 border-t border-slate-100">
-              <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Events in other cities</p>
+              <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Other Cities</p>
               <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto no-scrollbar p-1">
                 {citiesList
                   .filter((c) => !popularCities.some((p) => p.name === c))
@@ -887,11 +906,10 @@ const App = () => {
                         setSelectedCity(city);
                         setIsCityModalOpen(false);
                       }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer transition-colors ${
-                        selectedCity === city
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer transition-colors ${selectedCity === city
                           ? "bg-orange-500 text-white border-orange-500 shadow-sm"
                           : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
-                      }`}
+                        }`}
                     >
                       {city}
                     </button>
@@ -903,166 +921,152 @@ const App = () => {
         </div>
       )}
 
-      {/* EVENTS SHEETS */}
-      <div className="max-w-6xl mx-auto px-5 pt-8">
+      {/* ── MAIN HORIZONTAL EVENT CAROUSELS ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 relative z-10">
 
-        {/* Section title */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-black text-[#0f172a] uppercase tracking-wide">
-            {currentTheme.label} <span className="text-[#f97316]">Events</span>
-          </h2>
-          <button
-            onClick={() => navigate("/all-events")}
-            className="text-xs font-black text-[#f97316] hover:underline bg-transparent border-none cursor-pointer"
-          >
-            See All ›
-          </button>
-        </div>
-
-        {/* Skeleton Loading Feed */}
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="bg-white rounded-2xl p-3 border border-slate-100 space-y-3 shadow-xs">
-                <Skeleton className="w-full aspect-[4/3] rounded-xl" />
-                <Skeleton className="h-4 w-3/4 rounded-lg" />
-                <Skeleton className="h-3 w-1/2 rounded-lg" />
-                <Skeleton className="h-7 w-full rounded-lg" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-            {filteredEvents.length > 0 ? (
-              filteredEvents.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="grid-card cursor-pointer"
-                  onClick={() => navigate(`/event-detail/${ev.id}`)}
-                >
-                  {/* Card Banner */}
-                  <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 relative">
-                    <img
-                      src={ev.image}
-                      alt={ev.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-
-                  {/* Likes and Star Rating */}
-                  <div className="flex items-center justify-between my-2.5 px-0.5">
-                    <div className="flex items-center gap-1 text-[10px] font-black text-green-700">
-                      <ThumbsUp size={11} className="stroke-[3]" />
-                      <span>{ev.likes}</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px] font-black text-amber-600">
-                      <Star size={11} className="fill-amber-600 text-amber-600 stroke-[3]" />
-                      <span>{ev.rating}</span>
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-xs font-black text-[#0f172a] line-clamp-1 mb-1 px-0.5">
-                    {ev.title}
-                  </h3>
-
-                  {/* Category and Venue info */}
-                  <p className="text-[11px] text-[#64748b] font-medium mb-3 px-0.5">
-                    {ev.category} • {getCityFromLocation(ev.fullLocation || ev.location)}
-                  </p>
-
-                  {/* Price and BOOK trigger */}
-                  <div className="mt-auto pt-2 flex items-center justify-between border-t border-slate-100 px-0.5">
-                    <span className="text-[13px] font-black text-[#0f172a]">{ev.price}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/event-detail/${ev.id}`);
-                      }}
-                      className="bg-[#f97316] hover:bg-orange-600 active:scale-95 text-white font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm shadow-orange-500/10"
-                    >
-                      BOOK
-                    </button>
-                  </div>
-
+        {/* Loading Skeletons */}
+        {isLoading && (
+          <div className="space-y-8">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-8 h-8 rounded-xl" />
+              <Skeleton className="h-6 w-48 rounded-lg" />
+            </div>
+            <div className="flex gap-4 overflow-hidden">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className="w-[240px] shrink-0 bg-white rounded-2xl p-3 border border-slate-100 space-y-3">
+                  <Skeleton className="w-full aspect-[4/3] rounded-xl" />
+                  <Skeleton className="h-4 w-3/4 rounded-lg" />
+                  <Skeleton className="h-3 w-1/2 rounded-lg" />
+                  <Skeleton className="h-7 w-full rounded-lg" />
                 </div>
-              ))
-            ) : (
-              <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-slate-100 flex flex-col items-center justify-center gap-3">
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!isLoading && (
+          <>
+            {/* 1. Pick Up Where You Left Off (Recently Viewed) */}
+            {recentlyViewed.length > 0 && (
+              <EventCarouselSection
+                title="Pick Up Where You Left Off"
+                badge="RECENTLY VIEWED"
+                icon={Eye}
+                events={recentlyViewed}
+                onEventClick={handleEventClick}
+              />
+            )}
+
+            {/* 2. Popular & Top Rated Events */}
+            <EventCarouselSection
+              title="Popular & Featured Shows"
+              badge="TOP RATED"
+              icon={Sparkles}
+              events={popularEvents}
+              onEventClick={handleEventClick}
+              onViewAll={() => navigate("/all-events")}
+            />
+
+            {/* 3. Trending This Week */}
+            <EventCarouselSection
+              title="Trending This Week"
+              badge="HIGH DEMAND"
+              icon={Flame}
+              events={trendingEvents}
+              onEventClick={handleEventClick}
+              onViewAll={() => navigate("/all-events")}
+            />
+
+            {/* 4. Live Concerts & Music */}
+            {musicEvents.length > 0 && (
+              <EventCarouselSection
+                title="Live Concerts & Music Festivals"
+                icon={Music}
+                events={musicEvents}
+                onEventClick={handleEventClick}
+                onViewAll={() => navigate("/all-events")}
+              />
+            )}
+
+            {/* 5. Expos & Business Summits */}
+            {expoEvents.length > 0 && (
+              <EventCarouselSection
+                title="Tech Expos, Startups & Trade Summits"
+                icon={Ticket}
+                events={expoEvents}
+                onEventClick={handleEventClick}
+                onViewAll={() => navigate("/all-events")}
+              />
+            )}
+
+            {/* 6. Comedy & Nightlife */}
+            {comedyEvents.length > 0 && (
+              <EventCarouselSection
+                title="Standup Comedy & Laughter Specials"
+                icon={Mic}
+                events={comedyEvents}
+                onEventClick={handleEventClick}
+                onViewAll={() => navigate("/all-events")}
+              />
+            )}
+
+            {filteredEvents.length === 0 && (
+              <div className="py-16 text-center bg-white rounded-3xl border border-slate-100 flex flex-col items-center justify-center gap-3">
                 <Search size={36} className="text-slate-300" />
-                <p className="text-sm font-bold text-slate-500">No events found in this view</p>
+                <p className="text-sm font-bold text-slate-500">No events found matching your criteria.</p>
+                <button
+                  onClick={() => {
+                    setSelectedCategory("All");
+                    setSearchQuery("");
+                    setSelectedCity("");
+                  }}
+                  className="px-4 py-2 bg-orange-50 text-orange-600 font-bold text-xs rounded-xl border border-orange-200 cursor-pointer"
+                >
+                  Reset Filters
+                </button>
               </div>
             )}
-          </div>
+          </>
         )}
 
       </div>
 
       {/* ── WHY BOOK WITH BOOKMYEVENT ── */}
-      <div className="max-w-6xl mx-auto px-5 pt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 relative z-10">
         <div className="text-center mb-8">
-          <span className="text-[11px] font-black uppercase text-orange-500 tracking-wider">✦ TRUSTED EVENT PLATFORM ✦</span>
+          <span className="text-[11px] font-black uppercase text-orange-600 tracking-wider">✦ TRUSTED EVENT PLATFORM ✦</span>
           <h2 className="text-2xl font-black text-slate-900 mt-1">Why Book With BookMyEvent?</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
+          <div className="p-5 bg-white/95 rounded-2xl border border-orange-100/80 shadow-xs space-y-2">
             <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-extrabold text-lg">🎟️</div>
             <h4 className="font-extrabold text-slate-900 text-sm">Instant E-Tickets &amp; QR</h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">Direct entry passes delivered to your email with instant gate QR validation.</p>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Direct entry passes delivered with instant gate QR validation.</p>
           </div>
 
-          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
+          <div className="p-5 bg-white/95 rounded-2xl border border-orange-100/80 shadow-xs space-y-2">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-extrabold text-lg">🛡️</div>
             <h4 className="font-extrabold text-slate-900 text-sm">Verified Organizers</h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">Every organizer undergoes 3-step business GST &amp; KYC verification before publishing.</p>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Every organizer undergoes business GST &amp; KYC verification.</p>
           </div>
 
-          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
+          <div className="p-5 bg-white/95 rounded-2xl border border-orange-100/80 shadow-xs space-y-2">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-extrabold text-lg">💳</div>
-            <h4 className="font-extrabold text-slate-900 text-sm">Razorpay Secure Checkout</h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">Encrypted 256-bit payments supporting UPI, NetBanking, and credit/debit cards.</p>
+            <h4 className="font-extrabold text-slate-900 text-sm">Razorpay Checkout</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Encrypted payments supporting UPI, NetBanking, and credit/debit cards.</p>
           </div>
 
-          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-xs space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-extrabold text-lg">⚡</div>
-            <h4 className="font-extrabold text-slate-900 text-sm">24/7 Gate Scanner Support</h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">Dedicated gate check-in support for seamless event entry experience.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── PARTNER CTA BANNER ── */}
-      <div className="max-w-6xl mx-auto px-5 pt-12">
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-8 shadow-xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-          <div className="space-y-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">ORGANIZER &amp; EXHIBITOR PARTNERSHIPS</span>
-            <h3 className="text-2xl font-black text-white">Host Your Event or Reserve Stall Spaces</h3>
-            <p className="text-xs text-slate-300 font-medium leading-relaxed">
-              Join thousands of verified event creators and booth exhibitors reaching millions of attendees across India.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 md:justify-end">
-            <button
-              onClick={() => navigate("/register/organizer")}
-              className="px-5 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs shadow-md border-none cursor-pointer transition-all"
-            >
-              Host Event As Organizer →
-            </button>
-            <button
-              onClick={() => navigate("/register/exhibitor")}
-              className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-extrabold text-xs cursor-pointer transition-all"
-            >
-              Become An Exhibitor →
-            </button>
+          <div className="p-5 bg-white/95 rounded-2xl border border-orange-100/80 shadow-xs space-y-2">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-extrabold text-lg">⚡</div>
+            <h4 className="font-extrabold text-slate-900 text-sm">Gate Scanner Support</h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">Dedicated gate check-in support for seamless entry.</p>
           </div>
         </div>
       </div>
 
       {/* ── PUBLIC FOOTER ── */}
-      <footer className="max-w-6xl mx-auto px-5 pt-16 border-t border-slate-200 mt-16 text-slate-500 text-xs">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 border-t border-orange-200/50 mt-16 text-slate-500 text-xs relative z-10">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="space-y-1 text-center md:text-left">
             <BrandLogo textColor="#0f172a" />
@@ -1070,16 +1074,16 @@ const App = () => {
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 font-bold text-slate-600">
-            <button onClick={() => navigate("/all-events")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">All Events</button>
-            <button onClick={() => navigate("/Terms")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">Terms of Service</button>
-            <button onClick={() => navigate("/Cancellation")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">Cancellation Policy</button>
-            <button onClick={() => navigate("/Help_Center")} className="hover:text-orange-500 bg-transparent border-none cursor-pointer">Help Center</button>
+            <button onClick={() => navigate("/all-events")} className="hover:text-orange-600 bg-transparent border-none cursor-pointer">All Events</button>
+            <button onClick={() => navigate("/Terms")} className="hover:text-orange-600 bg-transparent border-none cursor-pointer">Terms of Service</button>
+            <button onClick={() => navigate("/Cancellation")} className="hover:text-orange-600 bg-transparent border-none cursor-pointer">Cancellation Policy</button>
+            <button onClick={() => navigate("/Help_Center")} className="hover:text-orange-600 bg-transparent border-none cursor-pointer">Help Center</button>
           </div>
         </div>
 
         <div className="pt-8 mt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-2">
           <span>© 2026 BookMyEvent Technologies Pvt Ltd. All rights reserved.</span>
-          <span>Support Email: <a href="mailto:bookmyevent2026@gmail.com" className="text-orange-500 font-semibold hover:underline">bookmyevent2026@gmail.com</a></span>
+          <span>Support Email: <a href="mailto:bookmyevent2026@gmail.com" className="text-orange-600 font-semibold hover:underline">bookmyevent2026@gmail.com</a></span>
         </div>
       </footer>
     </div>
