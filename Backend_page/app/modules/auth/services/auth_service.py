@@ -60,7 +60,7 @@ class AuthService:
         }
 
     @staticmethod
-    def upgrade_organizer_step1(user_id: int, raw_data: dict) -> dict:
+    def upgrade_organizer_step1(user_id, raw_data: dict) -> dict:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
@@ -71,7 +71,7 @@ class AuthService:
         }
 
     @staticmethod
-    def upgrade_organizer(user_id: int, raw_data: dict) -> dict:
+    def upgrade_organizer(user_id, raw_data: dict) -> dict:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
@@ -89,7 +89,7 @@ class AuthService:
         }
 
     @staticmethod
-    def upgrade_exhibitor_step1(user_id: int, raw_data: dict) -> dict:
+    def upgrade_exhibitor_step1(user_id, raw_data: dict) -> dict:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
@@ -128,7 +128,7 @@ class AuthService:
         }
 
     @staticmethod
-    def upgrade_exhibitor(user_id: int, raw_data: dict) -> dict:
+    def upgrade_exhibitor(user_id, raw_data: dict) -> dict:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
@@ -155,9 +155,12 @@ class AuthService:
         if not check_password_hash(user.password, data.password):
             raise ApiError("Invalid password", 401)
 
-        access_token = generate_access_token(user.id, user.role or "user")
-        refresh_token = generate_refresh_token(user.id, user.role or "user")
         user_full = AuthService.get_current_user(user.id)
+        active_role = user.active_role or user.role or "user"
+        all_roles = user_full.get("roles") or [active_role]
+
+        access_token = generate_access_token(user.id, role=active_role, roles=all_roles)
+        refresh_token = generate_refresh_token(user.id, role=active_role, roles=all_roles)
         return {
             "token": access_token,
             "access_token": access_token,
@@ -167,7 +170,7 @@ class AuthService:
         }
 
     @staticmethod
-    def get_current_user(user_id: int) -> dict:
+    def get_current_user(user_id) -> dict:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
@@ -177,8 +180,8 @@ class AuthService:
         org_profile = AuthRepository.get_organizer_profile_by_user_id(user.id)
         exh_profile = AuthRepository.get_exhibitor_profile_by_user_id(user.id)
 
-        roles = ["user"]
-        if user.role and user.role.lower() in ["superuser", "superadmin", "admin"]:
+        roles = list(user.roles) if user.roles else ["user"]
+        if user.role and user.role.lower() not in roles:
             roles.append(user.role.lower())
         if org_profile and org_profile.kyc_status in ["VERIFIED", "IN_PROGRESS"]:
             if "organizer" not in roles:
@@ -187,7 +190,16 @@ class AuthService:
             if "exhibitor" not in roles:
                 roles.append("exhibitor")
 
+        # Sync back to DB if new profile roles were discovered
+        if set(roles) != set(user.roles or []):
+            user.roles = roles
+            from app.extensions.database import db
+            db.session.commit()
+
+        active_role = user.active_role or user.role or "user"
         user_dict["roles"] = roles
+        user_dict["active_role"] = active_role
+        user_dict["role"] = active_role
         user_dict["profiles"] = {
             "organizer": org_profile.to_dict() if org_profile else None,
             "exhibitor": exh_profile.to_dict() if exh_profile else None,
@@ -214,6 +226,35 @@ class AuthService:
         user_dict["onboarding_completed"] = has_bank
 
         return user_dict
+
+    @staticmethod
+    def switch_active_role(user_id, target_role: str) -> dict:
+        user = AuthRepository.get_user_by_id(user_id)
+        if not user:
+            raise ApiError("User not found", 404)
+        
+        user_full = AuthService.get_current_user(user_id)
+        allowed_roles = [r.lower() for r in (user_full.get("roles") or ["user"])]
+        
+        target_role_clean = target_role.strip().lower()
+        if target_role_clean not in allowed_roles and "superuser" not in allowed_roles and "admin" not in allowed_roles:
+            raise ApiError(f"You do not possess the '{target_role}' role yet. Please onboard first.", 403)
+        
+        user.active_role = target_role_clean
+        from app.extensions.database import db
+        db.session.commit()
+
+        new_access_token = generate_access_token(user.id, role=target_role_clean, roles=allowed_roles)
+        user_full["active_role"] = target_role_clean
+        user_full["role"] = target_role_clean
+
+        return {
+            "token": new_access_token,
+            "access_token": new_access_token,
+            "active_role": target_role_clean,
+            "user": user_full,
+            "message": f"Switched to {target_role_clean} workspace successfully"
+        }
 
     @staticmethod
     def send_otp(raw_data: dict) -> dict:

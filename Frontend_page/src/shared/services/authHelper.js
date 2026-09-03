@@ -1,5 +1,6 @@
 import { logout } from "@/app/store/authSlice";
 import { clearUser } from "@/app/store/userSlice";
+import axiosClient from "@/shared/api/axiosClient";
 
 /**
  * Universal Unified Logout Service
@@ -111,5 +112,32 @@ export const hasProfile = (user, roleName) => {
     return Boolean(user.profiles?.exhibitor || user.exhibitor_profile || (user.role || "").toLowerCase() === "exhibitor");
   }
   return true;
+};
+
+/**
+ * Switches the active workspace role across LocalStorage, SessionStorage, Redux, and Backend API
+ */
+export const switchWorkspaceRole = async (targetRole, dispatch, navigate) => {
+  const cleanRole = (targetRole || "user").toLowerCase();
+  sessionStorage.setItem("role", cleanRole);
+  localStorage.setItem("role", cleanRole);
+  sessionStorage.setItem("userRole", cleanRole);
+  localStorage.setItem("userRole", cleanRole);
+
+  try {
+    const res = await axiosClient.post("/api/v1/auth/switch-role", { role: cleanRole });
+    const newToken = res.data?.data?.token || res.data?.data?.access_token;
+    if (newToken) {
+      sessionStorage.setItem("token", newToken);
+      localStorage.setItem("token", newToken);
+      sessionStorage.setItem("accessToken", newToken);
+      localStorage.setItem("accessToken", newToken);
+    }
+  } catch (err) {
+    console.warn("Server-side role switch note:", err?.message || err);
+  }
+
+  const destination = getRedirectPathForUser(cleanRole);
+  if (navigate) navigate(destination);
 };
 

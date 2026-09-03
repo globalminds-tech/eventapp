@@ -1,16 +1,22 @@
+import uuid as uuid_pkg
 from typing import Optional
-from sqlalchemy import String, Text
+from datetime import datetime
+from sqlalchemy import String, Text, Boolean, DateTime, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
+
 
 class User(db.Model):
     __tablename__ = 'users'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
     name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    roles: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(50)), default=lambda: ["user"], nullable=True)
+    active_role: Mapped[Optional[str]] = mapped_column(String(50), default="user", nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), default="ACTIVE")
     mobile: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -19,28 +25,25 @@ class User(db.Model):
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     profile_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     organization_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    email_verified: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
 
-    def __init__(self, name: Optional[str] = None, email: str = "", password: str = "", role: Optional[str] = None, status: Optional[str] = "ACTIVE", mobile: Optional[str] = None, address: Optional[str] = None, country: Optional[str] = None, state: Optional[str] = None, city: Optional[str] = None, profile_image: Optional[str] = None, organization_name: Optional[str] = None, **kwargs):
-        super().__init__(**kwargs)
-        self.name = name
-        self.email = email
-        self.password = password
-        self.role = role
-        self.status = status
-        self.mobile = mobile
-        self.address = address
-        self.country = country
-        self.state = state
-        self.city = city
-        self.profile_image = profile_image
-        self.organization_name = organization_name
+    # Multi-currency & Locale support
+    locale: Mapped[Optional[str]] = mapped_column(String(10), default='en_IN')
+    currency_preference: Mapped[Optional[str]] = mapped_column(String(3), default='INR')
+    timezone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
     def to_dict(self):
+        user_roles = list(self.roles) if self.roles else [self.role or "user"]
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "email": self.email,
-            "role": self.role,
+            "role": self.active_role or self.role or "user",
+            "active_role": self.active_role or self.role or "user",
+            "roles": user_roles,
             "status": self.status,
             "mobile": self.mobile,
             "address": self.address,
@@ -48,5 +51,9 @@ class User(db.Model):
             "state": self.state,
             "city": self.city,
             "profile_image": self.profile_image,
-            "organization_name": self.organization_name
+            "organization_name": self.organization_name,
+            "email_verified": self.email_verified,
+            "locale": self.locale,
+            "currency_preference": self.currency_preference,
+            "timezone": self.timezone,
         }

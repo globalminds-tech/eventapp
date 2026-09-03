@@ -4,11 +4,11 @@ from sqlalchemy import select
 
 class OrganizerRepository:
     @staticmethod
-    def get_organizer_by_id(user_id: int) -> User:
+    def get_organizer_by_id(user_id) -> User:
         return db.session.get(User, user_id)
 
     @staticmethod
-    def update_organizer_kyc(user_id: int, kyc_data: dict) -> User:
+    def update_organizer_kyc(user_id, kyc_data: dict) -> User:
         user = db.session.get(User, user_id)
         if user:
             user.company_name = kyc_data.get("company_name", user.company_name)

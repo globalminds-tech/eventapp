@@ -8,7 +8,7 @@ exhibitor_router = APIRouter(prefix="/api/v1/exhibitors", tags=["Exhibitors"])
 @exhibitor_router.post("/book-stall", status_code=201)
 async def book_stall(
     request: Request,
-    event_id: int = Form(...),
+    event_id: str = Form(...),
     email: str = Form(...),
     firstName: Optional[str] = Form(None),
     lastName: Optional[str] = Form(None),
@@ -57,13 +57,13 @@ from app.modules.admin.routes.admin_routes import root_admin_router
 
 @root_admin_router.get("/exhibitor/api/my-bookings/{user_id}")
 @root_admin_router.get("/api/v1/exhibitor/my-bookings")
-def get_user_bookings_alias(user_id: Optional[int] = None, request: Request = None):
-    uid = user_id or 1
+def get_user_bookings_alias(user_id: Optional[str] = None, request: Request = None):
+    uid = user_id
     host_url = str(request.base_url) if request else "http://localhost:5001/"
     return ExhibitorController.get_user_bookings(uid, host_url)
 
 @root_admin_router.get("/exhibitor/api/booking/{booking_id}")
-def get_booking_by_id_alias(booking_id: int, request: Request = None):
+def get_booking_by_id_alias(booking_id: str, request: Request = None):
     host_url = str(request.base_url) if request else "http://localhost:5001/"
     return ExhibitorController.get_booking_by_id(booking_id, host_url)
 
@@ -75,7 +75,7 @@ def get_all_exhibitor_applications():
     res = []
     for b, evt_name in rows:
         d = b.to_dict() if hasattr(b, "to_dict") else {
-            "id": b.id, "event_id": b.event_id, "company_name": getattr(b, "company_name", ""),
+            "id": str(b.id), "event_id": str(b.event_id) if b.event_id else None, "company_name": getattr(b, "company_name", ""),
             "email": b.email, "mobile": getattr(b, "mobile", ""), "stall_area": getattr(b, "stall_area", ""),
             "status": getattr(b, "status", "Pending")
         }
@@ -85,7 +85,7 @@ def get_all_exhibitor_applications():
 
 @root_admin_router.put("/superadmin/api/organizer/exhibitor-applications/{application_id}/status")
 @root_admin_router.put("/api/v1/organizer/exhibitor-applications/{application_id}/status")
-async def update_exhibitor_application_status(application_id: int, request: Request):
+async def update_exhibitor_application_status(application_id: str, request: Request):
     from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
     body = await request.json()
     status_val = body.get("status", "Approved")

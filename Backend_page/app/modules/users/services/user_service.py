@@ -14,14 +14,14 @@ except ImportError:
 
 class UserService:
     @staticmethod
-    def get_profile(user_id: int) -> dict:
+    def get_profile(user_id) -> dict:
         user = UserRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
         return user.to_dict()
 
     @staticmethod
-    def update_profile(user_id: int, raw_data: dict) -> dict:
+    def update_profile(user_id, raw_data: dict) -> dict:
         data = UpdateProfileSchema(**raw_data)
         updated_user = UserRepository.update_user_profile(user_id, data.dict(exclude_unset=True))
         if not updated_user:
@@ -45,7 +45,7 @@ class UserService:
             phone=data.phone,
             food_preference=data.food_preference
         )
-        booking_id = booking.id
+        booking_id = str(booking.id)
         ticket_code = booking.ticket_code or UserRepository.generate_ticket_code(data.event_id)
 
         formatted_date = str(event.start_date)
@@ -103,7 +103,7 @@ class UserService:
         }
 
     @staticmethod
-    def validate_qr(code_or_id: str | int) -> dict:
+    def validate_qr(code_or_id: str) -> dict:
         result = UserRepository.get_booking_with_event(code_or_id)
         if not result:
             raise ApiError("Invalid Ticket / Booking not found", 404)
@@ -141,5 +141,5 @@ class UserService:
         }
 
     @staticmethod
-    def get_my_bookings(email: Optional[str] = None, user_id: Optional[int] = None) -> list[dict]:
+    def get_my_bookings(email: Optional[str] = None, user_id: Optional[str] = None) -> list[dict]:
         return UserRepository.get_user_bookings(email=email, user_id=user_id)

@@ -1,13 +1,16 @@
+import uuid as uuid_pkg
 from typing import Optional
-from sqlalchemy import String, Text, Integer, ForeignKey
+from sqlalchemy import String, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
+
 
 class ExhibitorProfile(db.Model):
     __tablename__ = 'exhibitor_profiles'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    user_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
     vendor_category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     gstin: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -26,8 +29,8 @@ class ExhibitorProfile(db.Model):
 
     def to_dict(self):
         return {
-            "id": self.id,
-            "user_id": self.user_id,
+            "id": str(self.id),
+            "user_id": str(self.user_id),
             "company_name": self.company_name,
             "vendor_category": self.vendor_category,
             "gstin": self.gstin,

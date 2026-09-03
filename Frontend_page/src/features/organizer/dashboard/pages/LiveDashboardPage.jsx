@@ -9,22 +9,17 @@ export const LiveDashboard = () => {
   const [events, setEvents] = useState([]);
   const [search, setSearch] = useState("");
 
-  const fallbackLiveEvents = [
-    { event_code: "EVT-25", event_name: "MRC Grand Music Fest 2026", totalScans: 850, presentCount: 780, gateStatus: "Live Now" },
-    { event_code: "EVT-22", event_name: "Valluvar Kottam Craft & Food Expo", totalScans: 1420, presentCount: 1190, gateStatus: "Live Now" },
-    { event_code: "EVT-9", event_name: "Furniture & Home Products Expo", totalScans: 310, presentCount: 280, gateStatus: "Live Now" }
-  ];
-
   const getEvents = async () => {
     try {
       const res = await getevent();
-      if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+      if (res && res.data && Array.isArray(res.data)) {
         setEvents(res.data);
       } else {
-        setEvents(fallbackLiveEvents);
+        setEvents([]);
       }
     } catch (err) {
-      setEvents(fallbackLiveEvents);
+      console.error("Error fetching events:", err);
+      setEvents([]);
     }
   };
 

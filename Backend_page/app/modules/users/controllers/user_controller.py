@@ -2,7 +2,7 @@ from app.modules.users.services.user_service import UserService
 
 class UserController:
     @staticmethod
-    def get_profile(user_id: int):
+    def get_profile(user_id):
         profile = UserService.get_profile(user_id)
         return {
             "success": True,
@@ -10,7 +10,7 @@ class UserController:
         }
 
     @staticmethod
-    def update_profile(user_id: int, raw_data: dict):
+    def update_profile(user_id, raw_data: dict):
         profile = UserService.update_profile(user_id, raw_data)
         return {
             "success": True,
@@ -34,7 +34,7 @@ class UserController:
         }
 
     @staticmethod
-    def get_my_bookings(email: str = None, user_id: int = None):
+    def get_my_bookings(email: str = None, user_id: str = None):
         bookings = UserService.get_my_bookings(email=email, user_id=user_id)
         return {
             "success": True,

@@ -9,7 +9,7 @@ from app.modules.users.repository.user_repository import UserRepository
 class CheckinService:
     @staticmethod
     def checkin_attendee(
-        code_or_id: str | int,
+        code_or_id: str,
         action: str = "CHECK_IN",
         scanner_id: Optional[str] = None,
         gate_name: Optional[str] = None
@@ -29,7 +29,7 @@ class CheckinService:
         return {
             "message": message,
             "action": "CHECK_OUT" if is_checkout else "CHECK_IN",
-            "booking_id": booking.id,
+            "booking_id": str(booking.id),
             "ticket_code": getattr(booking, "ticket_code", str(booking.id)),
             "is_checked_in": getattr(booking, "is_checked_in", True),
             "is_checked_out": getattr(booking, "is_checked_out", False),

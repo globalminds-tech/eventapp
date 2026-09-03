@@ -8,11 +8,11 @@ from app.models.user import User
 
 class UserRepository:
     @staticmethod
-    def get_user_by_id(user_id: int) -> User | None:
+    def get_user_by_id(user_id) -> User | None:
         return db.session.get(User, user_id)
 
     @staticmethod
-    def update_user_profile(user_id: int, data_dict: dict) -> User | None:
+    def update_user_profile(user_id, data_dict: dict) -> User | None:
         user = UserRepository.get_user_by_id(user_id)
         if user:
             for key, value in data_dict.items():
@@ -22,17 +22,18 @@ class UserRepository:
         return user
 
     @staticmethod
-    def get_event_by_id(event_id: int) -> EventDetails | None:
+    def get_event_by_id(event_id) -> EventDetails | None:
         return db.session.get(EventDetails, event_id)
 
     @staticmethod
-    def generate_ticket_code(event_id: int) -> str:
+    def generate_ticket_code(event_id) -> str:
         import uuid
         hex_token = uuid.uuid4().hex[:8].upper()
-        return f"BME-{event_id}-{hex_token}"
+        prefix = str(event_id)[:6]
+        return f"BME-{prefix}-{hex_token}"
 
     @staticmethod
-    def create_booking(event_id: int, name: str, email: str, phone: str, food_preference: str, qr_data: str = "PENDING", user_id: Optional[int] = None) -> UserBookingDetails:
+    def create_booking(event_id, name: str, email: str, phone: str, food_preference: str, qr_data: str = "PENDING", user_id = None) -> UserBookingDetails:
         ticket_code = UserRepository.generate_ticket_code(event_id)
         booking = UserBookingDetails(
             event_id=event_id,
@@ -50,7 +51,7 @@ class UserRepository:
         return booking
 
     @staticmethod
-    def update_qr_data(booking_id: int, qr_text: str) -> UserBookingDetails | None:
+    def update_qr_data(booking_id, qr_text: str) -> UserBookingDetails | None:
         booking = db.session.get(UserBookingDetails, booking_id)
         if booking:
             booking.qr_data = qr_text
@@ -59,17 +60,20 @@ class UserRepository:
         return None
 
     @staticmethod
-    def get_booking_with_event(code_or_id: str | int):
+    def get_booking_with_event(code_or_id: str):
         from sqlalchemy import or_
+        import uuid
         identifier_str = str(code_or_id).strip()
         
         stmt = select(UserBookingDetails, EventDetails).join(
             EventDetails, UserBookingDetails.event_id == EventDetails.id
         )
         
-        if identifier_str.isdigit():
-            stmt = stmt.where(or_(UserBookingDetails.ticket_code == identifier_str, UserBookingDetails.id == int(identifier_str)))
-        else:
+        # Check if identifier is valid UUID
+        try:
+            parsed_uuid = uuid.UUID(identifier_str)
+            stmt = stmt.where(or_(UserBookingDetails.ticket_code == identifier_str, UserBookingDetails.id == parsed_uuid))
+        except (ValueError, AttributeError):
             stmt = stmt.where(UserBookingDetails.ticket_code == identifier_str)
             
         return db.session.execute(stmt).first()
@@ -202,9 +206,9 @@ class UserRepository:
                     pass
 
             booking_list.append({
-                "id": booking.id,
-                "booking_id": booking.id,
-                "event_id": event.id,
+                "id": str(booking.id),
+                "booking_id": str(booking.id),
+                "event_id": str(event.id),
                 "event_name": event.event_name,
                 "eventName": event.event_name,
                 "category": event.category or "Live Event",

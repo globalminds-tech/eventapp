@@ -89,6 +89,16 @@ def login(payload: LoginSchema, response: Response):
     _attach_refresh_cookie(response, res)
     return res
 
+@auth_router.post("/switch-role")
+@root_auth_router.post("/auth/switch-role")
+async def switch_role(request: Request, response: Response, current_user: dict = Depends(get_current_user)):
+    body = await request.json()
+    target_role = body.get("role") or body.get("target_role") or "user"
+    user_id = current_user.get("user_id") or current_user.get("id")
+    res = AuthController.switch_role(user_id, target_role)
+    _attach_refresh_cookie(response, res)
+    return res
+
 @auth_router.post("/refresh")
 @legacy_auth_router.post("/refresh")
 @root_auth_router.post("/refresh")
@@ -107,8 +117,10 @@ def refresh_token(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        new_access_token = generate_access_token(user.id, user.role)
-        new_refresh_token = generate_refresh_token(user.id, user.role)
+        user_roles = list(user.roles) if user.roles else [user.role or "user"]
+        active_role = user.active_role or user.role or "user"
+        new_access_token = generate_access_token(user.id, role=active_role, roles=user_roles)
+        new_refresh_token = generate_refresh_token(user.id, role=active_role, roles=user_roles)
 
         response.set_cookie(
             key="refresh_token",

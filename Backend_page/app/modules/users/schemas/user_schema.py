@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 class BookEventSchema(BaseModel):
-    event_id: int
-    user_id: Optional[int] = None
+    event_id: str
+    user_id: Optional[str] = None
     name: str = Field(..., min_length=1)
     email: str
     phone: Optional[str] = None

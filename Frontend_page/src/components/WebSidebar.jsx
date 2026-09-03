@@ -5,11 +5,12 @@ import { clearUser } from "@/app/store/userSlice";
 import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
-  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home, User
+  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home, User,
+  ArrowLeftRight
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
-import { performLogout } from "@/shared/services/authHelper";
+import { performLogout, getUserAvailableRoles, switchWorkspaceRole } from "@/shared/services/authHelper";
 
 export default function WebSidebar({ role }) {
   const navigate = useNavigate();
@@ -19,6 +20,9 @@ export default function WebSidebar({ role }) {
 
   const username = useSelector((state) => state.user.name) || sessionStorage.getItem("userName") || "User";
   const profileImage = useSelector((state) => state.user.profile_image) || sessionStorage.getItem("profile_image");
+  const userObj = useSelector((state) => state.user);
+  const availableRoles = getUserAvailableRoles(userObj);
+  const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
 
   // Determine theme styling based on the active role
   const theme = {
@@ -185,7 +189,7 @@ export default function WebSidebar({ role }) {
         </div>
 
         {/* Footer: Logged User Profile Trigger */}
-        <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
+        <div className="relative p-3 border-t border-slate-800/80 bg-slate-950/40">
           <div
             onClick={() => navigate("/profile")}
             className={`flex items-center gap-3 p-1.5 rounded-xl hover:bg-slate-800/60 transition-all cursor-pointer group ${isCollapsed ? "justify-center" : ""}`}
@@ -209,12 +213,68 @@ export default function WebSidebar({ role }) {
                 <h4 className="text-xs font-bold text-slate-100 truncate leading-tight group-hover:text-cyan-300 transition-colors">
                   {username}
                 </h4>
-                <p className="text-[10px] font-semibold text-slate-400 truncate uppercase tracking-wider mt-0.5">
-                  {theme.roleLabel}
-                </p>
+                <div className="flex items-center justify-between gap-1 mt-0.5">
+                  <p className="text-[10px] font-semibold text-slate-400 truncate uppercase tracking-wider">
+                    {theme.roleLabel}
+                  </p>
+                  {availableRoles.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowRoleSwitcher(!showRoleSwitcher);
+                      }}
+                      className="text-[10px] flex items-center gap-1 text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded-md hover:bg-cyan-900/60 transition"
+                      title="Switch Workspace Role"
+                    >
+                      <ArrowLeftRight size={10} />
+                      <span>Switch</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
+
+          {/* Quick Role Switcher Dropdown */}
+          {showRoleSwitcher && availableRoles.length > 1 && (
+            <div className="absolute bottom-16 left-3 right-3 bg-slate-900 border border-slate-700/80 rounded-xl p-2 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <div className="text-[10px] font-bold text-slate-400 uppercase px-2 py-1 tracking-wider border-b border-slate-800 mb-1">
+                Switch Workspace
+              </div>
+              <div className="space-y-1">
+                {availableRoles.map((r) => {
+                  const roleKey = r.toLowerCase();
+                  const roleDisplay = {
+                    superuser: "🛡️ Super Admin",
+                    admin: "🛡️ Admin",
+                    organizer: "🎪 Organizer",
+                    exhibitor: "🏢 Exhibitor",
+                    user: "🎟️ Attendee"
+                  }[roleKey] || `👤 ${r}`;
+
+                  const isActive = (role || "").toLowerCase() === roleKey;
+
+                  return (
+                    <button
+                      key={roleKey}
+                      onClick={() => {
+                        setShowRoleSwitcher(false);
+                        switchWorkspaceRole(roleKey, dispatch, navigate);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition ${
+                        isActive
+                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                      }`}
+                    >
+                      <span>{roleDisplay}</span>
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
       </aside>

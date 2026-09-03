@@ -66,7 +66,7 @@ def validate_qr(code_or_id: str):
 @root_users_router.get("/user/my-bookings")
 def get_my_bookings(
     email: Optional[str] = Query(None),
-    user_id: Optional[int] = Query(None),
+    user_id: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
     uid = user_id or (current_user.get("user_id") if isinstance(current_user, dict) else None) or (current_user.get("id") if isinstance(current_user, dict) else None)
