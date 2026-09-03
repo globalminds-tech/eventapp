@@ -2,9 +2,10 @@ import axios from "axios";
 import { ENV } from "../../config/env";
 import { setCredentials, logout } from "@/app/store/authSlice";
 
-let store;
+let storeRef = null;
+
 export const injectStore = (_store) => {
-  store = _store;
+  storeRef = _store;
 };
 
 const axiosClient = axios.create({
@@ -19,8 +20,13 @@ const axiosClient = axios.create({
 // Request Interceptor: Attach Bearer token from Redux in-memory state or localStorage fallback
 axiosClient.interceptors.request.use(
   (config) => {
-    const state = store ? store.getState() : {};
-    const token = state.auth?.accessToken || localStorage.getItem("token") || sessionStorage.getItem("token");
+    let token = null;
+    if (storeRef?.getState) {
+      token = storeRef.getState()?.auth?.accessToken;
+    }
+    if (!token) {
+      token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -87,8 +93,8 @@ axiosClient.interceptors.response.use(
         const userObj = resData?.user;
 
         if (newAccessToken) {
-          if (store) {
-            store.dispatch(
+          if (storeRef?.dispatch) {
+            storeRef.dispatch(
               setCredentials({
                 user: userObj,
                 token: newAccessToken,
@@ -106,7 +112,9 @@ axiosClient.interceptors.response.use(
         }
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        if (store) store.dispatch(logout());
+        if (storeRef?.dispatch) {
+          storeRef.dispatch(logout());
+        }
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
