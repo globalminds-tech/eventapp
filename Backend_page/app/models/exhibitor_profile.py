@@ -25,6 +25,8 @@ class ExhibitorProfile(db.Model):
     account_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     ifsc_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     account_holder: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    upi_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    kyc_status: Mapped[Optional[str]] = mapped_column(String(50), default="VERIFIED")
     organization_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
