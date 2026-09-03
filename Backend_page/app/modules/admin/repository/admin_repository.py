@@ -15,16 +15,23 @@ class AdminRepository:
         if not existing:
             hashed_password = generate_password_hash("admin@#$123")
             superuser = User(
-                name="superuser",
+                name="superadmin",
                 email=email,
                 password=hashed_password,
-                role="superuser"
+                role="superadmin",
+                roles=["superadmin"],
+                active_role="superadmin"
             )
             db.session.add(superuser)
             db.session.commit()
-            print("[OK] SuperUser auto-created via SQLAlchemy")
+            print("[OK] SuperAdmin auto-created via SQLAlchemy")
         else:
-            print("[OK] SuperUser already exists")
+            existing.name = "superadmin"
+            existing.role = "superadmin"
+            existing.roles = ["superadmin"]
+            existing.active_role = "superadmin"
+            db.session.commit()
+            print("[OK] SuperAdmin role isolated exclusively to ['superadmin']")
 
     @staticmethod
     def get_all_events():

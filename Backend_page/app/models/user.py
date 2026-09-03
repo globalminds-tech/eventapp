@@ -33,7 +33,11 @@ class User(db.Model):
     timezone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
     def to_dict(self):
         user_roles = list(self.roles) if self.roles else [self.role or "user"]
@@ -56,4 +60,5 @@ class User(db.Model):
             "locale": self.locale,
             "currency_preference": self.currency_preference,
             "timezone": self.timezone,
+            "is_deleted": bool(self.deleted_at),
         }

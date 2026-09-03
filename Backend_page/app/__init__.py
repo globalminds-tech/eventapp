@@ -22,6 +22,7 @@ from app.modules.payments import payment_router
 from app.modules.checkins import checkin_router
 from app.modules.admin import admin_router, root_admin_router
 from app.modules.chatbot import chatbot_router
+from app.modules.rbac import rbac_router
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -90,5 +91,6 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(root_admin_router)
     app.include_router(chatbot_router)
+    app.include_router(rbac_router)
 
     return app

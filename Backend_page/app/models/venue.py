@@ -22,6 +22,7 @@ class Venue(db.Model):
     total_area_sqft: Mapped[Optional[float]] = mapped_column(nullable=True, default=50000.0)
     status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     organizer_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    organization_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
     # Geocoding / Map integration
     latitude: Mapped[Optional[float]] = mapped_column(Numeric(10, 7), nullable=True)
@@ -30,8 +31,10 @@ class Venue(db.Model):
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
     created_by: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
-    modified_by: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
-    modified_on: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     def to_dict(self):
         return {

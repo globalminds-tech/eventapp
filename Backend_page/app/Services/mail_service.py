@@ -89,6 +89,45 @@ def send_exhibitor_welcome_email(email, name, company_name=None, category=None):
     subject, html = get_exhibitor_welcome_template(name, company_name, category)
     send_email(email, subject, html, is_html=True)
 
+def send_team_invitation_email(email, name, org_name, role_name, raw_token):
+    """Send team member invitation email with secure join link."""
+    invite_url = f"http://localhost:5173/accept-invite?token={raw_token}"
+    subject = f"🤝 Invitation to join {org_name} on BookMyEvent"
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"/></head>
+    <body style="margin:0; padding:0; background-color:#0f172a; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <div style="max-width:540px; margin:30px auto; background-color:#1e293b; border:1px solid #334155; border-radius:20px; overflow:hidden; color:#f8fafc;">
+        <div style="background: linear-gradient(135deg, #06b6d4, #2563eb); padding: 30px 24px; text-align: center;">
+          <h1 style="color:#ffffff; margin:0; font-size:24px; font-weight:800;">Team Invitation</h1>
+          <p style="color:#e0f2fe; margin:8px 0 0; font-size:14px;">You've been invited to join <strong>{org_name}</strong></p>
+        </div>
+        <div style="padding: 28px 24px;">
+          <p style="font-size:16px; color:#cbd5e1; margin-top:0;">Hello <strong>{name or 'there'}</strong>,</p>
+          <p style="font-size:14px; line-height:1.6; color:#94a3b8;">
+            You have been invited to join <strong>{org_name}</strong> on BookMyEvent as a <strong>{role_name}</strong>.
+            As a team member, you will have access to manage events, operations, and collaborate with your team.
+          </p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="{invite_url}" style="background: linear-gradient(to right, #06b6d4, #2563eb); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 15px rgba(6, 182, 212, 0.35);">
+              Accept Invitation & Join Team &rarr;
+            </a>
+          </div>
+          <p style="font-size:12px; color:#64748b; line-height:1.5;">
+            This invitation link is valid for 7 days. If you did not expect this invitation, you can safely ignore this email.
+          </p>
+          <hr style="border:0; border-top:1px solid #334155; margin:24px 0;" />
+          <div style="font-size:11px; color:#64748b; text-align:center;">
+            BookMyEvent Platform &bull; Secure Multi-Tenant Access
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+    send_email(email, subject, html, is_html=True)
+
 # =========================================
 # 🟢 BOOKING EMAIL FUNCTION (WITH QR PASS & HTML TEMPLATE)
 # =========================================
