@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { chatWithBot } from "@/Services/api";
+import { chatWithBot } from "@/Services/miscService";
 
 // ─── Inline Styles (no external CSS needed) ───────────────────────────────────
 const S = {
@@ -243,249 +243,26 @@ const S = {
   }),
 };
 
-// ─── Event data (mirrors DB) ──────────────────────────────────────────────────
-const EVENTS = [
-  {
-    id: 1, code: "EVT-0001", name: "AR Rahman Concert 2025",
-    category: "Music", date: "Apr 4, 2026", startTime: "5:15 PM", endTime: "11:00 PM",
-    venue: "YMCA", address: "Chennai, Tamil Nadu", amenities: "Non-stop music",
-    visibility: "Public", capacity: "50,000", pass: "Single Pass",
-    entry: "Multi Entry", charge: "Free", bookingStart: "Mar 31, 2026",
-    bookingEnd: "Apr 4, 2026", maxPass: 3, currency: null,
-  },
-  {
-    id: 2, code: "EVT-0002", name: "Anna University Basketball Tournament",
-    category: "Education", date: "Apr 4, 2026", startTime: "4:00 PM", endTime: "8:00 PM",
-    venue: "YMCA", address: "Chennai, Tamil Nadu",
-    amenities: "Food, Drinks, Sports, Entertainment",
-    visibility: "Public", capacity: "2,000", pass: "Group Pass",
-    entry: "Multi Entry", charge: "Paid", bookingStart: "Apr 2, 2026",
-    bookingEnd: "Apr 4, 2026", maxPass: 4, currency: "INR (₹)",
-  },
-  {
-    id: 3, code: "EVT-0003", name: "Technical Symposium",
-    category: "Technology", date: "Apr 11, 2026", startTime: "11:00 AM", endTime: "6:00 PM",
-    venue: "YMCA", address: "Chennai, Tamil Nadu",
-    amenities: "Lectures, New technologies",
-    visibility: "Public", capacity: "500", pass: "Group Pass",
-    entry: "Multi Entry", charge: "Free", bookingStart: "Apr 9, 2026",
-    bookingEnd: "Apr 10, 2026", maxPass: null, currency: null,
-  },
-  {
-    id: 4, code: "EVT-0004", name: "Honda CAR EXPO",
-    category: "Business", date: "Apr 25, 2026", startTime: "10:00 AM", endTime: "5:00 PM",
-    venue: "YMCA", address: "Chennai, Tamil Nadu",
-    amenities: "Car exhibition, Music, New innovations",
-    visibility: "Public", capacity: "400", pass: "Group Pass",
-    entry: "Multi Entry", charge: "Free", bookingStart: "Apr 15, 2026",
-    bookingEnd: "Apr 24, 2026", maxPass: 3, currency: null,
-  },
-];
-
-// ─── Smart local response engine ─────────────────────────────────────────────
-function buildResponse(msg) {
-  const m = msg.toLowerCase();
-
-  const matches = (keywords) => keywords.some((k) => m.includes(k));
-
-  // Greetings
-  if (matches(["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "howdy"]))
-    return { text: "Hello! 👋 I'm EventBot. I can help you find events, check tickets, venues, schedules, and more. What are you looking for today?", cards: [] };
-
-  if (matches(["thank", "thanks", "great", "awesome", "perfect"]))
-    return { text: "You're welcome! 😊 Is there anything else I can help you with?", cards: [] };
-
-  if (matches(["bye", "goodbye", "see you", "exit"]))
-    return { text: "Goodbye! 👋 Come back anytime to explore events. Have a great day!", cards: [] };
-
-  if (matches(["help", "what can you", "what do you", "capabilities"]))
-    return {
-      text: "Here's what I can help you with:",
-      cards: [],
-      list: ["📅 Upcoming & past events", "🎫 Ticket types & pricing (free/paid)", "📍 Venue & address details", "👥 Event capacity", "⏰ Schedules & timings", "🏷 Categories (Music, Tech, Business, Education)", "✨ Amenities & facilities", "🎟 Pass types & booking dates", "👁 Public / Private events"],
-    };
-
-  // Specific event lookup
-  if (matches(["concert", "rahman", "ar rahman", "music event"]))
-    return { text: "Here's the detail for the AR Rahman Concert:", cards: [EVENTS[0]], detail: true };
-
-  if (matches(["basketball", "tournament", "anna university", "sports"]))
-    return { text: "Here's the detail for the Basketball Tournament:", cards: [EVENTS[1]], detail: true };
-
-  if (matches(["symposium", "technical", "tech event"]))
-    return { text: "Here's the detail for the Technical Symposium:", cards: [EVENTS[2]], detail: true };
-
-  if (matches(["car expo", "honda", "expo", "car show", "automobile"]))
-    return { text: "Here's the detail for the Honda CAR EXPO:", cards: [EVENTS[3]], detail: true };
-
-  // All / list events
-  if (matches(["all event", "list event", "every event", "show event", "total event", "how many event"]))
-    return { text: `We have **${EVENTS.length} approved events** coming up:`, cards: EVENTS };
-
-  // Upcoming
-  if (m.includes("upcoming"))
-    return { text: "Here are all upcoming events:", cards: EVENTS };
-
-  // Past / previous
-  if (matches(["previous", "past", "completed", "finished"]))
-    return { text: "There are no past events on record. All current events are upcoming.", cards: [] };
-
-  // Free events
-  if (matches(["free event", "free entry", "no charge", "no cost", "which are free", "free to attend"])) {
-    const free = EVENTS.filter((e) => e.charge === "Free");
-    return { text: `${free.length} events have free entry:`, cards: free };
-  }
-
-  // Paid events
-  if (matches(["paid", "cost", "price", "fee", "charge", "how much", "ticket price", "ticket cost"])) {
-    return {
-      text: "Here are the pricing details for all events:",
-      cards: EVENTS,
-      showField: "pricing",
-    };
-  }
-
-  // Capacity
-  if (m.includes("capacity") || m.includes("how many people") || m.includes("seats"))
-    return { text: "Here are the capacity details:", cards: EVENTS, showField: "capacity" };
-
-  // Venue / Location
-  if (matches(["venue", "location", "place", "where", "address", "street", "how to reach"]))
-    return { text: "All events are held at:", cards: EVENTS, showField: "venue" };
-
-  // Schedule / Timings
-  if (matches(["time", "timing", "schedule", "when", "start time", "end time"]))
-    return { text: "Here are the event schedules:", cards: EVENTS, showField: "timing" };
-
-  // Booking dates
-  if (matches(["booking", "book", "register", "registration", "booking date", "booking start", "booking end"]))
-    return { text: "Here are the booking windows:", cards: EVENTS, showField: "booking" };
-
-  // Category
-  if (matches(["category", "categories", "type of event", "event type"])) {
-    const cats = [...new Set(EVENTS.map((e) => e.category))];
-    return { text: `We have events in ${cats.length} categories: **${cats.join(", ")}**`, cards: EVENTS, showField: "category" };
-  }
-
-  // Individual category
-  const cat = ["music", "education", "technology", "business"].find((c) => m.includes(c));
-  if (cat) {
-    const filtered = EVENTS.filter((e) => e.category.toLowerCase() === cat);
-    return { text: `Events in the **${cat.charAt(0).toUpperCase() + cat.slice(1)}** category:`, cards: filtered };
-  }
-
-  // Amenities
-  if (matches(["amenity", "amenities", "facilities", "what's included", "whats included"]))
-    return { text: "Here are the amenities for each event:", cards: EVENTS, showField: "amenities" };
-
-  // Pass types
-  if (matches(["pass", "pass type", "single pass", "group pass"]))
-    return { text: "Here are the pass types available:", cards: EVENTS, showField: "pass" };
-
-  // Visibility
-  if (matches(["public event", "private event", "visibility", "open to all"]))
-    return { text: "Here's the visibility for each event:", cards: EVENTS, showField: "visibility" };
-
-  // Count
-  if (matches(["how many", "count", "number of"]))
-    return { text: `There are currently **${EVENTS.length} approved events** in the system. Would you like me to list them all?`, cards: [] };
-
-  // Default fallback
-  return {
-    text: "I'm not sure I understood that. Try asking about:",
-    cards: [],
-    list: ["Upcoming events", "Ticket prices or free events", "Event timings", "Venue locations", "Capacity details", "Pass types"],
-  };
-}
-
-// ─── EventCard component ──────────────────────────────────────────────────────
-function EventCard({ ev, showField }) {
-  const isFree = ev.charge === "Free";
-  const cardStyle = {
-    background: "#F9FAFF",
-    border: "1px solid #E4E9FF",
-    borderRadius: "12px",
-    padding: "12px",
-    marginTop: "8px",
-  };
-  const titleStyle = { fontSize: "13px", fontWeight: "700", color: "#3563E9", marginBottom: "6px" };
-  const tagRow = { display: "flex", flexWrap: "wrap", gap: "4px" };
-  const tag = (bg, color, border) => ({
-    background: bg, color, border: `1px solid ${border}`,
-    borderRadius: "6px", padding: "2px 8px", fontSize: "11px", fontWeight: "500",
-  });
-
-  return (
-    <div style={cardStyle}>
-      <div style={titleStyle}>🎫 {ev.name}</div>
-      <div style={tagRow}>
-        {(!showField || showField === "category") && <span style={tag("#EAF3DE", "#3B6D11", "#C0DD97")}>🏷 {ev.category}</span>}
-        {(!showField || showField === "timing") && (
-          <>
-            <span style={tag("#E6F1FB", "#185FA5", "#B5D4F4")}>📅 {ev.date}</span>
-            <span style={tag("#E6F1FB", "#185FA5", "#B5D4F4")}>⏰ {ev.startTime} – {ev.endTime}</span>
-          </>
-        )}
-        {(!showField || showField === "venue") && (
-          <>
-            <span style={tag("#EEEDFE", "#533AB7", "#AFA9EC")}>📍 {ev.venue}</span>
-            <span style={tag("#EEEDFE", "#533AB7", "#AFA9EC")}>🗺 {ev.address}</span>
-          </>
-        )}
-        {(!showField || showField === "pricing") && (
-          <span style={tag(isFree ? "#EAF3DE" : "#FAECE7", isFree ? "#3B6D11" : "#993C1D", isFree ? "#C0DD97" : "#F0997B")}>
-            {isFree ? "✅ Free entry" : `💳 Paid · ${ev.currency}`}
-          </span>
-        )}
-        {(!showField || showField === "capacity") && <span style={tag("#FAEEDA", "#854F0B", "#FAC775")}>👥 Capacity: {ev.capacity}</span>}
-        {(!showField || showField === "pass") && <span style={tag("#FBEAF0", "#993556", "#F4C0D1")}>🎟 {ev.pass}</span>}
-        {(!showField || showField === "amenities") && <span style={tag("#F1EFE8", "#5F5E5A", "#D3D1C7")}>✨ {ev.amenities}</span>}
-        {(!showField || showField === "booking") && (
-          <>
-            <span style={tag("#EAF3DE", "#3B6D11", "#C0DD97")}>📆 Opens: {ev.bookingStart}</span>
-            <span style={tag("#FAECE7", "#993C1D", "#F0997B")}>📆 Closes: {ev.bookingEnd}</span>
-          </>
-        )}
-        {(!showField || showField === "visibility") && <span style={tag("#E6F1FB", "#185FA5", "#B5D4F4")}>👁 {ev.visibility}</span>}
-        {showField === undefined && (
-          <span style={tag(isFree ? "#EAF3DE" : "#FAECE7", isFree ? "#3B6D11" : "#993C1D", isFree ? "#C0DD97" : "#F0997B")}>
-            {isFree ? "✅ Free" : "💳 Paid"}
-          </span>
-        )}
-      </div>
-      {showField === "detail" && (
-        <div style={{ marginTop: "8px", fontSize: "12px", color: "#666" }}>
-          <div>👥 Capacity: {ev.capacity} &nbsp;|&nbsp; 🎟 {ev.pass} &nbsp;|&nbsp; 🔄 {ev.entry}</div>
-          {ev.maxPass && <div>🔑 Max passes per person: {ev.maxPass}</div>}
-          <div>✨ {ev.amenities}</div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Message renderer ─────────────────────────────────────────────────────────
 function MessageContent({ content }) {
   if (!content) return null;
-  const { text, cards, list, showField } = content;
+  const { text, list } = content;
 
   // Bold markdown **text**
   const renderText = (t) =>
-    t.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
+    (t || "").split(/(\*\*[^*]+\*\*)/).map((part, i) =>
       part.startsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : part
     );
 
   return (
     <div>
-      <div>{renderText(text)}</div>
+      <div style={{ whiteSpace: "pre-wrap" }}>{renderText(text)}</div>
       {list && list.length > 0 && (
         <ul style={{ marginTop: "8px", paddingLeft: "18px", lineHeight: "1.8" }}>
           {list.map((item, i) => <li key={i} style={{ fontSize: "13px" }}>{item}</li>)}
         </ul>
       )}
-      {cards && cards.map((ev) => (
-        <EventCard key={ev.id} ev={ev} showField={showField} />
-      ))}
     </div>
   );
 }
@@ -541,20 +318,17 @@ export default function Chatbot({ userId = null }) {
     // Simulate network delay for natural feel
     await new Promise((r) => setTimeout(r, 600 + Math.random() * 400));
 
-    let botContent;
-
-    // Try API first
+    // Try API only
     try {
       const data = await chatWithBot(msg, userId);
       if (data && data.reply) {
-        botContent = { text: data.reply, cards: [] };
+        botContent = { text: data.reply };
+      } else {
+        botContent = { text: "I received an empty response from the server." };
       }
-    } catch (_) {
-      // Fallback to local engine silently
-    }
-
-    if (!botContent) {
-      botContent = buildResponse(msg);
+    } catch (err) {
+      console.error("Chatbot API Error:", err);
+      botContent = { text: "My AI connection is currently offline or unreachable. Please try again later." };
     }
 
     setTyping(false);
