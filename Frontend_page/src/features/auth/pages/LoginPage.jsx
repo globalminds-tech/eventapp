@@ -33,6 +33,11 @@ export default function Login() {
         navigate(returnUrl, { replace: true });
         return;
       }
+      const cleanRole = String(authRole || "").toLowerCase();
+      if (cleanRole === "superadmin" || cleanRole === "superuser") {
+        navigate("/superuser/dashboard", { replace: true });
+        return;
+      }
       navigate("/", { replace: true });
       return;
     }
@@ -147,6 +152,14 @@ export default function Login() {
           organization_name: userOrg,
         })
       );
+
+      const isSuperAdmin = ["superadmin", "superuser"].includes(String(userRole || "").toLowerCase()) ||
+        detectedRoles.some((r) => ["superadmin", "superuser"].includes(String(r).toLowerCase()));
+
+      if (isSuperAdmin) {
+        navigate("/superuser/dashboard", { replace: true });
+        return;
+      }
 
       if (detectedRoles.length > 1 && !returnUrl) {
         setUserRoles(detectedRoles);
