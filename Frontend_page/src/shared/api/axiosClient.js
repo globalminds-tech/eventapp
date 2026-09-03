@@ -1,7 +1,12 @@
 import axios from "axios";
 import { ENV } from "../../config/env";
-import { store } from "@/app/store/store";
 import { setCredentials, logout } from "@/app/store/authSlice";
+
+let storeRef = null;
+
+export const injectStore = (_store) => {
+  storeRef = _store;
+};
 
 const axiosClient = axios.create({
   baseURL: ENV.API_BASE_URL,
@@ -15,8 +20,13 @@ const axiosClient = axios.create({
 // Request Interceptor: Attach Bearer token from Redux in-memory state or localStorage fallback
 axiosClient.interceptors.request.use(
   (config) => {
-    const state = store.getState();
-    const token = state.auth?.accessToken || localStorage.getItem("token") || sessionStorage.getItem("token");
+    let token = null;
+    if (storeRef?.getState) {
+      token = storeRef.getState()?.auth?.accessToken;
+    }
+    if (!token) {
+      token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -83,13 +93,15 @@ axiosClient.interceptors.response.use(
         const userObj = resData?.user;
 
         if (newAccessToken) {
-          store.dispatch(
-            setCredentials({
-              user: userObj,
-              token: newAccessToken,
-              role: userObj?.role,
-            })
-          );
+          if (storeRef?.dispatch) {
+            storeRef.dispatch(
+              setCredentials({
+                user: userObj,
+                token: newAccessToken,
+                role: userObj?.role,
+              })
+            );
+          }
           axiosClient.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
@@ -100,7 +112,9 @@ axiosClient.interceptors.response.use(
         }
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        store.dispatch(logout());
+        if (storeRef?.dispatch) {
+          storeRef.dispatch(logout());
+        }
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

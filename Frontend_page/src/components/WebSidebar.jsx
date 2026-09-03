@@ -6,7 +6,7 @@ import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
   ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home, User,
-  ArrowLeftRight, Shield
+  ArrowLeftRight, Shield, X
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -25,6 +25,10 @@ export default function WebSidebar({ role }) {
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
 
   const activeRoleKey = (role === "superadmin" || role === "superuser") ? "superuser" : role;
+  const isSuperAdmin = activeRoleKey === "superuser" || String(role).toLowerCase() === "superadmin" || String(role).toLowerCase() === "superuser";
+  const switchableRoles = availableRoles.filter(
+    (r) => !["superuser", "superadmin", "admin"].includes(String(r).toLowerCase())
+  );
 
   // Determine theme styling based on the active role
   const theme = {
@@ -90,7 +94,6 @@ export default function WebSidebar({ role }) {
       { label: "Category Master", path: "/superuser/categories", icon: Layers },
       { label: "KYC Verification", path: "/superuser/kyc", icon: UserCheck },
       { label: "Payouts Queue", path: "/superuser/payouts", icon: Landmark },
-      { label: "User Home", path: "/", icon: Home },
     ],
     exhibitor: [
       { label: "Booth Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
@@ -191,16 +194,28 @@ export default function WebSidebar({ role }) {
           })}
         </div>
 
-        {/* Footer: Logged User Profile Trigger */}
+        {/* Footer: Logged User Profile Trigger & Logout */}
         <div className="relative p-3 border-t border-slate-800/80 bg-slate-950/40">
           <div
-            onClick={() => navigate("/profile")}
-            className={`flex items-center gap-3 p-1.5 rounded-xl hover:bg-slate-800/60 transition-all cursor-pointer group ${isCollapsed ? "justify-center" : ""}`}
-            title="Account Overview & Workspaces"
+            onClick={() => {
+              if (!isSuperAdmin) {
+                navigate("/profile");
+              }
+            }}
+            className={`flex items-center gap-3 p-1.5 rounded-xl transition-all ${
+              isSuperAdmin
+                ? "cursor-default"
+                : "hover:bg-slate-800/60 cursor-pointer group"
+            } ${isCollapsed ? "justify-center" : ""}`}
+            title={isSuperAdmin ? "Super Administrator" : "Account Overview & Workspaces"}
           >
             {/* User Profile Avatar */}
             <div className="relative flex-shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md overflow-hidden group-hover:scale-105 transition-transform">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-md overflow-hidden group-hover:scale-105 transition-transform ${
+                activeRoleKey === "superuser"
+                  ? "bg-gradient-to-br from-purple-600 via-indigo-600 to-slate-900 text-white border border-purple-400/30"
+                  : "bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 text-white"
+              }`}>
                 {profileImage ? (
                   <img src={profileImage} alt="User Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -220,17 +235,17 @@ export default function WebSidebar({ role }) {
                   <p className="text-[10px] font-semibold text-slate-400 truncate uppercase tracking-wider">
                     {theme.roleLabel}
                   </p>
-                  {availableRoles.length > 1 && (
+                  {!isSuperAdmin && switchableRoles.length > 1 && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowRoleSwitcher(!showRoleSwitcher);
                       }}
-                      className="text-[10px] flex items-center gap-1 text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded-md hover:bg-cyan-900/60 transition"
+                      className="text-[10px] flex items-center gap-1 text-cyan-300 hover:text-white bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 px-2 py-0.5 rounded-lg shadow-xs transition"
                       title="Switch Workspace Role"
                     >
-                      <ArrowLeftRight size={10} />
-                      <span>Switch</span>
+                      <ArrowLeftRight size={11} />
+                      <span className="font-bold">Switch</span>
                     </button>
                   )}
                 </div>
@@ -238,45 +253,130 @@ export default function WebSidebar({ role }) {
             )}
           </div>
 
-          {/* Quick Role Switcher Dropdown */}
-          {showRoleSwitcher && availableRoles.length > 1 && (
-            <div className="absolute bottom-16 left-3 right-3 bg-slate-900 border border-slate-700/80 rounded-xl p-2 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <div className="text-[10px] font-bold text-slate-400 uppercase px-2 py-1 tracking-wider border-b border-slate-800 mb-1">
-                Switch Workspace
-              </div>
-              <div className="space-y-1">
-                {availableRoles.map((r) => {
-                  const roleKey = r.toLowerCase();
-                  const roleDisplay = {
-                    superuser: "🛡️ Super Admin",
-                    admin: "🛡️ Admin",
-                    organizer: "🎪 Organizer",
-                    exhibitor: "🏢 Exhibitor",
-                    user: "🎟️ Attendee"
-                  }[roleKey] || `👤 ${r}`;
+          {/* Quick Sign Out Action Button in Sidebar */}
+          <div className="mt-2 pt-2 border-t border-slate-800/60">
+            <button
+              onClick={handleLogout}
+              className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-red-300 hover:bg-red-500/10 transition group ${
+                isCollapsed ? "justify-center px-0" : ""
+              }`}
+              title="Sign Out"
+            >
+              <LogOut size={15} className="text-slate-400 group-hover:text-red-400 transition" />
+              {!isCollapsed && <span>Sign Out</span>}
+            </button>
+          </div>
 
-                  const isActive = (role || "").toLowerCase() === roleKey;
+          {/* Premium Workspace Switcher Modal / Flyout */}
+          {!isSuperAdmin && showRoleSwitcher && switchableRoles.length > 1 && (
+            <>
+              {/* Subtle backdrop overlay to dismiss */}
+              <div
+                onClick={() => setShowRoleSwitcher(false)}
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-2xs"
+              />
 
-                  return (
-                    <button
-                      key={roleKey}
-                      onClick={() => {
-                        setShowRoleSwitcher(false);
-                        switchWorkspaceRole(roleKey, dispatch, navigate);
-                      }}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition ${
-                        isActive
-                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                      }`}
-                    >
-                      <span>{roleDisplay}</span>
-                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />}
-                    </button>
-                  );
-                })}
+              <div className="fixed bottom-20 left-4 w-84 z-50 overflow-hidden rounded-2xl border border-slate-700/90 bg-slate-900/95 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-150">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3 bg-slate-950/60">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400">
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-white">Switch Workspace</h3>
+                      <p className="text-[10px] text-slate-400">Select your active role</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowRoleSwitcher(false)}
+                    className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Role Options Cards */}
+                <div className="p-3 space-y-2">
+                  {switchableRoles.map((r) => {
+                    const roleKey = r.toLowerCase();
+                    const isActive = (role || "").toLowerCase() === roleKey;
+
+                    const roleMeta = {
+                      organizer: {
+                        icon: "🎪",
+                        title: "Organizer Portal",
+                        description: "Manage events, ticketing & stalls",
+                        gradient: "from-cyan-500/20 to-blue-600/20 border-cyan-500/40 text-cyan-300",
+                        activeBadge: "bg-cyan-500/20 text-cyan-300 border-cyan-400/40",
+                      },
+                      exhibitor: {
+                        icon: "🏢",
+                        title: "Exhibitor Portal",
+                        description: "Book stalls, booth staff & leads",
+                        gradient: "from-emerald-500/20 to-teal-600/20 border-emerald-500/40 text-emerald-300",
+                        activeBadge: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+                      },
+                      user: {
+                        icon: "🎟️",
+                        title: "Attendee Portal",
+                        description: "Explore events & access passes",
+                        gradient: "from-purple-500/20 to-indigo-600/20 border-purple-500/40 text-purple-300",
+                        activeBadge: "bg-purple-500/20 text-purple-300 border-purple-400/40",
+                      },
+                    }[roleKey] || {
+                      icon: "👤",
+                      title: `${r} Portal`,
+                      description: "Access account portal",
+                      gradient: "from-slate-700/40 to-slate-800/40 border-slate-600 text-white",
+                      activeBadge: "bg-slate-800 text-slate-300 border-slate-700",
+                    };
+
+                    return (
+                      <div
+                        key={roleKey}
+                        onClick={() => {
+                          if (!isActive) {
+                            setShowRoleSwitcher(false);
+                            switchWorkspaceRole(roleKey, dispatch, navigate);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                          isActive
+                            ? "border-cyan-500/60 bg-cyan-950/40 shadow-sm"
+                            : "border-slate-800 bg-slate-950/40 hover:border-slate-700 hover:bg-slate-800/60"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xl shrink-0">{roleMeta.icon}</span>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                              {roleMeta.title}
+                            </div>
+                            <div className="text-[10px] text-slate-400 truncate">
+                              {roleMeta.description}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Active
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300">
+                              Switch →
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
