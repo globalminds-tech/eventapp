@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { saveAs } from "file-saver";
 import { lookupPincode } from "@/shared/services/pincodeService";
+import { Select, SelectItem } from "@/components/ui/Select";
 import {
   getVenueDetails,
   createVenue,
@@ -1315,17 +1316,15 @@ export const Venuepage = () => {
 
                   {/* STATUS */}
                   <div>
-                    <label className="text-xs font-medium text-slate-700">
-                      Status <span className="text-red-500">*</span>
-                    </label>
-                    <select
+                    <Select
+                      label="Status *"
                       name="status"
                       value="Active"
                       disabled
-                      className="w-full mt-1 p-2 rounded-lg bg-slate-100 border border-slate-200 focus:outline-none text-sm text-slate-500 cursor-not-allowed"
+                      triggerClassName="w-full mt-1 p-2 rounded-xl bg-slate-100 border-slate-200 text-xs text-slate-500 cursor-not-allowed h-9"
                     >
-                      <option value="Active">Active</option>
-                    </select>
+                      <SelectItem value="Active">Active</SelectItem>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -1408,20 +1407,18 @@ export const Venuepage = () => {
                           </button>
                         )}
                         <div>
-                          <label className="block text-xs font-bold text-sky-600 mb-1 tracking-wider">
-                            Document Type
-                          </label>
-                          <select
+                          <Select
+                            label="Document Type"
                             name="document_type"
                             value={doc.document_type}
                             onChange={(e) => handleDocChange(e, index)}
-                            className="w-full border border-sky-100 p-2 rounded bg-sky-50 text-xs focus:ring-2 focus:ring-sky-500 outline-none"
+                            placeholder="Select Document Type"
+                            triggerClassName="w-full border-sky-100 p-2 rounded-xl bg-sky-50 text-xs font-semibold focus:ring-sky-500 h-9"
                           >
-                            <option value="">Select Document Type</option>
-                            <option>PAN</option>
-                            <option>Aadhar</option>
-                            <option>GST</option>
-                          </select>
+                            <SelectItem value="PAN">PAN</SelectItem>
+                            <SelectItem value="Aadhar">Aadhar</SelectItem>
+                            <SelectItem value="GST">GST</SelectItem>
+                          </Select>
                         </div>
 
                         <div>
