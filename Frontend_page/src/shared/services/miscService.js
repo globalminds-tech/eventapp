@@ -124,7 +124,7 @@ export const getProgramsByEvent = async (eventId) => {
 };
 
 export const chatWithBot = async (message, userId) => {
-  const res = await apiClient.post("/chatbot/chat", { message, user_id: userId });
+  const res = await apiClient.post("/api/v1/chatbot/message", { message, user_id: userId });
   return res.data;
 };
 
