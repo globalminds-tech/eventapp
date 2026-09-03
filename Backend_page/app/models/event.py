@@ -1,15 +1,16 @@
-import uuid
+import uuid as uuid_pkg
 from typing import Optional
 from datetime import datetime, date, time
-from sqlalchemy import String, Text, Boolean, Integer, Date, Time, DateTime, ForeignKey, Numeric
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import String, Text, Boolean, Integer, Date, Time, DateTime, ForeignKey, Numeric, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
+
 
 class EventDetails(db.Model):
     __tablename__ = 'event_details_table'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    uuid: Mapped[Optional[str]] = mapped_column(String(36), unique=True, index=True, nullable=True, default=lambda: str(uuid.uuid4()))
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
     event_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     slug: Mapped[Optional[str]] = mapped_column(String(255), unique=True, index=True, nullable=True)
     category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -51,20 +52,24 @@ class EventDetails(db.Model):
 
     venue: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    user_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), default='PENDING')
+
+    # Multi-currency support
+    currency_code: Mapped[Optional[str]] = mapped_column(String(3), default='INR')
 
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     rejected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
 
 class EventBookingDetails(db.Model):
     __tablename__ = 'event_booking_details'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
     booking_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     booking_end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     price_inr: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
@@ -89,55 +94,58 @@ class EventBookingDetails(db.Model):
     taxes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     price_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     currency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    currency_code: Mapped[Optional[str]] = mapped_column(String(3), default='INR')
     early_bird_expire: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
 
 class EventLayout(db.Model):
     __tablename__ = 'event_layout'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
     floor_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     day_based: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     person_pass: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     include_tax: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     taxes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 
 
 class EventFile(db.Model):
     __tablename__ = 'event_files'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
     file_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     file_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     file_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     doc_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     doc_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
 
 
 class EventTerm(db.Model):
     __tablename__ = 'event_terms'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    event_id: Mapped[int] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=False)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    event_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=False)
     policy_group: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     policy_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     policy_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_default: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
 
 
 class EventGuest(db.Model):
     __tablename__ = 'event_guests'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    event_id: Mapped[Optional[int]] = mapped_column(ForeignKey('event_details_table.id', ondelete='CASCADE'))
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
     guest_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     designation: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     contact: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())

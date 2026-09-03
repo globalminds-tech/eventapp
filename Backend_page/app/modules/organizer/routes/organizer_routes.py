@@ -55,13 +55,13 @@ async def update_event_alias(event_id: str, request: Request):
 # ── ORGANIZER VENUES & MASTERS ──
 
 @root_organizer_router.get("/superadmin/api/venues_details")
-def get_venues_details_alias(organizer_id: int = None):
+def get_venues_details_alias(organizer_id: str = None):
     return OrganizerController.get_venues(organizer_id)
 
 @root_organizer_router.get("/superadmin/api/venuedetail/{venue_id}")
-def get_single_venue_detail_alias(venue_id: int):
+def get_single_venue_detail_alias(venue_id: str):
     venues = OrganizerController.get_venues()
-    matched = next((v for v in venues if v["id"] == venue_id), venues[0])
+    matched = next((v for v in venues if str(v.get("id")) == str(venue_id)), venues[0] if venues else {})
     return matched
 
 @root_organizer_router.post("/superadmin/api/create_venue")
@@ -103,7 +103,7 @@ async def create_sponsor_route(request: Request):
 
 @root_organizer_router.get("/superadmin/api/all-policies/{organizer_id}")
 @root_organizer_router.get("/superadmin/api/all-policies")
-def get_policies_alias(organizer_id: int = None):
+def get_policies_alias(organizer_id: str = None):
     return OrganizerController.get_policies(organizer_id)
 
 # ── ORGANIZER ONBOARDING & KYC ──

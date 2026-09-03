@@ -107,18 +107,15 @@ class AdminService:
         from app.extensions.database import SessionLocal
         session = SessionLocal()
         try:
-            stmt = select(EventDetails).order_by(desc(EventDetails.id))
+            stmt = select(EventDetails).order_by(desc(EventDetails.created_at))
             events = session.scalars(stmt).all()
 
-            if organizer_id and str(organizer_id).isdigit():
-                org_num = int(organizer_id)
+            if organizer_id:
+                org_str = str(organizer_id)
                 filtered = [
                     e for e in events 
-                    if getattr(e, "user_id", None) == org_num 
-                    or str(getattr(e, "user_id", "")) == str(organizer_id)
-                    or str(getattr(e, "organizer_id", "")) == str(organizer_id)
-                    or getattr(e, "user_id", None) is None
-                    or getattr(e, "user_id", None) == 1
+                    if str(getattr(e, "user_id", "")) == org_str 
+                    or str(getattr(e, "organizer_id", "")) == org_str
                 ]
                 if filtered:
                     events = filtered
@@ -160,9 +157,9 @@ class AdminService:
                 gate_scans_val = int(getattr(event, "gate_scans", 0) or getattr(event, "arrived", 0) or 0)
 
                 events_list.append({
-                    "id": event.id,
-                    "event_code": getattr(event, "event_code", None) or f"EVT-{event.id}",
-                    "code": getattr(event, "event_code", None) or f"EVT-{event.id}",
+                    "id": str(event.id),
+                    "event_code": getattr(event, "event_code", None) or f"EVT-{str(event.id)[:8]}",
+                    "code": getattr(event, "event_code", None) or f"EVT-{str(event.id)[:8]}",
                     "slug": getattr(event, "slug", "") or "",
                     "event_name": event.event_name or "Untitled Event",
                     "name": event.event_name or "Untitled Event",
@@ -177,7 +174,7 @@ class AdminService:
                     "venue": event.venue or "Venue Setup",
                     "address": event.address or "",
                     "created_by": getattr(event, "created_by", None),
-                    "user_id": getattr(event, "user_id", None),
+                    "user_id": str(getattr(event, "user_id", "")) if getattr(event, "user_id", None) else None,
                     "price": price_val,
                     "price_inr": price_val,
                     "passesSold": passes_sold_val,
@@ -204,7 +201,7 @@ class AdminService:
                 pass
 
     @staticmethod
-    def update_event_status(event_id: int, raw_data: dict) -> dict:
+    def update_event_status(event_id, raw_data: dict) -> dict:
         data = UpdateEventStatusSchema(**raw_data)
         if data.status not in ["APPROVED", "REJECTED", "PENDING"]:
             raise ApiError("Invalid status value", 400)
@@ -218,7 +215,7 @@ class AdminService:
     @staticmethod
     def get_categories() -> list[dict]:
         cats = AdminRepository.get_all_categories()
-        return [c.to_dict() if hasattr(c, "to_dict") else {"id": c.id, "name": c.name, "subcategories": c.subcategories} for c in cats]
+        return [c.to_dict() if hasattr(c, "to_dict") else {"id": str(c.id), "name": c.name, "subcategories": c.subcategories} for c in cats]
 
     @staticmethod
     def create_category(raw_data: dict) -> dict:
@@ -234,17 +231,17 @@ class AdminService:
             category_image=getattr(data, "category_image", "") or "",
             status=data.status
         )
-        return cat.to_dict() if hasattr(cat, "to_dict") else {"id": cat.id, "name": cat.name, "subcategories": cat.subcategories}
+        return cat.to_dict() if hasattr(cat, "to_dict") else {"id": str(cat.id), "name": cat.name, "subcategories": cat.subcategories}
 
     @staticmethod
-    def update_category(cat_id: int, raw_data: dict) -> dict:
+    def update_category(cat_id, raw_data: dict) -> dict:
         cat = AdminRepository.update_category_by_id(cat_id, raw_data)
         if not cat:
             raise ApiError("Category not found", 404)
         return cat.to_dict()
 
     @staticmethod
-    def delete_category(cat_id: int) -> dict:
+    def delete_category(cat_id) -> dict:
         success = AdminRepository.delete_category_by_id(cat_id)
         if not success:
             raise ApiError("Category not found", 404)
@@ -269,7 +266,7 @@ class AdminService:
         return organizers_list
 
     @staticmethod
-    def update_organizer_kyc_status(user_id: int, raw_data: dict) -> dict:
+    def update_organizer_kyc_status(user_id, raw_data: dict) -> dict:
         data = UpdateKycStatusSchema(**raw_data)
         user = AdminRepository.update_organizer_kyc_status(user_id, data.status)
         if not user:
@@ -278,7 +275,7 @@ class AdminService:
 
     @staticmethod
     def get_all_users() -> list[dict]:
-        stmt = select(User).order_by(desc(User.id))
+        stmt = select(User).order_by(desc(User.created_at))
         users = db.session.scalars(stmt).all()
         user_list = []
         for u in users:
@@ -300,7 +297,7 @@ class AdminService:
     @staticmethod
     def get_category_requests() -> list[dict]:
         from app.models.category_request import CategoryRequest
-        requests = db.session.scalars(select(CategoryRequest).order_by(desc(CategoryRequest.id))).all()
+        requests = db.session.scalars(select(CategoryRequest).order_by(desc(CategoryRequest.created_at))).all()
         return [r.to_dict() for r in requests]
 
     @staticmethod
@@ -319,7 +316,7 @@ class AdminService:
         return cat_req.to_dict()
 
     @staticmethod
-    def update_category_request_status(request_id: int, raw_data: dict) -> dict:
+    def update_category_request_status(request_id, raw_data: dict) -> dict:
         from app.models.category_request import CategoryRequest
         cat_req = db.session.get(CategoryRequest, request_id)
         if not cat_req:

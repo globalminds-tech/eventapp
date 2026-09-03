@@ -10,7 +10,7 @@ class ExhibitorController:
         }
 
     @staticmethod
-    def get_user_bookings(user_id: int, host_url: str = ""):
+    def get_user_bookings(user_id, host_url: str = ""):
         bookings = ExhibitorService.get_user_bookings(user_id, host_url)
         return {
             "success": True,
@@ -18,7 +18,7 @@ class ExhibitorController:
         }
 
     @staticmethod
-    def get_booking_by_id(booking_id: int, host_url: str = ""):
+    def get_booking_by_id(booking_id, host_url: str = ""):
         booking = ExhibitorService.get_booking_by_id(booking_id, host_url)
         return {
             "success": True,

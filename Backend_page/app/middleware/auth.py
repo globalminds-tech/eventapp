@@ -39,8 +39,19 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
 
 def require_roles(allowed_roles: list[str]):
     def role_checker(current_user: dict = Depends(get_current_user)) -> dict:
-        user_role = current_user.get("role") or current_user.get("user_role")
-        if allowed_roles and user_role not in allowed_roles:
+        user_roles = list(current_user.get("roles") or [])
+        primary_role = current_user.get("role") or current_user.get("user_role")
+        if primary_role and primary_role not in user_roles:
+            user_roles.append(primary_role)
+
+        clean_allowed = [r.lower() for r in allowed_roles]
+        clean_user_roles = [str(r).lower() for r in user_roles]
+
+        # Superuser and admin always have universal governance access
+        if any(admin_role in clean_user_roles for admin_role in ["superuser", "superadmin", "admin"]):
+            return current_user
+
+        if clean_allowed and not any(r in clean_user_roles for r in clean_allowed):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: insufficient permissions"

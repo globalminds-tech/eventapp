@@ -15,7 +15,7 @@ class EventService:
 
         # Fallback to DB
         events = EventRepository.get_all()
-        result = [e.to_dict() if hasattr(e, "to_dict") else {"id": e.id, "event_name": e.event_name} for e in events]
+        result = [e.to_dict() if hasattr(e, "to_dict") else {"id": str(e.id), "event_name": e.event_name} for e in events]
         
         # Save to Redis cache for 5 minutes (300s)
         redis_cache.set_json(CACHE_KEY_EVENTS_ALL, result, expire_seconds=300)
@@ -40,7 +40,7 @@ class EventService:
         return result
 
     @staticmethod
-    def create_event(raw_data: dict, user_id: int = None) -> dict:
+    def create_event(raw_data: dict, user_id = None) -> dict:
         result = EventRepository.save_full_event(raw_data, user_id=user_id)
         redis_cache.clear_pattern("events:*")
         return result

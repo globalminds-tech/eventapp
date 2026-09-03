@@ -11,5 +11,5 @@ def get_my_bookings(email: Optional[str] = Query(None), current_user: dict = Dep
     return BookingController.get_my_bookings(user_email)
 
 @booking_router.get("/{booking_id}")
-def get_booking(booking_id: int, current_user: dict = Depends(get_current_user)):
+def get_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
     return BookingController.get_booking(booking_id)

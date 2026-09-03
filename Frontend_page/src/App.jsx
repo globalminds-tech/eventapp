@@ -1,13 +1,14 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WebSidebar from "./components/WebSidebar";
+import AuthInitializer from "./components/AuthInitializer";
 
 import Home from "./features/public/pages/HomePage";
 import AllEvents from "./features/events/pages/AllEventsPage";
 import Login from "./features/auth/pages/LoginPage";
 import Register from "./features/auth/pages/RegisterPage";
-import OrganizerRegister from "./features/auth/pages/OrganizerRegisterPage";
-import ExhibitorRegister from "./features/auth/pages/ExhibitorRegisterPage";
+import UpgradeOrganizerPage from "./features/auth/pages/UpgradeOrganizerPage";
+import UpgradeExhibitorPage from "./features/auth/pages/UpgradeExhibitorPage";
 import ExhibitorLeadsPage from "./features/exhibitor/pages/ExhibitorLeadsPage";
 import { LiveDashboard } from "./features/organizer/dashboard/pages/LiveDashboardPage";
 import { LiveFoodDashboard } from "./features/organizer/dashboard/pages/LiveFoodDashboardPage";
@@ -78,7 +79,7 @@ export default function App() {
   const location = useLocation();
 
   return (
-    <>
+    <AuthInitializer>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/all-events" element={<AllEvents />} />
@@ -91,8 +92,11 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/register/organizer" element={<OrganizerRegister />} />
-        <Route path="/register/exhibitor" element={<ExhibitorRegister />} />
+        <Route path="/register/partner" element={<Navigate to="/register" replace />} />
+        <Route path="/register/organizer" element={<Navigate to="/upgrade/organizer" replace />} />
+        <Route path="/register/exhibitor" element={<Navigate to="/upgrade/exhibitor" replace />} />
+        <Route path="/upgrade/organizer" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor"]}><UpgradeOrganizerPage /></ProtectedRoute>} />
+        <Route path="/upgrade/exhibitor" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor"]}><UpgradeExhibitorPage /></ProtectedRoute>} />
         <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/Terms" element={<Terms />} />
         <Route path="/Help_Center" element={<Help />} />
@@ -177,7 +181,7 @@ export default function App() {
       </Routes>
       {location.pathname === "/" && <Chatbot />}
 
-    </>
+    </AuthInitializer>
 
   );
 }

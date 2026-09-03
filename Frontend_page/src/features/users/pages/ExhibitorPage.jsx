@@ -16,53 +16,6 @@ const COLUMNS = [
   { key: "status", label: "Status", badge: true },
 ];
 
-const fallbackExhibitors = [
-  {
-    id: 1,
-    company_name: "TechCorp Electronics Pvt Ltd",
-    name: "Suresh Raina",
-    mobile: "+91 98765 43210",
-    email: "suresh@techcorp.in",
-    stall_area: "Stall #B-12 (36 sq.m)",
-    products: "Smart IoT & Automation",
-    address: "Chennai, Tamil Nadu",
-    status: "Approved"
-  },
-  {
-    id: 2,
-    company_name: "GreenLife Organic Foods",
-    name: "Anitha Ramesh",
-    mobile: "+91 98123 45678",
-    email: "anitha@greenlife.org",
-    stall_area: "Stall #A-05 (18 sq.m)",
-    products: "Organic Spices & Teas",
-    address: "Coimbatore, Tamil Nadu",
-    status: "Active"
-  },
-  {
-    id: 3,
-    company_name: "Skyline Handicrafts & Decor",
-    name: "Vikram Seth",
-    mobile: "+91 97890 12345",
-    email: "vikram@skylinecrafts.com",
-    stall_area: "Stall #C-08 (24 sq.m)",
-    products: "Wooden Crafts & Furnishings",
-    address: "Madurai, Tamil Nadu",
-    status: "Pending"
-  },
-  {
-    id: 4,
-    company_name: "Nexus Robotics & AI Labs",
-    name: "Kavitha Priya",
-    mobile: "+91 96543 21098",
-    email: "kavitha@nexusai.io",
-    stall_area: "Stall #B-15 (48 sq.m)",
-    products: "Educational AI Drones",
-    address: "Bengaluru, Karnataka",
-    status: "Approved"
-  }
-];
-
 export default function ExhibitorTable() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,13 +30,13 @@ export default function ExhibitorTable() {
 
     try {
       const response = await getExhibitorBookings();
-      if (response && response.data && Array.isArray(response.data) && response.data.length > 0) {
+      if (response && response.data && Array.isArray(response.data)) {
         setRows(response.data);
       } else {
-        setRows(fallbackExhibitors);
+        setRows([]);
       }
     } catch {
-      setRows(fallbackExhibitors);
+      setRows([]);
     } finally {
       setLoading(false);
       setIsRefreshing(false);

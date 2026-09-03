@@ -10,7 +10,7 @@ class AdminController:
         }
 
     @staticmethod
-    def update_event_status(event_id: int, raw_data: dict):
+    def update_event_status(event_id, raw_data: dict):
         result = AdminService.update_event_status(event_id, raw_data)
         return {
             "success": True,
@@ -34,7 +34,7 @@ class AdminController:
         }
 
     @staticmethod
-    def update_category(cat_id: int, raw_data: dict):
+    def update_category(cat_id, raw_data: dict):
         category = AdminService.update_category(cat_id, raw_data)
         return {
             "success": True,
@@ -42,7 +42,7 @@ class AdminController:
         }
 
     @staticmethod
-    def delete_category(cat_id: int):
+    def delete_category(cat_id):
         result = AdminService.delete_category(cat_id)
         return {
             "success": True,
@@ -58,7 +58,7 @@ class AdminController:
         }
 
     @staticmethod
-    def update_organizer_kyc_status(user_id: int, raw_data: dict):
+    def update_organizer_kyc_status(user_id, raw_data: dict):
         result = AdminService.update_organizer_kyc_status(user_id, raw_data)
         return {
             "success": True,
@@ -98,7 +98,7 @@ class AdminController:
         }
 
     @staticmethod
-    def update_category_request_status(request_id: int, raw_data: dict):
+    def update_category_request_status(request_id, raw_data: dict):
         result = AdminService.update_category_request_status(request_id, raw_data)
         return {
             "success": True,

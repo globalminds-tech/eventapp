@@ -22,6 +22,40 @@ export const authApi = {
     return res.data;
   },
 
+  upgradeOrganizerStep1: async (data) => {
+    const res = await axiosClient.patch(AUTH_ENDPOINTS.UPGRADE_ORGANIZER_STEP1, data);
+    return res.data;
+  },
+
+  upgradeOrganizerComplete: async (data) => {
+    const res = await axiosClient.post(AUTH_ENDPOINTS.UPGRADE_ORGANIZER_COMPLETE, data);
+    return res.data;
+  },
+
+  upgradeExhibitorStep1: async (data) => {
+    const res = await axiosClient.patch(AUTH_ENDPOINTS.UPGRADE_EXHIBITOR_STEP1, data);
+    return res.data;
+  },
+
+  upgradeExhibitorComplete: async (data) => {
+    const res = await axiosClient.post(AUTH_ENDPOINTS.UPGRADE_EXHIBITOR_COMPLETE, data);
+    return res.data;
+  },
+
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await axiosClient.put(AUTH_ENDPOINTS.UPLOAD_AVATAR, formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    return res.data;
+  },
+
+  getMe: async () => {
+    const res = await axiosClient.get(AUTH_ENDPOINTS.ME);
+    return res.data;
+  },
+
   resetPassword: async (payload) => {
     const res = await axiosClient.post(AUTH_ENDPOINTS.RESET_PASSWORD, payload);
     return res.data;
@@ -29,3 +63,4 @@ export const authApi = {
 };
 
 export default authApi;
+

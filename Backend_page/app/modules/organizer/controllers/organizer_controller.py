@@ -7,7 +7,7 @@ class OrganizerController:
         return {"success": True, "url": url, "file_path": url}
 
     @staticmethod
-    def create_event(event_data: dict, user_id: int = None) -> dict:
+    def create_event(event_data: dict, user_id = None) -> dict:
         return OrganizerService.create_event(event_data, user_id=user_id)
 
     @staticmethod
@@ -19,7 +19,7 @@ class OrganizerController:
         return OrganizerService.update_event(event_id, event_data)
 
     @staticmethod
-    def get_venues(organizer_id: int = None) -> list[dict]:
+    def get_venues(organizer_id = None) -> list[dict]:
         return OrganizerService.get_venues(organizer_id)
 
     @staticmethod
@@ -35,21 +35,21 @@ class OrganizerController:
         return OrganizerService.get_sponsors()
 
     @staticmethod
-    def create_vendor(vendor_data: dict, user_id: int = None) -> dict:
+    def create_vendor(vendor_data: dict, user_id = None) -> dict:
         return OrganizerService.create_vendor(vendor_data, user_id)
 
     @staticmethod
-    def create_sponsor(sponsor_data: dict, user_id: int = None) -> dict:
+    def create_sponsor(sponsor_data: dict, user_id = None) -> dict:
         return OrganizerService.create_sponsor(sponsor_data, user_id)
 
     @staticmethod
-    def create_venue(venue_data: dict, user_id: int = None) -> dict:
+    def create_venue(venue_data: dict, user_id = None) -> dict:
         return OrganizerService.create_venue(venue_data, user_id)
 
     @staticmethod
-    def get_policies(organizer_id: int = None) -> list[dict]:
+    def get_policies(organizer_id = None) -> list[dict]:
         return OrganizerService.get_policies(organizer_id)
 
     @staticmethod
-    def submit_kyc(user_id: int, kyc_data: dict) -> dict:
+    def submit_kyc(user_id, kyc_data: dict) -> dict:
         return OrganizerService.submit_kyc(user_id, kyc_data)

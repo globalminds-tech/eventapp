@@ -56,12 +56,12 @@ def get_events(request: Request, organizer: str = None, organizer_id: str = None
 @root_admin_router.put("/superuser/update-status/{event_id}")
 @root_admin_router.put("/superadmin/api/update-status/{event_id}")
 @root_admin_router.post("/superuser/update-status/{event_id}")
-async def update_status_alias(event_id: int, request: Request):
+async def update_status_alias(event_id: str, request: Request):
     body = await request.json()
     return AdminController.update_event_status(event_id, body)
 
 @admin_router.put("/events/{event_id}/status")
-def update_event_status(event_id: int, payload: UpdateEventStatusSchema, user: dict = admin_auth):
+def update_event_status(event_id: str, payload: UpdateEventStatusSchema, user: dict = admin_auth):
     return AdminController.update_event_status(event_id, payload.dict())
 
 # ── SUPER ADMIN CATEGORY MASTER & BULK IMPORT ──
@@ -84,13 +84,13 @@ def create_category(payload: CategorySchema, user: dict = admin_auth):
 
 @root_admin_router.put("/superadmin/api/categories/{cat_id}")
 @root_admin_router.put("/superuser/categories/{cat_id}")
-async def update_category_alias(cat_id: int, request: Request):
+async def update_category_alias(cat_id: str, request: Request):
     data = await request.json()
     return AdminController.update_category(cat_id, data)
 
 @root_admin_router.delete("/superadmin/api/categories/{cat_id}")
 @root_admin_router.delete("/superuser/categories/{cat_id}")
-def delete_category_alias(cat_id: int):
+def delete_category_alias(cat_id: str):
     return AdminController.delete_category(cat_id)
 
 @root_admin_router.post("/superadmin/api/upload-category-image")
@@ -178,7 +178,7 @@ async def submit_category_request(request: Request):
 
 @root_admin_router.put("/superadmin/api/category-requests/{request_id}")
 @root_admin_router.put("/superuser/category-requests/{request_id}")
-async def update_category_request_status(request_id: int, request: Request):
+async def update_category_request_status(request_id: str, request: Request):
     data = await request.json()
     return AdminController.update_category_request_status(request_id, data)
 
@@ -198,21 +198,39 @@ def get_all_users_alias():
 
 @root_admin_router.put("/superuser/organizers/{user_id}/kyc-status")
 @root_admin_router.put("/superadmin/api/organizers/{user_id}/kyc-status")
-async def update_organizer_kyc_status_alias(user_id: int, request: Request):
+async def update_organizer_kyc_status_alias(user_id: str, request: Request):
     data = await request.json()
     return AdminController.update_organizer_kyc_status(user_id, data)
 
 @admin_router.put("/organizers/{user_id}/kyc-status")
-def update_organizer_kyc_status(user_id: int, payload: UpdateKycStatusSchema):
+def update_organizer_kyc_status(user_id: str, payload: UpdateKycStatusSchema):
     return AdminController.update_organizer_kyc_status(user_id, payload.dict())
 
 @root_admin_router.get("/superadmin/api/events-check-in")
 @root_admin_router.get("/superuser/events-check-in")
 def get_events_check_in():
+    from app.extensions.database import db
+    from app.models.event import EventDetails
+    from app.models.booking import UserBookingDetails
+    from sqlalchemy import select, func
+
+    events = db.session.scalars(select(EventDetails).order_by(EventDetails.created_at.desc()).limit(20)).all()
+    data = []
+    for e in events:
+        total_bookings = db.session.scalar(
+            select(func.count(UserBookingDetails.id)).where(UserBookingDetails.event_id == e.id)
+        ) or 0
+        scanned_count = db.session.scalar(
+            select(func.count(UserBookingDetails.id)).where(UserBookingDetails.event_id == e.id, UserBookingDetails.is_scanned == True)
+        ) or 0
+        data.append({
+            "id": str(e.id),
+            "event_name": e.event_name or "Live Event",
+            "start_date": str(e.start_date) if e.start_date else "",
+            "end_date": str(e.end_date) if e.end_date else "",
+            "redemptions": f"{scanned_count}/{total_bookings}"
+        })
     return {
         "success": True,
-        "data": [
-            {"id": 1, "event_name": "MRC Grand Music Fest 2026", "start_date": "2026-09-15", "end_date": "2026-09-18", "redemptions": "380/500"},
-            {"id": 2, "event_name": "Valluvar Kottam Food Expo", "start_date": "2026-09-20", "end_date": "2026-09-22", "redemptions": "850/1200"}
-        ]
+        "data": data
     }

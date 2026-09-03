@@ -46,21 +46,21 @@ class ExhibitorService:
         booking = ExhibitorRepository.create_stall_booking(data_dict)
         return {
             "message": "Stall booked successfully!",
-            "booking_id": booking.id
+            "booking_id": str(booking.id)
         }
 
     @staticmethod
-    def get_user_bookings(user_id: int, host_url: str = "") -> list[dict]:
+    def get_user_bookings(user_id, host_url: str = "") -> list[dict]:
         rows = ExhibitorRepository.get_user_bookings(user_id)
         data = []
         base_url = host_url.rstrip("/")
 
         for booking, event_name in rows:
             b_dict = {
-                "id": booking.id,
-                "event_id": booking.event_id,
-                "user_id": booking.user_id,
-                "eventName": event_name or booking.eventName,
+                "id": str(booking.id),
+                "event_id": str(booking.event_id) if booking.event_id else None,
+                "user_id": str(booking.user_id) if booking.user_id else None,
+                "eventName": event_name or getattr(booking, "event_name", ""),
                 "event_name": event_name,
                 "title": booking.title,
                 "first_name": booking.first_name,
@@ -94,7 +94,7 @@ class ExhibitorService:
         return data
 
     @staticmethod
-    def get_booking_by_id(booking_id: int, host_url: str = "") -> dict:
+    def get_booking_by_id(booking_id, host_url: str = "") -> dict:
         booking = ExhibitorRepository.get_booking_by_id(booking_id)
         if not booking:
             raise ApiError("Booking not found", 404)
@@ -108,11 +108,11 @@ class ExhibitorService:
             event = db.session.get(EventDetails, booking.event_id)
             
         b_dict = {
-            "id": booking.id,
-            "event_id": booking.event_id,
-            "user_id": booking.user_id,
-            "eventName": event.event_name if event else getattr(booking, "eventName", ""),
-            "event_name": event.event_name if event else getattr(booking, "eventName", ""),
+            "id": str(booking.id),
+            "event_id": str(booking.event_id) if booking.event_id else None,
+            "user_id": str(booking.user_id) if booking.user_id else None,
+            "eventName": event.event_name if event else getattr(booking, "event_name", ""),
+            "event_name": event.event_name if event else getattr(booking, "event_name", ""),
             "event_code": event.event_code if event else None,
             "title": booking.title,
             "first_name": booking.first_name,

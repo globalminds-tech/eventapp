@@ -5,10 +5,10 @@ from .event import (
     EventDetails, EventBookingDetails, EventLayout,
     EventFile, EventTerm, EventGuest
 )
-from .venue import Venue, VenueDocument, Country, State, City
+from .venue import Venue, VenueDocument
 from .stall import EventStall, StallAmenity
 from .exhibitor import ExhibitorStallBooking
-from .booking import UserBookingDetails
+from .booking import UserBookingDetails, AttendeeCheckinLog
 from .vendor import VendorDetails, VendorDocument, EventVendor
 from .sponsor import SponsorDetails, SponsorDocument, EventSponsor
 from .policy import Policy
@@ -25,10 +25,10 @@ __all__ = [
     'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster', 'CategoryRequest',
     'EventDetails', 'EventBookingDetails', 'EventLayout',
     'EventFile', 'EventTerm', 'EventGuest',
-    'Venue', 'VenueDocument', 'Country', 'State', 'City',
+    'Venue', 'VenueDocument',
     'EventStall', 'StallAmenity',
     'ExhibitorStallBooking',
-    'UserBookingDetails',
+    'UserBookingDetails', 'AttendeeCheckinLog',
     'VendorDetails', 'VendorDocument', 'EventVendor',
     'SponsorDetails', 'SponsorDocument', 'EventSponsor',
     'Policy',

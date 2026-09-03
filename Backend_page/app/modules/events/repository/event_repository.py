@@ -77,30 +77,34 @@ class EventRepository:
         ]
 
     @staticmethod
-    def get_by_id(event_id: int) -> EventDetails | None:
+    def get_by_id(event_id) -> EventDetails | None:
         return db.session.get(EventDetails, event_id)
 
     @staticmethod
     def get_full_event_by_id(event_identifier) -> Optional[dict]:
         import json
         import urllib.parse
+        import uuid
         try:
             db.session.rollback()
         except Exception:
             pass
         if not event_identifier:
             return None
-        if isinstance(event_identifier, int) or (isinstance(event_identifier, str) and str(event_identifier).isdigit()):
-            event_id = int(event_identifier)
-            event = db.session.get(EventDetails, event_id)
-        else:
-            ident_str = urllib.parse.unquote(str(event_identifier)).strip()
+        event = None
+        ident_str = urllib.parse.unquote(str(event_identifier)).strip()
+        try:
+            parsed_uuid = uuid.UUID(ident_str)
+            event = db.session.get(EventDetails, parsed_uuid)
+        except (ValueError, AttributeError):
+            pass
+
+        if not event:
             slug_str = ident_str.lower().replace(" ", "-")
             stmt = select(EventDetails).where(
                 (EventDetails.event_code == ident_str) |
                 (EventDetails.slug == ident_str) |
                 (EventDetails.slug == slug_str) |
-                (EventDetails.uuid == ident_str) |
                 (func.lower(EventDetails.event_name) == ident_str.lower())
             )
             event = db.session.scalars(stmt).first()
@@ -455,17 +459,17 @@ class EventRepository:
         # 1. Save core EventDetails
         event = None
         if event_id:
-            if isinstance(event_id, int) or (isinstance(event_id, str) and str(event_id).isdigit()):
-                event = db.session.get(EventDetails, int(event_id))
-            else:
+            import uuid
+            try:
+                parsed_eid = uuid.UUID(str(event_id))
+                event = db.session.get(EventDetails, parsed_eid)
+            except (ValueError, AttributeError):
                 event = db.session.scalars(select(EventDetails).where(
-                    (EventDetails.event_code == str(event_id)) | (EventDetails.slug == str(event_id)) | (EventDetails.uuid == str(event_id))
+                    (EventDetails.event_code == str(event_id)) | (EventDetails.slug == str(event_id))
                 )).first()
 
         if not event:
-            import uuid
             event = EventDetails()
-            event.uuid = str(uuid.uuid4())
             db.session.add(event)
 
         event.event_name = event_details.get("eventName") or event_details.get("event_name") or raw_data.get("event_name") or "Untitled Event"

@@ -18,8 +18,40 @@ class AuthController:
         }
 
     @staticmethod
+    def upgrade_organizer_step1(user_id, raw_data: dict):
+        result = AuthService.upgrade_organizer_step1(user_id, raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def upgrade_organizer(user_id, raw_data: dict):
+        result = AuthService.upgrade_organizer(user_id, raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
     def register_exhibitor(raw_data: dict):
         result = AuthService.register_exhibitor(raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def upgrade_exhibitor_step1(user_id, raw_data: dict):
+        result = AuthService.upgrade_exhibitor_step1(user_id, raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def upgrade_exhibitor(user_id, raw_data: dict):
+        result = AuthService.upgrade_exhibitor(user_id, raw_data)
         return {
             "success": True,
             "data": result
@@ -34,7 +66,15 @@ class AuthController:
         }
 
     @staticmethod
-    def me(user_id: int):
+    def switch_role(user_id, target_role: str):
+        result = AuthService.switch_active_role(user_id, target_role)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def me(user_id):
         user_data = AuthService.get_current_user(user_id)
         return {
             "success": True,

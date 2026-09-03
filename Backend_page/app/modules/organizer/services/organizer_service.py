@@ -8,7 +8,7 @@ class OrganizerService:
         return StorageService.upload_file_bytes(contents, filename, content_type, folder="banners")
 
     @staticmethod
-    def create_event(event_data: dict, user_id: int = None) -> dict:
+    def create_event(event_data: dict, user_id = None) -> dict:
         return EventController.create_event(event_data, user_id=user_id)
 
     @staticmethod
@@ -20,7 +20,7 @@ class OrganizerService:
         return EventController.update_event(event_id, event_data)
 
     @staticmethod
-    def get_venues(organizer_id: int = None) -> list[dict]:
+    def get_venues(organizer_id = None) -> list[dict]:
         from sqlalchemy import select
         from app.extensions.database import db
         from app.models.venue import Venue
@@ -34,7 +34,7 @@ class OrganizerService:
         return []
 
     @staticmethod
-    def create_venue(venue_data: dict, user_id: int = None) -> dict:
+    def create_venue(venue_data: dict, user_id = None) -> dict:
         from app.extensions.database import db
         from app.models.venue import Venue
         try:
@@ -102,7 +102,7 @@ class OrganizerService:
             return []
 
     @staticmethod
-    def create_vendor(vendor_data: dict, user_id: int = None) -> dict:
+    def create_vendor(vendor_data: dict, user_id = None) -> dict:
         from app.extensions.database import db
         from app.models.vendor import VendorDetails
         try:
@@ -124,7 +124,7 @@ class OrganizerService:
             raise e
 
     @staticmethod
-    def create_sponsor(sponsor_data: dict, user_id: int = None) -> dict:
+    def create_sponsor(sponsor_data: dict, user_id = None) -> dict:
         from app.extensions.database import db
         from app.models.sponsor import SponsorDetails
         try:
@@ -144,31 +144,31 @@ class OrganizerService:
             raise e
 
     @staticmethod
-    def get_policies(organizer_id: int = None) -> list[dict]:
+    def get_policies(organizer_id = None) -> list[dict]:
         return [
             {
-                "id": 1,
+                "id": "1",
                 "policy_group": "Cancellation Policy",
                 "policy_type": "General Cancellation",
                 "policy_name": "Standard 48-Hour Refund Policy",
                 "description": "Full refund available up to 48 hours before event start date."
             },
             {
-                "id": 2,
+                "id": "2",
                 "policy_group": "Cancellation Policy",
                 "policy_type": "General Cancellation",
                 "policy_name": "Non-Refundable Ticket",
                 "description": "Tickets are strictly non-refundable once purchased."
             },
             {
-                "id": 3,
+                "id": "3",
                 "policy_group": "Refund Policy",
                 "policy_type": "Payment Return",
                 "policy_name": "5-7 Business Days Payout",
                 "description": "Refunds will be credited to original payment method within 5-7 business days."
             },
             {
-                "id": 4,
+                "id": "4",
                 "policy_group": "Safety Policy",
                 "policy_type": "Venue Security",
                 "policy_name": "Mandatory Government ID Verification",
@@ -177,7 +177,7 @@ class OrganizerService:
         ]
 
     @staticmethod
-    def submit_kyc(user_id: int, kyc_data: dict) -> dict:
+    def submit_kyc(user_id, kyc_data: dict) -> dict:
         user = OrganizerRepository.update_organizer_kyc(user_id, kyc_data)
         if not user:
             return {"success": False, "message": "User not found"}

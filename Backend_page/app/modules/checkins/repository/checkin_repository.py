@@ -2,15 +2,10 @@ from datetime import datetime
 from app.extensions.database import db
 from app.models.booking import UserBookingDetails
 
+from typing import Optional
+from app.modules.users.repository.user_repository import UserRepository
+
 class CheckinRepository:
     @staticmethod
-    def mark_scanned(booking_id: int):
-        booking = db.session.get(UserBookingDetails, booking_id)
-        if not booking:
-            return False, None
-        if booking.is_scanned:
-            return False, booking
-        booking.is_scanned = True
-        booking.scanned_at = datetime.utcnow()
-        db.session.commit()
-        return True, booking
+    def mark_scanned(code_or_id: str | int, scanner_id: Optional[str] = None):
+        return UserRepository.mark_booking_scanned(code_or_id, scanner_id=scanner_id)

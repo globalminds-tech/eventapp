@@ -3,6 +3,8 @@ from app.exceptions.api_error import ApiError
 from app.modules.auth.controllers.auth_controller import AuthController
 from app.modules.auth.schemas.auth_schema import (
     RegisterSchema, OrganizerRegisterSchema, ExhibitorRegisterSchema,
+    UpgradeOrganizerStep1Schema, UpgradeOrganizerCompleteSchema,
+    UpgradeExhibitorStep1Schema, UpgradeExhibitorCompleteSchema,
     LoginSchema, SendOTPSchema, VerifyOTPSchema, ResetPasswordSchema
 )
 from app.middleware.auth import get_current_user
@@ -40,10 +42,42 @@ def register_organizer(payload: OrganizerRegisterSchema, response: Response):
     _attach_refresh_cookie(response, res)
     return res
 
+@auth_router.patch("/upgrade/organizer/step/1")
+@auth_router.post("/upgrade/organizer/step/1")
+@root_auth_router.post("/user/upgrade/organizer/step/1")
+def upgrade_organizer_step1(payload: UpgradeOrganizerStep1Schema, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    return AuthController.upgrade_organizer_step1(user_id, payload.dict())
+
+@auth_router.post("/upgrade/organizer/complete")
+@auth_router.post("/upgrade/organizer")
+@root_auth_router.post("/user/upgrade/organizer")
+def upgrade_organizer(payload: UpgradeOrganizerCompleteSchema, response: Response, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    res = AuthController.upgrade_organizer(user_id, payload.dict())
+    _attach_refresh_cookie(response, res)
+    return res
+
 @auth_router.post("/register/exhibitor", status_code=201)
 @root_auth_router.post("/register/exhibitor", status_code=201)
 def register_exhibitor(payload: ExhibitorRegisterSchema, response: Response):
     res = AuthController.register_exhibitor(payload.dict())
+    _attach_refresh_cookie(response, res)
+    return res
+
+@auth_router.patch("/upgrade/exhibitor/step/1")
+@auth_router.post("/upgrade/exhibitor/step/1")
+@root_auth_router.post("/user/upgrade/exhibitor/step/1")
+def upgrade_exhibitor_step1(payload: UpgradeExhibitorStep1Schema, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    return AuthController.upgrade_exhibitor_step1(user_id, payload.dict())
+
+@auth_router.post("/upgrade/exhibitor/complete")
+@auth_router.post("/upgrade/exhibitor")
+@root_auth_router.post("/user/upgrade/exhibitor")
+def upgrade_exhibitor(payload: UpgradeExhibitorCompleteSchema, response: Response, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    res = AuthController.upgrade_exhibitor(user_id, payload.dict())
     _attach_refresh_cookie(response, res)
     return res
 
@@ -52,6 +86,16 @@ def register_exhibitor(payload: ExhibitorRegisterSchema, response: Response):
 @root_auth_router.post("/login")
 def login(payload: LoginSchema, response: Response):
     res = AuthController.login(payload.dict())
+    _attach_refresh_cookie(response, res)
+    return res
+
+@auth_router.post("/switch-role")
+@root_auth_router.post("/auth/switch-role")
+async def switch_role(request: Request, response: Response, current_user: dict = Depends(get_current_user)):
+    body = await request.json()
+    target_role = body.get("role") or body.get("target_role") or "user"
+    user_id = current_user.get("user_id") or current_user.get("id")
+    res = AuthController.switch_role(user_id, target_role)
     _attach_refresh_cookie(response, res)
     return res
 
@@ -73,8 +117,10 @@ def refresh_token(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        new_access_token = generate_access_token(user.id, user.role)
-        new_refresh_token = generate_refresh_token(user.id, user.role)
+        user_roles = list(user.roles) if user.roles else [user.role or "user"]
+        active_role = user.active_role or user.role or "user"
+        new_access_token = generate_access_token(user.id, role=active_role, roles=user_roles)
+        new_refresh_token = generate_refresh_token(user.id, role=active_role, roles=user_roles)
 
         response.set_cookie(
             key="refresh_token",

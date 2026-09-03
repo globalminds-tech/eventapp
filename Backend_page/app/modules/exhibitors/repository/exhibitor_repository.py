@@ -5,7 +5,7 @@ from app.models.event import EventDetails
 
 class ExhibitorRepository:
     @staticmethod
-    def get_existing_booking(email: str, event_id: int):
+    def get_existing_booking(email: str, event_id):
         stmt = select(ExhibitorStallBooking).where(
             ExhibitorStallBooking.email == email,
             ExhibitorStallBooking.event_id == event_id
@@ -20,7 +20,7 @@ class ExhibitorRepository:
         return booking
 
     @staticmethod
-    def get_user_bookings(user_id: int):
+    def get_user_bookings(user_id):
         stmt = select(
             ExhibitorStallBooking,
             EventDetails.event_name
@@ -30,7 +30,7 @@ class ExhibitorRepository:
         return db.session.execute(stmt).all()
 
     @staticmethod
-    def get_booking_by_id(booking_id: int) -> ExhibitorStallBooking | None:
+    def get_booking_by_id(booking_id) -> ExhibitorStallBooking | None:
         return db.session.get(ExhibitorStallBooking, booking_id)
 
     @staticmethod
@@ -40,11 +40,11 @@ class ExhibitorRepository:
             EventDetails.event_name
         ).outerjoin(
             EventDetails, ExhibitorStallBooking.event_id == EventDetails.id
-        ).order_by(ExhibitorStallBooking.id.desc())
+        ).order_by(ExhibitorStallBooking.created_at.desc())
         return db.session.execute(stmt).all()
 
     @staticmethod
-    def update_application_status(booking_id: int, status: str):
+    def update_application_status(booking_id, status: str):
         booking = db.session.get(ExhibitorStallBooking, booking_id)
         if booking:
             booking.status = status

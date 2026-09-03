@@ -53,34 +53,3 @@ def get_db():
     finally:
         session.close()
 
-def ensure_schema_columns():
-    """Auto-heals missing database columns safely without blocking app startup on table locks."""
-    columns_to_check = [
-        ("event_booking_details", "group_member_limit", "INTEGER DEFAULT 5"),
-        ("event_booking_details", "max_reentries", "VARCHAR(50) DEFAULT 'Unlimited'"),
-        ("event_stalls", "quantity", "INTEGER DEFAULT 1"),
-        ("event_stalls", "single_area_sqft", "FLOAT DEFAULT 100.0"),
-        ("event_stalls", "total_area_sqft", "FLOAT DEFAULT 100.0"),
-        ("user_booking_details", "user_id", "INT"),
-        ("venues", "total_area_sqft", "FLOAT DEFAULT 50000.0")
-    ]
-    try:
-        with engine.connect() as conn:
-            for table, col, col_def in columns_to_check:
-                try:
-                    check_stmt = text(
-                        "SELECT 1 FROM information_schema.columns "
-                        "WHERE table_name = :table AND column_name = :col;"
-                    )
-                    res = conn.execute(check_stmt, {"table": table, "col": col}).fetchone()
-                    if not res:
-                        conn.execute(text("SET lock_timeout = '3s';"))
-                        alter_stmt = text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_def};")
-                        conn.execute(alter_stmt)
-                        conn.commit()
-                except Exception as inner_err:
-                    print(f"[WARN] Column check/add for {table}.{col}: {inner_err}")
-            print("[INFO] Supabase PostgreSQL schema columns verified.")
-    except Exception as err:
-        print(f"[WARN] Schema column verification note: {err}")
-

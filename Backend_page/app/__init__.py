@@ -33,43 +33,34 @@ def create_app() -> FastAPI:
     )
 
     # Universal Production CORS with Credential Support
+    ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:5001",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5001",
+    ]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",
-            "http://localhost:3000",
-            "http://localhost:5001",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:5001",
-        ],
-        allow_origin_regex=r".*",
+        allow_origins=ALLOWED_ORIGINS,
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["*"],
     )
 
-    # Universal Preflight OPTIONS Handler
+    # Database Session Cleanup Middleware
     @app.middleware("http")
-    async def preflight_cors_middleware(request: Request, call_next):
-        origin = request.headers.get("origin") or "*"
-        if request.method == "OPTIONS":
-            from fastapi.responses import Response
-            resp = Response(status_code=200)
-            resp.headers["Access-Control-Allow-Origin"] = origin
-            resp.headers["Access-Control-Allow-Credentials"] = "true"
-            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
-            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-            return resp
-
+    async def db_session_middleware(request: Request, call_next):
         try:
             response = await call_next(request)
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
             return response
         finally:
             db_session.remove()
+
 
 
     # Register Exception Handlers
