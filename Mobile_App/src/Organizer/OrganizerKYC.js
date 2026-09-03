@@ -38,10 +38,8 @@ export default function OrganizerKYC({ navigation }) {
   // Step 1: Contact & Representative Info
   const [fullName, setFullName] = useState("");
   const [primaryMobile, setPrimaryMobile] = useState("");
-  const [altMobile, setAltMobile] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [emailVerified, setEmailVerified] = useState(false);
 
@@ -52,14 +50,19 @@ export default function OrganizerKYC({ navigation }) {
 
   // Step 2: Business & Legal Details
   const [companyName, setCompanyName] = useState("");
-  const [gstPanNumber, setGstPanNumber] = useState("");
+  const [businessEntityType, setBusinessEntityType] = useState("Private Limited (Pvt Ltd)");
+  const [gstNumber, setGstNumber] = useState("");
+  const [panNumber, setPanNumber] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
+  const [cityState, setCityState] = useState("");
+  const [website, setWebsite] = useState("");
 
   // Step 3: Payout Bank Account Settlement
+  const [accountHolderName, setAccountHolderName] = useState("");
+  const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifscCode, setIfscCode] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [accountType, setAccountType] = useState("Savings");
+  const [upiId, setUpiId] = useState("");
 
   useEffect(() => {
     loadSavedKYC();
@@ -72,16 +75,20 @@ export default function OrganizerKYC({ navigation }) {
         const parsed = JSON.parse(data);
         setFullName(parsed.fullName || "");
         setPrimaryMobile(parsed.primaryMobile || "");
-        setAltMobile(parsed.altMobile || "");
         setEmail(parsed.email || "");
         setEmailVerified(parsed.emailVerified || false);
         setCompanyName(parsed.companyName || "");
-        setGstPanNumber(parsed.gstPanNumber || "");
+        setBusinessEntityType(parsed.businessEntityType || "Private Limited (Pvt Ltd)");
+        setGstNumber(parsed.gstNumber || "");
+        setPanNumber(parsed.panNumber || "");
         setBusinessAddress(parsed.businessAddress || "");
+        setCityState(parsed.cityState || "");
+        setWebsite(parsed.website || "");
+        setAccountHolderName(parsed.accountHolderName || "");
         setAccountNumber(parsed.accountNumber || "");
         setIfscCode(parsed.ifscCode || "");
         setBankName(parsed.bankName || "");
-        setAccountType(parsed.accountType || "Savings");
+        setUpiId(parsed.upiId || "");
       }
     } catch (e) {
       console.error(e);
@@ -101,7 +108,7 @@ export default function OrganizerKYC({ navigation }) {
     if (otpInput.trim() === "1234" || otpInput.length >= 4) {
       setEmailVerified(true);
       setShowOtpModal(false);
-      Alert.alert("Verified ✓", "Email address verified successfully!");
+      Alert.alert("Verified 👍", "Email address verified successfully!");
     } else {
       Alert.alert("Verification Error", "Invalid OTP entered. Please use OTP '1234'.");
     }
@@ -112,16 +119,20 @@ export default function OrganizerKYC({ navigation }) {
       const kycData = {
         fullName,
         primaryMobile,
-        altMobile,
         email,
         emailVerified: true,
         companyName,
-        gstPanNumber,
+        businessEntityType,
+        gstNumber,
+        panNumber,
         businessAddress,
+        cityState,
+        website,
+        accountHolderName,
         accountNumber,
         ifscCode,
         bankName,
-        accountType,
+        upiId,
         kycCompleted: true,
       };
       await AsyncStorage.setItem("@organizer_kyc_data", JSON.stringify(kycData));
@@ -134,23 +145,26 @@ export default function OrganizerKYC({ navigation }) {
   const handleNextStep = async () => {
     if (step === 1) {
       if (!fullName.trim() || !primaryMobile.trim() || !email.trim() || !password.trim()) {
-        Alert.alert("Required Fields", "Please complete Full Name, Primary Mobile, Email, and Password.");
+        Alert.alert("Required Fields", "Please complete Full Name, Mobile Phone, Email, and Password.");
         return;
       }
-      if (password !== confirmPassword) {
-        Alert.alert("Password Mismatch", "Password and Confirm Password do not match.");
+      setStep(2);
+    } else if (step === 2) {
+      if (!companyName.trim() || !gstNumber.trim() || !panNumber.trim() || !businessAddress.trim() || !cityState.trim()) {
+        Alert.alert("Required Fields", "Please provide Company Name, GSTIN, PAN, Address, and City & State.");
         return;
       }
+      setStep(3);
+    } else if (step === 3) {
+      if (!accountHolderName.trim() || !accountNumber.trim() || !ifscCode.trim() || !bankName.trim()) {
+        Alert.alert("Required Fields", "Please provide Account Holder Name, Account Number, IFSC, and Bank Name.");
+        return;
+      }
+      await handleSaveKYC();
+      Alert.alert("Registration Complete 🎉", "Account setup & KYC registered! Navigating to Organizer Dashboard.", [
+        { text: "Go to Dashboard", onPress: () => navigation?.replace("CreateEvent") },
+      ]);
     }
-    await handleSaveKYC();
-    Alert.alert("Step 1 Completed ✓", "Account setup & password registered! Navigating to Organizer Command Center.", [
-      { text: "Go to Dashboard", onPress: () => navigation?.replace("OrganizerWelcome") },
-    ]);
-  };
-
-  const handleSkipDev = async () => {
-    await handleSaveKYC();
-    navigation?.replace("OrganizerWelcome");
   };
 
   return (
@@ -163,25 +177,17 @@ export default function OrganizerKYC({ navigation }) {
           <ArrowLeft size={20} color="#ffffff" />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.headerSubtitle}>ORGANIZER PORTAL</Text>
-          <Text style={styles.headerTitle}>3-Step Account Onboarding</Text>
+          <Text style={styles.headerSubtitle}>ORGANIZER ONBOARDING</Text>
+          <Text style={styles.headerTitle}>List Your Events & Host Shows</Text>
         </View>
-      </View>
-
-      {/* Development Phase Alert Banner */}
-      <View style={styles.devBanner}>
-        <AlertTriangle size={18} color={COLORS.amber} />
-        <Text style={styles.devBannerText}>
-          <Text style={{ fontWeight: "900" }}>DEV PHASE NOTICE:</Text> Step 1 required. Steps 2 & 3 can be skipped for testing, but are MANDATORY in Production before creating events.
-        </Text>
       </View>
 
       {/* Step Indicator */}
       <View style={styles.stepBar}>
         {[
-          { num: 1, label: "Contact Info", icon: User },
-          { num: 2, label: "Company Legal", icon: Building2 },
-          { num: 3, label: "Payout Bank", icon: Landmark },
+          { num: 1, label: "Representative Contact", icon: User },
+          { num: 2, label: "Business & Legal GST", icon: Building2 },
+          { num: 3, label: "Payout Bank Account", icon: Landmark },
         ].map((sItem) => {
           const IconComp = sItem.icon;
           const isActive = step === sItem.num;
@@ -202,23 +208,23 @@ export default function OrganizerKYC({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {/* STEP 1: REPRESENTATIVE CONTACT & VERIFICATION */}
+        {/* STEP 1: REPRESENTATIVE CONTACT */}
         {step === 1 && (
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <User size={20} color={COLORS.primary} />
-              <Text style={styles.cardTitle}>Step 1: Representative Contact Details</Text>
+              <Text style={styles.cardTitle}>Representative Contact</Text>
             </View>
 
-            <Text style={styles.label}>Full Name *</Text>
+            <Text style={styles.label}>Representative Full Name *</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Robert Downey"
+              placeholder="e.g. Alex Vance"
               value={fullName}
               onChangeText={setFullName}
             />
 
-            <Text style={styles.label}>Primary Mobile Number *</Text>
+            <Text style={styles.label}>Mobile Phone Contact</Text>
             <TextInput
               style={styles.input}
               placeholder="+91 9876543210"
@@ -227,85 +233,107 @@ export default function OrganizerKYC({ navigation }) {
               onChangeText={setPrimaryMobile}
             />
 
-            <Text style={styles.label}>Alternate Contact Mobile Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="+91 9123456789 (Optional)"
-              keyboardType="phone-pad"
-              value={altMobile}
-              onChangeText={setAltMobile}
-            />
-
-            <Text style={styles.label}>Email Address *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="organizer@eventcorp.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
+            <Text style={styles.label}>Official Email Address *</Text>
+            <View style={styles.emailRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="organizer@company.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={email}
+                onChangeText={setEmail}
+                editable={!emailVerified}
+              />
+              <TouchableOpacity
+                style={[styles.otpBtn, emailVerified && styles.otpBtnDone]}
+                onPress={emailVerified ? null : handleSendOtp}
+              >
+                <Text style={styles.otpBtnText}>{emailVerified ? "Verified ✅" : "Send 6-Digit OTP"}</Text>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Account Password *</Text>
             <View style={{ position: "relative" }}>
               <TextInput
-                style={styles.input}
-                placeholder="Enter account password"
+                style={[styles.input, { paddingRight: 40 }]}
+                placeholder="********"
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
               />
-              <TouchableOpacity
-                style={{ position: "absolute", right: 12, top: 12 }}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={18} color="#64748b" /> : <Eye size={18} color="#64748b" />}
+              <TouchableOpacity style={{ position: "absolute", right: 12, top: 12 }} onPress={() => setShowPassword(!showPassword)}>
+                {showPassword ? <EyeOff size={18} color="#94a3b8" /> : <Eye size={18} color="#94a3b8" />}
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.label}>Confirm Password *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Re-enter password to confirm"
-              secureTextEntry={!showPassword}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
           </View>
         )}
 
-        {/* STEP 2: COMPANY & LEGAL DETAILS */}
+        {/* STEP 2: BUSINESS & LEGAL DETAILS */}
         {step === 2 && (
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Building2 size={20} color={COLORS.primary} />
-              <Text style={styles.cardTitle}>Step 2: Company & Business Legal Info</Text>
+              <Text style={styles.cardTitle}>Business & Legal GST</Text>
             </View>
 
-            <Text style={styles.label}>Company / Organization Legal Name</Text>
+            <Text style={styles.label}>Company / Organization Legal Name *</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Apex Events & Media Pvt Ltd"
+              placeholder="e.g. Apex Global Events Ltd"
               value={companyName}
               onChangeText={setCompanyName}
             />
-
-            <Text style={styles.label}>GSTIN / PAN Registration Number</Text>
+            
+            <Text style={styles.label}>Business Entity Type</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. 22AAAAA0000A1Z5"
-              autoCapitalize="characters"
-              value={gstPanNumber}
-              onChangeText={setGstPanNumber}
+              placeholder="e.g. Private Limited (Pvt Ltd)"
+              value={businessEntityType}
+              onChangeText={setBusinessEntityType}
             />
 
-            <Text style={styles.label}>Registered Business Address</Text>
+            <Text style={styles.label}>GSTIN Number *</Text>
             <TextInput
-              style={[styles.input, { height: 80 }]}
-              placeholder="Suite, Building, Street, City, Pincode"
-              multiline
+              style={styles.input}
+              placeholder="e.g. 27ABCDE1234F2Z5"
+              autoCapitalize="characters"
+              value={gstNumber}
+              onChangeText={setGstNumber}
+            />
+
+            <Text style={styles.label}>PAN Card Number *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. ABCDE1234F"
+              autoCapitalize="characters"
+              value={panNumber}
+              onChangeText={setPanNumber}
+            />
+
+            <Text style={styles.label}>Registered Business Address *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. 100 Tech Park, MG Road"
               value={businessAddress}
               onChangeText={setBusinessAddress}
+            />
+            
+            <Text style={styles.label}>City & State *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Mumbai, Maharashtra"
+              value={cityState}
+              onChangeText={setCityState}
+            />
+            
+            <Text style={styles.label}>Website / Social URL</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. https://apexevents.com"
+              autoCapitalize="none"
+              keyboardType="url"
+              value={website}
+              onChangeText={setWebsite}
             />
           </View>
         )}
@@ -315,13 +343,29 @@ export default function OrganizerKYC({ navigation }) {
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Landmark size={20} color={COLORS.primary} />
-              <Text style={styles.cardTitle}>Step 3: Direct Payout Bank Account</Text>
+              <Text style={styles.cardTitle}>Payout Bank Account</Text>
             </View>
+
+            <Text style={styles.label}>Account Holder Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Apex Global Events Ltd"
+              value={accountHolderName}
+              onChangeText={setAccountHolderName}
+            />
+
+            <Text style={styles.label}>Bank Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. HDFC Bank / ICICI Bank"
+              value={bankName}
+              onChangeText={setBankName}
+            />
 
             <Text style={styles.label}>Bank Account Number</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. 98765432100123"
+              placeholder="e.g. 50100234567890"
               keyboardType="number-pad"
               value={accountNumber}
               onChangeText={setAccountNumber}
@@ -336,38 +380,21 @@ export default function OrganizerKYC({ navigation }) {
               onChangeText={setIfscCode}
             />
 
-            <Text style={styles.label}>Bank Name</Text>
+            <Text style={styles.label}>UPI ID / Settlement Preference</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. HDFC Bank"
-              value={bankName}
-              onChangeText={setBankName}
+              placeholder="e.g. apex@hdfcbank"
+              autoCapitalize="none"
+              value={upiId}
+              onChangeText={setUpiId}
             />
-
-            <Text style={styles.label}>Account Type</Text>
-            <View style={styles.typeRow}>
-              {["Savings", "Current"].map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  style={[styles.typePill, accountType === t && styles.typePillActive]}
-                  onPress={() => setAccountType(t)}
-                >
-                  <Text style={[styles.typePillText, accountType === t && styles.typePillTextActive]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
           </View>
         )}
 
         {/* Navigation Buttons */}
         <View style={styles.btnRow}>
-          <TouchableOpacity style={styles.skipBtn} onPress={handleSkipDev}>
-            <Text style={styles.skipBtnText}>Skip for Now (Dev Mode)</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
-            <Text style={styles.nextBtnText}>{step === 3 ? "Complete Setup" : "Save & Continue"}</Text>
-            <ChevronRight size={18} color="#ffffff" />
+            <Text style={styles.nextBtnText}>{step === 3 ? "COMPLETE & PUBLISH ACCOUNT" : "NEXT STEP ->"}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -384,14 +411,14 @@ export default function OrganizerKYC({ navigation }) {
             </View>
 
             <Text style={styles.modalSub}>
-              We sent a 4-digit code to <Text style={{ fontWeight: "bold" }}>{email}</Text>. (Demo OTP: <Text style={{ color: COLORS.primary, fontWeight: "bold" }}>1234</Text>)
+              We sent a 6-digit code to <Text style={{ fontWeight: "bold" }}>{email}</Text>. (Demo OTP: <Text style={{ color: COLORS.primary, fontWeight: "bold" }}>1234</Text>)
             </Text>
 
             <TextInput
               style={styles.otpInput}
-              placeholder="Enter 4-Digit OTP"
+              placeholder="Enter OTP"
               keyboardType="number-pad"
-              maxLength={4}
+              maxLength={6}
               value={otpInput}
               onChangeText={setOtpInput}
             />
@@ -416,64 +443,39 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f172a",
   },
   backBtn: { padding: 4 },
-  headerSubtitle: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 1 },
+  headerSubtitle: { fontSize: 10, fontWeight: "900", color: "#0ea5e9", letterSpacing: 1 },
   headerTitle: { fontSize: 17, fontWeight: "900", color: "#ffffff" },
-
-  devBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#ffedd5",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#fed7aa",
-  },
-  devBannerText: { flex: 1, fontSize: 11, color: "#9a3412", lineHeight: 15 },
 
   stepBar: {
     flexDirection: "row",
-    backgroundColor: "#ffffff",
-    paddingVertical: 12,
+    backgroundColor: "#0f172a",
+    paddingVertical: 20,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
     justifyContent: "space-around",
   },
   stepItem: { alignItems: "center" },
-  stepDot: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#f1f5f9", justifyContent: "center", alignItems: "center", marginBottom: 4 },
-  stepDotActive: { backgroundColor: COLORS.primary },
-  stepDotDone: { backgroundColor: COLORS.green },
-  stepLabel: { fontSize: 11, fontWeight: "700", color: COLORS.subText },
-  stepLabelActive: { color: COLORS.primary, fontWeight: "900" },
+  stepDot: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#1e293b", justifyContent: "center", alignItems: "center", marginBottom: 8 },
+  stepDotActive: { backgroundColor: "#0ea5e9" },
+  stepDotDone: { backgroundColor: "#10b981" },
+  stepLabel: { fontSize: 11, fontWeight: "700", color: "#64748b" },
+  stepLabelActive: { color: "#0ea5e9", fontWeight: "900" },
 
   scrollContent: { padding: 16, paddingBottom: 40 },
   card: { backgroundColor: "#ffffff", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: "#e2e8f0", elevation: 2 },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", display: 'none' },
   cardTitle: { fontSize: 15, fontWeight: "900", color: COLORS.dark },
 
-  label: { fontSize: 12, fontWeight: "700", color: COLORS.dark, marginTop: 10, marginBottom: 4 },
-  input: { backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 13, color: COLORS.dark },
+  label: { fontSize: 12, fontWeight: "800", color: "#1e293b", marginTop: 14, marginBottom: 6 },
+  input: { backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 10, paddingHorizontal: 16, height: 48, fontSize: 13, color: "#0f172a", fontWeight: "600" },
 
   emailRow: { flexDirection: "row", gap: 8, alignItems: "center" },
-  otpBtn: { backgroundColor: COLORS.primary, borderRadius: 10, paddingHorizontal: 14, height: 44, justifyContent: "center" },
-  otpBtnDone: { backgroundColor: COLORS.green },
-  otpBtnText: { color: "#ffffff", fontSize: 12, fontWeight: "bold" },
+  otpBtn: { backgroundColor: "#7dd3fc", borderRadius: 10, paddingHorizontal: 14, height: 48, justifyContent: "center" },
+  otpBtnDone: { backgroundColor: "#10b981" },
+  otpBtnText: { color: "#0284c7", fontSize: 12, fontWeight: "900" },
 
-  verifiedBanner: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#dcfce7", padding: 10, borderRadius: 8, marginTop: 10 },
-  verifiedBannerText: { fontSize: 12, fontWeight: "800", color: COLORS.green },
-
-  typeRow: { flexDirection: "row", gap: 10, marginTop: 6 },
-  typePill: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: "#e2e8f0", alignItems: "center", backgroundColor: "#f8fafc" },
-  typePillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  typePillText: { fontSize: 13, fontWeight: "700", color: COLORS.dark },
-  typePillTextActive: { color: "#ffffff" },
-
-  btnRow: { marginTop: 20, gap: 10 },
-  nextBtn: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, backgroundColor: COLORS.primary, paddingVertical: 14, borderRadius: 12 },
-  nextBtnText: { color: "#ffffff", fontSize: 15, fontWeight: "bold" },
-  skipBtn: { alignItems: "center", paddingVertical: 10 },
-  skipBtnText: { color: COLORS.subText, fontSize: 13, fontWeight: "700" },
+  btnRow: { marginTop: 20, alignItems: "flex-end" },
+  nextBtn: { backgroundColor: "#0066ff", paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
+  nextBtnText: { color: "#ffffff", fontSize: 14, fontWeight: "900" },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "center", padding: 20 },
   modalCard: { backgroundColor: "#ffffff", borderRadius: 20, padding: 20 },

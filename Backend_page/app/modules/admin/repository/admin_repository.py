@@ -15,16 +15,23 @@ class AdminRepository:
         if not existing:
             hashed_password = generate_password_hash("admin@#$123")
             superuser = User(
-                name="superuser",
+                name="superadmin",
                 email=email,
                 password=hashed_password,
-                role="superuser"
+                role="superadmin",
+                roles=["superadmin"],
+                active_role="superadmin"
             )
             db.session.add(superuser)
             db.session.commit()
-            print("[OK] SuperUser auto-created via SQLAlchemy")
+            print("[OK] SuperAdmin auto-created via SQLAlchemy")
         else:
-            print("[OK] SuperUser already exists")
+            existing.name = "superadmin"
+            existing.role = "superadmin"
+            existing.roles = ["superadmin"]
+            existing.active_role = "superadmin"
+            db.session.commit()
+            print("[OK] SuperAdmin role isolated exclusively to ['superadmin']")
 
     @staticmethod
     def get_all_events():
@@ -36,16 +43,16 @@ class AdminRepository:
             EventBookingDetails, EventDetails.id == EventBookingDetails.event_id
         ).outerjoin(
             EventFile, (EventDetails.id == EventFile.event_id) & (EventFile.file_type == 'banner')
-        ).order_by(desc(EventDetails.id))
+        ).order_by(desc(EventDetails.created_at))
 
         return db.session.execute(stmt).all()
 
     @staticmethod
-    def get_event_by_id(event_id: int):
+    def get_event_by_id(event_id):
         return db.session.get(EventDetails, event_id)
 
     @staticmethod
-    def update_event_status(event_id: int, status: str):
+    def update_event_status(event_id, status: str):
         event = db.session.get(EventDetails, event_id)
         if event:
             event.status = status
@@ -89,7 +96,7 @@ class AdminRepository:
             return cat
 
     @staticmethod
-    def update_category_by_id(cat_id: int, data: dict):
+    def update_category_by_id(cat_id, data: dict):
         from app.models.category import CategoryMaster
         cat = db.session.get(CategoryMaster, cat_id)
         if not cat:
@@ -112,7 +119,7 @@ class AdminRepository:
         return cat
 
     @staticmethod
-    def delete_category_by_id(cat_id: int):
+    def delete_category_by_id(cat_id):
         from app.models.category import CategoryMaster
         cat = db.session.get(CategoryMaster, cat_id)
         if cat:
@@ -123,11 +130,11 @@ class AdminRepository:
 
     @staticmethod
     def get_pending_organizers():
-        stmt = select(User).where(User.role == 'organizer').order_by(desc(User.id))
+        stmt = select(User).where(User.role == 'organizer').order_by(desc(User.created_at))
         return db.session.scalars(stmt).all()
 
     @staticmethod
-    def update_organizer_kyc_status(user_id: int, kyc_status: str):
+    def update_organizer_kyc_status(user_id, kyc_status: str):
         user = db.session.get(User, user_id)
         if user:
             user.kyc_status = kyc_status

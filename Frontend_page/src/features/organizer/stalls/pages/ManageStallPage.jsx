@@ -61,79 +61,6 @@ export const ManageStall = () => {
     stall_quantity: ev.total_stalls || 0,
   }));
 
-  // Sample initial applications fallback
-  const fallbackApplications = [
-    {
-      id: 101,
-      event_id: 1,
-      event_name: 'Cultural Fest 2026',
-      company_name: 'Apex Handicrafts & Decor',
-      first_name: 'Rajesh',
-      last_name: 'Kumar',
-      email: 'rajesh.apex@gmail.com',
-      mobile: '9840123456',
-      stall_area: 'Premium Island Stall (20x20 Sq.Ft)',
-      products: 'Handcrafted Wooden Statues, Brass Lamps, Traditional Textiles',
-      price_inr: 45000,
-      status: 'Pending',
-      created_at: '2026-08-29 14:30',
-      gst_pan: '33AAACA1234A1Z5',
-      address: '45 Mount Road, Chennai, TN'
-    },
-    {
-      id: 102,
-      event_id: 1,
-      event_name: 'Cultural Fest 2026',
-      company_name: 'SoundCraft Pro Audio Systems',
-      first_name: 'Anand',
-      last_name: 'Venkatesh',
-      email: 'anand@soundcraft.in',
-      mobile: '9790112233',
-      stall_area: 'Standard Shell Scheme (10x10 Sq.Ft)',
-      products: 'Stage Speakers, Wireless Microphones, Audio Mixers',
-      price_inr: 25000,
-      status: 'Approved',
-      created_at: '2026-08-28 11:15',
-      gst_pan: '33BBBCA5678B1Z2',
-      address: '100 ECR Road, Chennai, TN',
-      payment_lock_until: '23h 45m left'
-    },
-    {
-      id: 103,
-      event_id: 2,
-      event_name: 'LOGMAT Logistics & Supply Chain Expo',
-      company_name: 'GreenDrive Electric Vehicles',
-      first_name: 'Priya',
-      last_name: 'Sharma',
-      email: 'priya@greendrive.com',
-      mobile: '9884055443',
-      stall_area: 'Heavy Machinery Display Zone (40x40 Sq.Ft)',
-      products: 'Electric Forklifts, Battery Logistics Trucks, Smart Warehouse Robots',
-      price_inr: 120000,
-      status: 'Confirmed',
-      created_at: '2026-08-25 09:00',
-      gst_pan: '29CCCCA9876C1Z9',
-      address: 'HITEC City, Hyderabad, TS'
-    },
-    {
-      id: 104,
-      event_id: 2,
-      event_name: 'LOGMAT Logistics & Supply Chain Expo',
-      company_name: 'Starlight Caterers & Snack Bar',
-      first_name: 'Mohamed',
-      last_name: 'Ibrahim',
-      email: 'ibrahim@starlightfood.in',
-      mobile: '9176099887',
-      stall_area: 'Food Court Counter (15x15 Sq.Ft)',
-      products: 'Biryani, Beverages, Snack Stalls',
-      price_inr: 35000,
-      status: 'Rejected',
-      created_at: '2026-08-24 16:20',
-      gst_pan: '33DDDD54321D1Z1',
-      address: 'Triplicane, Chennai, TN'
-    }
-  ];
-
   useEffect(() => {
     fetchApplications();
   }, []);
@@ -143,14 +70,14 @@ export const ManageStall = () => {
     try {
       const res = await apiClient.get('/api/v1/organizer/exhibitor-applications');
       const data = res.data;
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+      if (data.success && Array.isArray(data.data)) {
         setApplications(data.data);
       } else {
-        setApplications(fallbackApplications);
+        setApplications([]);
       }
     } catch (err) {
-      console.log("Using fallback exhibitor applications:", err);
-      setApplications(fallbackApplications);
+      console.error("Error fetching exhibitor applications:", err);
+      setApplications([]);
     } finally {
       setLoading(false);
     }
@@ -164,13 +91,13 @@ export const ManageStall = () => {
       if (data.success) {
         setSelectedAppDetails(data.data);
       } else {
-        const fallback = applications.find(a => a.id === appId);
-        if(fallback) setSelectedAppDetails(fallback);
+        const item = applications.find(a => String(a.id) === String(appId));
+        if(item) setSelectedAppDetails(item);
       }
     } catch (err) {
       console.error(err);
-      const fallback = applications.find(a => a.id === appId);
-      if(fallback) setSelectedAppDetails(fallback);
+      const item = applications.find(a => String(a.id) === String(appId));
+      if(item) setSelectedAppDetails(item);
     }
     setLoadingAppDetails(false);
   };

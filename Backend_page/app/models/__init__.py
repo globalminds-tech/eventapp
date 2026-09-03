@@ -5,10 +5,10 @@ from .event import (
     EventDetails, EventBookingDetails, EventLayout,
     EventFile, EventTerm, EventGuest
 )
-from .venue import Venue, VenueDocument, Country, State, City
+from .venue import Venue, VenueDocument
 from .stall import EventStall, StallAmenity
 from .exhibitor import ExhibitorStallBooking
-from .booking import UserBookingDetails
+from .booking import UserBookingDetails, AttendeeCheckinLog
 from .vendor import VendorDetails, VendorDocument, EventVendor
 from .sponsor import SponsorDetails, SponsorDocument, EventSponsor
 from .policy import Policy
@@ -20,15 +20,18 @@ from .todo import TodoTask, MessageGreeting, Contact
 
 from .category import CategoryMaster
 from .category_request import CategoryRequest
+from .organization import Organization, OrganizationMember, OrganizationInvitation
+from .rbac import Role, Permission, RolePermission
+from .audit_log import AuditLog
 
 __all__ = [
     'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster', 'CategoryRequest',
     'EventDetails', 'EventBookingDetails', 'EventLayout',
     'EventFile', 'EventTerm', 'EventGuest',
-    'Venue', 'VenueDocument', 'Country', 'State', 'City',
+    'Venue', 'VenueDocument',
     'EventStall', 'StallAmenity',
     'ExhibitorStallBooking',
-    'UserBookingDetails',
+    'UserBookingDetails', 'AttendeeCheckinLog',
     'VendorDetails', 'VendorDocument', 'EventVendor',
     'SponsorDetails', 'SponsorDocument', 'EventSponsor',
     'Policy',
@@ -36,5 +39,7 @@ __all__ = [
     'EventVehicleDetail', 'EventVehicleAddon',
     'EventProgram',
     'FeedbackEvent', 'Complaint', 'ChatHistory', 'FAQ',
-    'TodoTask', 'MessageGreeting', 'Contact'
+    'TodoTask', 'MessageGreeting', 'Contact',
+    'Organization', 'OrganizationMember', 'OrganizationInvitation',
+    'Role', 'Permission', 'RolePermission', 'AuditLog'
 ]

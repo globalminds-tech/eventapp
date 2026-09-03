@@ -21,7 +21,7 @@ def generate_unique_slug(
     session: Any,
     model_class: Type[Any],
     title_text: str,
-    current_id: Optional[int] = None,
+    current_id: Optional[Any] = None,
     default_prefix: str = "item"
 ) -> str:
     """

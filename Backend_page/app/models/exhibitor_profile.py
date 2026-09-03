@@ -1,13 +1,17 @@
+import uuid as uuid_pkg
 from typing import Optional
-from sqlalchemy import String, Text, Integer, ForeignKey
+from datetime import datetime
+from sqlalchemy import String, Text, ForeignKey, DateTime, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
+
 
 class ExhibitorProfile(db.Model):
     __tablename__ = 'exhibitor_profiles'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    user_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
     vendor_category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     gstin: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -21,13 +25,19 @@ class ExhibitorProfile(db.Model):
     account_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     ifsc_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     account_holder: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
-    upi_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    kyc_status: Mapped[Optional[str]] = mapped_column(String(50), default="VERIFIED")
+    organization_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     def to_dict(self):
         return {
-            "id": self.id,
-            "user_id": self.user_id,
+            "id": str(self.id),
+            "user_id": str(self.user_id),
             "company_name": self.company_name,
             "vendor_category": self.vendor_category,
             "gstin": self.gstin,
@@ -42,5 +52,5 @@ class ExhibitorProfile(db.Model):
             "ifsc_code": self.ifsc_code,
             "account_holder": self.account_holder,
             "upi_id": self.upi_id,
-            "kyc_status": self.kyc_status
+            "kyc_status": self.kyc_status,
         }

@@ -1,10 +1,11 @@
 import os
 import sys
+import subprocess
 
 # Auto-switch to venv Python if launched using global Python
 venv_python = os.path.abspath(os.path.join(os.path.dirname(__file__), "venv", "Scripts", "python.exe"))
 if os.path.exists(venv_python) and sys.executable.lower() != venv_python.lower():
-    os.execv(venv_python, [venv_python] + sys.argv)
+    sys.exit(subprocess.call([venv_python] + sys.argv))
 
 # Configure sys.pycache_prefix so Python stores all bytecode in .python_cache
 workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

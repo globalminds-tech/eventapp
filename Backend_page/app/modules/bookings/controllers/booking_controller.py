@@ -12,7 +12,7 @@ class BookingController:
         }
 
     @staticmethod
-    def get_booking(booking_id: int):
+    def get_booking(booking_id):
         booking = BookingService.get_booking(booking_id)
         return {
             "success": True,

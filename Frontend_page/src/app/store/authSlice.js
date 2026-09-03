@@ -1,13 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const getStoredToken = () => {
-  const t = localStorage.getItem("token") || sessionStorage.getItem("token");
-  if (!t || t.includes("authenticated-user-token") || t.includes("-session-token")) {
-    return null;
-  }
-  return t;
-};
-
 const getStoredUser = () => {
   try {
     const u = localStorage.getItem("user") || sessionStorage.getItem("user");
@@ -17,14 +9,13 @@ const getStoredUser = () => {
   }
 };
 
-const initialToken = getStoredToken();
 const initialUser = getStoredUser();
 
 const initialState = {
   user: initialUser,
-  accessToken: initialToken,
+  accessToken: null, // Purely in-memory access token (XSS safe)
   role: initialUser?.role || localStorage.getItem("role") || sessionStorage.getItem("role") || null,
-  isAuthenticated: Boolean(initialToken),
+  isAuthenticated: Boolean(initialUser),
   loading: false,
   error: null
 };
@@ -40,8 +31,9 @@ const authSlice = createSlice({
       if (validToken && !validToken.includes("authenticated-user-token")) {
         state.accessToken = validToken;
         state.isAuthenticated = true;
-        localStorage.setItem("token", validToken);
-        sessionStorage.setItem("token", validToken);
+        // Clean up legacy persistent tokens from storage to enforce in-memory security
+        localStorage.removeItem("token");
+        sessionStorage.removeItem("token");
       }
       
       if (user) {
@@ -100,3 +92,4 @@ const authSlice = createSlice({
 
 export const { setCredentials, logout, setAuthLoading } = authSlice.actions;
 export default authSlice.reducer;
+

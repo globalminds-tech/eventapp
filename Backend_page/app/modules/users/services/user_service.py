@@ -14,14 +14,14 @@ except ImportError:
 
 class UserService:
     @staticmethod
-    def get_profile(user_id: int) -> dict:
+    def get_profile(user_id) -> dict:
         user = UserRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
         return user.to_dict()
 
     @staticmethod
-    def update_profile(user_id: int, raw_data: dict) -> dict:
+    def update_profile(user_id, raw_data: dict) -> dict:
         data = UpdateProfileSchema(**raw_data)
         updated_user = UserRepository.update_user_profile(user_id, data.dict(exclude_unset=True))
         if not updated_user:
@@ -45,7 +45,8 @@ class UserService:
             phone=data.phone,
             food_preference=data.food_preference
         )
-        booking_id = booking.id
+        booking_id = str(booking.id)
+        ticket_code = booking.ticket_code or UserRepository.generate_ticket_code(data.event_id)
 
         formatted_date = str(event.start_date)
         if event.start_date:
@@ -54,12 +55,8 @@ class UserService:
             except Exception:
                 pass
 
-        qr_text = (
-            f"Event: {event.event_name}\n"
-            f"Date: {formatted_date}\n"
-            f"Food: {data.food_preference}\n"
-            f"Verify: https://events.sportalytics.in/validate-booking/{booking_id}"
-        )
+        # Production Standard QR Payload: Encode ONLY the secure ticket code (or verification URL)
+        qr_text = ticket_code
 
         UserRepository.update_qr_data(booking_id, qr_text)
 
@@ -93,6 +90,7 @@ class UserService:
 
         return {
             "booking_id": booking_id,
+            "ticket_code": ticket_code,
             "qr_code": qr_base64,
             "event_details": {
                 "name": event.event_name,
@@ -105,8 +103,8 @@ class UserService:
         }
 
     @staticmethod
-    def validate_qr(booking_id: int) -> dict:
-        result = UserRepository.get_booking_with_event(booking_id)
+    def validate_qr(code_or_id: str) -> dict:
+        result = UserRepository.get_booking_with_event(code_or_id)
         if not result:
             raise ApiError("Invalid Ticket / Booking not found", 404)
 
@@ -115,7 +113,7 @@ class UserService:
             status_text = "already_scanned"
             message_text = "This ticket has already been used"
         else:
-            UserRepository.mark_booking_scanned(booking_id)
+            UserRepository.mark_booking_scanned(code_or_id)
             status_text = "success"
             message_text = "Ticket Verified Successfully"
 
@@ -123,6 +121,7 @@ class UserService:
             "status": status_text,
             "message": message_text,
             "details": {
+                "ticket_code": getattr(booking, "ticket_code", str(booking.id)),
                 "visitor_name": getattr(booking, "name", "Attendee"),
                 "event_name": getattr(event, "event_name", getattr(event, "name", "Event")),
                 "venue": getattr(event, "venue", getattr(event, "city", "Main Venue")),
@@ -142,5 +141,5 @@ class UserService:
         }
 
     @staticmethod
-    def get_my_bookings(email: Optional[str] = None, user_id: Optional[int] = None) -> list[dict]:
+    def get_my_bookings(email: Optional[str] = None, user_id: Optional[str] = None) -> list[dict]:
         return UserRepository.get_user_bookings(email=email, user_id=user_id)

@@ -1,13 +1,14 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WebSidebar from "./components/WebSidebar";
+import AuthInitializer from "./components/AuthInitializer";
 
 import Home from "./features/public/pages/HomePage";
 import AllEvents from "./features/events/pages/AllEventsPage";
 import Login from "./features/auth/pages/LoginPage";
 import Register from "./features/auth/pages/RegisterPage";
-import OrganizerRegister from "./features/auth/pages/OrganizerRegisterPage";
-import ExhibitorRegister from "./features/auth/pages/ExhibitorRegisterPage";
+import UpgradeOrganizerPage from "./features/auth/pages/UpgradeOrganizerPage";
+import UpgradeExhibitorPage from "./features/auth/pages/UpgradeExhibitorPage";
 import ExhibitorLeadsPage from "./features/exhibitor/pages/ExhibitorLeadsPage";
 import { LiveDashboard } from "./features/organizer/dashboard/pages/LiveDashboardPage";
 import { LiveFoodDashboard } from "./features/organizer/dashboard/pages/LiveFoodDashboardPage";
@@ -73,26 +74,34 @@ import Chatbot from "./components/chatbot";
 import EventDetail from "./features/events/pages/EventDetailPage";
 import Profile from "./features/organizer/settings/pages/ProfilePage";
 import MyPassesPage from "./features/users/pages/MyPassesPage";
+import AcceptInvitationPage from "./features/auth/pages/AcceptInvitationPage";
+import TeamManagementPage from "./features/organizer/team/pages/TeamManagementPage";
+import { PermissionProvider } from "./shared/context/PermissionContext";
 
 export default function App() {
   const location = useLocation();
 
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/all-events" element={<AllEvents />} />
-        <Route path="/event-detail/:id" element={<EventDetail />} />
-        <Route path="/event/:id" element={<EventDetail />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/my-passes" element={<MyPassesPage />} />
-        <Route path="/my-bookings" element={<MyPassesPage />} />
-        <Route path="/Login" element={<Login />} />
+    <AuthInitializer>
+      <PermissionProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/all-events" element={<AllEvents />} />
+          <Route path="/event-detail/:id" element={<EventDetail />} />
+          <Route path="/event/:id" element={<EventDetail />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/my-passes" element={<MyPassesPage />} />
+          <Route path="/my-bookings" element={<MyPassesPage />} />
+          <Route path="/accept-invite" element={<AcceptInvitationPage />} />
+          <Route path="/Login" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/register/organizer" element={<OrganizerRegister />} />
-        <Route path="/register/exhibitor" element={<ExhibitorRegister />} />
+        <Route path="/register/partner" element={<Navigate to="/register" replace />} />
+        <Route path="/register/organizer" element={<Navigate to="/upgrade/organizer" replace />} />
+        <Route path="/register/exhibitor" element={<Navigate to="/upgrade/exhibitor" replace />} />
+        <Route path="/upgrade/organizer" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor"]}><UpgradeOrganizerPage /></ProtectedRoute>} />
+        <Route path="/upgrade/exhibitor" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor"]}><UpgradeExhibitorPage /></ProtectedRoute>} />
         <Route path="/reset-password" element={<ForgotPassword />} />
         <Route path="/Terms" element={<Terms />} />
         <Route path="/Help_Center" element={<Help />} />
@@ -143,8 +152,9 @@ export default function App() {
           <Route path="ExhibitorSpotRegistration" element={<ProtectedRoute allowedRoles={["organizer"]}><Exhibitorspotregistration /></ProtectedRoute>} />
           <Route path="Exhibitor" element={<ProtectedRoute allowedRoles={["organizer"]}><Exhibitor /></ProtectedRoute>} />
     
-          <Route path="RoleScreen" element={<ProtectedRoute allowedRoles={["organizer"]}><Rolescreen /></ProtectedRoute>} />
-          <Route path="UserScreen" element={<ProtectedRoute allowedRoles={["organizer"]}><UserScreen /></ProtectedRoute>} />
+          <Route path="TeamManagement" element={<ProtectedRoute allowedRoles={["organizer"]}><TeamManagementPage /></ProtectedRoute>} />
+          <Route path="RoleScreen" element={<ProtectedRoute allowedRoles={["organizer"]}><TeamManagementPage /></ProtectedRoute>} />
+          <Route path="UserScreen" element={<ProtectedRoute allowedRoles={["organizer"]}><TeamManagementPage /></ProtectedRoute>} />
           <Route path="User" element={<ProtectedRoute allowedRoles={["organizer"]}><User /></ProtectedRoute>} />
           <Route path="AddonCheckIn" element={<ProtectedRoute allowedRoles={["organizer"]}><Addoncheckinout /></ProtectedRoute>} />
           <Route path="Sportbooking" element={<ProtectedRoute allowedRoles={["organizer"]}><Sportbooking /></ProtectedRoute>} />
@@ -153,6 +163,7 @@ export default function App() {
 
 
         <Route path="/exhibitor" element={<ProtectedRoute allowedRoles={["exhibitor"]}><WebSidebar role="exhibitor" /></ProtectedRoute>}>
+          <Route index element={<ExhibitorHome />} />
           <Route path="dashboard" element={<ExhibitorHome />} />
           <Route path="my-bookings" element={<Exhibitormybooking />} />
           <Route path="my-bookings/:id" element={<ExhibitorBookingDetail />} />
@@ -162,7 +173,7 @@ export default function App() {
         </Route>
         <Route path="/book-stall/:id" element={<ProtectedRoute allowedRoles={["exhibitor"]}><Exhibitorstall /></ProtectedRoute>} />
 
-        <Route path="/superuser" element={<ProtectedRoute allowedRoles={["superuser"]}><WebSidebar role="superuser" /></ProtectedRoute>}>
+        <Route path="/superuser" element={<ProtectedRoute allowedRoles={["superuser", "superadmin"]}><WebSidebar role="superuser" /></ProtectedRoute>}>
           <Route index element={<SuperUserDashboard />} />
           <Route path="dashboard" element={<SuperUserDashboard />} />
           <Route path="approvals" element={<EventApprovalQueue />} />
@@ -173,10 +184,12 @@ export default function App() {
           <Route path="kyc" element={<KycVerification />} />
           <Route path="payouts" element={<PayoutsQueue />} />
         </Route>
+        <Route path="/superadmin/*" element={<Navigate to="/superuser/dashboard" replace />} />
+        <Route path="/superadmin" element={<Navigate to="/superuser/dashboard" replace />} />
       </Routes>
       {location.pathname === "/" && <Chatbot />}
-
-    </>
+      </PermissionProvider>
+    </AuthInitializer>
 
   );
 }

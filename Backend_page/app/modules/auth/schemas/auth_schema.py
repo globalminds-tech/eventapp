@@ -57,6 +57,64 @@ class ExhibitorRegisterSchema(BaseModel):
     account_holder: Optional[str] = None
     upi_id: Optional[str] = None
 
+class UpgradeOrganizerStep1Schema(BaseModel):
+    company_name: str
+    business_type: Optional[str] = None
+    gstin: Optional[str] = None
+    pan_number: Optional[str] = None
+    business_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    website_url: Optional[str] = None
+    mobile: Optional[str] = None
+
+class UpgradeOrganizerCompleteSchema(BaseModel):
+    company_name: Optional[str] = None
+    business_type: Optional[str] = None
+    gstin: Optional[str] = None
+    pan_number: Optional[str] = None
+    business_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    website_url: Optional[str] = None
+    mobile: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    account_holder: Optional[str] = None
+    upi_id: Optional[str] = None
+
+class UpgradeExhibitorStep1Schema(BaseModel):
+    company_name: str
+    vendor_category: Optional[str] = None
+    gstin: Optional[str] = None
+    pan_number: Optional[str] = None
+    business_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    website_url: Optional[str] = None
+    mobile: Optional[str] = None
+
+class UpgradeExhibitorCompleteSchema(BaseModel):
+    company_name: Optional[str] = None
+    vendor_category: Optional[str] = None
+    gstin: Optional[str] = None
+    pan_number: Optional[str] = None
+    business_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    website_url: Optional[str] = None
+    mobile: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    account_holder: Optional[str] = None
+    upi_id: Optional[str] = None
+
 class LoginSchema(BaseModel):
     email: str
     password: str
@@ -71,4 +129,5 @@ class VerifyOTPSchema(BaseModel):
 class ResetPasswordSchema(BaseModel):
     email: str
     password: str = Field(..., min_length=6)
+
 

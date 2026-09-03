@@ -5,11 +5,12 @@ import { clearUser } from "@/app/store/userSlice";
 import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
-  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck
+  ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, Home, User,
+  ArrowLeftRight, Shield
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
-import { performLogout } from "@/shared/services/authHelper";
+import { performLogout, getUserAvailableRoles, switchWorkspaceRole } from "@/shared/services/authHelper";
 
 export default function WebSidebar({ role }) {
   const navigate = useNavigate();
@@ -19,6 +20,11 @@ export default function WebSidebar({ role }) {
 
   const username = useSelector((state) => state.user.name) || sessionStorage.getItem("userName") || "User";
   const profileImage = useSelector((state) => state.user.profile_image) || sessionStorage.getItem("profile_image");
+  const userObj = useSelector((state) => state.user);
+  const availableRoles = getUserAvailableRoles(userObj);
+  const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
+
+  const activeRoleKey = (role === "superadmin" || role === "superuser") ? "superuser" : role;
 
   // Determine theme styling based on the active role
   const theme = {
@@ -43,7 +49,7 @@ export default function WebSidebar({ role }) {
       hover: "hover:bg-slate-800/80 hover:text-white",
       roleLabel: "Exhibitor",
     }
-  }[role] || {
+  }[activeRoleKey] || {
     active: "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-bold shadow-md shadow-cyan-500/25",
     activeIcon: "text-white",
     inactiveIcon: "text-slate-400 group-hover:text-cyan-400",
@@ -84,12 +90,14 @@ export default function WebSidebar({ role }) {
       { label: "Category Master", path: "/superuser/categories", icon: Layers },
       { label: "KYC Verification", path: "/superuser/kyc", icon: UserCheck },
       { label: "Payouts Queue", path: "/superuser/payouts", icon: Landmark },
+      { label: "User Home", path: "/", icon: Home },
     ],
     exhibitor: [
       { label: "Booth Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
       { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store },
       { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar },
       { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users },
+      { label: "User Home", path: "/", icon: Home },
     ],
     organizer: [
       { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard },
@@ -97,13 +105,15 @@ export default function WebSidebar({ role }) {
       { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils },
       { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store },
       { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users },
+      { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield },
       { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt },
+      { label: "User Home", path: "/", icon: Home },
     ]
-  }[role] || [];
+  }[activeRoleKey] || [];
 
-  const mainDashboardPath = role === "organizer" 
+  const mainDashboardPath = activeRoleKey === "organizer" 
     ? "/OrganizerHome/Organizerdashboard" 
-    : role === "superuser" 
+    : activeRoleKey === "superuser" 
     ? "/superuser/dashboard" 
     : "/exhibitor/dashboard";
 
@@ -181,16 +191,16 @@ export default function WebSidebar({ role }) {
           })}
         </div>
 
-        {/* Footer: Logged User info */}
-        <div className="p-3 border-t border-slate-800/80 bg-slate-950/40">
-          <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-            {/* User Profile Trigger */}
-            <div
-              onClick={() => navigate("/profile")}
-              className="relative cursor-pointer group"
-              title="View Profile & Action Items"
-            >
-              <div className="w-8.5 h-8.5 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md overflow-hidden flex-shrink-0 hover:opacity-90 transition">
+        {/* Footer: Logged User Profile Trigger */}
+        <div className="relative p-3 border-t border-slate-800/80 bg-slate-950/40">
+          <div
+            onClick={() => navigate("/profile")}
+            className={`flex items-center gap-3 p-1.5 rounded-xl hover:bg-slate-800/60 transition-all cursor-pointer group ${isCollapsed ? "justify-center" : ""}`}
+            title="Account Overview & Workspaces"
+          >
+            {/* User Profile Avatar */}
+            <div className="relative flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-md overflow-hidden group-hover:scale-105 transition-transform">
                 {profileImage ? (
                   <img src={profileImage} alt="User Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -198,33 +208,76 @@ export default function WebSidebar({ role }) {
                 )}
               </div>
               {/* Notification Badge Dot */}
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-amber-400 rounded-full border-2 border-[#0f172a] animate-pulse" title="1 Action Item Pending" />
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-[#0f172a] animate-pulse" />
             </div>
 
             {!isCollapsed && (
-              <div
-                onClick={() => navigate("/profile")}
-                className="flex-1 min-w-0 cursor-pointer hover:opacity-80 transition"
-                title="View Profile & Action Items"
-              >
-                <h4 className="text-xs font-semibold text-slate-100 truncate leading-none mb-1">
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-bold text-slate-100 truncate leading-tight group-hover:text-cyan-300 transition-colors">
                   {username}
                 </h4>
-                <p className="text-[10px] font-medium text-slate-400 truncate uppercase tracking-wider">
-                  {theme.roleLabel}
-                </p>
+                <div className="flex items-center justify-between gap-1 mt-0.5">
+                  <p className="text-[10px] font-semibold text-slate-400 truncate uppercase tracking-wider">
+                    {theme.roleLabel}
+                  </p>
+                  {availableRoles.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowRoleSwitcher(!showRoleSwitcher);
+                      }}
+                      className="text-[10px] flex items-center gap-1 text-cyan-400 hover:text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-1.5 py-0.5 rounded-md hover:bg-cyan-900/60 transition"
+                      title="Switch Workspace Role"
+                    >
+                      <ArrowLeftRight size={10} />
+                      <span>Switch</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg cursor-pointer transition border-none bg-transparent shrink-0"
-              title="Logout / Sign Out"
-            >
-              <LogOut size={16} />
-            </button>
           </div>
+
+          {/* Quick Role Switcher Dropdown */}
+          {showRoleSwitcher && availableRoles.length > 1 && (
+            <div className="absolute bottom-16 left-3 right-3 bg-slate-900 border border-slate-700/80 rounded-xl p-2 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <div className="text-[10px] font-bold text-slate-400 uppercase px-2 py-1 tracking-wider border-b border-slate-800 mb-1">
+                Switch Workspace
+              </div>
+              <div className="space-y-1">
+                {availableRoles.map((r) => {
+                  const roleKey = r.toLowerCase();
+                  const roleDisplay = {
+                    superuser: "🛡️ Super Admin",
+                    admin: "🛡️ Admin",
+                    organizer: "🎪 Organizer",
+                    exhibitor: "🏢 Exhibitor",
+                    user: "🎟️ Attendee"
+                  }[roleKey] || `👤 ${r}`;
+
+                  const isActive = (role || "").toLowerCase() === roleKey;
+
+                  return (
+                    <button
+                      key={roleKey}
+                      onClick={() => {
+                        setShowRoleSwitcher(false);
+                        switchWorkspaceRole(roleKey, dispatch, navigate);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between transition ${
+                        isActive
+                          ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                      }`}
+                    >
+                      <span>{roleDisplay}</span>
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
       </aside>

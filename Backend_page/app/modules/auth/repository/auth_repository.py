@@ -21,7 +21,7 @@ class AuthRepository:
             return db.session.scalar(stmt)
 
     @staticmethod
-    def get_user_by_id(user_id: int) -> User | None:
+    def get_user_by_id(user_id) -> User | None:
         try:
             return db.session.get(User, user_id)
         except Exception:
@@ -32,12 +32,12 @@ class AuthRepository:
             return db.session.get(User, user_id)
 
     @staticmethod
-    def get_organizer_profile_by_user_id(user_id: int) -> OrganizerProfile | None:
+    def get_organizer_profile_by_user_id(user_id) -> OrganizerProfile | None:
         stmt = select(OrganizerProfile).where(OrganizerProfile.user_id == user_id)
         return db.session.scalar(stmt)
 
     @staticmethod
-    def get_exhibitor_profile_by_user_id(user_id: int) -> ExhibitorProfile | None:
+    def get_exhibitor_profile_by_user_id(user_id) -> ExhibitorProfile | None:
         stmt = select(ExhibitorProfile).where(ExhibitorProfile.user_id == user_id)
         return db.session.scalar(stmt)
 
@@ -95,7 +95,60 @@ class AuthRepository:
         return user
 
     @staticmethod
+    def get_shared_kyc_data(user_id) -> dict:
+        """Fetch pre-existing shared KYC fields from either profile if present."""
+        shared = {}
+        org_profile = db.session.scalar(select(OrganizerProfile).where(OrganizerProfile.user_id == user_id))
+        exh_profile = db.session.scalar(select(ExhibitorProfile).where(ExhibitorProfile.user_id == user_id))
+
+        source = org_profile or exh_profile
+        if source:
+            for field in [
+                "company_name", "gstin", "pan_number", "business_address",
+                "city", "state", "pincode", "website_url", "bank_name",
+                "account_number", "ifsc_code", "account_holder", "upi_id"
+            ]:
+                val = getattr(source, field, None)
+                if val:
+                    shared[field] = val
+        return shared
+
+    @staticmethod
+    def save_organizer_step1(user: User, data: dict) -> User:
+        if data.get("mobile"):
+            user.mobile = data.get("mobile")
+        if data.get("company_name"):
+            user.organization_name = data.get("company_name")
+        if data.get("business_address"):
+            user.address = data.get("business_address")
+        if data.get("city"):
+            user.city = data.get("city")
+        if data.get("state"):
+            user.state = data.get("state")
+
+        profile = db.session.scalar(select(OrganizerProfile).where(OrganizerProfile.user_id == user.id))
+        if not profile:
+            profile = OrganizerProfile(user_id=user.id, company_name=data.get("company_name", ""))
+            db.session.add(profile)
+
+        for key in ["company_name", "business_type", "gstin", "pan_number", "business_address", "city", "state", "pincode", "website_url"]:
+            val = data.get(key)
+            if val is not None and val != "":
+                setattr(profile, key, val)
+
+        if profile.kyc_status != "VERIFIED":
+            profile.kyc_status = "IN_PROGRESS"
+
+        db.session.commit()
+        return user
+
+    @staticmethod
     def attach_organizer_profile(user: User, data: dict, password_hash: str = "") -> User:
+        current_roles = list(user.roles) if user.roles else [user.role or "user"]
+        if "organizer" not in current_roles:
+            current_roles.append("organizer")
+        user.roles = current_roles
+        user.active_role = "organizer"
         user.role = "organizer"
         if data.get("name"):
             user.name = data.get("name")
@@ -169,7 +222,41 @@ class AuthRepository:
         return user
 
     @staticmethod
+    def save_exhibitor_step1(user: User, data: dict) -> User:
+        if data.get("mobile"):
+            user.mobile = data.get("mobile")
+        if data.get("company_name"):
+            user.organization_name = data.get("company_name")
+        if data.get("business_address"):
+            user.address = data.get("business_address")
+        if data.get("city"):
+            user.city = data.get("city")
+        if data.get("state"):
+            user.state = data.get("state")
+
+        profile = db.session.scalar(select(ExhibitorProfile).where(ExhibitorProfile.user_id == user.id))
+        if not profile:
+            profile = ExhibitorProfile(user_id=user.id, company_name=data.get("company_name", ""))
+            db.session.add(profile)
+
+        for key in ["company_name", "vendor_category", "gstin", "pan_number", "business_address", "city", "state", "pincode", "website_url"]:
+            val = data.get(key)
+            if val is not None and val != "":
+                setattr(profile, key, val)
+
+        if profile.kyc_status != "VERIFIED":
+            profile.kyc_status = "IN_PROGRESS"
+
+        db.session.commit()
+        return user
+
+    @staticmethod
     def attach_exhibitor_profile(user: User, data: dict, password_hash: str = "") -> User:
+        current_roles = list(user.roles) if user.roles else [user.role or "user"]
+        if "exhibitor" not in current_roles:
+            current_roles.append("exhibitor")
+        user.roles = current_roles
+        user.active_role = "exhibitor"
         user.role = "exhibitor"
         if data.get("name"):
             user.name = data.get("name")
@@ -211,3 +298,4 @@ class AuthRepository:
             db.session.commit()
             return True
         return False
+
