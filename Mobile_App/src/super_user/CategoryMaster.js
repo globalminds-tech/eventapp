@@ -39,23 +39,17 @@ export default function CategoryMaster({ navigation }) {
       if (list && list.length > 0) {
         setCategories(list);
       } else {
-        setCategories(defaultCategories);
+        setCategories([]);
       }
     } catch (err) {
       console.warn("Categories fetch fallback:", err);
-      setCategories(defaultCategories);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const defaultCategories = [
-    { id: 1, name: "Technology & AI", icon: "💻", subcategories: ["Cloud", "AI & ML", "Cybersecurity", "Web3"] },
-    { id: 2, name: "Music & Concerts", icon: "🎵", subcategories: ["Rock", "EDM", "Classical", "Pop Live"] },
-    { id: 3, name: "Expos & Trade Shows", icon: "🏛️", subcategories: ["Auto Expo", "Real Estate", "Textile", "Electronics"] },
-    { id: 4, name: "Sports & Fitness", icon: "🏆", subcategories: ["Marathon", "Cricket", "Football", "Yoga & Wellness"] },
-    { id: 5, name: "Comedy & Entertainment", icon: "🎤", subcategories: ["Standup", "Improv", "Magic Shows"] },
-  ];
+
 
   useEffect(() => {
     fetchCategories();

@@ -5,19 +5,9 @@ import {
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { ChevronDown, X, Calendar, Clock } from "lucide-react-native";
-import { get_Venues_details } from "@Services/api";
+import { get_Venues_details, getAdminCategories } from "@Services/api";
 import { useEffect } from "react";
 
-const CATEGORIES_MAP = {
-  "Music & Concerts": ["Rock", "Pop", "EDM", "Classical", "Jazz"],
-  "Sports & Fitness": ["Football", "Cricket", "Marathon", "Esports"],
-  "Tech & Business Expos": ["AI & Tech", "Startups", "Web3", "Finance"],
-  "Food & Culinary": ["Food Fest", "Wine Tasting", "Baking Workshop"],
-  "Arts & Theatre": ["Standup Comedy", "Drama", "Art Gallery"],
-  "+ Add Custom Category": ["Custom Subcategory"],
-};
-
-const CATEGORIES = Object.keys(CATEGORIES_MAP);
 const VISIBILITY_OPTIONS = ["Public","Private","Internal"];
 const EVENT_TYPES = ["OneTime","Recurring"];
 const OCCURRENCE_OPTIONS = ["Daily","Weekly","Monthly","Yearly"];
@@ -113,6 +103,37 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
   const [pickerMode, setPickerMode] = useState("date");
   const [tempDate, setTempDate] = useState(new Date());
 
+  const [categoriesMap, setCategoriesMap] = useState({});
+  const [categoriesList, setCategoriesList] = useState([]);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await getAdminCategories();
+        const list = res?.categories || res?.data || (Array.isArray(res) ? res : []);
+        if (list && list.length > 0) {
+          const map = {};
+          list.forEach(c => {
+             const name = c.name || c.category_name;
+             map[name] = c.subcategories && c.subcategories.length > 0 
+                ? c.subcategories.map(s => typeof s === "string" ? s : s.name) 
+                : ["General"];
+          });
+          map["+ Add Custom Category"] = ["Custom Subcategory"];
+          setCategoriesMap(map);
+          setCategoriesList(Object.keys(map));
+        } else {
+          setCategoriesMap({ "+ Add Custom Category": ["Custom Subcategory"] });
+          setCategoriesList(["+ Add Custom Category"]);
+        }
+      } catch (err) {
+        setCategoriesMap({ "+ Add Custom Category": ["Custom Subcategory"] });
+        setCategoriesList(["+ Add Custom Category"]);
+      }
+    };
+    loadCategories();
+  }, []);
+
   useEffect(() => {
     const loadVenues = async () => {
       try {
@@ -130,10 +151,10 @@ export default function Step1EventDetails({ formData, setFormData, organizerId, 
 
   const openDropdown = (type) => {
     setDropdownType(type);
-    if (type === "category") setDropdownList(CATEGORIES);
+    if (type === "category") setDropdownList(categoriesList);
     else if (type === "subcategory") {
-      const mainCat = ed.category || "Music & Concerts";
-      setDropdownList(CATEGORIES_MAP[mainCat] || ["General"]);
+      const mainCat = ed.category || categoriesList[0];
+      setDropdownList(categoriesMap[mainCat] || ["General"]);
     }
     else if (type === "visibility") setDropdownList(VISIBILITY_OPTIONS);
     else if (type === "eventType") setDropdownList(EVENT_TYPES);

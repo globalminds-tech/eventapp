@@ -156,23 +156,16 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
     });
   }, [setFormData, organizerId]);
 
-  const demoVenues = [
-    { id: 1, venue_name: "Grand Convention Center", city_name: "Chennai", address: "123 MRC Nagar, Chennai" },
-    { id: 2, venue_name: "Cyber City Auditorium", city_name: "Bangalore", address: "100 Innovation Way, Cyber City, Bangalore" },
-    { id: 3, venue_name: "International Expo Center", city_name: "Hyderabad", address: "HITEC City Main Road, Hyderabad" },
-    { id: 4, venue_name: "Royal Palace Grounds", city_name: "Mumbai", address: "BKC Complex, Bandra East, Mumbai" },
-  ];
-
   const fetchVenues = async () => {
     try {
       const res = await get_Venues_details(organizerId);
       if (res && Array.isArray(res) && res.length > 0) {
         setVenues(res);
       } else {
-        setVenues(demoVenues);
+        setVenues([]);
       }
     } catch {
-      setVenues(demoVenues);
+      setVenues([]);
     }
   };
 

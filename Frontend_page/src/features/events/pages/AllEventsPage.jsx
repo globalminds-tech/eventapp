@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Search, MapPin, Calendar, Filter, RefreshCw, ChevronLeft, ArrowRight, ThumbsUp, Star } from "lucide-react";
 import { getHomeEventshow } from "@/Services/api";
+import { getAdminCategories } from "@/shared/services/miscService";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-
-const CATEGORIES = ["All", "Music", "Comedy", "Expos", "Sports", "Festivals"];
 
 export default function AllEvents() {
   const navigate = useNavigate();
@@ -22,9 +21,27 @@ export default function AllEvents() {
   const [searchLocation, setSearchLocation] = useState(location.state?.location || "");
   const [searchCategory, setSearchCategory] = useState(location.state?.category || "All");
 
+  const [categories, setCategories] = useState(["All"]);
+
   useEffect(() => {
     fetchEvents();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await getAdminCategories();
+      const list = res?.categories || res?.data || (Array.isArray(res) ? res : []);
+      if (list && list.length > 0) {
+        setCategories(["All", ...list.map(c => c.name || c.category_name)]);
+      } else {
+        setCategories(["All"]);
+      }
+    } catch (err) {
+      console.error(err);
+      setCategories(["All"]);
+    }
+  };
 
   const fetchEvents = async () => {
     setIsLoading(true);
@@ -163,7 +180,7 @@ export default function AllEvents() {
           {/* Category Chips Bar */}
           <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSearchCategory(cat)}

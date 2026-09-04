@@ -5,9 +5,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, MapPin, Calendar, Filter, RefreshCw, ArrowRight } from "lucide-react-native";
-import { getHomeEventshow, getFullEventDetails, getCountries, getStates, getCities } from "@Services/api";
+import { getHomeEventshow, getFullEventDetails, getCountries, getStates, getCities, getAdminCategories } from "@Services/api";
 
-const CATEGORIES = ["All", "Music", "Business", "Technology", "Education", "Sports"];
 const { width } = Dimensions.get("window");
 
 export default function AllEvents({ route, navigation }) {
@@ -28,10 +27,28 @@ export default function AllEvents({ route, navigation }) {
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
 
+  const [categories, setCategories] = useState(["All"]);
+
   useEffect(() => {
     fetchEvents();
+    fetchCategories();
     getCountries().then(setCountries).catch(console.error);
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await getAdminCategories();
+      const list = res?.categories || res?.data || (Array.isArray(res) ? res : []);
+      if (list && list.length > 0) {
+        setCategories(["All", ...list.map(c => c.name || c.category_name)]);
+      } else {
+        setCategories(["All"]);
+      }
+    } catch (err) {
+      console.error(err);
+      setCategories(["All"]);
+    }
+  };
 
   useEffect(() => {
     if (searchCountry) {
@@ -179,7 +196,7 @@ export default function AllEvents({ route, navigation }) {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catScroll} keyboardShouldPersistTaps="handled">
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <TouchableOpacity 
                 key={cat} 
                 style={[s.catBtn, searchCategory === cat && s.catBtnActive]}
