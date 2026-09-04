@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { getEventscheckin } from "@/Services/api";
-import { Eye, QrCode, Users, CheckCircle2, LogOut as LogOutIcon, Search, ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, X } from "lucide-react";
+import { getEventscheckin, getEventAttendees, verifyCheckinTicket } from "@/Services/miscService";
+import { QrCode, Users, CheckCircle2, LogOut as LogOutIcon, Search, ArrowLeft, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -13,6 +13,7 @@ export default function EventCheckIn() {
   const [events, setEvents] = useState([]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [entriesLoading, setEntriesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [lastScanAlert, setLastScanAlert] = useState(null);
@@ -26,107 +27,110 @@ export default function EventCheckIn() {
     try {
       const res = await getEventscheckin();
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      if (list.length > 0) {
-        setEvents(list);
-      } else {
-        setEvents([
-          { id: 1, event_code: "EVT-904", event_name: "Global Senior Dev Summit 2026", arrived: 142, departed: 18, present: 124 },
-          { id: 2, event_code: "EVT-802", event_name: "Tech Expo & AI Conference 2026", arrived: 98, departed: 12, present: 86 },
-          { id: 3, event_code: "EVT-715", event_name: "International Music Fest 2026", arrived: 450, departed: 35, present: 415 }
-        ]);
-      }
+      setEvents(list);
     } catch {
-      setEvents([
-        { id: 1, event_code: "EVT-904", event_name: "Global Senior Dev Summit 2026", arrived: 142, departed: 18, present: 124 },
-        { id: 2, event_code: "EVT-802", event_name: "Tech Expo & AI Conference 2026", arrived: 98, departed: 12, present: 86 },
-        { id: 3, event_code: "EVT-715", event_name: "International Music Fest 2026", arrived: 450, departed: 35, present: 415 }
-      ]);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenScanner = (eventItem) => {
-    setSelectedEvent(eventItem);
-    setEntries([
-      { id: 1, visitor_code: "PAS-901", name: "Rahul Kumar", phone: "9876543210", email: "rahul@example.com", checkin_time: "10:30 AM", checkout_time: "" },
-      { id: 2, visitor_code: "PAS-902", name: "Priya Sharma", phone: "9812345678", email: "priya@example.com", checkin_time: "11:15 AM", checkout_time: "01:00 PM" },
-      { id: 3, visitor_code: "PAS-903", name: "Anand Raj", phone: "9789012345", email: "anand@example.com", checkin_time: "", checkout_time: "" },
-      { id: 4, visitor_code: "PAS-904", name: "Deepa Nair", phone: "9123456789", email: "deepa@example.com", checkin_time: "", checkout_time: "" }
-    ]);
-    setShowScanner(true);
-    setPage("entries");
+  const loadEventEntries = async (eventId) => {
+    setEntriesLoading(true);
+    try {
+      const res = await getEventAttendees(eventId);
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setEntries(list);
+    } catch {
+      setEntries([]);
+    } finally {
+      setEntriesLoading(false);
+    }
   };
 
-  const handleScanResult = (code) => {
-    const cleanCode = code.trim().toUpperCase();
-    const existing = entries.find((e) => e.visitor_code.toUpperCase() === cleanCode || e.name.toUpperCase().includes(cleanCode));
+  const handleOpenScanner = (eventItem) => {
+    setSelectedEvent(eventItem);
+    setEntries([]);
+    setShowScanner(true);
+    setPage("entries");
+    loadEventEntries(eventItem.id);
+  };
 
-    if (existing) {
-      if (existing.checkin_time) {
-        setLastScanAlert({
-          type: "warning",
-          message: `⚠️ ALREADY CHECKED IN: ${existing.name} (${existing.visitor_code}) at ${existing.checkin_time}`
-        });
-      } else {
-        const timeNow = new Date().toLocaleTimeString();
-        setEntries((prev) =>
-          prev.map((item) =>
-            item.id === existing.id ? { ...item, checkin_time: timeNow } : item
-          )
-        );
-        setLastScanAlert({
-          type: "success",
-          message: `✅ CHECK-IN VERIFIED! ${existing.name} (${existing.visitor_code}) @ ${timeNow}`
-        });
-      }
-    } else {
-      // Create new scanned pass entry dynamically
+  const handleScanResult = async (code) => {
+    const cleanCode = code.trim().toUpperCase();
+    try {
+      const res = await verifyCheckinTicket(cleanCode, "CHECK_IN", "GATE_SCANNER");
       const timeNow = new Date().toLocaleTimeString();
-      const newEntry = {
-        id: Date.now(),
-        visitor_code: cleanCode.startsWith("PAS") ? cleanCode : `PAS-${cleanCode.slice(0, 6)}`,
-        name: `Scanned Attendee (${cleanCode.slice(0, 8)})`,
-        phone: "N/A",
-        email: "verified@gate.in",
-        checkin_time: timeNow,
-        checkout_time: ""
-      };
-      setEntries((prev) => [newEntry, ...prev]);
       setLastScanAlert({
         type: "success",
-        message: `✅ TICKET VERIFIED & GATE ACCESSED! Pass: ${newEntry.visitor_code} @ ${timeNow}`
+        message: `✅ CHECK-IN VERIFIED! Pass: ${cleanCode} @ ${timeNow}`
+      });
+      if (selectedEvent?.id) {
+        loadEventEntries(selectedEvent.id);
+      }
+      fetchEvents();
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || "Check-in verification failed";
+      setLastScanAlert({
+        type: "warning",
+        message: `⚠️ ${errMsg}`
       });
     }
   };
 
-  const handleCheckIn = (id) => {
-    const timeNow = new Date().toLocaleTimeString();
-    setEntries((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, checkin_time: timeNow } : item
-      )
-    );
+  const handleCheckIn = async (attendee) => {
+    const code = attendee.visitor_code || attendee.id;
+    try {
+      await verifyCheckinTicket(code, "CHECK_IN", "DESK");
+      const timeNow = new Date().toLocaleTimeString();
+      setLastScanAlert({
+        type: "success",
+        message: `✅ Check-in recorded for ${attendee.name} @ ${timeNow}`
+      });
+      if (selectedEvent?.id) {
+        loadEventEntries(selectedEvent.id);
+      }
+      fetchEvents();
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || "Check-in failed";
+      setLastScanAlert({
+        type: "warning",
+        message: `⚠️ ${errMsg}`
+      });
+    }
   };
 
-  const handleCheckOut = (id) => {
-    const timeNow = new Date().toLocaleTimeString();
-    setEntries((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, checkout_time: timeNow } : item
-      )
-    );
+  const handleCheckOut = async (attendee) => {
+    const code = attendee.visitor_code || attendee.id;
+    try {
+      await verifyCheckinTicket(code, "CHECK_OUT", "DESK");
+      const timeNow = new Date().toLocaleTimeString();
+      setLastScanAlert({
+        type: "success",
+        message: `👋 Check-out recorded for ${attendee.name} @ ${timeNow}`
+      });
+      if (selectedEvent?.id) {
+        loadEventEntries(selectedEvent.id);
+      }
+      fetchEvents();
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || "Check-out failed";
+      setLastScanAlert({
+        type: "warning",
+        message: `⚠️ ${errMsg}`
+      });
+    }
   };
 
   const filteredEvents = events.filter(
     (e) =>
-      e.event_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.event_code.toLowerCase().includes(searchQuery.toLowerCase())
+      (e.event_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.event_code || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalScanned = entries.filter((e) => Boolean(e.checkin_time)).length;
-  const totalCheckedOut = entries.filter((e) => Boolean(e.checkout_time)).length;
-  const currentlyInside = Math.max(0, totalScanned - totalCheckedOut);
+  const totalArrivedCount = events.reduce((sum, e) => sum + (Number(e.arrived) || 0), 0);
+  const totalPresentCount = events.reduce((sum, e) => sum + (Number(e.present) || 0), 0);
+  const totalDepartedCount = events.reduce((sum, e) => sum + (Number(e.departed) || 0), 0);
 
   return (
     <div className="space-y-6 pb-12 select-none">
@@ -142,7 +146,7 @@ export default function EventCheckIn() {
             </Badge>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Verify attendee ticket QR passes, track arrived numbers, and manage venue check-ins.
+            Verify attendee ticket QR passes, track arrived numbers, and manage live venue check-ins.
           </p>
         </div>
 
@@ -163,9 +167,9 @@ export default function EventCheckIn() {
         <Card className="border-slate-200/80 shadow-xs">
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Scanned Today</p>
-              <h3 className="text-2xl font-extrabold text-slate-900">{1450 + totalScanned}</h3>
-              <p className="text-xs font-medium text-emerald-600">89% Verified Passes</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Scanned</p>
+              <h3 className="text-2xl font-extrabold text-slate-900">{totalArrivedCount.toLocaleString()}</h3>
+              <p className="text-xs font-medium text-emerald-600">Database Verified Passes</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100">
               <QrCode size={22} />
@@ -177,8 +181,8 @@ export default function EventCheckIn() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Present Inside Venue</p>
-              <h3 className="text-2xl font-extrabold text-emerald-600">{1185 + currentlyInside}</h3>
-              <p className="text-xs font-medium text-slate-500">Currently Active</p>
+              <h3 className="text-2xl font-extrabold text-emerald-600">{totalPresentCount.toLocaleString()}</h3>
+              <p className="text-xs font-medium text-slate-500">Currently Inside</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
               <Users size={22} />
@@ -190,7 +194,7 @@ export default function EventCheckIn() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Departed / Checked Out</p>
-              <h3 className="text-2xl font-extrabold text-slate-700">{265 + totalCheckedOut}</h3>
+              <h3 className="text-2xl font-extrabold text-slate-700">{totalDepartedCount.toLocaleString()}</h3>
               <p className="text-xs font-medium text-slate-400">Exit Gates Logged</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200">
@@ -236,7 +240,7 @@ export default function EventCheckIn() {
       {page === "events" && (
         <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className="text-sm font-bold text-slate-900">Approved Events Gate Summary</h3>
+            <h3 className="text-sm font-bold text-slate-900">Events Gate Summary</h3>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
               <input
@@ -265,13 +269,13 @@ export default function EventCheckIn() {
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
                 {filteredEvents.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-slate-400">
-                      No approved events found matching query.
+                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                      {loading ? "Loading events from database..." : "No events found in database."}
                     </td>
                   </tr>
                 ) : (
                   filteredEvents.map((e, i) => (
-                    <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={e.id || i} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-4 px-5">
                         <Button
                           size="sm"
@@ -288,10 +292,10 @@ export default function EventCheckIn() {
                         </Badge>
                       </td>
                       <td className="py-4 px-5 font-bold text-slate-900">{e.event_name}</td>
-                      <td className="py-4 px-4 text-center font-semibold text-slate-700">{e.arrived}</td>
-                      <td className="py-4 px-4 text-center font-semibold text-slate-500">{e.departed}</td>
+                      <td className="py-4 px-4 text-center font-semibold text-slate-700">{e.arrived || 0}</td>
+                      <td className="py-4 px-4 text-center font-semibold text-slate-500">{e.departed || 0}</td>
                       <td className="py-4 px-5 text-center font-bold text-emerald-600 bg-emerald-50/50 rounded-xl">
-                        {e.present}
+                        {e.present || 0}
                       </td>
                     </tr>
                   ))
@@ -351,35 +355,49 @@ export default function EventCheckIn() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
-                {entries.map((v) => (
-                  <tr key={v.id} className="hover:bg-slate-50/80">
-                    <td className="py-3.5 px-4 text-indigo-600 font-bold">{v.visitor_code}</td>
-                    <td className="py-3.5 px-4 font-bold text-slate-900">{v.name}</td>
-                    <td className="py-3.5 px-4 text-emerald-600 font-bold">{v.checkin_time || "---"}</td>
-                    <td className="py-3.5 px-4 text-slate-500">{v.checkout_time || "---"}</td>
-                    <td className="py-3.5 px-4 text-right">
-                      {!v.checkin_time ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleCheckIn(v.id)}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1 rounded-lg border-none cursor-pointer"
-                        >
-                          Confirm Check-In
-                        </Button>
-                      ) : !v.checkout_time ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleCheckOut(v.id)}
-                          className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3 py-1 rounded-lg border-none cursor-pointer"
-                        >
-                          Check Out Exit
-                        </Button>
-                      ) : (
-                        <Badge className="bg-slate-100 text-slate-600 border-slate-200 font-bold">Completed</Badge>
-                      )}
+                {entriesLoading ? (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-slate-400">
+                      Loading registered attendees from database...
                     </td>
                   </tr>
-                ))}
+                ) : entries.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-10 text-center text-slate-400">
+                      No attendee bookings registered for this event yet.
+                    </td>
+                  </tr>
+                ) : (
+                  entries.map((v) => (
+                    <tr key={v.id} className="hover:bg-slate-50/80">
+                      <td className="py-3.5 px-4 text-indigo-600 font-bold">{v.visitor_code}</td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">{v.name}</td>
+                      <td className="py-3.5 px-4 text-emerald-600 font-bold">{v.checkin_time || "---"}</td>
+                      <td className="py-3.5 px-4 text-slate-500">{v.checkout_time || "---"}</td>
+                      <td className="py-3.5 px-4 text-right">
+                        {!v.is_checked_in ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleCheckIn(v)}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1 rounded-lg border-none cursor-pointer"
+                          >
+                            Confirm Check-In
+                          </Button>
+                        ) : !v.is_checked_out ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleCheckOut(v)}
+                            className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3 py-1 rounded-lg border-none cursor-pointer"
+                          >
+                            Check Out Exit
+                          </Button>
+                        ) : (
+                          <Badge className="bg-slate-100 text-slate-600 border-slate-200 font-bold">Completed</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

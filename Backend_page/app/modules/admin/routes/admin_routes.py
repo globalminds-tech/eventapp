@@ -214,21 +214,36 @@ def get_events_check_in():
     from app.models.booking import UserBookingDetails
     from sqlalchemy import select, func
 
-    events = db.session.scalars(select(EventDetails).order_by(EventDetails.created_at.desc()).limit(20)).all()
+    events = db.session.scalars(select(EventDetails).order_by(EventDetails.created_at.desc()).limit(50)).all()
     data = []
     for e in events:
         total_bookings = db.session.scalar(
             select(func.count(UserBookingDetails.id)).where(UserBookingDetails.event_id == e.id)
         ) or 0
-        scanned_count = db.session.scalar(
-            select(func.count(UserBookingDetails.id)).where(UserBookingDetails.event_id == e.id, UserBookingDetails.is_scanned == True)
+        arrived = db.session.scalar(
+            select(func.count(UserBookingDetails.id)).where(
+                UserBookingDetails.event_id == e.id,
+                (UserBookingDetails.is_checked_in == True) | (UserBookingDetails.is_scanned == True)
+            )
         ) or 0
+        departed = db.session.scalar(
+            select(func.count(UserBookingDetails.id)).where(
+                UserBookingDetails.event_id == e.id,
+                UserBookingDetails.is_checked_out == True
+            )
+        ) or 0
+        present = max(0, arrived - departed)
         data.append({
             "id": str(e.id),
+            "event_code": e.event_code or f"EVT-{str(e.id)[:6].upper()}",
             "event_name": e.event_name or "Live Event",
             "start_date": str(e.start_date) if e.start_date else "",
             "end_date": str(e.end_date) if e.end_date else "",
-            "redemptions": f"{scanned_count}/{total_bookings}"
+            "total_bookings": total_bookings,
+            "arrived": arrived,
+            "departed": departed,
+            "present": present,
+            "redemptions": f"{arrived}/{total_bookings}"
         })
     return {
         "success": True,
