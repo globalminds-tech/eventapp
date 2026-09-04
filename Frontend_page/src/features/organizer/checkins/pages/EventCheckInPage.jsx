@@ -4,6 +4,7 @@ import { QrCode, Users, CheckCircle2, LogOut as LogOutIcon, Search, ArrowLeft, R
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import QRScanner from "@/components/QRScanner";
 
 export default function EventCheckIn() {
@@ -267,10 +268,21 @@ export default function EventCheckIn() {
               </thead>
 
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {filteredEvents.length === 0 ? (
+                {loading ? (
+                  Array.from({ length: 4 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="py-4 px-5"><Skeleton className="h-8 w-28 rounded-lg" /></td>
+                      <td className="py-4 px-4"><Skeleton className="h-5 w-16 rounded" /></td>
+                      <td className="py-4 px-5"><Skeleton className="h-4 w-40 rounded" /></td>
+                      <td className="py-4 px-4 text-center"><Skeleton className="h-4 w-8 rounded mx-auto" /></td>
+                      <td className="py-4 px-4 text-center"><Skeleton className="h-4 w-8 rounded mx-auto" /></td>
+                      <td className="py-4 px-5 text-center"><Skeleton className="h-6 w-12 rounded-xl mx-auto" /></td>
+                    </tr>
+                  ))
+                ) : filteredEvents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-12 text-center text-slate-400">
-                      {loading ? "Loading events from database..." : "No events found in database."}
+                      No events found in database.
                     </td>
                   </tr>
                 ) : (
@@ -356,11 +368,15 @@ export default function EventCheckIn() {
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
                 {entriesLoading ? (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-400">
-                      Loading registered attendees from database...
-                    </td>
-                  </tr>
+                  Array.from({ length: 4 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-32 rounded" /></td>
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
+                      <td className="py-3.5 px-4 text-right"><Skeleton className="h-7 w-24 rounded-lg ml-auto" /></td>
+                    </tr>
+                  ))
                 ) : entries.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-10 text-center text-slate-400">

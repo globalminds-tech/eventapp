@@ -21,7 +21,9 @@ import {
   CheckCircle,
   AlertCircle,
   ChevronDown,
+  ClipboardList,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const AdminApproval = () => {
   const [items, setItems] = useState([]); // Can be events or bookings
@@ -247,44 +249,60 @@ const AdminApproval = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <div className="w-12 h-12 border-4 border-sky-200 border-t-sky-600 rounded-full animate-spin"></div>
-            <p className="text-gray-500 font-medium animate-pulse">Loading data...</p>
-          </div>
-        ) : filteredItems.length === 0 ? (
+        {!loading && filteredItems.length === 0 ? (
           <div className="text-center py-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-            <div className="text-6xl mb-4 grayscale opacity-50">📋</div>
-            <p className="text-slate-600 text-lg font-medium">No {viewMode} found</p>
-            <p className="text-slate-400 text-sm mt-1">Try adjusting your search criteria</p>
+            <ClipboardList className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-600 text-base font-bold">No {viewMode} found</p>
+            <p className="text-slate-400 text-xs mt-1">Try adjusting your search criteria</p>
           </div>
         ) : (
           <div className="bg-white rounded-3xl shadow-xl border border-slate-100">
             <div className="overflow-x-auto min-h-[400px]">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-sky-600 text-white">
-                    <th className="px-6 py-4 text-center text-sm font-bold tracking-wider">Actions</th>
+                  <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="px-6 py-3.5 text-center font-semibold tracking-wider">Actions</th>
                     {viewMode === "events" ? (
                       <>
-                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wider">Event Name</th>
-                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wider">Start Date</th>
-                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wider">Time</th>
-                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wider">Place</th>
+                        <th className="px-6 py-3.5 text-left font-semibold tracking-wider">Event Name</th>
+                        <th className="px-6 py-3.5 text-left font-semibold tracking-wider">Start Date</th>
+                        <th className="px-6 py-3.5 text-left font-semibold tracking-wider">Time</th>
+                        <th className="px-6 py-3.5 text-left font-semibold tracking-wider">Place</th>
                       </>
                     ) : (
                       <>
-                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wider">Name</th>
-                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wider">Mobile Number</th>
-                        <th className="px-6 py-4 text-left text-sm font-bold tracking-wider">Company</th>
-                        <th className="px-6 py-4 text-center text-sm font-bold tracking-wider">Status</th>
+                        <th className="px-6 py-3.5 text-left font-semibold tracking-wider">Name</th>
+                        <th className="px-6 py-3.5 text-left font-semibold tracking-wider">Mobile Number</th>
+                        <th className="px-6 py-3.5 text-left font-semibold tracking-wider">Company</th>
+                        <th className="px-6 py-3.5 text-center font-semibold tracking-wider">Status</th>
                       </>
                     )}
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-50">
-                  {currentItems.map((item) => (
+                <tbody className="divide-y divide-slate-50 text-xs">
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, idx) => (
+                      <tr key={idx} className="animate-pulse">
+                        <td className="px-4 py-3.5 text-center">
+                          <Skeleton className="h-8 w-8 rounded-lg mx-auto" />
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <Skeleton className="h-4 w-36 rounded" />
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <Skeleton className="h-4 w-24 rounded" />
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <Skeleton className="h-4 w-20 rounded" />
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <Skeleton className="h-4 w-28 rounded" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    currentItems.map((item) => (
                     <tr key={item.id} className="hover:bg-sky-50/50 transition-colors duration-200 group">
                       <td className="px-4 py-4 text-center relative">
                         {viewMode === "events" ? (
@@ -392,7 +410,7 @@ const AdminApproval = () => {
                         </>
                       )}
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>

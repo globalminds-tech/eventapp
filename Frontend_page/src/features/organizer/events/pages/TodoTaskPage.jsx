@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { CheckCircle, Eye, Search, Plus, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { getTasks, createTasks } from "@/Services/api";
 import { Select, SelectItem } from "@/components/ui/Select";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const fmtDate = (d) => {
   if (!d) return "";
@@ -111,21 +112,51 @@ function ListView({ onAdd }) {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-sky-600 text-white">
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Action</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Task name</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">To-do list name</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Start date</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">End date</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Assigned to</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Status</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Complete %</th>
-                <th className="px-6 py-4 text-left text-md font-bold text-white tracking-wider">Remarks</th>
+              <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-6 py-3.5 text-left font-semibold">Action</th>
+                <th className="px-6 py-3.5 text-left font-semibold">Task name</th>
+                <th className="px-6 py-3.5 text-left font-semibold">To-do list name</th>
+                <th className="px-6 py-3.5 text-left font-semibold">Start date</th>
+                <th className="px-6 py-3.5 text-left font-semibold">End date</th>
+                <th className="px-6 py-3.5 text-left font-semibold">Assigned to</th>
+                <th className="px-6 py-3.5 text-left font-semibold">Status</th>
+                <th className="px-6 py-3.5 text-left font-semibold">Complete %</th>
+                <th className="px-6 py-3.5 text-left font-semibold">Remarks</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-50 text-xs">
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-20"><div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mx-auto" /></td></tr>
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-8 w-8 rounded-lg" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-4 w-32 rounded" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-4 w-28 rounded" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-4 w-20 rounded" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-4 w-20 rounded" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-6 w-20 rounded-full" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-4 w-12 rounded" />
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Skeleton className="h-4 w-24 rounded" />
+                    </td>
+                  </tr>
+                ))
               ) : currentTasks.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-20">

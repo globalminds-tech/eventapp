@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { setCredentials } from "@/app/store/authSlice";
 import { setUser } from "@/app/store/userSlice";
+import { getUserAvailableRoles } from "@/shared/services/authHelper";
 import { authApi } from "@/features/auth/api/auth.api";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { Select, SelectItem } from "@/components/ui/Select";
@@ -186,14 +187,33 @@ export default function UpgradeOrganizerPage() {
       const res = await authApi.upgradeOrganizerComplete(formData);
       const resData = res?.data || res;
       const newToken = resData?.access_token || resData?.token;
-      const updatedUser = resData?.user || resData;
+      const rawUser = resData?.user || resData;
+
+      const fullRoles = getUserAvailableRoles({ ...rawUser, role: "organizer" });
+      const userToStore = {
+        ...rawUser,
+        roles: fullRoles,
+        active_role: "organizer",
+        role: "organizer",
+        profiles: {
+          ...(rawUser?.profiles || {}),
+          organizer: resData?.organizer_profile || rawUser?.profiles?.organizer || true,
+        },
+      };
+
+      localStorage.setItem("user", JSON.stringify(userToStore));
+      sessionStorage.setItem("user", JSON.stringify(userToStore));
+      localStorage.setItem("role", "organizer");
+      sessionStorage.setItem("role", "organizer");
+      localStorage.setItem("roles", JSON.stringify(fullRoles));
+      sessionStorage.setItem("roles", JSON.stringify(fullRoles));
 
       if (newToken) {
-        dispatch(setCredentials({ user: updatedUser, token: newToken, role: "organizer" }));
+        dispatch(setCredentials({ user: userToStore, token: newToken, role: "organizer" }));
+      } else {
+        dispatch(setCredentials({ user: userToStore, role: "organizer" }));
       }
-      if (updatedUser) {
-        dispatch(setUser(updatedUser));
-      }
+      dispatch(setUser(userToStore));
 
       setSuccessMsg("Organizer KYC verified! Redirecting to your Organizer Dashboard...");
       setTimeout(() => {

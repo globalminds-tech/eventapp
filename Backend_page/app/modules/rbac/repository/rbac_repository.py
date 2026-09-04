@@ -442,7 +442,7 @@ class RBACRepository:
                 return []
 
             # Super administrator universal bypass
-            clean_roles = [str(r).lower() for r in (user.roles or [user.role])]
+            clean_roles = [str(r).lower() for r in (user.roles or ["user"])]
             if any(r in clean_roles for r in ["superuser", "superadmin", "admin"]):
                 all_perms = session.query(Permission.code).all()
                 return [p[0] for p in all_perms] + ["*"]

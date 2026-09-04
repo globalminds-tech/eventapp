@@ -3,6 +3,7 @@ import { Search, Utensils, QrCode, CheckCircle2, RefreshCw, X } from "lucide-rea
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import QRScanner from "@/components/QRScanner";
 import { getFoodCheckinSummary, redeemFoodTokenApi } from "@/Services/miscService";
 
@@ -216,10 +217,23 @@ export default function FoodCheckIn() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {filtered.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-4 px-5 space-y-1.5">
+                      <Skeleton className="h-4 w-16 rounded" />
+                      <Skeleton className="h-4 w-36 rounded" />
+                    </td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-6 w-32 rounded-lg mx-auto" /></td>
+                    <td className="py-4 px-5 text-right"><Skeleton className="h-8 w-24 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-400">
-                    {loading ? "Loading catering data from database..." : "No food provisioning events found in database."}
+                    No food provisioning events found in database.
                   </td>
                 </tr>
               ) : (

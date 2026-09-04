@@ -15,7 +15,7 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
       icon: Sparkles,
       gradient: "from-cyan-500 via-sky-500 to-blue-600",
       path: "/OrganizerHome",
-      enabled: roles.includes("organizer") || user?.organizer_profile || user?.role === "organizer",
+      enabled: roles.includes("organizer") || Boolean(user?.profiles?.organizer) || Boolean(user?.organizer_profile),
     },
     {
       id: "exhibitor",
@@ -24,7 +24,7 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
       icon: Store,
       gradient: "from-emerald-500 to-teal-600",
       path: "/exhibitor/dashboard",
-      enabled: roles.includes("exhibitor") || user?.exhibitor_profile || user?.role === "exhibitor",
+      enabled: roles.includes("exhibitor") || Boolean(user?.profiles?.exhibitor) || Boolean(user?.exhibitor_profile),
     },
     {
       id: "user",
@@ -55,25 +55,25 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white border border-slate-200/80 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden">
         {/* Glow effect background */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-sky-200/30 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex items-center justify-between pb-6 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-5 border-b border-slate-100">
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">Choose Your Portal</h2>
-            <p className="text-slate-400 text-xs mt-1">Select which active dashboard you would like to access right now.</p>
+            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Choose Your Portal</h2>
+            <p className="text-slate-500 text-xs mt-1 font-medium">Select which active dashboard you would like to access right now.</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer border-none bg-transparent"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-5 space-y-3">
           {roleOptions.map((opt) => {
             const Icon = opt.icon;
             return (
@@ -81,10 +81,10 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
                 key={opt.id}
                 onClick={() => handleSelectRole(opt.path)}
                 disabled={!opt.enabled}
-                className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between group ${
+                className={`w-full text-left p-4 rounded-2xl border transition-all duration-200 flex items-center justify-between group cursor-pointer ${
                   opt.enabled
-                    ? "bg-slate-800/60 border-slate-700/80 hover:border-cyan-500/50 hover:bg-slate-800 hover:scale-[1.01] shadow-md"
-                    : "bg-slate-900/40 border-slate-800/40 opacity-40 cursor-not-allowed"
+                    ? "bg-slate-50/70 border-slate-200/80 hover:border-sky-300 hover:bg-sky-50/40 hover:scale-[1.01] shadow-xs"
+                    : "bg-slate-50/30 border-slate-100 opacity-40 cursor-not-allowed"
                 }`}
               >
                 <div className="flex items-start space-x-3.5">
@@ -92,22 +92,22 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-white group-hover:text-cyan-400 transition-colors">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-sky-600 transition-colors">
                       {opt.title}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed font-medium">{opt.desc}</p>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all shrink-0 ml-2" />
+                <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-sky-600 group-hover:translate-x-1 transition-all shrink-0 ml-2" />
               </button>
             );
           })}
 
           {/* Escape option — skip workspace selection and browse events */}
-          <div className="pt-3 border-t border-slate-800">
+          <div className="pt-3 border-t border-slate-100">
             <button
               onClick={() => handleSelectRole("/")}
-              className="w-full text-center py-3 rounded-xl text-slate-400 hover:text-cyan-400 hover:bg-slate-800/50 font-semibold text-xs transition-all cursor-pointer bg-transparent border border-slate-800/60 hover:border-cyan-500/30 flex items-center justify-center gap-2"
+              className="w-full text-center py-2.5 rounded-xl text-slate-600 hover:text-sky-600 hover:bg-slate-50 font-bold text-xs transition-all cursor-pointer bg-transparent border border-slate-200 hover:border-sky-300 flex items-center justify-center gap-2 shadow-2xs"
             >
               <Compass className="w-4 h-4" />
               <span>Continue to Event Discovery →</span>

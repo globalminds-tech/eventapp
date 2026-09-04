@@ -89,15 +89,23 @@ export default function PartnerRegisterPage() {
 
       const data = response.data?.data || response.data;
       const userObj = data.user || data;
-      const userRole = (userObj.role || partnerRole).toLowerCase();
+      const userRoles = Array.isArray(userObj.roles) && userObj.roles.length > 0
+        ? userObj.roles.map((r) => String(r).toLowerCase())
+        : [partnerRole.toLowerCase()];
+      const userRole = (userObj.active_role || partnerRole).toLowerCase();
       const userId = userObj.id || "";
       const userName = userObj.name || formData.name;
       const token = data.token || data.access_token || "";
 
-      dispatch(setCredentials({ user: userObj, token, role: userRole }));
-      dispatch(setUser({ id: userId, name: userName, role: userRole, email: formData.email }));
+      sessionStorage.setItem("roles", JSON.stringify(userRoles));
+      localStorage.setItem("roles", JSON.stringify(userRoles));
+      sessionStorage.setItem("role", userRole);
+      localStorage.setItem("role", userRole);
 
-      if (userRole === "organizer") {
+      dispatch(setCredentials({ user: { ...userObj, roles: userRoles, active_role: userRole }, token, role: userRole }));
+      dispatch(setUser({ id: userId, name: userName, role: userRole, active_role: userRole, roles: userRoles, email: formData.email }));
+
+      if (userRole === "organizer" || userRoles.includes("organizer")) {
         navigate("/OrganizerHome", { replace: true });
       } else {
         navigate("/exhibitor/dashboard", { replace: true });

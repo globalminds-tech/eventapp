@@ -18,7 +18,6 @@ class AdminRepository:
                 name="superadmin",
                 email=email,
                 password=hashed_password,
-                role="superadmin",
                 roles=["superadmin"],
                 active_role="superadmin"
             )
@@ -27,7 +26,6 @@ class AdminRepository:
             print("[OK] SuperAdmin auto-created via SQLAlchemy")
         else:
             existing.name = "superadmin"
-            existing.role = "superadmin"
             existing.roles = ["superadmin"]
             existing.active_role = "superadmin"
             db.session.commit()
@@ -130,7 +128,7 @@ class AdminRepository:
 
     @staticmethod
     def get_pending_organizers():
-        stmt = select(User).where(User.role == 'organizer').order_by(desc(User.created_at))
+        stmt = select(User).where(User.roles.any('organizer')).order_by(desc(User.created_at))
         return db.session.scalars(stmt).all()
 
     @staticmethod

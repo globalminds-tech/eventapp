@@ -14,7 +14,6 @@ class User(db.Model):
     name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     roles: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(50)), default=lambda: ["user"], nullable=True)
     active_role: Mapped[Optional[str]] = mapped_column(String(50), default="user", nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), default="ACTIVE")
@@ -40,13 +39,14 @@ class User(db.Model):
     deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
 
     def to_dict(self):
-        user_roles = list(self.roles) if self.roles else [self.role or "user"]
+        user_roles = list(self.roles) if self.roles else ["user"]
+        active = self.active_role or (user_roles[0] if user_roles else "user")
         return {
             "id": str(self.id),
             "name": self.name,
             "email": self.email,
-            "role": self.active_role or self.role or "user",
-            "active_role": self.active_role or self.role or "user",
+            "role": active,
+            "active_role": active,
             "roles": user_roles,
             "status": self.status,
             "mobile": self.mobile,

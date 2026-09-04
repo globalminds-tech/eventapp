@@ -14,9 +14,9 @@ const initialUser = getStoredUser();
 const initialState = {
   user: initialUser,
   accessToken: null, // Purely in-memory access token (XSS safe)
-  role: initialUser?.role || localStorage.getItem("role") || sessionStorage.getItem("role") || null,
+  role: initialUser?.active_role || initialUser?.role || localStorage.getItem("role") || sessionStorage.getItem("role") || null,
   isAuthenticated: Boolean(initialUser),
-  loading: false,
+  loading: Boolean(initialUser), // Start loading if a previous session exists so routes await token refresh
   error: null
 };
 
@@ -35,13 +35,29 @@ const authSlice = createSlice({
         localStorage.removeItem("token");
         sessionStorage.removeItem("token");
       }
+
+      // If a role is passed (e.g. during workspace switch), immediately sync it
+      if (role) {
+        const cleanRole = String(role).toLowerCase();
+        state.role = cleanRole;
+        if (state.user) {
+          state.user = { ...state.user, active_role: cleanRole, role: cleanRole };
+        }
+        localStorage.setItem("role", cleanRole);
+        sessionStorage.setItem("role", cleanRole);
+        localStorage.setItem("userRole", cleanRole);
+        sessionStorage.setItem("userRole", cleanRole);
+      }
       
       if (user) {
-        state.user = user;
-        state.role = user.role || role || state.role;
+        state.user = { ...state.user, ...user };
+        const currentActiveRole = role || user.active_role || (user.roles && user.roles[0]) || user.role || state.role || "user";
+        state.role = String(currentActiveRole).toLowerCase();
+        state.user.active_role = state.role;
+        state.user.role = state.role;
         
-        localStorage.setItem("user", JSON.stringify(user));
-        sessionStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem("user", JSON.stringify(state.user));
+        sessionStorage.setItem("user", JSON.stringify(state.user));
 
         if (user.id) {
           localStorage.setItem("id", user.id);
@@ -49,11 +65,15 @@ const authSlice = createSlice({
           localStorage.setItem("userId", user.id);
           sessionStorage.setItem("userId", user.id);
         }
-        if (user.role) {
-          localStorage.setItem("role", user.role);
-          sessionStorage.setItem("role", user.role);
-          localStorage.setItem("userRole", user.role);
-          sessionStorage.setItem("userRole", user.role);
+        if (currentActiveRole) {
+          localStorage.setItem("role", state.role);
+          sessionStorage.setItem("role", state.role);
+          localStorage.setItem("userRole", state.role);
+          sessionStorage.setItem("userRole", state.role);
+        }
+        if (Array.isArray(user.roles)) {
+          localStorage.setItem("roles", JSON.stringify(user.roles));
+          sessionStorage.setItem("roles", JSON.stringify(user.roles));
         }
         if (user.name) {
           localStorage.setItem("name", user.name);

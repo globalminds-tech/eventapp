@@ -40,10 +40,6 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Security(securi
 def require_roles(allowed_roles: list[str]):
     def role_checker(current_user: dict = Depends(get_current_user)) -> dict:
         user_roles = list(current_user.get("roles") or [])
-        primary_role = current_user.get("role") or current_user.get("user_role")
-        if primary_role and primary_role not in user_roles:
-            user_roles.append(primary_role)
-
         clean_allowed = [r.lower() for r in allowed_roles]
         clean_user_roles = [str(r).lower() for r in user_roles]
 

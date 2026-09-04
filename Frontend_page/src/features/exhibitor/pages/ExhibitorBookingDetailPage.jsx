@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { getBookingById } from "@/Services/api";
 
 const ExhibitorBookingDetailPage = () => {
@@ -40,11 +41,51 @@ const ExhibitorBookingDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center animate-pulse">
-          <Loader2 className="w-7 h-7 text-emerald-500 animate-spin" />
+      <div className="space-y-6 pb-12 select-none font-sans animate-pulse">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32 rounded" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-48 rounded-lg" />
+              <Skeleton className="h-5 w-16 rounded" />
+            </div>
+          </div>
+          <Skeleton className="h-8 w-36 rounded-full" />
         </div>
-        <p className="text-sm font-semibold text-slate-500">Loading booking details…</p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-xl" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-4 w-28 rounded" />
+                  <Skeleton className="h-6 w-3/4 rounded" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                <Skeleton className="h-16 rounded-xl" />
+                <Skeleton className="h-16 rounded-xl" />
+              </div>
+            </Card>
+
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-6 space-y-4">
+              <Skeleton className="h-5 w-40 rounded" />
+              <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-12 rounded-xl" />
+                <Skeleton className="h-12 rounded-xl" />
+              </div>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-6 space-y-4">
+              <Skeleton className="h-5 w-32 rounded" />
+              <Skeleton className="h-16 rounded-xl" />
+              <Skeleton className="h-10 w-full rounded-xl" />
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }

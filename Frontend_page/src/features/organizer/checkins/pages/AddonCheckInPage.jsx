@@ -3,6 +3,7 @@ import { Search, Eye, ChevronLeft, ChevronRight, RefreshCw, Layers } from "lucid
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { getAddonCheckins } from "@/Services/miscService";
 
 export default function AddonCheckIn() {
@@ -101,13 +102,23 @@ export default function AddonCheckIn() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {currentData.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-4 px-5"><Skeleton className="h-4 w-32 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-5 w-16 rounded" /></td>
+                    <td className="py-4 px-5"><Skeleton className="h-4 w-28 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-16 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-5 w-20 rounded-full" /></td>
+                  </tr>
+                ))
+              ) : currentData.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="py-12 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Layers className="text-slate-300 w-8 h-8" />
                       <p className="font-semibold text-xs">
-                        {loading ? "Loading add-ons from database..." : "No add-on records found in database."}
+                        No add-on records found in database.
                       </p>
                     </div>
                   </td>

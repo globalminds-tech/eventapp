@@ -10,7 +10,10 @@ export default function PermissionRoute({ required, children }) {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
+        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          <span className="text-xs font-bold text-slate-600">Verifying security permissions...</span>
+        </div>
       </div>
     );
   }
@@ -28,7 +31,7 @@ export default function PermissionRoute({ required, children }) {
         </p>
         <button
           onClick={() => navigate(-1)}
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-extrabold text-white transition hover:bg-slate-800 shadow-sm cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           Go Back
