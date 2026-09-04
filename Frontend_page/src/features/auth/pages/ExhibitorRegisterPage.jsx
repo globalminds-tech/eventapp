@@ -6,6 +6,16 @@ import { Check, ArrowRight, ArrowLeft, Shield, Store, Landmark, CheckCircle2, Al
 import { registerExhibitor, sendOtp, verifyOtp, getUserProfile } from "@/Services/api";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { Select, SelectItem } from "@/components/ui/Select";
+import { lookupPincode } from "@/shared/services/pincodeService";
+import {
+  validateGSTIN,
+  validatePAN,
+  validateIFSC,
+  validateBankAccountNumber,
+  validateMobile,
+  validatePincode,
+} from "@/shared/utils/kycValidation";
+import { Loader2, MapPin } from "lucide-react";
 
 export default function ExhibitorRegister() {
   const navigate = useNavigate();
@@ -14,6 +24,7 @@ export default function ExhibitorRegister() {
   const [activeStep, setActiveStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [successMsg, setSuccessMsg] = useState("");
 
   // OTP & Password State
@@ -59,14 +70,62 @@ export default function ExhibitorRegister() {
     }
   }, []);
 
+  const [isPincodeLoading, setIsPincodeLoading] = useState(false);
+  const [pincodeSuccess, setPincodeSuccess] = useState(false);
+
+  const handlePincodeLookup = async (pin) => {
+    const clean = String(pin || "").replace(/\D/g, "").slice(0, 6);
+    if (clean.length === 6) {
+      setIsPincodeLoading(true);
+      setPincodeSuccess(false);
+      try {
+        const res = await lookupPincode(clean);
+        if (res.success) {
+          setFormData((prev) => ({
+            ...prev,
+            pincode: clean,
+            city: res.city || prev.city,
+            state: res.state || prev.state,
+          }));
+          setPincodeSuccess(true);
+          setTimeout(() => setPincodeSuccess(false), 3500);
+        }
+      } finally {
+        setIsPincodeLoading(false);
+      }
+    }
+  };
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let { name, value } = e.target;
+    if (["gstin", "pan_number", "ifsc_code"].includes(name)) {
+      value = value.toUpperCase();
+    }
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "gstin" && value.length >= 12) {
+        const derivedPan = value.slice(2, 12);
+        if (!prev.pan_number || prev.pan_number === prev.gstin?.slice(2, 12)) {
+          next.pan_number = derivedPan;
+        }
+      }
+      return next;
+    });
+    setError("");
+    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
+
+    if (name === "pincode") {
+      const clean = value.replace(/\D/g, "").slice(0, 6);
+      if (clean.length === 6) {
+        handlePincodeLookup(clean);
+      }
+    }
   };
 
   const handleSendOtp = async () => {
     if (!formData.email) {
       setError("Please enter a valid email address first.");
+      setFieldErrors((prev) => ({ ...prev, email: "Email is required to send OTP." }));
       return;
     }
     setError("");
@@ -138,31 +197,43 @@ export default function ExhibitorRegister() {
       upi_id: "sneha@icici",
     });
     setIsOtpVerified(true);
+    setFieldErrors({});
+    setError("");
     setSuccessMsg("⚡ Auto-Filled Demo Exhibitor Data!");
     setTimeout(() => setSuccessMsg(""), 3000);
   };
 
   const nextStep = async () => {
     setError("");
+    setFieldErrors({});
     const isRegistered = Boolean(sessionStorage.getItem("id") || localStorage.getItem("id"));
 
     if (activeStep === 1) {
-      if (!formData.name || !formData.email) {
-        setError("Please complete all required contact fields.");
-        return;
+      const errs = {};
+      if (!formData.name?.trim()) {
+        errs.name = "Representative Full Name is required.";
       }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        setError("Please enter a valid email address.");
-        return;
+      const mobCheck = validateMobile(formData.mobile);
+      if (!mobCheck.isValid) {
+        errs.mobile = mobCheck.error;
+      }
+      if (!formData.email?.trim()) {
+        errs.email = "Official Email Address is required.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        errs.email = "Please enter a valid email address.";
       }
       if (!isRegistered && !formData.password) {
-        setError("Account password is required for new registration.");
+        errs.password = "Account password is required for new registration.";
+      } else if (!isRegistered && formData.password && formData.password.length < 6) {
+        errs.password = "Password must be at least 6 characters.";
+      }
+
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        setError("Please check and correct the highlighted fields below.");
         return;
       }
-      if (!isRegistered && formData.password && formData.password.length < 6) {
-        setError("Password must be at least 6 characters.");
-        return;
-      }
+
       if (!isRegistered && !isOtpVerified) {
         if (!otpSent) {
           await handleSendOtp();
@@ -173,33 +244,60 @@ export default function ExhibitorRegister() {
         return;
       }
     } else if (activeStep === 2) {
-      if (!formData.company_name) {
-        setError("Company / Organization Legal Name is required.");
-        return;
+      const errs = {};
+      if (!formData.company_name?.trim()) {
+        errs.company_name = "Company / Vendor Brand Name is required.";
       }
-      if (!formData.gstin) {
-        setError("GSTIN Number is required.");
-        return;
+      if (!formData.vendor_category) {
+        errs.vendor_category = "Vendor Category is required.";
       }
-      if (!formData.pan_number) {
-        setError("PAN Card Number is required.");
-        return;
+      const gstinCheck = validateGSTIN(formData.gstin);
+      if (!gstinCheck.isValid) {
+        errs.gstin = gstinCheck.error;
       }
-      if (!formData.business_address) {
-        setError("Registered Business Address is required.");
-        return;
+      const panCheck = validatePAN(formData.pan_number, formData.gstin);
+      if (!panCheck.isValid) {
+        errs.pan_number = panCheck.error;
       }
-      if (!formData.city) {
-        setError("City is required.");
-        return;
+      if (!formData.business_address?.trim()) {
+        errs.business_address = "Registered Business Address is required.";
       }
-      if (!formData.state) {
-        setError("State is required.");
+      const pinCheck = validatePincode(formData.pincode);
+      if (!pinCheck.isValid) {
+        errs.pincode = pinCheck.error;
+      }
+      if (!formData.city?.trim()) {
+        errs.city = "City is required.";
+      }
+      if (!formData.state?.trim()) {
+        errs.state = "State is required.";
+      }
+
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        setError("Please check and correct the highlighted fields below.");
         return;
       }
     } else if (activeStep === 3) {
-      if (!formData.bank_name || !formData.account_number || !formData.ifsc_code || !formData.account_holder) {
-        setError("Please complete all required payout bank account fields to complete onboarding.");
+      const errs = {};
+      if (!formData.account_holder?.trim()) {
+        errs.account_holder = "Account Holder Name is required.";
+      }
+      if (!formData.bank_name?.trim()) {
+        errs.bank_name = "Bank Name is required.";
+      }
+      const accCheck = validateBankAccountNumber(formData.account_number);
+      if (!accCheck.isValid) {
+        errs.account_number = accCheck.error;
+      }
+      const ifscCheck = validateIFSC(formData.ifsc_code);
+      if (!ifscCheck.isValid) {
+        errs.ifsc_code = ifscCheck.error;
+      }
+
+      if (Object.keys(errs).length > 0) {
+        setFieldErrors(errs);
+        setError("Please check and correct the highlighted fields below.");
         return;
       }
     }
@@ -208,12 +306,14 @@ export default function ExhibitorRegister() {
 
   const prevStep = () => {
     setError("");
+    setFieldErrors({});
     setActiveStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
 
     // Block submission if not on final Step 3
     if (activeStep < 3) {
@@ -221,14 +321,26 @@ export default function ExhibitorRegister() {
       return;
     }
 
-    // STRICT STEP 3 VALIDATION: Require Payout Bank Account details before submitting & navigating!
-    if (
-      !formData.bank_name?.trim() ||
-      !formData.account_number?.trim() ||
-      !formData.ifsc_code?.trim() ||
-      !formData.account_holder?.trim()
-    ) {
-      setError("Payout Bank Account details are required! Please enter Bank Name, Account Number, IFSC Code, and Account Holder Name to complete onboarding.");
+    // STRICT STEP 3 VALIDATION
+    const errs = {};
+    if (!formData.account_holder?.trim()) {
+      errs.account_holder = "Account Holder Name is required.";
+    }
+    if (!formData.bank_name?.trim()) {
+      errs.bank_name = "Bank Name is required.";
+    }
+    const accCheck = validateBankAccountNumber(formData.account_number);
+    if (!accCheck.isValid) {
+      errs.account_number = accCheck.error;
+    }
+    const ifscCheck = validateIFSC(formData.ifsc_code);
+    if (!ifscCheck.isValid) {
+      errs.ifsc_code = ifscCheck.error;
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setError("Please check and correct the highlighted fields below.");
       setIsLoading(false);
       return;
     }
@@ -237,6 +349,7 @@ export default function ExhibitorRegister() {
 
     try {
       const response = await registerExhibitor(formData);
+      const data = response.data?.data || response.data;
       const userObj = data?.user || data;
       const userRoles = Array.isArray(userObj?.roles) && userObj.roles.length > 0
         ? userObj.roles.map((r) => String(r).toLowerCase())
@@ -392,7 +505,7 @@ export default function ExhibitorRegister() {
             {activeStep === 1 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
                 <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">Representative Full Name <span className="text-emerald-600">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">Representative Full Name <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="name"
@@ -400,26 +513,46 @@ export default function ExhibitorRegister() {
                     placeholder="Alex Vance"
                     value={formData.name}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors ${
+                      fieldErrors.name
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.name && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.name}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">Mobile Phone Contact</label>
+                  <label className="text-xs font-bold text-slate-700">Contact Mobile Number <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="mobile"
                     autoComplete="off"
-                    placeholder="+91 9876543210"
+                    placeholder="Enter 10-digit mobile"
                     value={formData.mobile}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors ${
+                      fieldErrors.mobile
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.mobile && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.mobile}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-2 md:col-span-2 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700">Official Email Address <span className="text-emerald-600">*</span></label>
+                    <label className="text-xs font-bold text-slate-700">Official Email Address <span className="text-red-500 font-bold ml-1">*</span></label>
                     {isOtpVerified && (
                       <span className="text-xs font-extrabold text-emerald-600 bg-emerald-100 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                         <CheckCircle2 size={14} />
@@ -440,7 +573,11 @@ export default function ExhibitorRegister() {
                         if (isOtpVerified) setIsOtpVerified(false);
                       }}
                       disabled={isOtpVerified}
-                      className="flex-1 bg-white border border-slate-200 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors disabled:bg-slate-100"
+                      className={`flex-1 rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors disabled:bg-slate-100 ${
+                        fieldErrors.email
+                          ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "bg-white border border-slate-200 focus:border-emerald-500 text-slate-900 placeholder-slate-400"
+                      }`}
                     />
                     {!isOtpVerified && (
                       <button
@@ -453,6 +590,12 @@ export default function ExhibitorRegister() {
                       </button>
                     )}
                   </div>
+                  {fieldErrors.email && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.email}</span>
+                    </p>
+                  )}
 
                   {otpSent && !isOtpVerified && (
                     <div className="mt-2 pt-3 border-t border-slate-200/80 flex flex-col gap-2 animate-in fade-in duration-200">
@@ -484,7 +627,7 @@ export default function ExhibitorRegister() {
                 </div>
 
                 <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">Account Password <span className="text-emerald-600">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">Account Password <span className="text-red-500 font-bold ml-1">*</span></label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
@@ -493,7 +636,11 @@ export default function ExhibitorRegister() {
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={handleChange}
-                      className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 pr-12 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
+                      className={`w-full rounded-xl px-3.5 py-2.5 pr-12 text-sm font-semibold outline-none transition-colors ${
+                        fieldErrors.password
+                          ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                      }`}
                     />
                     <button
                       type="button"
@@ -503,6 +650,12 @@ export default function ExhibitorRegister() {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {fieldErrors.password && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.password}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -511,20 +664,30 @@ export default function ExhibitorRegister() {
             {activeStep === 2 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Company / Vendor Brand Name <span className="text-emerald-600">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">Company / Vendor Brand Name <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="company_name"
                     placeholder="Acme Gourmet Stalls"
                     value={formData.company_name}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors ${
+                      fieldErrors.company_name
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.company_name && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.company_name}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <Select
-                    label="Vendor Category"
+                    label="Vendor Category *"
                     name="vendor_category"
                     value={formData.vendor_category}
                     onChange={handleChange}
@@ -537,63 +700,175 @@ export default function ExhibitorRegister() {
                     <SelectItem value="Crafts & Merchandise">Crafts & Merchandise</SelectItem>
                     <SelectItem value="Services & Media">Services & Media</SelectItem>
                   </Select>
+                  {fieldErrors.vendor_category && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.vendor_category}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">GSTIN Number <span className="text-emerald-600">*</span></label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">GSTIN Number <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">15 characters</span>
+                  </div>
                   <input
                     type="text"
                     name="gstin"
+                    maxLength={15}
                     placeholder="27ABCDE1234F2Z5"
                     value={formData.gstin}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-mono text-xs uppercase outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-mono text-xs uppercase outline-none transition-colors ${
+                      fieldErrors.gstin
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.gstin && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.gstin}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">PAN Card Number <span className="text-emerald-600">*</span></label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">PAN Card Number <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">10 characters</span>
+                  </div>
                   <input
                     type="text"
                     name="pan_number"
+                    maxLength={10}
                     placeholder="ABCDE1234F"
                     value={formData.pan_number}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-mono text-xs uppercase outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-mono text-xs uppercase outline-none transition-colors ${
+                      fieldErrors.pan_number
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.pan_number && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.pan_number}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">Registered Business Address <span className="text-emerald-600">*</span></label>
+                  <label className="text-xs font-bold text-slate-700">Registered Business Address <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="business_address"
                     placeholder="50 Trade Centre, Commercial Street"
                     value={formData.business_address}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors ${
+                      fieldErrors.business_address
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.business_address && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.business_address}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">City & State <span className="text-emerald-600">*</span></label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">Pincode <span className="text-red-500 font-bold ml-1">*</span></label>
+                    {isPincodeLoading && (
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Detecting...
+                      </span>
+                    )}
+                    {pincodeSuccess && (
+                      <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        Auto-filled
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="pincode"
+                      maxLength={6}
+                      placeholder="600002"
+                      value={formData.pincode}
+                      onChange={handleChange}
+                      className={`w-full rounded-xl px-3.5 py-2.5 pr-9 text-sm outline-none font-semibold ${
+                        fieldErrors.pincode
+                          ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "bg-slate-50 border border-slate-200 focus:border-emerald-500 text-slate-900 placeholder-slate-400"
+                      }`}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      {isPincodeLoading ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                      ) : (
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+                  {fieldErrors.pincode && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.pincode}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-700">City & State <span className="text-red-500 font-bold ml-1">*</span></label>
                   <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      name="city"
-                      placeholder="City"
-                      value={formData.city}
-                      onChange={handleChange}
-                      className="bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none font-semibold"
-                    />
-                    <input
-                      type="text"
-                      name="state"
-                      placeholder="State"
-                      value={formData.state}
-                      onChange={handleChange}
-                      className="bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none font-semibold"
-                    />
+                    <div>
+                      <input
+                        type="text"
+                        name="city"
+                        placeholder="City"
+                        value={formData.city}
+                        onChange={handleChange}
+                        className={`w-full rounded-xl px-3 py-2 text-sm outline-none font-semibold ${
+                          fieldErrors.city
+                            ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            : "bg-slate-50 border border-slate-200 focus:border-emerald-500 text-slate-900 placeholder-slate-400"
+                        }`}
+                      />
+                      {fieldErrors.city && (
+                        <p className="text-[10px] text-red-600 font-semibold mt-0.5">
+                          {fieldErrors.city}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        name="state"
+                        placeholder="State"
+                        value={formData.state}
+                        onChange={handleChange}
+                        className={`w-full rounded-xl px-3 py-2 text-sm outline-none font-semibold ${
+                          fieldErrors.state
+                            ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            : "bg-slate-50 border border-slate-200 focus:border-emerald-500 text-slate-900 placeholder-slate-400"
+                        }`}
+                      />
+                      {fieldErrors.state && (
+                        <p className="text-[10px] text-red-600 font-semibold mt-0.5">
+                          {fieldErrors.state}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -615,55 +890,103 @@ export default function ExhibitorRegister() {
             {activeStep === 3 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in duration-300">
                 <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-700">Account Holder Name</label>
+                  <label className="text-xs font-bold text-slate-700">Account Holder Name <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="account_holder"
                     placeholder="Acme Brand Stalls Ltd"
                     value={formData.account_holder}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors ${
+                      fieldErrors.account_holder
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.account_holder && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.account_holder}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Bank Name</label>
+                  <label className="text-xs font-bold text-slate-700">Bank Name <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="bank_name"
                     placeholder="ICICI Bank"
                     value={formData.bank_name}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-semibold outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold outline-none transition-colors ${
+                      fieldErrors.bank_name
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.bank_name && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.bank_name}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">Bank Account Number</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">Bank Account Number <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">9-18 digits</span>
+                  </div>
                   <input
                     type="text"
                     name="account_number"
+                    maxLength={18}
                     placeholder="602001234567"
                     value={formData.account_number}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-mono text-xs outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-mono text-xs outline-none transition-colors ${
+                      fieldErrors.account_number
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.account_number && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.account_number}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">IFSC Code</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">IFSC Code <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">11 characters</span>
+                  </div>
                   <input
                     type="text"
                     name="ifsc_code"
+                    maxLength={11}
                     placeholder="ICIC0006020"
                     value={formData.ifsc_code}
                     onChange={handleChange}
-                    className="bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 font-mono text-xs uppercase outline-none transition-colors"
+                    className={`rounded-xl px-3.5 py-2.5 text-sm font-mono text-xs uppercase outline-none transition-colors ${
+                      fieldErrors.ifsc_code
+                        ? "border-2 border-red-500 bg-red-50/30 text-slate-900 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "bg-slate-50 border border-slate-200 hover:border-slate-300 focus:border-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                    }`}
                   />
+                  {fieldErrors.ifsc_code && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{fieldErrors.ifsc_code}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-700">UPI ID / Payout Preference</label>
+                  <label className="text-xs font-bold text-slate-700">UPI ID / Settlement Preference</label>
                   <input
                     type="text"
                     name="upi_id"

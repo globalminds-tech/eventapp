@@ -45,7 +45,6 @@ class User(db.Model):
             "id": str(self.id),
             "name": self.name,
             "email": self.email,
-            "role": active,
             "active_role": active,
             "roles": user_roles,
             "status": self.status,

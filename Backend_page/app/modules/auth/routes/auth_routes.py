@@ -143,9 +143,24 @@ def refresh_token(request: Request, response: Response):
         raise HTTPException(status_code=401, detail=f"Invalid or expired refresh token: {err}")
 
 @auth_router.post("/logout")
+@legacy_auth_router.post("/logout")
 @root_auth_router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie("refresh_token")
+    response.delete_cookie(
+        key="refresh_token",
+        path="/",
+        httponly=True,
+        samesite="lax"
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value="",
+        max_age=0,
+        expires="Thu, 01 Jan 1970 00:00:00 GMT",
+        path="/",
+        httponly=True,
+        samesite="lax"
+    )
     return {"success": True, "message": "Logged out successfully"}
 
 @auth_router.get("/me")

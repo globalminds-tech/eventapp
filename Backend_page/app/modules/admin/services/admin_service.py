@@ -44,8 +44,8 @@ class AdminService:
                     approved_events += 1
 
             total_users = len(users)
-            total_organizers = sum(1 for u in users if str(getattr(u, "role", "") or "").lower() == "organizer")
-            total_exhibitors = sum(1 for u in users if str(getattr(u, "role", "") or "").lower() == "exhibitor")
+            total_organizers = sum(1 for u in users if "organizer" in [str(r).lower() for r in (u.roles or [])])
+            total_exhibitors = sum(1 for u in users if "exhibitor" in [str(r).lower() for r in (u.roles or [])])
             total_attendees = max(0, total_users - (total_organizers + total_exhibitors))
 
             gross_gmv = 0.0
