@@ -71,6 +71,10 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   // New states for Quick Add
   const [showAddVendorModal, setShowAddVendorModal] = useState(false);
   const [showAddSponsorModal, setShowAddSponsorModal] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [showInlineCategoryInput, setShowInlineCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryDesc, setNewCategoryDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
@@ -105,29 +109,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
 
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const demoVendorTypes = [
-    { vendor_type: "Catering & Beverages" },
-    { vendor_type: "Audio & Visual Systems" },
-    { vendor_type: "Security & Bouncers" },
-    { vendor_type: "Stage & Decoration" },
-    { vendor_type: "Lighting & Power Backup" },
-    { vendor_type: "Photography & Videography" },
-  ];
 
-  const demoVendorNames = [
-    { vendor_name: "Apex Event Caterers" },
-    { vendor_name: "SoundCraft Pro Systems" },
-    { vendor_name: "Guardian Security Services" },
-    { vendor_name: "Starlight Decorators" },
-  ];
-
-  const demoSponsorNames = [
-    { sponsor_name: "Red Bull Energy" },
-    { sponsor_name: "Tech Corp Global" },
-    { sponsor_name: "Monster Energy" },
-    { sponsor_name: "Samsung Electronics" },
-    { sponsor_name: "Intel Corporation" },
-  ];
 
   const loadVendorTypes = async () => {
     try {
@@ -476,6 +458,48 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
     }
   };
 
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) {
+      showNotification("Category name is required", "error");
+      return;
+    }
+    try {
+      setLoading(true);
+      // Create a dummy vendor with empty name just to register the category
+      await createVendor({
+        vendor_type: newCategoryName.trim(),
+        vendor_name: "",
+        vendorName: "", // Required to prevent backend falling back to None for empty strings
+        company_name: "",
+        primary_contact: "",
+        mail_id: "",
+        address: newCategoryDesc.trim(), // Save the description in the address field of the dummy vendor
+        organizer_id: organizer.id
+      });
+      await loadVendorTypes();
+
+      // Also select it immediately if adding from within the Quick Add form
+      if (showAddVendorModal) {
+        setNewVendor({ ...newVendor, vendor_type: newCategoryName.trim() });
+        setFieldErrors({ ...fieldErrors, vendor_type: "" });
+      } else {
+        setVendorType(newCategoryName.trim());
+      }
+
+      showNotification("Category added successfully!");
+      setShowAddCategoryModal(false);
+      setShowInlineCategoryInput(false);
+      setNewCategoryName("");
+      setNewCategoryDesc("");
+    } catch (error) {
+      console.error("Category Create Error:", error);
+      showNotification("Failed to add category", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateSponsor = async (e) => {
     e.preventDefault();
     const errors = {};
@@ -590,17 +614,17 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
         {/* ================= Vendor ================= */}
         <div className={cardClasses} >
           <div>
-            <div className="flex justify-between items-center mb-4 border-l-4 border-purple-500 pl-4">
+            <div className="flex justify-between items-center mb-4 border-l-4 border-cyan-500 pl-4">
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
-                <div className="p-2 bg-purple-50 rounded-xl">
-                  <Users size={22} className="text-purple-600" />
+                <div className="p-2 bg-cyan-50 rounded-xl">
+                  <Users size={22} className="text-cyan-600" />
                 </div>
                 Vendor Details
               </h2>
               {!isReadOnly && (
                 <button
                   onClick={() => setShowAddVendorModal(true)}
-                  className="flex items-center gap-1 text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full hover:bg-purple-100 transition-all"
+                  className="flex items-center gap-1 text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-1 rounded-full hover:bg-cyan-100 transition-all"
                 >
                   <Plus size={12} /> Add New
                 </button>
@@ -608,147 +632,149 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
             </div>
 
             {!isReadOnly && (
-            <div className="space-y-3">
-              <div className="space-y-1 relative vendor-type-dropdown">
-                <label className={labelClasses}>Service Category <span className="text-red-500">*</span> </label>
-                <div className="relative group">
-                  <div
-                    className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-purple-400 transition-all duration-300 ${isVendorTypeOpen ? "border-purple-500 ring-4 ring-purple-500/10" : ""}`}
-                    onClick={() => setIsVendorTypeOpen(!isVendorTypeOpen)}
-                  >
-                    <Search size={14} className="text-gray-400 shrink-0" />
-                    <input
-                      type="text"
-                      className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${vendorType ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
-                      placeholder={vendorType || "Search Category..."}
-                      value={isVendorTypeOpen ? vendorTypeSearch : ""}
-                      onChange={(e) => setVendorTypeSearch(e.target.value)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsVendorTypeOpen(true);
-                      }}
-                    />
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform duration-300 shrink-0 ${isVendorTypeOpen ? "rotate-180 text-purple-500" : ""}`}
-                    />
+              <div className="space-y-3">
+                <div className="space-y-1 relative vendor-type-dropdown">
+                  <div className="flex items-center justify-between">
+                    <label className={labelClasses}>Service Category <span className="text-red-500">*</span></label>
                   </div>
-
-                  {isVendorTypeOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {filteredVendorTypes.length === 0 ? (
-                        <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
-                          No categories found
-                        </div>
-                      ) : (
-                        filteredVendorTypes.map((v, i) => (
-                          <div
-                            key={i}
-                            className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-purple-50 group/item ${vendorType === v.vendor_type ? "bg-purple-50/50 text-black font-bold" : "text-black font-bold hover:text-purple-600"}`}
-                            onClick={() => {
-                              setVendorType(v.vendor_type);
-                              setIsVendorTypeOpen(false);
-                              setVendorTypeSearch("");
-                            }}
-                          >
-                            <span>{v.vendor_type}</span>
-                            {vendorType === v.vendor_type ? (
-                              <Check size={14} className="text-purple-500" />
-                            ) : (
-                              <Plus
-                                size={12}
-                                className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                              />
-                            )}
-                          </div>
-                        ))
-                      )}
+                  <div className="relative group">
+                    <div
+                      className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-cyan-400 transition-all duration-300 ${isVendorTypeOpen ? "border-cyan-500 ring-4 ring-cyan-500/10" : ""}`}
+                      onClick={() => setIsVendorTypeOpen(!isVendorTypeOpen)}
+                    >
+                      <Search size={14} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${vendorType ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
+                        placeholder={vendorType || "Search Category..."}
+                        value={isVendorTypeOpen ? vendorTypeSearch : ""}
+                        onChange={(e) => setVendorTypeSearch(e.target.value)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsVendorTypeOpen(true);
+                        }}
+                      />
+                      <ChevronDown
+                        size={16}
+                        className={`text-gray-400 transition-transform duration-300 shrink-0 ${isVendorTypeOpen ? "rotate-180 text-cyan-500" : ""}`}
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
 
-              <div className="space-y-1 relative vendor-name-dropdown">
-                <label className={labelClasses}>Vendor Name  <span className="text-red-500">*</span></label>
-                <div className="relative group">
-                  <div
-                    className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-purple-400 transition-all duration-300 ${isVendorNameOpen ? "border-purple-500 ring-4 ring-purple-500/10" : ""} ${!vendorType ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
-                    onClick={() =>
-                      vendorType && setIsVendorNameOpen(!isVendorNameOpen)
-                    }
-                  >
-                    <Search size={14} className="text-gray-400 shrink-0" />
-                    <input
-                      type="text"
-                      className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${vendorName ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
-                      placeholder={vendorName || "Search Vendor..."}
-                      value={isVendorNameOpen ? vendorNameSearch : ""}
-                      onChange={(e) => setVendorNameSearch(e.target.value)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (vendorType) setIsVendorNameOpen(true);
-                      }}
-                      disabled={!vendorType}
-                    />
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform duration-300 shrink-0 ${isVendorNameOpen ? "rotate-180 text-purple-500" : ""}`}
-                    />
+                    {isVendorTypeOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {filteredVendorTypes.length === 0 ? (
+                          <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
+                            No categories found
+                          </div>
+                        ) : (
+                          filteredVendorTypes.map((v, i) => (
+                            <div
+                              key={i}
+                              className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-cyan-50 group/item ${vendorType === v.vendor_type ? "bg-cyan-50/50 text-black font-bold" : "text-black font-bold hover:text-cyan-600"}`}
+                              onClick={() => {
+                                setVendorType(v.vendor_type);
+                                setIsVendorTypeOpen(false);
+                                setVendorTypeSearch("");
+                              }}
+                            >
+                              <span>{v.vendor_type}</span>
+                              {vendorType === v.vendor_type ? (
+                                <Check size={14} className="text-cyan-500" />
+                              ) : (
+                                <Plus
+                                  size={12}
+                                  className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {isVendorNameOpen && vendorType && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {filteredVendorNames.length === 0 ? (
-                        <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
-                          No vendors found
-                        </div>
-                      ) : (
-                        filteredVendorNames.map((v, i) => (
-                          <div
-                            key={i}
-                            className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-purple-50 group/item ${vendorName === v.vendor_name ? "bg-purple-50/50 text-black font-bold" : "text-black font-bold hover:text-purple-600"}`}
-                            onClick={() => {
-                              setVendorName(v.vendor_name);
-                              setIsVendorNameOpen(false);
-                              setVendorNameSearch("");
-                            }}
-                          >
-                            <span>{v.vendor_name}</span>
-                            {vendorName === v.vendor_name ? (
-                              <Check size={14} className="text-purple-500" />
-                            ) : (
-                              <Plus
-                                size={12}
-                                className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                              />
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
                 </div>
-              </div>
-              <button
-                onClick={addVendor}
-                disabled={!vendorType || !vendorName}
-                className={actionButtonClasses}
-              >
-                <Plus size={18} strokeWidth={2.5} /> {editingVendorIndex !== null ? "Update Selection" : "Add to List"}
-              </button>
-              {editingVendorIndex !== null && (
+
+                <div className="space-y-1 relative vendor-name-dropdown">
+                  <label className={labelClasses}>Vendor Name  <span className="text-red-500">*</span></label>
+                  <div className="relative group">
+                    <div
+                      className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-cyan-400 transition-all duration-300 ${isVendorNameOpen ? "border-cyan-500 ring-4 ring-cyan-500/10" : ""} ${!vendorType ? "opacity-50 cursor-not-allowed grayscale" : ""}`}
+                      onClick={() =>
+                        vendorType && setIsVendorNameOpen(!isVendorNameOpen)
+                      }
+                    >
+                      <Search size={14} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${vendorName ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
+                        placeholder={vendorName || "Search Vendor..."}
+                        value={isVendorNameOpen ? vendorNameSearch : ""}
+                        onChange={(e) => setVendorNameSearch(e.target.value)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (vendorType) setIsVendorNameOpen(true);
+                        }}
+                        disabled={!vendorType}
+                      />
+                      <ChevronDown
+                        size={16}
+                        className={`text-gray-400 transition-transform duration-300 shrink-0 ${isVendorNameOpen ? "rotate-180 text-cyan-500" : ""}`}
+                      />
+                    </div>
+
+                    {isVendorNameOpen && vendorType && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {filteredVendorNames.length === 0 ? (
+                          <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
+                            No vendors found
+                          </div>
+                        ) : (
+                          filteredVendorNames.map((v, i) => (
+                            <div
+                              key={i}
+                              className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-cyan-50 group/item ${vendorName === v.vendor_name ? "bg-cyan-50/50 text-black font-bold" : "text-black font-bold hover:text-cyan-600"}`}
+                              onClick={() => {
+                                setVendorName(v.vendor_name);
+                                setIsVendorNameOpen(false);
+                                setVendorNameSearch("");
+                              }}
+                            >
+                              <span>{v.vendor_name}</span>
+                              {vendorName === v.vendor_name ? (
+                                <Check size={14} className="text-cyan-500" />
+                              ) : (
+                                <Plus
+                                  size={12}
+                                  className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <button
-                  onClick={() => {
-                    setEditingVendorIndex(null);
-                    setVendorType("");
-                    setVendorName("");
-                  }}
-                  className="w-full py-2 text-[10px] font-bold text-gray-400 hover:text-red-500 transition-all"
+                  onClick={addVendor}
+                  disabled={!vendorType || !vendorName}
+                  className={actionButtonClasses}
                 >
-                  Cancel Edit
+                  <Plus size={18} strokeWidth={2.5} /> {editingVendorIndex !== null ? "Update Selection" : "Add to List"}
                 </button>
-              )}
-            </div>
+                {editingVendorIndex !== null && (
+                  <button
+                    onClick={() => {
+                      setEditingVendorIndex(null);
+                      setVendorType("");
+                      setVendorName("");
+                    }}
+                    className="w-full py-2 text-[10px] font-bold text-gray-400 hover:text-red-500 transition-all"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -776,13 +802,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                         <tr key={i} className={`group hover:bg-gray-50/80 transition-colors ${editingVendorIndex === i ? 'bg-sky-50' : ''}`}>
                           <td className={tableCellClasses}>
                             <div className="flex gap-2">
-                              <button
-                                onClick={() => editVendor(i)}
-                                className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                title="Edit"
-                              >
-                                <Edit size={14} />
-                              </button>
+
                               <button
                                 onClick={() => removeVendor(i)}
                                 className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all shadow-sm"
@@ -796,7 +816,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                             {v.vendorName || v.vendor_name || "Vendor Provider"}
                           </td>
                           <td className={tableCellClasses}>
-                            <span className="px-3 py-1 bg-purple-50 text-purple-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            <span className="px-3 py-1 bg-cyan-50 text-cyan-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
                               {v.vendorType || v.vendor_type || v.serviceType || v.service_type || "General Vendor"}
                             </span>
                           </td>
@@ -832,17 +852,17 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
         {/* ================= Sponsor ================= */}
         <div className={cardClasses}>
           <div>
-            <div className="flex justify-between items-center mb-4 border-l-4 border-indigo-500 pl-4">
+            <div className="flex justify-between items-center mb-4 border-l-4 border-sky-500 pl-4">
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-3">
-                <div className="p-2 bg-indigo-50 rounded-xl">
-                  <Award size={22} className="text-indigo-600" />
+                <div className="p-2 bg-sky-50 rounded-xl">
+                  <Award size={22} className="text-sky-600" />
                 </div>
                 Sponsorships
               </h2>
               {!isReadOnly && (
                 <button
                   onClick={() => setShowAddSponsorModal(true)}
-                  className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full hover:bg-indigo-100 transition-all"
+                  className="flex items-center gap-1 text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded-full hover:bg-sky-100 transition-all"
                 >
                   <Plus size={12} /> Add New
                 </button>
@@ -850,145 +870,145 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
             </div>
 
             {!isReadOnly && (
-            <div className="space-y-3">
-              <div className="space-y-1 relative sponsor-name-dropdown">
-                <label className={labelClasses}>Sponsor<span className="text-red-500">*</span></label>
-                <div className="relative group">
-                  <div
-                    className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-indigo-400 transition-all duration-300 ${isSponsorNameOpen ? "border-indigo-500 ring-4 ring-indigo-500/10" : ""}`}
-                    onClick={() => setIsSponsorNameOpen(!isSponsorNameOpen)}
-                  >
-                    <Search size={14} className="text-gray-400 shrink-0" />
-                    <input
-                      type="text"
-                      className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${sponsorName ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
-                      placeholder={sponsorName || "Search Sponsor..."}
-                      value={isSponsorNameOpen ? sponsorNameSearch : ""}
-                      onChange={(e) => setSponsorNameSearch(e.target.value)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsSponsorNameOpen(true);
-                      }}
-                    />
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform duration-300 shrink-0 ${isSponsorNameOpen ? "rotate-180 text-indigo-500" : ""}`}
-                    />
-                  </div>
-
-                  {isSponsorNameOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {filteredSponsorNamesList.length === 0 ? (
-                        <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
-                          No sponsors found
-                        </div>
-                      ) : (
-                        filteredSponsorNamesList.map((s, i) => (
-                          <div
-                            key={i}
-                            className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-indigo-50 group/item ${sponsorName === s.sponsor_name ? "bg-indigo-50/50 text-black font-bold" : "text-black font-bold hover:text-indigo-600"}`}
-                            onClick={() => {
-                              setSponsorName(s.sponsor_name);
-                              setIsSponsorNameOpen(false);
-                              setSponsorNameSearch("");
-                            }}
-                          >
-                            <span>{s.sponsor_name}</span>
-                            {sponsorName === s.sponsor_name ? (
-                              <Check size={14} className="text-indigo-500" />
-                            ) : (
-                              <Plus
-                                size={12}
-                                className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                              />
-                            )}
-                          </div>
-                        ))
-                      )}
+              <div className="space-y-3">
+                <div className="space-y-1 relative sponsor-name-dropdown">
+                  <label className={labelClasses}>Sponsor<span className="text-red-500">*</span></label>
+                  <div className="relative group">
+                    <div
+                      className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-sky-400 transition-all duration-300 ${isSponsorNameOpen ? "border-sky-500 ring-4 ring-sky-500/10" : ""}`}
+                      onClick={() => setIsSponsorNameOpen(!isSponsorNameOpen)}
+                    >
+                      <Search size={14} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${sponsorName ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
+                        placeholder={sponsorName || "Search Sponsor..."}
+                        value={isSponsorNameOpen ? sponsorNameSearch : ""}
+                        onChange={(e) => setSponsorNameSearch(e.target.value)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsSponsorNameOpen(true);
+                        }}
+                      />
+                      <ChevronDown
+                        size={16}
+                        className={`text-gray-400 transition-transform duration-300 shrink-0 ${isSponsorNameOpen ? "rotate-180 text-sky-500" : ""}`}
+                      />
                     </div>
-                  )}
-                </div>
-              </div>
 
-              <div className="space-y-1 relative sponsorship-dropdown">
-                <label className={labelClasses}>Sponsorship<span className="text-red-500">*</span></label>
-                <div className="relative group">
-                  <div
-                    className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-indigo-400 transition-all duration-300 ${isSponsorshipOpen ? "border-indigo-500 ring-4 ring-indigo-500/10" : ""}`}
-                    onClick={() => setIsSponsorshipOpen(!isSponsorshipOpen)}
-                  >
-                    <Search size={14} className="text-gray-400 shrink-0" />
-                    <input
-                      type="text"
-                      className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${sponsorship ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
-                      placeholder={sponsorship || "Search Tier..."}
-                      value={isSponsorshipOpen ? sponsorshipSearch : ""}
-                      onChange={(e) => setSponsorshipSearch(e.target.value)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsSponsorshipOpen(true);
-                      }}
-                    />
-                    <ChevronDown
-                      size={16}
-                      className={`text-gray-400 transition-transform duration-300 shrink-0 ${isSponsorshipOpen ? "rotate-180 text-indigo-500" : ""}`}
-                    />
-                  </div>
-
-                  {isSponsorshipOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {filteredSponsorshipTiers.length === 0 ? (
-                        <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
-                          No tiers found
-                        </div>
-                      ) : (
-                        filteredSponsorshipTiers.map((t, i) => (
-                          <div
-                            key={i}
-                            className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-indigo-50 group/item ${sponsorship === t ? "bg-indigo-50/50 text-black font-bold" : "text-black font-bold hover:text-indigo-600"}`}
-                            onClick={() => {
-                              setSponsorship(t);
-                              setIsSponsorshipOpen(false);
-                              setSponsorshipSearch("");
-                            }}
-                          >
-                            <span>{t}</span>
-                            {sponsorship === t ? (
-                              <Check size={14} className="text-indigo-500" />
-                            ) : (
-                              <Plus
-                                size={12}
-                                className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                              />
-                            )}
+                    {isSponsorNameOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {filteredSponsorNamesList.length === 0 ? (
+                          <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
+                            No sponsors found
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+                        ) : (
+                          filteredSponsorNamesList.map((s, i) => (
+                            <div
+                              key={i}
+                              className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-sky-50 group/item ${sponsorName === s.sponsor_name ? "bg-sky-50/50 text-black font-bold" : "text-black font-bold hover:text-sky-600"}`}
+                              onClick={() => {
+                                setSponsorName(s.sponsor_name);
+                                setIsSponsorNameOpen(false);
+                                setSponsorNameSearch("");
+                              }}
+                            >
+                              <span>{s.sponsor_name}</span>
+                              {sponsorName === s.sponsor_name ? (
+                                <Check size={14} className="text-sky-500" />
+                              ) : (
+                                <Plus
+                                  size={12}
+                                  className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <button
-                onClick={addSponsor}
-                disabled={!sponsorName || !sponsorship}
-                className={actionButtonClasses}
-              >
-                <Plus size={18} strokeWidth={2.5} /> {editingSponsorIndex !== null ? "Update Selection" : "Confirm Sponsor"}
-              </button>
-              {editingSponsorIndex !== null && (
+                <div className="space-y-1 relative sponsorship-dropdown">
+                  <label className={labelClasses}>Sponsorship<span className="text-red-500">*</span></label>
+                  <div className="relative group">
+                    <div
+                      className={`flex items-center gap-3 ${inputClasses} cursor-pointer hover:border-sky-400 transition-all duration-300 ${isSponsorshipOpen ? "border-sky-500 ring-4 ring-sky-500/10" : ""}`}
+                      onClick={() => setIsSponsorshipOpen(!isSponsorshipOpen)}
+                    >
+                      <Search size={14} className="text-gray-400 shrink-0" />
+                      <input
+                        type="text"
+                        className={`bg-transparent border-none outline-none w-full placeholder:font-bold text-sm font-bold ${sponsorship ? "placeholder:text-black" : "placeholder:text-gray-400"}`}
+                        placeholder={sponsorship || "Search Tier..."}
+                        value={isSponsorshipOpen ? sponsorshipSearch : ""}
+                        onChange={(e) => setSponsorshipSearch(e.target.value)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsSponsorshipOpen(true);
+                        }}
+                      />
+                      <ChevronDown
+                        size={16}
+                        className={`text-gray-400 transition-transform duration-300 shrink-0 ${isSponsorshipOpen ? "rotate-180 text-sky-500" : ""}`}
+                      />
+                    </div>
+
+                    {isSponsorshipOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-[2rem] shadow-2xl z-[100] max-h-[250px] overflow-y-auto scrollbar-hide py-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {filteredSponsorshipTiers.length === 0 ? (
+                          <div className="px-6 py-4 text-xs text-gray-400 text-center italic">
+                            No tiers found
+                          </div>
+                        ) : (
+                          filteredSponsorshipTiers.map((t, i) => (
+                            <div
+                              key={i}
+                              className={`px-6 py-2.5 text-sm cursor-pointer transition-all duration-200 flex items-center justify-between hover:bg-sky-50 group/item ${sponsorship === t ? "bg-sky-50/50 text-black font-bold" : "text-black font-bold hover:text-sky-600"}`}
+                              onClick={() => {
+                                setSponsorship(t);
+                                setIsSponsorshipOpen(false);
+                                setSponsorshipSearch("");
+                              }}
+                            >
+                              <span>{t}</span>
+                              {sponsorship === t ? (
+                                <Check size={14} className="text-sky-500" />
+                              ) : (
+                                <Plus
+                                  size={12}
+                                  className="text-gray-300 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button
-                  onClick={() => {
-                    setEditingSponsorIndex(null);
-                    setSponsorName("");
-                    setSponsorship("");
-                  }}
-                  className="w-full py-2 text-[10px] font-bold text-gray-400 hover:text-red-500 transition-all"
+                  onClick={addSponsor}
+                  disabled={!sponsorName || !sponsorship}
+                  className={actionButtonClasses}
                 >
-                  Cancel Edit
+                  <Plus size={18} strokeWidth={2.5} /> {editingSponsorIndex !== null ? "Update Selection" : "Confirm Sponsor"}
                 </button>
-              )}
-            </div>
+                {editingSponsorIndex !== null && (
+                  <button
+                    onClick={() => {
+                      setEditingSponsorIndex(null);
+                      setSponsorName("");
+                      setSponsorship("");
+                    }}
+                    className="w-full py-2 text-[10px] font-bold text-gray-400 hover:text-red-500 transition-all"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -1035,7 +1055,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                             {s.sponsorName || s.sponsor_name || "Sponsor Partner"}
                           </td>
                           <td className={tableCellClasses}>
-                            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                            <span className="px-3 py-1 bg-sky-50 text-sky-600 rounded-full text-[10px] font-bold uppercase tracking-wider">
                               {s.sponsorship || s.sponsorshipType || s.sponsorship_type || s.tier || "Title Sponsor"}
                             </span>
                           </td>
@@ -1062,13 +1082,13 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-4">
                 <label
-                  className={`relative flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-[2rem] transition-all duration-500 cursor-pointer overflow-hidden ${guestImage ? "border-purple-500 bg-purple-50/20" : "border-gray-200 hover:border-purple-400 hover:bg-gray-50 bg-gray-50/50 group"}`}
+                  className={`relative flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-[2rem] transition-all duration-500 cursor-pointer overflow-hidden ${guestImage ? "border-cyan-500 bg-cyan-50/20" : "border-gray-200 hover:border-cyan-400 hover:bg-gray-50 bg-gray-50/50 group"}`}
                 >
                   {!guestImage ? (
                     <div className="flex flex-col items-center justify-center text-center p-2">
                       <UploadCloud
                         size={20}
-                        className="text-gray-400 group-hover:text-purple-500 transition-colors mb-1"
+                        className="text-gray-400 group-hover:text-cyan-500 transition-colors mb-1"
                       />
                       <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">
                         Photo
@@ -1274,21 +1294,59 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
             </div>
             <form onSubmit={handleCreateVendor} className="p-8 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Select
-                    label="Service Category"
-                    value={newVendor.vendor_type}
-                    onValueChange={(val) => {
-                      setNewVendor({ ...newVendor, vendor_type: val });
-                      setFieldErrors({ ...fieldErrors, vendor_type: "" });
-                    }}
-                    placeholder="Select Category"
-                    triggerClassName={`rounded-2xl h-11 text-xs font-bold ${fieldErrors.vendor_type ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
-                  >
-                    {(vendorTypes.length > 0 ? vendorTypes : demoVendorTypes).map((vt, idx) => (
-                      <SelectItem key={idx} value={vt.vendor_type}>{vt.vendor_type}</SelectItem>
-                    ))}
-                  </Select>
+                <div className="space-y-1 relative">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Service Category</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowInlineCategoryInput(!showInlineCategoryInput);
+                        if (!showInlineCategoryInput) setNewCategoryName("");
+                      }}
+                      className="text-[10px] font-bold text-cyan-600 hover:text-cyan-800 bg-cyan-50 hover:bg-cyan-100 px-2 py-0.5 rounded-md transition-all"
+                    >
+                      {showInlineCategoryInput ? "Cancel" : "+ New Category"}
+                    </button>
+                  </div>
+                  {showInlineCategoryInput ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter custom category"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 text-slate-800 rounded-2xl h-11 px-4 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-10"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleCreateCategory(e);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => handleCreateCategory(e)}
+                        disabled={!newCategoryName.trim() || loading}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-cyan-100 text-cyan-600 rounded-full hover:bg-cyan-200 transition-colors disabled:opacity-50 flex items-center justify-center"
+                      >
+                        <Check size={14} strokeWidth={3} />
+                      </button>
+                    </div>
+                  ) : (
+                    <Select
+                      value={newVendor.vendor_type}
+                      onValueChange={(val) => {
+                        setNewVendor({ ...newVendor, vendor_type: val });
+                        setFieldErrors({ ...fieldErrors, vendor_type: "" });
+                      }}
+                      placeholder="Select Category"
+                      triggerClassName={`rounded-2xl h-11 text-xs font-bold ${fieldErrors.vendor_type ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
+                    >
+                      {vendorTypes.map((vt, idx) => (
+                        <SelectItem key={idx} value={vt.vendor_type}>{vt.vendor_type}</SelectItem>
+                      ))}
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Vendor Name</label>
@@ -1303,7 +1361,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                         setFieldErrors({ ...fieldErrors, vendor_name: "" });
                       }
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.vendor_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-bold`}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.vendor_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
                   />
                   {fieldErrors.vendor_name && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.vendor_name}</p>}
                 </div>
@@ -1316,7 +1374,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                       setNewVendor({ ...newVendor, company_name: e.target.value });
                       setFieldErrors({ ...fieldErrors, company_name: "" });
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.company_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-bold`}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.company_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
                   />
                   {fieldErrors.company_name && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.company_name}</p>}
                 </div>
@@ -1331,7 +1389,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                       setNewVendor({ ...newVendor, primary_contact: val });
                       setFieldErrors({ ...fieldErrors, primary_contact: "" });
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.primary_contact ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-bold`}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.primary_contact ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
                   />
                   {fieldErrors.primary_contact && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.primary_contact}</p>}
                 </div>
@@ -1347,7 +1405,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                       setNewVendor({ ...newVendor, mail_id: val });
                       setFieldErrors({ ...fieldErrors, mail_id: "" });
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.mail_id ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-bold`}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.mail_id ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
                   />
                   {fieldErrors.mail_id && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.mail_id}</p>}
                 </div>
@@ -1357,13 +1415,13 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                     placeholder="Address"
                     value={newVendor.address}
                     onChange={(e) => setNewVendor({ ...newVendor, address: e.target.value })}
-                    className="w-full px-5 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm h-20 resize-none"
+                    className="w-full px-5 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm h-20 resize-none"
                   />
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowAddVendorModal(false)} className="px-6 py-2 font-bold text-slate-400">Cancel</button>
-                <button disabled={loading} type="submit" className="px-8 py-2 bg-purple-600 text-white font-bold rounded-xl shadow-lg shadow-purple-100">{loading ? "Saving..." : "Save Vendor"}</button>
+                <button disabled={loading} type="submit" className="px-8 py-2 bg-cyan-600 text-white font-bold rounded-xl shadow-lg shadow-cyan-100">{loading ? "Saving..." : "Save Vendor"}</button>
               </div>
             </form>
           </div>
@@ -1395,7 +1453,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                         setFieldErrors({ ...fieldErrors, sponsor_name: "" });
                       }
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.sponsor_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold`}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.sponsor_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold`}
                   />
                   {fieldErrors.sponsor_name && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.sponsor_name}</p>}
                 </div>
@@ -1410,7 +1468,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                       setNewSponsor({ ...newSponsor, primary_contact: val });
                       setFieldErrors({ ...fieldErrors, primary_contact: "" });
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.primary_contact ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold`}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.primary_contact ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold`}
                   />
                   {fieldErrors.primary_contact && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.primary_contact}</p>}
                 </div>
@@ -1426,7 +1484,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                       setNewSponsor({ ...newSponsor, mail_id: val });
                       setFieldErrors({ ...fieldErrors, mail_id: "" });
                     }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.mail_id ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold`}
+                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.mail_id ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold`}
                   />
                   {fieldErrors.mail_id && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.mail_id}</p>}
                 </div>
@@ -1436,13 +1494,13 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
                     placeholder="Address"
                     value={newSponsor.address}
                     onChange={(e) => setNewSponsor({ ...newSponsor, address: e.target.value })}
-                    className="w-full px-5 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm h-20 resize-none"
+                    className="w-full px-5 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm h-20 resize-none"
                   />
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowAddSponsorModal(false)} className="px-6 py-2 font-bold text-slate-400">Cancel</button>
-                <button disabled={loading} type="submit" className="px-8 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100">{loading ? "Saving..." : "Save Sponsor"}</button>
+                <button disabled={loading} type="submit" className="px-8 py-2 bg-sky-600 text-white font-bold rounded-xl shadow-lg shadow-sky-100">{loading ? "Saving..." : "Save Sponsor"}</button>
               </div>
             </form>
           </div>
@@ -1459,6 +1517,73 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
           onClose={() => setCroppingImage(null)}
         />
       )}
+
+      {/* ADD CATEGORY MODAL */}
+      {showAddCategoryModal && (
+        <div className="fixed inset-0 z-[1100] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
+            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 text-white flex items-center justify-between">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                💡 Suggest Custom Category
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setShowAddCategoryModal(false); setNewCategoryName(""); setNewCategoryDesc(""); }}
+                className="text-white/80 hover:text-white text-base font-bold bg-transparent border-none cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCategory} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Service Category Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Solar & Clean Tech"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Reason / Details for Request
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe why this category is required for your event..."
+                  value={newCategoryDesc}
+                  onChange={(e) => setNewCategoryDesc(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowAddCategoryModal(false); setNewCategoryName(""); setNewCategoryDesc(""); }}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !newCategoryName.trim()}
+                  className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-95 rounded-xl shadow-md transition-all border-none cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? "Submitting..." : "Submit Request"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
 
   );
@@ -1564,9 +1689,9 @@ const ImageCropperModal = ({ imageSrc, onCrop, onClose }) => {
         <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">Adjust Guest Photo</h3>
         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-6">Drag to position & slide to zoom</p>
 
-        <div 
+        <div
           ref={containerRef}
-          className="relative w-[240px] h-[240px] rounded-full overflow-hidden border-4 border-purple-100 shadow-inner bg-slate-50 cursor-move select-none"
+          className="relative w-[240px] h-[240px] rounded-full overflow-hidden border-4 border-cyan-100 shadow-inner bg-slate-50 cursor-move select-none"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -1590,7 +1715,7 @@ const ImageCropperModal = ({ imageSrc, onCrop, onClose }) => {
               pointerEvents: "none"
             }}
           />
-          <div className="absolute inset-0 rounded-full border border-purple-500/20 pointer-events-none" />
+          <div className="absolute inset-0 rounded-full border border-cyan-500/20 pointer-events-none" />
         </div>
 
         <div className="w-full mt-6 space-y-2">
@@ -1618,7 +1743,7 @@ const ImageCropperModal = ({ imageSrc, onCrop, onClose }) => {
                 };
               });
             }}
-            className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-purple-600"
+            className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-cyan-600"
           />
         </div>
 
@@ -1631,7 +1756,7 @@ const ImageCropperModal = ({ imageSrc, onCrop, onClose }) => {
           </button>
           <button
             onClick={handleCrop}
-            className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-full text-xs uppercase tracking-widest shadow-lg shadow-purple-100 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-full text-xs uppercase tracking-widest shadow-lg shadow-cyan-100 hover:scale-[1.02] active:scale-95 transition-all duration-200"
           >
             Apply Crop
           </button>
