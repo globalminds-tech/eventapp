@@ -30,13 +30,28 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated && accessToken) {
-      if (returnUrl) {
-        navigate(returnUrl, { replace: true });
+      let storedUser = null;
+      try {
+        storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+      } catch {
+        storedUser = null;
+      }
+      const cleanRole = String(authRole || storedUser?.active_role || storedUser?.role || "").toLowerCase();
+      const rolesArr = Array.isArray(storedUser?.roles) ? storedUser.roles.map((r) => String(r).toLowerCase()) : [];
+      const isSuper = (
+        cleanRole === "superadmin" ||
+        cleanRole === "superuser" ||
+        cleanRole === "admin" ||
+        rolesArr.includes("superadmin") ||
+        rolesArr.includes("superuser")
+      );
+
+      if (isSuper) {
+        navigate("/superuser/dashboard", { replace: true });
         return;
       }
-      const cleanRole = String(authRole || "").toLowerCase();
-      if (cleanRole === "superadmin" || cleanRole === "superuser") {
-        navigate("/superuser/dashboard", { replace: true });
+      if (returnUrl && returnUrl !== "/profile") {
+        navigate(returnUrl, { replace: true });
         return;
       }
       navigate("/", { replace: true });
@@ -137,6 +152,8 @@ export default function Login() {
       localStorage.setItem("email", userEmail);
       localStorage.setItem("user", JSON.stringify(userToStore));
       sessionStorage.setItem("user", JSON.stringify(userToStore));
+      localStorage.removeItem("is_logged_out");
+      sessionStorage.removeItem("is_logged_out");
 
       dispatch(setCredentials({ user: userToStore, token: token, role: userRole }));
 
@@ -293,13 +310,18 @@ export default function Login() {
             )}
 
             {/* Sign In Form */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-bold text-slate-700">
                   Email Address <span className="text-orange-500">*</span>
                 </label>
                 <input
                   type="email"
+                  name="bme_login_email"
+                  id="bme_login_email"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   placeholder="you@example.com"
@@ -317,6 +339,11 @@ export default function Login() {
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
+                    name="bme_login_password"
+                    id="bme_login_password"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={formData.password}
                     onChange={(e) => handleChange("password", e.target.value)}
                     placeholder="••••••••"

@@ -77,6 +77,7 @@ export default function Register() {
     try {
       const response = await registerUser(formData);
       const data = response.data?.data || response.data;
+      const userObj = data?.user || data || {};
       const userRoles = Array.isArray(userObj?.roles) && userObj.roles.length > 0
         ? userObj.roles.map((r) => String(r).toLowerCase())
         : ["user"];
@@ -84,19 +85,59 @@ export default function Register() {
       const userId = userObj?.id || data?.User_id || "";
       const userName = userObj?.name || data?.name || formData.name;
       const token = data?.token || data?.access_token || "";
+      const refreshToken = data?.refresh_token || "";
 
+      sessionStorage.setItem("token", token);
+      localStorage.setItem("token", token);
+      sessionStorage.setItem("accessToken", token);
+      localStorage.setItem("accessToken", token);
+      if (refreshToken) {
+        sessionStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("refreshToken", refreshToken);
+      }
       sessionStorage.setItem("roles", JSON.stringify(userRoles));
       localStorage.setItem("roles", JSON.stringify(userRoles));
       sessionStorage.setItem("role", userRole);
       localStorage.setItem("role", userRole);
+      sessionStorage.setItem("id", userId.toString());
+      sessionStorage.setItem("userId", userId.toString());
+      sessionStorage.setItem("name", userName);
+      sessionStorage.setItem("email", formData.email);
 
-      dispatch(setCredentials({ user: { ...userObj, roles: userRoles, active_role: userRole }, token: token, role: userRole }));
-      dispatch(setUser({ id: userId, name: userName, role: userRole, active_role: userRole, roles: userRoles, email: formData.email, profile_image: userObj.profile_image || "" }));
+      localStorage.setItem("id", userId.toString());
+      localStorage.setItem("userId", userId.toString());
+      localStorage.setItem("name", userName);
+      localStorage.setItem("email", formData.email);
+
+      const userToStore = {
+        ...userObj,
+        roles: userRoles,
+        active_role: userRole,
+        role: userRole,
+        profiles: userObj?.profiles || { organizer: null, exhibitor: null },
+      };
+      sessionStorage.setItem("user", JSON.stringify(userToStore));
+      localStorage.setItem("user", JSON.stringify(userToStore));
+
+      dispatch(setCredentials({ user: userToStore, token: token, role: userRole }));
+      dispatch(
+        setUser({
+          ...userToStore,
+          id: userId,
+          name: userName,
+          role: userRole,
+          active_role: userRole,
+          roles: userRoles,
+          email: formData.email,
+          profile_image: userObj.profile_image || "",
+        })
+      );
 
       setMessage("Account created successfully! Logging you in...");
       setTimeout(() => navigate(returnUrl || "/", { replace: true }), 1000);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.response?.data?.detail || "Registration failed. Please try again.");
+      console.error("Registration error:", err);
+      setError(err?.response?.data?.message || err?.response?.data?.detail || err?.message || "Registration failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -203,11 +244,16 @@ export default function Register() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+            <form onSubmit={handleSubmit} autoComplete="off" className="flex flex-col gap-3.5">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-slate-700">Full Name</label>
                 <input
                   type="text"
+                  name="bme_register_name"
+                  id="bme_register_name"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
                   placeholder="Enter your full name"
@@ -222,6 +268,11 @@ export default function Register() {
                 <label className="text-xs font-bold text-slate-700">Email Address</label>
                 <input
                   type="email"
+                  name="bme_register_email"
+                  id="bme_register_email"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={formData.email}
                   onChange={(e) => handleChange("email", e.target.value)}
                   placeholder="you@example.com"
@@ -237,6 +288,11 @@ export default function Register() {
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
+                    name="bme_register_password"
+                    id="bme_register_password"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={formData.password}
                     onChange={(e) => handleChange("password", e.target.value)}
                     placeholder="Min. 6 characters"
@@ -260,6 +316,11 @@ export default function Register() {
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? "text" : "password"}
+                    name="bme_register_confirm_password"
+                    id="bme_register_confirm_password"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                     value={formData.confirm_password}
                     onChange={(e) => handleChange("confirm_password", e.target.value)}
                     placeholder="Re-enter password"

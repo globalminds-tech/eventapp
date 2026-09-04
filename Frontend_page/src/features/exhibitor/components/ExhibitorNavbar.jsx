@@ -6,26 +6,16 @@ import { clearUser } from "@/app/store/userSlice";
 import { CalendarDays, Store, LogOut } from "lucide-react";
 
 
+import { performLogout } from "@/shared/services/authHelper";
+
 const ExhibitorNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-   const handleLogout = () => {
-    // Clear Session Storage
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("role");
-    sessionStorage.removeItem("id");
-    sessionStorage.removeItem("name");
-    sessionStorage.removeItem("userId");
-    sessionStorage.removeItem("userName");
-
-    // Clear Redux State
-    dispatch(clearUser());
-
-    // Navigate to Login
-    navigate("/");
+  const handleLogout = () => {
+    performLogout(dispatch, navigate);
   };
 
   const navItem = (path) =>

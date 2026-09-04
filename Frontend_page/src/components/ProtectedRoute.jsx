@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useMemo, useEffect } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { setCredentials } from "@/app/store/authSlice";
+import { setUser } from "@/app/store/userSlice";
+import { getUserAvailableRoles } from "@/shared/services/authHelper";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { ShieldCheck } from "lucide-react";
 
@@ -11,7 +13,52 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const reduxAuth = useSelector((state) => state.auth);
   const reduxUser = useSelector((state) => state.user);
 
-  // 1. If session is actively being initialized or restored by AuthInitializer, wait before evaluating
+  // 1. Resolve token & active role from Redux or persistent storage fallback
+  const token = reduxAuth?.accessToken || sessionStorage.getItem("token") || localStorage.getItem("token") || sessionStorage.getItem("accessToken");
+  const currentRole = (
+    reduxAuth?.role ||
+    reduxAuth?.active_role ||
+    reduxUser?.active_role ||
+    sessionStorage.getItem("role") ||
+    localStorage.getItem("role") ||
+    sessionStorage.getItem("userRole") ||
+    "user"
+  )?.toLowerCase();
+
+  // 2. Gather all legitimate roles the authenticated user possesses (memoized)
+  const allUserRoles = useMemo(() => {
+    let storedUser = null;
+    try {
+      storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+    } catch {
+      storedUser = null;
+    }
+    const user = {
+      ...(storedUser || {}),
+      ...(reduxUser || {}),
+      ...(reduxAuth?.user || {}),
+    };
+    return new Set(getUserAvailableRoles(user));
+  }, [reduxAuth?.user, reduxUser]);
+
+  const matchingRole = useMemo(() => {
+    if (!allowedRoles || !Array.isArray(allowedRoles) || allowedRoles.length === 0) return null;
+    return allowedRoles.find((r) => allUserRoles.has(String(r).toLowerCase()));
+  }, [allowedRoles, allUserRoles]);
+
+  // 3. Safe active role synchronization inside useEffect (NEVER during render)
+  useEffect(() => {
+    if (matchingRole && matchingRole !== currentRole && matchingRole !== "user") {
+      sessionStorage.setItem("role", matchingRole);
+      localStorage.setItem("role", matchingRole);
+      sessionStorage.setItem("active_role", matchingRole);
+      localStorage.setItem("active_role", matchingRole);
+      dispatch(setCredentials({ role: matchingRole }));
+      dispatch(setUser({ role: matchingRole, active_role: matchingRole }));
+    }
+  }, [matchingRole, currentRole, dispatch]);
+
+  // 4. If session is actively being initialized or restored by AuthInitializer, wait before evaluating
   if (reduxAuth?.loading) {
     return (
       <div className="relative flex h-screen w-screen items-center justify-center bg-gradient-to-b from-slate-50 via-[#f8fafc] to-slate-100 text-slate-900 select-none px-4 overflow-hidden">
@@ -54,16 +101,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // 2. Resolve token & active role from Redux or persistent storage fallback
-  const token = reduxAuth?.accessToken || sessionStorage.getItem("token") || localStorage.getItem("token") || sessionStorage.getItem("accessToken");
-  const currentRole = (
-    reduxAuth?.role ||
-    reduxUser?.active_role ||
-    sessionStorage.getItem("role") ||
-    localStorage.getItem("role") ||
-    sessionStorage.getItem("userRole")
-  )?.toLowerCase();
-
+  // 5. Check valid session token
   const isValidToken = Boolean(token && !token.includes("authenticated-user-token") && !token.includes("-session-token"));
 
   if (!isValidToken) {
@@ -72,78 +110,16 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;
   }
 
+  // 6. Role permission evaluation
   if (allowedRoles && Array.isArray(allowedRoles) && allowedRoles.length > 0) {
-    let storedUser = null;
-    try {
-      storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
-    } catch {
-      storedUser = null;
-    }
-    const user = reduxAuth?.user || reduxUser || storedUser || {};
-
-    // Gather all legitimate roles the authenticated user possesses
-    const allUserRoles = new Set();
-    if (currentRole) allUserRoles.add(currentRole);
-
-    // Add roles from reduxAuth user, reduxUser, or storedUser
-    const candidateRoles = [
-      ...(Array.isArray(user?.roles) ? user.roles : []),
-      ...(Array.isArray(reduxUser?.roles) ? reduxUser.roles : []),
-    ];
-    candidateRoles.forEach((r) => r && allUserRoles.add(String(r).toLowerCase()));
-
-    // Fallback from localStorage roles
-    try {
-      const storedRoles = JSON.parse(localStorage.getItem("roles") || sessionStorage.getItem("roles") || "[]");
-      if (Array.isArray(storedRoles)) {
-        storedRoles.forEach((r) => r && allUserRoles.add(String(r).toLowerCase()));
-      }
-    } catch (e) {}
-
-    // Attach profile-inferred roles
-    if (user?.profiles?.organizer || user?.organizer_profile || reduxUser?.organization_name) {
-      allUserRoles.add("organizer");
-    }
-    if (user?.profiles?.exhibitor || user?.exhibitor_profile) {
-      allUserRoles.add("exhibitor");
-    }
-
-    // Superuser has universal access
-    if (
-      allUserRoles.has("superuser") ||
-      allUserRoles.has("superadmin") ||
-      allUserRoles.has("admin") ||
-      ["superuser", "superadmin", "admin"].includes(currentRole)
-    ) {
-      allUserRoles.add("superuser");
-      allUserRoles.add("superadmin");
-      allUserRoles.add("organizer");
-      allUserRoles.add("exhibitor");
-    }
-
-    // Always include baseline "user" for any authenticated account
-    allUserRoles.add("user");
-
     const hasPermission = allowedRoles.some((r) => allUserRoles.has(String(r).toLowerCase()));
-
-    console.log(
-      `%c[ProtectedRoute] Path: "${location.pathname}" | Allowed: [${allowedRoles.join(", ")}] | UserRoles: [${Array.from(allUserRoles).join(", ")}] | Current: "${currentRole}" | Access: ${hasPermission ? "GRANTED" : "DENIED"}`,
-      hasPermission ? "color: #34d399; font-weight: bold;" : "color: #f87171; font-weight: bold;"
-    );
 
     if (!hasPermission) {
       // Intelligently redirect to the user's best authorized portal
+      if (allUserRoles.has("superuser") || allUserRoles.has("superadmin")) return <Navigate to="/superuser/dashboard" replace />;
       if (allUserRoles.has("organizer")) return <Navigate to="/OrganizerHome" replace />;
       if (allUserRoles.has("exhibitor")) return <Navigate to="/exhibitor/dashboard" replace />;
       return <Navigate to="/" replace />;
-    }
-
-    // If active role in session differs from the workspace being accessed, sync it
-    const matchingRole = allowedRoles.find((r) => allUserRoles.has(String(r).toLowerCase()));
-    if (matchingRole && matchingRole !== currentRole && matchingRole !== "user") {
-      sessionStorage.setItem("role", matchingRole);
-      localStorage.setItem("role", matchingRole);
-      dispatch(setCredentials({ role: matchingRole }));
     }
   }
 
