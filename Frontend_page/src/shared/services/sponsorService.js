@@ -13,7 +13,7 @@ export const getSponsorNames = async () => {
 };
 
 export const createSponsor = async (formData) => {
-  const res = await apiClient.post("/superadmin/api/create_sponsor", formData);
+  const res = await apiClient.post("/superadmin/api/sponsorship", formData);
   return res.data;
 };
 

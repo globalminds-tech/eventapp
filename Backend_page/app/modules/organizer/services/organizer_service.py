@@ -64,13 +64,6 @@ class OrganizerService:
             stmt = select(VendorDetails.vendor_type).distinct()
             types = db.session.scalars(stmt).all()
             result = [{"vendor_type": t} for t in types if t]
-            if not result:
-                return [
-                    {"vendor_type": "Catering & Beverages"},
-                    {"vendor_type": "Audio & Visual Systems"},
-                    {"vendor_type": "Security & Bouncers"},
-                    {"vendor_type": "Stage & Decoration"}
-                ]
             return result
         except Exception:
             return []

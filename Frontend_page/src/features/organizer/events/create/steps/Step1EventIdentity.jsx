@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Calendar, Clock, MapPin, Search, ChevronDown, Upload, X, Image as ImageIcon, Video } from "lucide-react";
+import { Calendar, Clock, MapPin, Search, ChevronDown, Upload, X, Image as ImageIcon, Video, Crop } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
@@ -20,6 +20,8 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
   const startDateRef = useRef(null);
   const endDateRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
+  const [bannerToCrop, setBannerToCrop] = useState(null);
+  const [showBannerCropper, setShowBannerCropper] = useState(false);
 
   /* Category Request Modal State */
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -255,17 +257,36 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setFormData((prev) => ({
-        ...prev,
-        documents: {
-          ...getDocObj(prev.documents),
-          banner: file.name,
-          bannerPreview: reader.result,
-          bannerType: isVideo ? "video" : "image",
-        },
-      }));
+      if (isImage) {
+        setBannerToCrop(reader.result);
+        setShowBannerCropper(true);
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          documents: {
+            ...getDocObj(prev.documents),
+            banner: file.name,
+            bannerPreview: reader.result,
+            bannerType: "video",
+          },
+        }));
+      }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleBannerCrop = (croppedBase64) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: {
+        ...getDocObj(prev.documents),
+        banner: "cropped_banner.jpg",
+        bannerPreview: croppedBase64,
+        bannerType: "image",
+      },
+    }));
+    setShowBannerCropper(false);
+    setBannerToCrop(null);
   };
 
   const removeBanner = () => {
@@ -473,20 +494,20 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
         <div className="relative" ref={venueRef}>
           <div className="flex items-center justify-between mb-1">
             <label className="block text-xs font-bold text-slate-700">
-              <MapPin size={12} className="inline mr-1 text-emerald-600" />
+              <MapPin size={12} className="inline mr-1 text-cyan-600" />
               Venue <span className="text-red-500">*</span>
             </label>
             <button
               type="button"
               onClick={() => setShowVenueModal(true)}
-              className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md transition-all"
+              className="text-[11px] font-bold text-cyan-600 hover:text-cyan-800 bg-cyan-50 hover:bg-cyan-100 px-2 py-0.5 rounded-md transition-all"
             >
               + Create New Venue
             </button>
           </div>
           <div
             onClick={() => setVenueOpen(!venueOpen)}
-            className={`w-full h-10 bg-slate-50 border rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-emerald-400 ${
+            className={`w-full h-10 bg-slate-50 border rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-cyan-400 ${
               err("venue") ? "border-red-400" : "border-slate-200"
             }`}
           >
@@ -504,7 +525,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                     placeholder="Search venue..."
                     value={venueSearch}
                     onChange={(e) => setVenueSearch(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 h-8 px-3 pr-8 rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-200 h-8 px-3 pr-8 rounded-lg text-xs outline-none focus:ring-1 focus:ring-cyan-500"
                   />
                   <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                 </div>
@@ -543,7 +564,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                         setVenueOpen(false);
                         setVenueSearch("");
                       }}
-                      className="px-3 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 cursor-pointer"
+                      className="px-3 py-2 text-xs font-medium text-slate-700 hover:bg-cyan-50 cursor-pointer"
                     >
                       {venue.venue_name} ({venue.city_name})
                     </div>
@@ -702,20 +723,36 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
             Event Banner <span className="text-red-500">*</span>
           </label>
           {bannerPreview ? (
-            <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm h-48 md:h-52 bg-slate-900">
+            <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm aspect-video bg-slate-900">
               {bannerType === "video" ? (
                 <video src={bannerPreview} className="w-full h-full object-cover object-center" muted autoPlay loop />
               ) : (
                 <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover object-center" />
               )}
               {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={removeBanner}
-                  className="absolute top-3 right-3 p-1.5 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors border-none cursor-pointer shadow-md"
-                >
-                  <X size={14} />
-                </button>
+                <div className="absolute top-3 right-3 flex gap-2">
+                  {bannerType === "image" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBannerToCrop(bannerPreview);
+                        setShowBannerCropper(true);
+                      }}
+                      className="p-1.5 bg-cyan-600/90 text-white rounded-full hover:bg-cyan-700 transition-colors border-none cursor-pointer shadow-md flex items-center justify-center"
+                      title="Adjust Crop"
+                    >
+                      <Crop size={14} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={removeBanner}
+                    className="p-1.5 bg-red-500/90 text-white rounded-full hover:bg-red-600 transition-colors border-none cursor-pointer shadow-md flex items-center justify-center"
+                    title="Remove Banner"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               )}
               <div className="absolute bottom-3 left-3 px-2.5 py-1 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold rounded-lg flex items-center gap-1.5 border border-white/10">
                 {bannerType === "video" ? <Video size={12} /> : <ImageIcon size={12} />}
@@ -774,7 +811,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
 
             <form onSubmit={handleCategoryRequestSubmit} className="p-5 space-y-4">
               {categoryReqSuccess ? (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-xl text-center">
+                <div className="p-4 bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs font-bold rounded-xl text-center">
                   {categoryReqSuccess}
                 </div>
               ) : (
@@ -846,7 +883,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
       {showVenueModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 text-white flex items-center justify-between">
+            <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 text-white flex items-center justify-between">
               <h3 className="font-bold text-sm flex items-center gap-2">
                 <MapPin size={16} /> Create New Venue
               </h3>
@@ -861,7 +898,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
 
             <form onSubmit={handleCreateVenueSubmit} className="p-5 space-y-4">
               {newVenueSuccess ? (
-                <div className={`p-4 border text-xs font-bold rounded-xl text-center ${newVenueSuccess.includes('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                <div className={`p-4 border text-xs font-bold rounded-xl text-center ${newVenueSuccess.includes('❌') ? 'bg-red-50 border-red-200 text-red-700' : 'bg-cyan-50 border-cyan-200 text-cyan-700'}`}>
                   {newVenueSuccess}
                 </div>
               ) : (
@@ -876,7 +913,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                       placeholder="e.g. Grand Expo Center"
                       value={newVenueName}
                       onChange={(e) => setNewVenueName(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   </div>
 
@@ -889,7 +926,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                       placeholder="e.g. Mumbai"
                       value={newVenueCity}
                       onChange={(e) => setNewVenueCity(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   </div>
 
@@ -903,7 +940,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                       placeholder="Full venue address..."
                       value={newVenueAddress}
                       onChange={(e) => setNewVenueAddress(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                      className="w-full bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-cyan-500 resize-none"
                     />
                   </div>
 
@@ -918,7 +955,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                     <button
                       type="submit"
                       disabled={isSubmittingVenue}
-                      className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 rounded-xl shadow-md transition-all border-none cursor-pointer disabled:opacity-50"
+                      className="px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-95 rounded-xl shadow-md transition-all border-none cursor-pointer disabled:opacity-50"
                     >
                       {isSubmittingVenue ? "Creating..." : "Create Venue"}
                     </button>
@@ -929,6 +966,161 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
           </div>
         </div>
       )}
+      {/* Banner Cropper Modal */}
+      {showBannerCropper && bannerToCrop && (
+        <BannerCropperModal
+          imageSrc={bannerToCrop}
+          onCrop={handleBannerCrop}
+          onClose={() => {
+            setShowBannerCropper(false);
+            setBannerToCrop(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const BannerCropperModal = ({ imageSrc, onCrop, onClose }) => {
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = React.useRef(null);
+  const imageRef = React.useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0, fitScale: 1 });
+
+  const containerWidth = 320;
+  const containerHeight = 180;
+
+  const handleImageLoad = (e) => {
+    const { naturalWidth, naturalHeight } = e.target;
+    // Force image width to exactly fit the container width
+    const fitScale = containerWidth / naturalWidth;
+    setDimensions({
+      width: naturalWidth,
+      height: naturalHeight,
+      fitScale
+    });
+    setOffset({ x: 0, y: 0 });
+  };
+
+  const dispW = dimensions.width * dimensions.fitScale;
+  const dispH = dimensions.height * dimensions.fitScale;
+
+  // Since dispW === containerWidth, left offset is 0.
+  const left = 0;
+  const top = (containerHeight - dispH) / 2 + offset.y;
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    setDragStart({ x: 0, y: e.clientY - offset.y });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    let newY = e.clientY - dragStart.y;
+
+    const maxOffsetY = Math.max(0, (dispH - containerHeight) / 2);
+    newY = Math.min(Math.max(newY, -maxOffsetY), maxOffsetY);
+
+    setOffset({ x: 0, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length !== 1) return;
+    setIsDragging(true);
+    const touch = e.touches[0];
+    setDragStart({ x: 0, y: touch.clientY - offset.y });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    let newY = touch.clientY - dragStart.y;
+
+    const maxOffsetY = Math.max(0, (dispH - containerHeight) / 2);
+    newY = Math.min(Math.max(newY, -maxOffsetY), maxOffsetY);
+
+    setOffset({ x: 0, y: newY });
+  };
+
+  const handleCrop = () => {
+    // Export at 1280x720 (16:9) to preserve high quality for banners
+    const exportWidth = 1280;
+    const exportHeight = 720;
+    const scale = exportWidth / containerWidth;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = exportWidth;
+    canvas.height = exportHeight;
+    const ctx = canvas.getContext("2d");
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, exportWidth, exportHeight);
+      ctx.drawImage(img, left * scale, top * scale, dispW * scale, dispH * scale);
+      const croppedBase64 = canvas.toDataURL("image/jpeg", 0.95);
+      onCrop(croppedBase64);
+    };
+    img.src = imageSrc;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[6000] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl p-8 flex flex-col items-center border border-slate-100">
+        <h3 className="text-lg font-black text-slate-800 tracking-tight mb-1">Adjust Event Banner</h3>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-6">Drag up / down to crop height</p>
+
+        <div
+          ref={containerRef}
+          className="relative w-[320px] h-[180px] rounded-xl overflow-hidden border-4 border-cyan-100 shadow-inner bg-slate-50 cursor-ns-resize select-none"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleMouseUp}
+        >
+          <img
+            ref={imageRef}
+            src={imageSrc}
+            alt="To Crop"
+            onLoad={handleImageLoad}
+            style={{
+              position: "absolute",
+              width: dispW,
+              height: dispH,
+              left: left,
+              top: top,
+              maxWidth: "none",
+              pointerEvents: "none"
+            }}
+          />
+          <div className="absolute inset-0 rounded-xl border border-cyan-500/20 pointer-events-none" />
+        </div>
+
+        <div className="flex gap-4 w-full mt-8">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 border border-slate-200 text-slate-500 hover:bg-slate-50 font-bold rounded-full text-xs uppercase tracking-widest transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCrop}
+            className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-full text-xs uppercase tracking-widest shadow-lg shadow-cyan-100 hover:scale-[1.02] active:scale-95 transition-all duration-200"
+          >
+            Apply Crop
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

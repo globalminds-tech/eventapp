@@ -54,16 +54,6 @@ const Step4PartnersTerms = ({ formData, setFormData, isReadOnly, showErrors }) =
 
   return (
     <div className="w-full max-w-full overflow-x-hidden space-y-3">
-      {/* ── Section Header ── */}
-      <div className="flex items-center gap-2 mb-1">
-        <div className="p-1.5 bg-purple-50 rounded-lg">
-          <Users className="w-4 h-4 text-purple-600" />
-        </div>
-        <h3 className="text-sm font-extrabold text-slate-900">Partners & Sponsors</h3>
-        <span className="text-[10px] text-slate-500 font-medium">
-          Manage vendors, sponsors, and chief guests
-        </span>
-      </div>
 
       {/* ── Vendors, Sponsors & Guests ── */}
       <AccordionSection
@@ -74,7 +64,7 @@ const Step4PartnersTerms = ({ formData, setFormData, isReadOnly, showErrors }) =
             ? `${vendorCount + sponsorCount + guestCount} added`
             : undefined
         }
-        accentColor="purple"
+        accentColor="cyan"
         defaultOpen={true}
       >
         <Step6VendorSponsor formData={formData} setFormData={setFormData} isReadOnly={isReadOnly} />
