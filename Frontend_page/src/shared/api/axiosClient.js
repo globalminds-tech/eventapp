@@ -98,7 +98,7 @@ axiosClient.interceptors.response.use(
               setCredentials({
                 user: userObj,
                 token: newAccessToken,
-                role: userObj?.role,
+                role: userObj?.active_role || (userObj?.roles && userObj.roles[0]) || "user",
               })
             );
           }

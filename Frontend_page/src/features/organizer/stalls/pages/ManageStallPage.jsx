@@ -37,6 +37,7 @@ export const ManageStall = () => {
     sessionStorage.getItem("userId");
 
   const eventsState = useSelector((state) => state.events?.list);
+  const eventsLoading = useSelector((state) => state.events?.loading);
   const eventsList = Array.isArray(eventsState) ? eventsState : (Array.isArray(eventsState?.data) ? eventsState.data : []);
 
   useEffect(() => {
@@ -312,9 +313,16 @@ export const ManageStall = () => {
               <tbody className="divide-y divide-slate-100 bg-white text-xs">
                 {eventApps.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="py-12 text-center text-slate-500 font-medium">
-                      <Store size={32} className="mx-auto text-slate-300 mb-2" />
-                      No exhibitors have requested booths for this event yet.
+                    <td colSpan="4" className="py-14 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
+                          <Store size={24} />
+                        </div>
+                        <p className="font-extrabold text-slate-800 text-sm">No Exhibitor Applications</p>
+                        <p className="text-xs text-slate-400 text-center font-medium">
+                          No exhibitors have requested booths for this event yet. Once exhibitors apply, their applications and 24-hour payment locks will appear here.
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -411,7 +419,7 @@ export const ManageStall = () => {
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved & Payment Locked</p>
-            <h3 className="text-2xl font-extrabold text-cyan-600 mt-1">{approvedCount} Bootees</h3>
+            <h3 className="text-2xl font-extrabold text-cyan-600 mt-1">{approvedCount} Booths</h3>
             <p className="text-[11px] font-medium text-cyan-600 mt-0.5">24-Hour Invoice Active</p>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100 shrink-0">
@@ -421,7 +429,7 @@ export const ManageStall = () => {
 
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed & Paid Bootees</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed & Paid Booths</p>
             <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{confirmedCount} Allocated</h3>
             <p className="text-[11px] font-medium text-emerald-600 mt-0.5">Stall Fully Reserved</p>
           </div>
@@ -448,23 +456,49 @@ export const ManageStall = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-xs">
-              {eventStalls.map((ev) => (
-                <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3.5 px-4 font-extrabold text-slate-900">{ev.event_name}</td>
-                  <td className="py-3.5 px-4 text-slate-600 font-medium">{ev.start_date} - {ev.end_date}</td>
-                  <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_quantity}</td>
-                  <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_fees}</td>
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => setSelectedEventOverview(ev)}
-                      className="p-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200"
-                      title="View Event Details & Exhibitors"
-                    >
-                      <Eye size={14} />
-                    </button>
+              {eventsLoading ? (
+                Array.from({ length: 3 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-40 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-32 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-12 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
+                    <td className="py-4 px-4 text-right"><Skeleton className="h-7 w-7 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : eventStalls.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-14 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
+                        <Store size={24} />
+                      </div>
+                      <p className="font-extrabold text-slate-800 text-sm">No Events Found</p>
+                      <p className="text-xs text-slate-400 text-center font-medium">
+                        You haven't created any events with stall allocations yet. Create an event to begin receiving and managing exhibitor booth applications.
+                      </p>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                eventStalls.map((ev) => (
+                  <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3.5 px-4 font-extrabold text-slate-900">{ev.event_name}</td>
+                    <td className="py-3.5 px-4 text-slate-600 font-medium">{ev.start_date} - {ev.end_date}</td>
+                    <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_quantity}</td>
+                    <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_fees}</td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => setSelectedEventOverview(ev)}
+                        className="p-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200"
+                        title="View Event Details & Exhibitors"
+                      >
+                        <Eye size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

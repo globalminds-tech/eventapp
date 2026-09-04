@@ -237,25 +237,35 @@ export default function ExhibitorRegister() {
 
     try {
       const response = await registerExhibitor(formData);
-      const data = response.data?.data || response.data;
-      const userRole = (data?.user?.role || data?.role || "exhibitor").toLowerCase();
-      const userId = data?.user?.id || data?.User_id || "";
-      const userName = data?.user?.name || data?.name || formData.name;
+      const userObj = data?.user || data;
+      const userRoles = Array.isArray(userObj?.roles) && userObj.roles.length > 0
+        ? userObj.roles.map((r) => String(r).toLowerCase())
+        : ["user", "exhibitor"];
+      const userRole = (userObj?.active_role || "exhibitor").toLowerCase();
+      const userId = userObj?.id || data?.User_id || "";
+      const userName = userObj?.name || data?.name || formData.name;
       const token = data?.token || data?.access_token || "";
-      const orgName = data?.user?.organization_name || formData.company_name;
+      const orgName = userObj?.organization_name || formData.company_name;
 
       if (token) {
         sessionStorage.setItem("token", token);
         localStorage.setItem("token", token);
       }
       sessionStorage.setItem("role", userRole);
+      sessionStorage.setItem("roles", JSON.stringify(userRoles));
       sessionStorage.setItem("id", userId.toString());
       sessionStorage.setItem("name", userName);
       sessionStorage.setItem("email", formData.email);
       if (formData.mobile) sessionStorage.setItem("mobile", formData.mobile);
       if (orgName) sessionStorage.setItem("organization_name", orgName);
 
-      dispatch(setUser({ id: userId, name: userName, email: formData.email, role: userRole }));
+      localStorage.setItem("role", userRole);
+      localStorage.setItem("roles", JSON.stringify(userRoles));
+      localStorage.setItem("id", userId.toString());
+      localStorage.setItem("name", userName);
+      localStorage.setItem("email", formData.email);
+
+      dispatch(setUser({ id: userId, name: userName, email: formData.email, role: userRole, active_role: userRole, roles: userRoles, organization_name: orgName }));
 
       setSuccessMsg("🎉 Exhibitor GST & Bank Profile Updated Successfully!");
       setTimeout(() => navigate("/exhibitor/dashboard", { replace: true }), 1200);

@@ -1,22 +1,49 @@
-import React, { useState } from "react";
-import { Search, Utensils, QrCode, CheckCircle2, RefreshCw, Filter, X, ArrowLeft } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Utensils, QrCode, CheckCircle2, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import QRScanner from "@/components/QRScanner";
+import { getFoodCheckinSummary, redeemFoodTokenApi } from "@/Services/miscService";
 
 export default function FoodCheckIn() {
   const [search, setSearch] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [scanResultAlert, setScanResultAlert] = useState(null);
-  const [redeemedCount, setRedeemedCount] = useState(1440);
+  const [loading, setLoading] = useState(false);
 
-  const [foodEvents, setFoodEvents] = useState([
-    { code: "EVT-25", name: "MRC Grand Music Fest 2026", startDate: "2026-09-15", endDate: "2026-09-16", totalFoodTokens: 500, scannedTokens: 380, status: "Live" },
-    { code: "EVT-22", name: "Valluvar Kottam Food & Craft Expo", startDate: "2026-09-20", endDate: "2026-09-22", totalFoodTokens: 1200, scannedTokens: 850, status: "Upcoming" },
-    { code: "EVT-11", name: "District Conference 2026", startDate: "2026-10-25", endDate: "2026-10-25", totalFoodTokens: 250, scannedTokens: 210, status: "Upcoming" }
-  ]);
+  const [foodEvents, setFoodEvents] = useState([]);
+  const [stats, setStats] = useState({
+    totalFoodTokens: 0,
+    mealsServed: 0,
+    pendingRedemptions: 0
+  });
+
+  useEffect(() => {
+    fetchFoodData();
+  }, []);
+
+  const fetchFoodData = async () => {
+    setLoading(true);
+    try {
+      const res = await getFoodCheckinSummary();
+      const data = res?.data || res || {};
+      const events = Array.isArray(data.events) ? data.events : (Array.isArray(data) ? data : []);
+      setFoodEvents(events);
+      setStats({
+        totalFoodTokens: data.totalFoodTokens || events.reduce((s, e) => s + (Number(e.totalFoodTokens) || 0), 0),
+        mealsServed: data.mealsServed || events.reduce((s, e) => s + (Number(e.scannedTokens) || 0), 0),
+        pendingRedemptions: data.pendingRedemptions || Math.max(0, (data.totalFoodTokens || 0) - (data.mealsServed || 0))
+      });
+    } catch {
+      setFoodEvents([]);
+      setStats({ totalFoodTokens: 0, mealsServed: 0, pendingRedemptions: 0 });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenFoodScanner = (eventItem) => {
     setSelectedEvent(eventItem);
@@ -24,31 +51,39 @@ export default function FoodCheckIn() {
     setScanResultAlert(null);
   };
 
-  const handleScanFoodToken = (code) => {
+  const handleScanFoodToken = async (code) => {
     const timeNow = new Date().toLocaleTimeString();
     const cleanCode = code.trim().toUpperCase();
 
-    // Increment counters
-    setRedeemedCount((prev) => prev + 1);
-    setFoodEvents((prev) =>
-      prev.map((e) =>
-        e.code === selectedEvent?.code
-          ? { ...e, scannedTokens: e.scannedTokens + 1 }
-          : e
-      )
-    );
+    try {
+      const res = await redeemFoodTokenApi(cleanCode);
+      const data = res?.data || res || {};
+      const attendeeName = data.name || "Attendee";
+      const mealType = data.food_preference || "Meal";
 
-    setScanResultAlert({
-      type: "success",
-      message: `🍱 MEAL PASSED VERIFIED! Token #${cleanCode} (Veg Lunch - Royal Caterers) Redeemed @ ${timeNow}`
-    });
+      setScanResultAlert({
+        type: "success",
+        message: `🍱 MEAL TOKEN VERIFIED! Pass #${cleanCode} (${attendeeName} - ${mealType}) Redeemed @ ${timeNow}`
+      });
+      fetchFoodData();
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || "Invalid or already redeemed food token";
+      setScanResultAlert({
+        type: "error",
+        message: `⚠️ ${errMsg} (#${cleanCode})`
+      });
+    }
   };
 
   const filtered = foodEvents.filter(
     (item) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.code.toLowerCase().includes(search.toLowerCase())
+      (item.name || "").toLowerCase().includes(search.toLowerCase()) ||
+      (item.code || "").toLowerCase().includes(search.toLowerCase())
   );
+
+  const percentageRedeemed = stats.totalFoodTokens > 0
+    ? Math.round((stats.mealsServed / stats.totalFoodTokens) * 100)
+    : 0;
 
   return (
     <div className="space-y-6 pb-12 select-none">
@@ -64,8 +99,19 @@ export default function FoodCheckIn() {
             </Badge>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Track meal token redemptions, food stall check-ins, and food pass validations.
+            Track meal token redemptions, food stall check-ins, and catering validations from database.
           </p>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <Button
+            onClick={fetchFoodData}
+            variant="outline"
+            className="h-10 px-3.5 border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer gap-2"
+          >
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+            <span>Refresh Food Counters</span>
+          </Button>
         </div>
       </div>
 
@@ -75,7 +121,7 @@ export default function FoodCheckIn() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Food Tokens</p>
-              <h3 className="text-2xl font-extrabold text-slate-900">1,950</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900">{stats.totalFoodTokens.toLocaleString()}</h3>
               <p className="text-xs font-medium text-slate-500">Issued Across Events</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100">
@@ -87,9 +133,9 @@ export default function FoodCheckIn() {
         <Card className="border-slate-200/80 shadow-xs">
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Meals Served Today</p>
-              <h3 className="text-2xl font-extrabold text-emerald-600">{redeemedCount.toLocaleString("en-IN")}</h3>
-              <p className="text-xs font-medium text-emerald-600">74.2% Tokens Redeemed</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Meals Served</p>
+              <h3 className="text-2xl font-extrabold text-emerald-600">{stats.mealsServed.toLocaleString()}</h3>
+              <p className="text-xs font-medium text-emerald-600">{percentageRedeemed}% Tokens Redeemed</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
               <CheckCircle2 size={22} />
@@ -101,7 +147,7 @@ export default function FoodCheckIn() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pending Redemptions</p>
-              <h3 className="text-2xl font-extrabold text-slate-700">{Math.max(0, 1950 - redeemedCount)}</h3>
+              <h3 className="text-2xl font-extrabold text-slate-700">{stats.pendingRedemptions.toLocaleString()}</h3>
               <p className="text-xs font-medium text-slate-400">Tokens Remaining</p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
@@ -116,14 +162,20 @@ export default function FoodCheckIn() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-xl space-y-3">
             <QRScanner
-              title={`Food Token Scanner (${selectedEvent?.name})`}
+              title={`Food Token Scanner (${selectedEvent?.name || "Event"})`}
               onScan={handleScanFoodToken}
               onClose={() => setShowScanner(false)}
             />
 
             {/* Scan Output Banner */}
             {scanResultAlert && (
-              <div className="p-3.5 bg-emerald-600 text-white rounded-xl text-xs font-extrabold flex items-center justify-between shadow-lg">
+              <div
+                className={`p-3.5 rounded-xl text-xs font-extrabold flex items-center justify-between shadow-lg ${
+                  scanResultAlert.type === "success"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-red-600 text-white"
+                }`}
+              >
                 <span>{scanResultAlert.message}</span>
                 <button
                   onClick={() => setScanResultAlert(null)}
@@ -165,46 +217,71 @@ export default function FoodCheckIn() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {filtered.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-4 px-5">
-                    <div className="space-y-1">
-                      <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
-                        {item.code}
-                      </Badge>
-                      <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 font-semibold text-slate-800">{item.startDate}</td>
-                  <td className="py-4 px-4 text-slate-500">{item.endDate}</td>
-                  <td className="py-4 px-4">
-                    <div className="space-y-1.5 w-36 mx-auto">
-                      <div className="flex justify-between text-[11px] font-semibold">
-                        <span className="text-emerald-700">{item.scannedTokens} redeemed</span>
-                        <span className="text-slate-400">/{item.totalFoodTokens}</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 rounded-full"
-                          style={{
-                            width: `${Math.round((item.scannedTokens / item.totalFoodTokens) * 100)}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-5 text-right">
-                    <Button
-                      size="sm"
-                      onClick={() => handleOpenFoodScanner(item)}
-                      className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg border-none cursor-pointer gap-1.5 shadow-xs hover:scale-105 transition"
-                    >
-                      <QrCode size={14} />
-                      <span>Scan Food Token</span>
-                    </Button>
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-4 px-5 space-y-1.5">
+                      <Skeleton className="h-4 w-16 rounded" />
+                      <Skeleton className="h-4 w-36 rounded" />
+                    </td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-6 w-32 rounded-lg mx-auto" /></td>
+                    <td className="py-4 px-5 text-right"><Skeleton className="h-8 w-24 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                    No food provisioning events found in database.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map((item, idx) => (
+                  <tr key={item.id || idx} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-5">
+                      <div className="space-y-1">
+                        <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
+                          {item.code}
+                        </Badge>
+                        <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 font-semibold text-slate-800">{item.startDate || "---"}</td>
+                    <td className="py-4 px-4 text-slate-500">{item.endDate || "---"}</td>
+                    <td className="py-4 px-4">
+                      <div className="space-y-1.5 w-36 mx-auto">
+                        <div className="flex justify-between text-[11px] font-semibold">
+                          <span className="text-emerald-700">{item.scannedTokens || 0} redeemed</span>
+                          <span className="text-slate-400">/{item.totalFoodTokens || 0}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full"
+                            style={{
+                              width: `${
+                                item.totalFoodTokens > 0
+                                  ? Math.min(100, Math.round(((item.scannedTokens || 0) / item.totalFoodTokens) * 100))
+                                  : 0
+                              }%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-5 text-right">
+                      <Button
+                        size="sm"
+                        onClick={() => handleOpenFoodScanner(item)}
+                        className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg border-none cursor-pointer gap-1.5 shadow-xs hover:scale-105 transition"
+                      >
+                        <QrCode size={14} />
+                        <span>Scan Food Token</span>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

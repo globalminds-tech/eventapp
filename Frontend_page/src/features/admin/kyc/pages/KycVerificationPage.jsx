@@ -71,11 +71,14 @@ export default function KycVerificationPage() {
         (u.company_name || "").toLowerCase().includes(searchQuery.toLowerCase())
       : true;
 
-    const role = (u.role || "").toLowerCase();
+    const userRoles = Array.isArray(u.roles)
+      ? u.roles.map((r) => String(r).toLowerCase())
+      : [String(u.active_role || u.role || "user").toLowerCase()];
+
     if (activeTab === "all") return matchesSearch;
-    if (activeTab === "organizer") return matchesSearch && role === "organizer";
-    if (activeTab === "exhibitor") return matchesSearch && role === "exhibitor";
-    if (activeTab === "user") return matchesSearch && ["user", "attendee"].includes(role);
+    if (activeTab === "organizer") return matchesSearch && userRoles.includes("organizer");
+    if (activeTab === "exhibitor") return matchesSearch && userRoles.includes("exhibitor");
+    if (activeTab === "user") return matchesSearch && (userRoles.includes("user") || userRoles.includes("attendee"));
     if (activeTab === "pending") return matchesSearch && (u.kyc_status || "").toUpperCase() === "PENDING";
     return matchesSearch;
   });
@@ -175,7 +178,7 @@ export default function KycVerificationPage() {
 
                     <td className="p-3.5">
                       <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-bold uppercase text-[10px]">
-                        {u.role || "user"}
+                        {(Array.isArray(u.roles) && u.roles.length > 0) ? u.roles.join(', ') : (u.active_role || u.role || "user")}
                       </Badge>
                     </td>
 

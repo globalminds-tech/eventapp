@@ -21,8 +21,9 @@ class AuthService:
 
         hashed_password = generate_password_hash(data.password)
         user = AuthRepository.create_user(data.name, data.email, hashed_password, data.role)
-        access_token = generate_access_token(user.id, user.role)
-        refresh_token = generate_refresh_token(user.id, user.role)
+        active_role = user.active_role or (user.roles[0] if user.roles else "user")
+        access_token = generate_access_token(user.id, role=active_role, roles=user.roles)
+        refresh_token = generate_refresh_token(user.id, role=active_role, roles=user.roles)
         return {
             "message": "User registered successfully",
             "token": access_token,
@@ -42,8 +43,8 @@ class AuthService:
 
         hashed_password = generate_password_hash(data.password) if data.password else ""
         user = AuthRepository.create_organizer_user(data.dict(), hashed_password)
-        access_token = generate_access_token(user.id, user.role)
-        refresh_token = generate_refresh_token(user.id, user.role)
+        access_token = generate_access_token(user.id, role="organizer", roles=user.roles)
+        refresh_token = generate_refresh_token(user.id, role="organizer", roles=user.roles)
 
         try:
             from app.Services.mail_service import send_organizer_welcome_email
@@ -110,8 +111,8 @@ class AuthService:
 
         hashed_password = generate_password_hash(data.password) if data.password else ""
         user = AuthRepository.create_exhibitor_user(data.dict(), hashed_password)
-        access_token = generate_access_token(user.id, user.role)
-        refresh_token = generate_refresh_token(user.id, user.role)
+        access_token = generate_access_token(user.id, role="exhibitor", roles=user.roles)
+        refresh_token = generate_refresh_token(user.id, role="exhibitor", roles=user.roles)
 
         try:
             from app.Services.mail_service import send_exhibitor_welcome_email
@@ -156,8 +157,8 @@ class AuthService:
             raise ApiError("Invalid password", 401)
 
         user_full = AuthService.get_current_user(user.id)
-        active_role = user.active_role or user.role or "user"
-        all_roles = user_full.get("roles") or [active_role]
+        all_roles = user_full.get("roles") or ["user"]
+        active_role = user.active_role or (all_roles[0] if all_roles else "user")
 
         access_token = generate_access_token(user.id, role=active_role, roles=all_roles)
         refresh_token = generate_refresh_token(user.id, role=active_role, roles=all_roles)
@@ -181,8 +182,6 @@ class AuthService:
         exh_profile = AuthRepository.get_exhibitor_profile_by_user_id(user.id)
 
         roles = list(user.roles) if user.roles else ["user"]
-        if user.role and user.role.lower() not in roles:
-            roles.append(user.role.lower())
         if org_profile and org_profile.kyc_status in ["VERIFIED", "IN_PROGRESS"]:
             if "organizer" not in roles:
                 roles.append("organizer")
@@ -196,7 +195,7 @@ class AuthService:
             from app.extensions.database import db
             db.session.commit()
 
-        active_role = user.active_role or user.role or "user"
+        active_role = user.active_role or (roles[0] if roles else "user")
         user_dict["roles"] = roles
         user_dict["active_role"] = active_role
         user_dict["role"] = active_role

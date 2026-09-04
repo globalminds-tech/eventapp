@@ -21,9 +21,44 @@ export const getAddOnEvents = async () => {
 };
 
 export const getEventscheckin = async () => {
-  const res = await apiClient.get("/superadmin/api/events-check-in");
+  try {
+    const res = await apiClient.get("/api/v1/checkins/events");
+    return res.data;
+  } catch {
+    const fallback = await apiClient.get("/superadmin/api/events-check-in");
+    return fallback.data;
+  }
+};
+
+export const getEventAttendees = async (eventId) => {
+  const res = await apiClient.get(`/api/v1/checkins/events/${eventId}/attendees`);
   return res.data;
 };
+
+export const verifyCheckinTicket = async (ticketCodeOrId, action = "CHECK_IN", gateName = "MAIN_GATE") => {
+  const res = await apiClient.post("/api/v1/checkins/verify", {
+    ticket_code: ticketCodeOrId,
+    action: action,
+    gate_name: gateName
+  });
+  return res.data;
+};
+
+export const getFoodCheckinSummary = async () => {
+  const res = await apiClient.get("/api/v1/checkins/food/summary");
+  return res.data;
+};
+
+export const redeemFoodTokenApi = async (token) => {
+  const res = await apiClient.post("/api/v1/checkins/food/redeem", { token });
+  return res.data;
+};
+
+export const getAddonCheckins = async () => {
+  const res = await apiClient.get("/api/v1/checkins/addons");
+  return res.data;
+};
+
 
 export const getProgramVerificationEvents = async () => {
   const res = await apiClient.get("/superadmin/api/program-verification/events");

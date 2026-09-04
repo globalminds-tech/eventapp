@@ -77,14 +77,21 @@ export default function Register() {
     try {
       const response = await registerUser(formData);
       const data = response.data?.data || response.data;
-      const userObj = data?.user || data;
-      const userRole = (userObj?.role || data?.role || "user").toLowerCase();
+      const userRoles = Array.isArray(userObj?.roles) && userObj.roles.length > 0
+        ? userObj.roles.map((r) => String(r).toLowerCase())
+        : ["user"];
+      const userRole = (userObj?.active_role || userRoles[0] || "user").toLowerCase();
       const userId = userObj?.id || data?.User_id || "";
       const userName = userObj?.name || data?.name || formData.name;
       const token = data?.token || data?.access_token || "";
 
-      dispatch(setCredentials({ user: userObj, token: token, role: userRole }));
-      dispatch(setUser({ id: userId, name: userName, role: userRole, email: formData.email, profile_image: userObj.profile_image || "" }));
+      sessionStorage.setItem("roles", JSON.stringify(userRoles));
+      localStorage.setItem("roles", JSON.stringify(userRoles));
+      sessionStorage.setItem("role", userRole);
+      localStorage.setItem("role", userRole);
+
+      dispatch(setCredentials({ user: { ...userObj, roles: userRoles, active_role: userRole }, token: token, role: userRole }));
+      dispatch(setUser({ id: userId, name: userName, role: userRole, active_role: userRole, roles: userRoles, email: formData.email, profile_image: userObj.profile_image || "" }));
 
       setMessage("Account created successfully! Logging you in...");
       setTimeout(() => navigate(returnUrl || "/", { replace: true }), 1000);

@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const MyBookings = () => {
   const navigate = useNavigate();
@@ -199,7 +200,29 @@ const MyBookings = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-xs">
-              {filteredBookings.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 px-4 space-y-2">
+                      <Skeleton className="h-4 w-20 rounded" />
+                      <Skeleton className="h-4 w-36 rounded" />
+                    </td>
+                    <td className="py-3.5 px-4 space-y-1.5">
+                      <Skeleton className="h-4 w-24 rounded" />
+                      <Skeleton className="h-3 w-16 rounded" />
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <Skeleton className="h-4 w-20 rounded" />
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <Skeleton className="h-6 w-28 rounded-full" />
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <Skeleton className="h-8 w-16 rounded-xl ml-auto" />
+                    </td>
+                  </tr>
+                ))
+              ) : filteredBookings.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="p-12 text-center text-slate-400 font-semibold text-xs bg-slate-50/50">
                     No stall bookings found matching the selected filter.
@@ -238,9 +261,9 @@ const MyBookings = () => {
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-200 inline-flex items-center gap-1">
                               <CheckCircle2 size={12} /> Approved (24h Lock)
                             </span>
-                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
-                              ⏱️ Payment lock active
-                            </p>
+                            <span className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold mt-0.5">
+                              <Clock size={10} className="text-cyan-600" /> Payment lock active
+                            </span>
                           </div>
                         )}
                         {(status === 'confirmed' || status === 'paid') && (

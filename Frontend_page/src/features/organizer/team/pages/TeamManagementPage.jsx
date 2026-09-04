@@ -7,6 +7,7 @@ import {
   X, Check, Lock, ChevronRight, UserPlus, Info
 } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function TeamManagementPage() {
   const { accessToken } = useSelector((state) => state.auth);
@@ -219,11 +220,7 @@ export default function TeamManagementPage() {
       </div>
 
       {/* Main Content Area */}
-      {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent" />
-        </div>
-      ) : activeTab === "members" ? (
+      {activeTab === "members" ? (
         /* Team Members Table */
         <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <table className="w-full text-left border-collapse text-xs">
@@ -238,7 +235,34 @@ export default function TeamManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {members.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-3.5 pl-6 pr-4 flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <div className="space-y-1.5">
+                        <Skeleton className="h-3.5 w-28 rounded" />
+                        <Skeleton className="h-2.5 w-16 rounded" />
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <Skeleton className="h-3.5 w-36 rounded" />
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <Skeleton className="h-5 w-20 rounded-md" />
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <Skeleton className="h-3.5 w-20 rounded" />
+                    </td>
+                    <td className="py-3.5 pr-6 text-right">
+                      <Skeleton className="h-7 w-7 rounded-lg ml-auto" />
+                    </td>
+                  </tr>
+                ))
+              ) : members.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-slate-400">
                     No team members found. Click "Invite Team Member" to add your first collaborator.
@@ -295,57 +319,86 @@ export default function TeamManagementPage() {
       ) : (
         /* Roles & Permissions Grid */
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {roles.map((r) => (
-            <div
-              key={r.id}
-              className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition hover:shadow-md"
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      r.is_system_role ? "bg-slate-100 text-slate-700" : "bg-cyan-50 text-cyan-700"
-                    }`}
-                  >
-                    {r.is_system_role ? "System Role" : "Custom Role"}
-                  </span>
-                  {!r.is_system_role && (
-                    <button
-                      onClick={() => handleDeleteRole(r.id, r.name)}
-                      className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
-                      title="Delete custom role"
+          {loading ? (
+            Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs animate-pulse space-y-4"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-5 w-24 rounded-md" />
+                  </div>
+                  <Skeleton className="h-5 w-32 rounded mt-3" />
+                  <Skeleton className="h-3.5 w-48 rounded mt-1.5" />
+                  <div className="mt-4 space-y-2">
+                    <Skeleton className="h-3 w-28 rounded" />
+                    <div className="flex flex-wrap gap-1.5">
+                      <Skeleton className="h-5 w-14 rounded-md" />
+                      <Skeleton className="h-5 w-16 rounded-md" />
+                      <Skeleton className="h-5 w-20 rounded-md" />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 border-t border-slate-100 pt-3 flex justify-between">
+                  <Skeleton className="h-3 w-20 rounded" />
+                  <Skeleton className="h-3 w-16 rounded" />
+                </div>
+              </div>
+            ))
+          ) : (
+            roles.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition hover:shadow-md"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                        r.is_system_role ? "bg-slate-100 text-slate-700" : "bg-cyan-50 text-cyan-700"
+                      }`}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <h3 className="mt-3 text-base font-bold text-slate-900">{r.name}</h3>
-                <p className="mt-1 text-xs text-slate-500">{r.description || "No description provided."}</p>
-
-                <div className="mt-4">
-                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                    Granted Permissions ({r.permissions?.length || 0})
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
-                    {r.permissions?.map((p) => (
-                      <span
-                        key={p}
-                        className="rounded-md bg-slate-50 border border-slate-200/60 px-2 py-0.5 text-[10px] font-medium text-slate-600"
+                      {r.is_system_role ? "System Role" : "Custom Role"}
+                    </span>
+                    {!r.is_system_role && (
+                      <button
+                        onClick={() => handleDeleteRole(r.id, r.name)}
+                        className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                        title="Delete custom role"
                       >
-                        {p}
-                      </span>
-                    ))}
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <h3 className="mt-3 text-base font-bold text-slate-900">{r.name}</h3>
+                  <p className="mt-1 text-xs text-slate-500">{r.description || "No description provided."}</p>
+
+                  <div className="mt-4">
+                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                      Granted Permissions ({r.permissions?.length || 0})
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                      {r.permissions?.map((p) => (
+                        <span
+                          key={p}
+                          className="rounded-md bg-slate-50 border border-slate-200/60 px-2 py-0.5 text-[10px] font-medium text-slate-600"
+                        >
+                          {p}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-5 border-t border-slate-100 pt-3 text-[11px] text-slate-400 flex items-center justify-between">
-                <span>Code: <code>{r.code}</code></span>
-                {r.is_default && <span className="font-semibold text-cyan-600">Default Owner</span>}
+                <div className="mt-5 border-t border-slate-100 pt-3 text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>Code: <code>{r.code}</code></span>
+                  {r.is_default && <span className="font-semibold text-cyan-600">Default Owner</span>}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 

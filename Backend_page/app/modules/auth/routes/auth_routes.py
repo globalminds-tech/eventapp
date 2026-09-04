@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request, Response, HTTPException
 from app.exceptions.api_error import ApiError
 from app.modules.auth.controllers.auth_controller import AuthController
+from app.modules.auth.services.auth_service import AuthService
 from app.modules.auth.schemas.auth_schema import (
     RegisterSchema, OrganizerRegisterSchema, ExhibitorRegisterSchema,
     UpgradeOrganizerStep1Schema, UpgradeOrganizerCompleteSchema,
@@ -117,8 +118,9 @@ def refresh_token(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
 
-        user_roles = list(user.roles) if user.roles else [user.role or "user"]
-        active_role = user.active_role or user.role or "user"
+        user_full = AuthService.get_current_user(user_id)
+        user_roles = user_full.get("roles") or ["user"]
+        active_role = user_full.get("active_role") or (user_roles[0] if user_roles else "user")
         new_access_token = generate_access_token(user.id, role=active_role, roles=user_roles)
         new_refresh_token = generate_refresh_token(user.id, role=active_role, roles=user_roles)
 
@@ -134,7 +136,7 @@ def refresh_token(request: Request, response: Response):
             "data": {
                 "token": new_access_token,
                 "access_token": new_access_token,
-                "user": user.to_dict()
+                "user": user_full
             }
         }
     except Exception as err:

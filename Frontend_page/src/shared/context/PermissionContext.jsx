@@ -22,7 +22,7 @@ export function PermissionProvider({ children }) {
     }
 
     // Immediate Super Admin check
-    const userRoles = Array.isArray(user?.roles) ? user.roles : [user?.role || role || "user"];
+    const userRoles = Array.isArray(user?.roles) ? user.roles : ["user"];
     if (userRoles.some((r) => ["superuser", "superadmin", "admin"].includes(String(r).toLowerCase()))) {
       setPermissions(["*"]);
       return;
@@ -39,7 +39,7 @@ export function PermissionProvider({ children }) {
     } catch (err) {
       console.warn("[PermissionContext] Failed to load permissions:", err);
       // Fallback: If Organizer Owner, grant standard organizer permissions
-      if (userRoles.includes("organizer") || role === "organizer") {
+      if (userRoles.includes("organizer")) {
         setPermissions([
           "events.view", "events.create", "events.edit", "events.delete", "events.publish",
           "stalls.view", "stalls.create", "stalls.edit", "stalls.approve", "stalls.delete",

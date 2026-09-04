@@ -1,89 +1,148 @@
-import React, { useState } from "react";
-import { Plus, Search, Eye, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Eye, ChevronLeft, ChevronRight, RefreshCw, Layers } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { getAddonCheckins } from "@/Services/miscService";
 
 export default function AddonCheckIn() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [addonsData, setAddonsData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const dummyData = [
-    { id: 1, addon: "Lunch Buffet", code: "AD-101", visitor: "John Doe", time: "10:30 AM", status: "Checked-In" },
-    { id: 2, addon: "Networking Dinner", code: "AD-102", visitor: "Jane Smith", time: "06:15 PM", status: "Pending" },
-    { id: 3, addon: "Workshop Access", code: "AD-103", visitor: "Alice Brown", time: "09:00 AM", status: "Checked-In" },
-  ];
+  useEffect(() => {
+    fetchAddons();
+  }, []);
 
-  const filteredData = dummyData.filter(row =>
-    row.visitor.toLowerCase().includes(search.toLowerCase()) ||
-    row.code.toLowerCase().includes(search.toLowerCase())
+  const fetchAddons = async () => {
+    setLoading(true);
+    try {
+      const res = await getAddonCheckins();
+      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      setAddonsData(list);
+    } catch {
+      setAddonsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredData = addonsData.filter((row) =>
+    (row.visitor || "").toLowerCase().includes(search.toLowerCase()) ||
+    (row.code || "").toLowerCase().includes(search.toLowerCase()) ||
+    (row.addon || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
   const currentData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [search]);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Add-On Check-In / Check-Out</h1>
+    <div className="space-y-6 pb-12 select-none">
+      {/* ── PAGE HEADER ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+              Add-On Check-In & Validation
+            </h1>
+            <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 px-2.5 py-0.5 font-bold text-[11px]">
+              Access Control
+            </Badge>
+          </div>
+          <p className="text-xs sm:text-sm font-medium text-slate-500">
+            Monitor workshop passes, special access tags, and VIP add-on redemptions from database.
+          </p>
+        </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex justify-between items-center mb-6">
-          <div className="relative w-96">
+        <div className="flex items-center gap-3 shrink-0">
+          <Button
+            onClick={fetchAddons}
+            variant="outline"
+            className="h-10 px-3.5 border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer gap-2"
+          >
+            <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+            <span>Refresh Records</span>
+          </Button>
+        </div>
+      </div>
+
+      <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search by visitor or code..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Search by visitor, code, or add-on..."
+              className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-sky-500"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <Search className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
           </div>
-          <button className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-            <Plus className="w-5 h-5" />
-            Add New Entry
-          </button>
+          <div className="text-xs font-bold text-slate-500">
+            Total Records: <span className="text-slate-900 font-extrabold">{addonsData.length}</span>
+          </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-          <table className="w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-sky-600 text-white">
-                <th className="px-6 py-4 text-center text-xs font-bold text-white uppercase tracking-wider">Action</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Add-On Name</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Code</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Visitor</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Time</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Status</th>
+              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3.5 px-5">Add-On Name</th>
+                <th className="py-3.5 px-4">Code</th>
+                <th className="py-3.5 px-5">Event / Visitor</th>
+                <th className="py-3.5 px-4">Time</th>
+                <th className="py-3.5 px-4">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50">
-              {currentData.length === 0 ? (
+            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td className="py-4 px-5"><Skeleton className="h-4 w-32 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-5 w-16 rounded" /></td>
+                    <td className="py-4 px-5"><Skeleton className="h-4 w-28 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-4 w-16 rounded" /></td>
+                    <td className="py-4 px-4"><Skeleton className="h-5 w-20 rounded-full" /></td>
+                  </tr>
+                ))
+              ) : currentData.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-12 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <Search className="text-gray-300" size={32} />
-                      <p className="text-gray-400 font-bold italic">No records found</p>
+                  <td colSpan="5" className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Layers className="text-slate-300 w-8 h-8" />
+                      <p className="font-semibold text-xs">
+                        No add-on records found in database.
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 currentData.map((row) => (
-                  <tr key={row.id} className="hover:bg-sky-50/50 transition-colors duration-200 group">
-                    <td className="px-6 py-4 text-center">
-                      <button className="text-blue-600 hover:text-blue-800 transition-colors">
-                        <Eye className="w-5 h-5" />
-                      </button>
+                  <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-5 font-bold text-slate-900">{row.addon}</td>
+                    <td className="py-4 px-4">
+                      <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 font-bold">
+                        {row.code}
+                      </Badge>
                     </td>
-                    <td className="px-6 py-4 font-medium text-sky-900">{row.addon}</td>
-                    <td className="px-6 py-4 text-slate-700">{row.code}</td>
-                    <td className="px-6 py-4 text-slate-600">{row.visitor}</td>
-                    <td className="px-6 py-4 text-slate-600">{row.time}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${row.status === "Checked-In" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                        }`}>
-                        {row.status}
+                    <td className="py-4 px-5 text-slate-700">{row.visitor}</td>
+                    <td className="py-4 px-4 text-slate-500">{row.time || "---"}</td>
+                    <td className="py-4 px-4">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          row.status === "Checked-In" || row.status === "Active"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}
+                      >
+                        {row.status || "Active"}
                       </span>
                     </td>
                   </tr>
@@ -95,59 +154,52 @@ export default function AddonCheckIn() {
 
         {/* Pagination Controls */}
         {filteredData.length > 0 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-8 mb-4 gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center px-5 py-4 border-t border-slate-100 gap-4">
             <div className="flex items-center gap-4">
-              <p className="text-slate-500 text-sm font-medium">
+              <p className="text-slate-500 text-xs font-medium">
                 Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredData.length)} of {filteredData.length} entries
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-slate-500 text-sm font-medium">Records per page:</span>
+                <span className="text-slate-500 text-xs font-medium">Per page:</span>
                 <select
                   value={itemsPerPage}
                   onChange={(e) => {
                     setItemsPerPage(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="p-1.5 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer shadow-sm"
+                  className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
                 >
                   <option value={10}>10</option>
                   <option value={25}>25</option>
                   <option value={50}>50</option>
-                  <option value={100}>100</option>
                 </select>
               </div>
             </div>
 
             {totalPages > 1 && (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-sky-50 disabled:opacity-40 transition-all shadow-sm"
+                  className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
                 >
-                  <ChevronLeft size={20} className="text-slate-600" />
+                  <ChevronLeft size={16} className="text-slate-600" />
                 </button>
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-10 h-10 rounded-xl font-bold transition-all ${currentPage === i + 1 ? "bg-sky-600 text-white shadow-lg shadow-sky-200" : "bg-white text-slate-600 border border-slate-200 hover:bg-sky-50"}`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+                <span className="px-3 text-xs font-bold text-slate-700">
+                  Page {currentPage} of {totalPages}
+                </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-sky-50 disabled:opacity-40 transition-all shadow-sm"
+                  className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 transition cursor-pointer"
                 >
-                  <ChevronRight size={20} className="text-slate-600" />
+                  <ChevronRight size={16} className="text-slate-600" />
                 </button>
               </div>
             )}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

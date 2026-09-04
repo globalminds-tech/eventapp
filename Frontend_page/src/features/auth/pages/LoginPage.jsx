@@ -5,6 +5,7 @@ import { loginUser } from "@/Services/api";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "@/app/store/userSlice";
 import { setCredentials } from "@/app/store/authSlice";
+import { getUserAvailableRoles } from "@/shared/services/authHelper";
 import BrandLogo from "@/components/ui/BrandLogo";
 import RoleSelectionModal from "@/components/RoleSelectionModal";
 
@@ -98,25 +99,29 @@ export default function Login() {
       const response = await loginUser(formData);
       const data = response.data?.data || response.data;
       const userObj = data.user || data;
-
-      const userRole = (userObj?.role || data.role || "user").toLowerCase();
+      const detectedRoles = getUserAvailableRoles(userObj);
+      const userRole = (userObj?.active_role || data?.active_role || detectedRoles[0] || "user").toLowerCase();
       const userId = userObj?.id || data.User_id || "";
       const userName = userObj?.name || data.name || "User";
       const userEmail = userObj?.email || formData.email || "";
       const userMobile = userObj?.mobile || "";
       const userOrg = userObj?.organization_name || "";
       const token = data.token || data.access_token || "";
+      const userProfiles = userObj?.profiles || {
+        organizer: userObj?.organizer_profile || null,
+        exhibitor: userObj?.exhibitor_profile || null,
+      };
 
-      const detectedRoles = [userRole];
-      if (userObj.organizer_profile && !detectedRoles.includes("organizer")) detectedRoles.push("organizer");
-      if (userObj.exhibitor_profile && !detectedRoles.includes("exhibitor")) detectedRoles.push("exhibitor");
-      if (Array.isArray(userObj.roles)) {
-        userObj.roles.forEach((r) => {
-          if (!detectedRoles.includes(r.toLowerCase())) detectedRoles.push(r.toLowerCase());
-        });
-      }
+      const userToStore = {
+        ...userObj,
+        roles: detectedRoles,
+        active_role: userRole,
+        role: userRole,
+        profiles: userProfiles,
+      };
 
       sessionStorage.setItem("role", userRole);
+      sessionStorage.setItem("roles", JSON.stringify(detectedRoles));
       sessionStorage.setItem("id", userId.toString());
       sessionStorage.setItem("userId", userId.toString());
       sessionStorage.setItem("name", userName);
@@ -125,14 +130,15 @@ export default function Login() {
       if (userOrg) sessionStorage.setItem("organization_name", userOrg);
 
       localStorage.setItem("role", userRole);
+      localStorage.setItem("roles", JSON.stringify(detectedRoles));
       localStorage.setItem("id", userId.toString());
       localStorage.setItem("userId", userId.toString());
       localStorage.setItem("name", userName);
       localStorage.setItem("email", userEmail);
-      localStorage.setItem("user", JSON.stringify(userObj));
-      sessionStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("user", JSON.stringify(userToStore));
+      sessionStorage.setItem("user", JSON.stringify(userToStore));
 
-      dispatch(setCredentials({ user: userObj, token: token, role: userRole }));
+      dispatch(setCredentials({ user: userToStore, token: token, role: userRole }));
 
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", formData.email);
@@ -144,12 +150,16 @@ export default function Login() {
 
       dispatch(
         setUser({
+          ...userToStore,
           id: userId,
           name: userName,
           role: userRole,
+          active_role: userRole,
+          roles: detectedRoles,
           email: userEmail,
           mobile: userMobile,
           organization_name: userOrg,
+          profiles: userProfiles,
         })
       );
 
