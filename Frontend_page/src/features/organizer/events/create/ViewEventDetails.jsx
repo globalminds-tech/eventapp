@@ -35,10 +35,10 @@ const ViewEventDetails = ({ eventId, onClose }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading event details...</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="bg-white px-8 py-6 rounded-3xl shadow-2xl border border-slate-200/80 flex items-center gap-4">
+          <div className="animate-spin rounded-full h-7 w-7 border-3 border-cyan-500 border-t-transparent"></div>
+          <span className="text-slate-700 font-bold text-sm tracking-tight">Loading event blueprint...</span>
         </div>
       </div>
     );

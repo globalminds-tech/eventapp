@@ -43,11 +43,14 @@ class AuthRepository:
 
     @staticmethod
     def create_user(name: str, email: str, password_hash: str, role: str, mobile: str = None) -> User:
+        clean_role = (role or "user").strip().lower()
+        user_roles = [clean_role] if clean_role == "user" else [clean_role, "user"]
         user = User(
             name=name,
             email=email.strip().lower(),
             password=password_hash,
-            role=role,
+            roles=user_roles,
+            active_role=clean_role,
             mobile=mobile,
             status="ACTIVE"
         )
@@ -61,7 +64,8 @@ class AuthRepository:
             name=data.get("name"),
             email=data.get("email").strip().lower(),
             password=password_hash,
-            role="organizer",
+            roles=["organizer", "user"],
+            active_role="organizer",
             mobile=data.get("mobile"),
             organization_name=data.get("company_name"),
             address=data.get("business_address"),
@@ -144,12 +148,11 @@ class AuthRepository:
 
     @staticmethod
     def attach_organizer_profile(user: User, data: dict, password_hash: str = "") -> User:
-        current_roles = list(user.roles) if user.roles else [user.role or "user"]
+        current_roles = list(user.roles) if user.roles else ["user"]
         if "organizer" not in current_roles:
             current_roles.append("organizer")
         user.roles = current_roles
         user.active_role = "organizer"
-        user.role = "organizer"
         if data.get("name"):
             user.name = data.get("name")
         if password_hash:
@@ -252,12 +255,11 @@ class AuthRepository:
 
     @staticmethod
     def attach_exhibitor_profile(user: User, data: dict, password_hash: str = "") -> User:
-        current_roles = list(user.roles) if user.roles else [user.role or "user"]
+        current_roles = list(user.roles) if user.roles else ["user"]
         if "exhibitor" not in current_roles:
             current_roles.append("exhibitor")
         user.roles = current_roles
         user.active_role = "exhibitor"
-        user.role = "exhibitor"
         if data.get("name"):
             user.name = data.get("name")
         if password_hash:

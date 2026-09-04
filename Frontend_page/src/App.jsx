@@ -2,6 +2,7 @@ import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import WebSidebar from "./components/WebSidebar";
 import AuthInitializer from "./components/AuthInitializer";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 import Home from "./features/public/pages/HomePage";
 import AllEvents from "./features/events/pages/AllEventsPage";
@@ -82,114 +83,153 @@ export default function App() {
   const location = useLocation();
 
   return (
-    <AuthInitializer>
-      <PermissionProvider>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/all-events" element={<AllEvents />} />
-          <Route path="/event-detail/:id" element={<EventDetail />} />
-          <Route path="/event/:id" element={<EventDetail />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/my-passes" element={<MyPassesPage />} />
-          <Route path="/my-bookings" element={<MyPassesPage />} />
-          <Route path="/accept-invite" element={<AcceptInvitationPage />} />
-          <Route path="/Login" element={<Login />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/Register" element={<Register />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/register/partner" element={<Navigate to="/register" replace />} />
-        <Route path="/register/organizer" element={<Navigate to="/upgrade/organizer" replace />} />
-        <Route path="/register/exhibitor" element={<Navigate to="/upgrade/exhibitor" replace />} />
-        <Route path="/upgrade/organizer" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor"]}><UpgradeOrganizerPage /></ProtectedRoute>} />
-        <Route path="/upgrade/exhibitor" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor"]}><UpgradeExhibitorPage /></ProtectedRoute>} />
-        <Route path="/reset-password" element={<ForgotPassword />} />
-        <Route path="/Terms" element={<Terms />} />
-        <Route path="/Help_Center" element={<Help />} />
-        <Route path="/Cancellation" element={<Cancellation />} />
-        <Route path="/usersbooking/:id" element={<Userbooking />} />
-        <Route path="/validate-booking/:id" element={<QRValidation />} />
-        <Route path="/validate-booking" element={<QRValidation />} />
-        <Route path="/QRValidation" element={<QRValidation />} />
-        <Route path="/QRValidation/:id" element={<QRValidation />} />
-        <Route path="/CreateEvent" element={<Navigate to="/OrganizerHome/CreateEvent" replace />} />
-        <Route path="/OrganizerHome" element={<ProtectedRoute allowedRoles={["organizer"]}><WebSidebar role="organizer" /></ProtectedRoute>}>
-          <Route index element={<ProtectedRoute allowedRoles={["organizer"]}><Organizerdashboard /></ProtectedRoute>} />
-          <Route path="livedashboard" element={<ProtectedRoute allowedRoles={["organizer"]}><LiveDashboard /></ProtectedRoute>} />
-          <Route path="livedashfoodboard" element={<ProtectedRoute allowedRoles={["organizer"]}><LiveFoodDashboard /></ProtectedRoute>} />
-          <Route path="Organizerdashboard" element={<ProtectedRoute allowedRoles={["organizer"]}><Organizerdashboard /></ProtectedRoute>} />
-          <Route path="Complaint_page" element={<ProtectedRoute allowedRoles={["organizer"]}><ComplaintPage /></ProtectedRoute>} />
-          <Route path="Feedback_page" element={<ProtectedRoute allowedRoles={["organizer"]}><Feedback /></ProtectedRoute>} />
-          <Route path="CreateProgram" element={<ProtectedRoute allowedRoles={["organizer"]}><CreateProgram /></ProtectedRoute>} />
-          <Route path="Receipt" element={<ProtectedRoute allowedRoles={["organizer"]}><Receipt /></ProtectedRoute>} />
-          <Route path="EventReports" element={<ProtectedRoute allowedRoles={["organizer"]}><EventReports /></ProtectedRoute>} />
-          <Route path="Abstract_Verification" element={<ProtectedRoute allowedRoles={["organizer"]}><AbstractVerification /></ProtectedRoute>} />
-          <Route path="Manage_Stall" element={<ProtectedRoute allowedRoles={["organizer"]}><ManageStall /></ProtectedRoute>} />
-          <Route path="SponsorshipPage" element={<ProtectedRoute allowedRoles={["organizer"]}><SponsorshipPage /></ProtectedRoute>} />
-          <Route path="AdminApproval" element={<ProtectedRoute allowedRoles={["organizer"]}><AdminApproval /></ProtectedRoute>} />
-          <Route path="Billing" element={<ProtectedRoute allowedRoles={["organizer"]}><Billing /></ProtectedRoute>} />
-          <Route path="Contacts" element={<ProtectedRoute allowedRoles={["organizer"]}><Contacts /></ProtectedRoute>} />
-          <Route path="ProgramCheckin" element={<ProtectedRoute allowedRoles={["organizer"]}><ProgramCheckin /></ProtectedRoute>} />
-          <Route path="ProgramVerification" element={<ProtectedRoute allowedRoles={["organizer"]}><ProgramVerification /></ProtectedRoute>} />
-          <Route path="BulkPassPage" element={<ProtectedRoute allowedRoles={["organizer"]}><BulkPassPage /></ProtectedRoute>} />
-          <Route path="Venu" element={<ProtectedRoute allowedRoles={["organizer"]}><Venuepage /></ProtectedRoute>} />
-          <Route path="Vendor" element={<ProtectedRoute allowedRoles={["organizer"]}><VendorPage /></ProtectedRoute>} />
-          <Route path="CreateEvent" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
-          <Route path="EditEvent/:id" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
-          <Route path="EditEvent" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
-          <Route path="ViewEvent/:id" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
-          <Route path="ViewEvent" element={<ProtectedRoute allowedRoles={["organizer"]}><Createvent /></ProtectedRoute>} />
-          <Route path="PolicyPage" element={<ProtectedRoute allowedRoles={["organizer"]}><PolicyPage /></ProtectedRoute>} />
-          <Route path="Coupon" element={<ProtectedRoute allowedRoles={["organizer"]}><Coupon /></ProtectedRoute>} />
-          <Route path="EventCheckIn" element={<ProtectedRoute allowedRoles={["organizer"]}><EventCheckIn /></ProtectedRoute>} />
-          <Route path="FoodCheckIn" element={<ProtectedRoute allowedRoles={["organizer"]}><FoodCheckIn /></ProtectedRoute>} />
-          <Route path="Messages" element={<ProtectedRoute allowedRoles={["organizer"]}><Messagesgreeting /></ProtectedRoute>} />
-          <Route path="Messages/:eventId" element={<ProtectedRoute allowedRoles={["organizer"]}><Messagesgreeting /></ProtectedRoute>} />
-          <Route path="pass" element={<ProtectedRoute allowedRoles={["organizer"]}><Pass /></ProtectedRoute>} />
-          <Route path="Todo_task" element={<ProtectedRoute allowedRoles={["organizer"]}><Todo_task /></ProtectedRoute>} />
-          <Route path="Verify_Event" element={<ProtectedRoute allowedRoles={["organizer"]}><Verify_Event /></ProtectedRoute>} />
-          <Route path="MyProfile" element={<ProtectedRoute allowedRoles={["organizer"]}><MyProfile /></ProtectedRoute>} />
-          <Route path="MyPlan" element={<ProtectedRoute allowedRoles={["organizer"]}><Myplan /></ProtectedRoute>} />
-          <Route path="ExhibitorSpotRegistration" element={<ProtectedRoute allowedRoles={["organizer"]}><Exhibitorspotregistration /></ProtectedRoute>} />
-          <Route path="Exhibitor" element={<ProtectedRoute allowedRoles={["organizer"]}><Exhibitor /></ProtectedRoute>} />
-    
-          <Route path="TeamManagement" element={<ProtectedRoute allowedRoles={["organizer"]}><TeamManagementPage /></ProtectedRoute>} />
-          <Route path="RoleScreen" element={<ProtectedRoute allowedRoles={["organizer"]}><TeamManagementPage /></ProtectedRoute>} />
-          <Route path="UserScreen" element={<ProtectedRoute allowedRoles={["organizer"]}><TeamManagementPage /></ProtectedRoute>} />
-          <Route path="User" element={<ProtectedRoute allowedRoles={["organizer"]}><User /></ProtectedRoute>} />
-          <Route path="AddonCheckIn" element={<ProtectedRoute allowedRoles={["organizer"]}><Addoncheckinout /></ProtectedRoute>} />
-          <Route path="Sportbooking" element={<ProtectedRoute allowedRoles={["organizer"]}><Sportbooking /></ProtectedRoute>} />
+    <ErrorBoundary>
+      <AuthInitializer>
+        <PermissionProvider>
+          <Routes>
+            {/* ── TIER 1: PUBLIC / DISCOVERY ROUTES (Unprotected) ── */}
+            <Route path="/" element={<Home />} />
+            <Route path="/all-events" element={<AllEvents />} />
+            <Route path="/event-detail/:id" element={<EventDetail />} />
+            <Route path="/event/:id" element={<EventDetail />} />
+            <Route path="/Terms" element={<Terms />} />
+            <Route path="/Help_Center" element={<Help />} />
+            <Route path="/Cancellation" element={<Cancellation />} />
+            <Route path="/validate-booking/:id" element={<QRValidation />} />
+            <Route path="/validate-booking" element={<QRValidation />} />
+            <Route path="/QRValidation" element={<QRValidation />} />
+            <Route path="/QRValidation/:id" element={<QRValidation />} />
+            <Route path="/accept-invite" element={<AcceptInvitationPage />} />
 
-        </Route>
+            {/* Auth Routes */}
+            <Route path="/Login" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/Register" element={<Register />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/register/partner" element={<Navigate to="/register" replace />} />
+            <Route path="/register/organizer" element={<Navigate to="/upgrade/organizer" replace />} />
+            <Route path="/register/exhibitor" element={<Navigate to="/upgrade/exhibitor" replace />} />
+            <Route path="/reset-password" element={<ForgotPassword />} />
 
+            {/* ── TIER 2: AUTHENTICATED ATTENDEE & ACCOUNT ROUTES ── */}
+            {/* Ticket checkout requires logged-in user so passes bind to account */}
+            <Route path="/usersbooking/:id" element={<ProtectedRoute allowedRoles={["user"]}><Userbooking /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute allowedRoles={["user"]}><Profile /></ProtectedRoute>} />
+            <Route path="/my-passes" element={<ProtectedRoute allowedRoles={["user"]}><MyPassesPage /></ProtectedRoute>} />
+            <Route path="/my-bookings" element={<ProtectedRoute allowedRoles={["user"]}><MyPassesPage /></ProtectedRoute>} />
+            <Route path="/upgrade/organizer" element={<ProtectedRoute allowedRoles={["user"]}><UpgradeOrganizerPage /></ProtectedRoute>} />
+            <Route path="/upgrade/exhibitor" element={<ProtectedRoute allowedRoles={["user"]}><UpgradeExhibitorPage /></ProtectedRoute>} />
 
-        <Route path="/exhibitor" element={<ProtectedRoute allowedRoles={["exhibitor"]}><WebSidebar role="exhibitor" /></ProtectedRoute>}>
-          <Route index element={<ExhibitorHome />} />
-          <Route path="dashboard" element={<ExhibitorHome />} />
-          <Route path="my-bookings" element={<Exhibitormybooking />} />
-          <Route path="my-bookings/:id" element={<ExhibitorBookingDetail />} />
-          <Route path="upcoming-events" element={<ExhibitorUpcomingEvent />} />
-          <Route path="event/:id" element={<ExhibitorEventDetail />} />
-          <Route path="leads" element={<ExhibitorLeadsPage />} />
-        </Route>
-        <Route path="/book-stall/:id" element={<ProtectedRoute allowedRoles={["exhibitor"]}><Exhibitorstall /></ProtectedRoute>} />
+            {/* ── TIER 3: ORGANIZER CONSOLE (Single Parent Guard) ── */}
+            <Route path="/CreateEvent" element={<Navigate to="/OrganizerHome/CreateEvent" replace />} />
+            <Route
+              path="/OrganizerHome"
+              element={
+                <ProtectedRoute allowedRoles={["organizer", "superuser", "superadmin"]}>
+                  <WebSidebar role="organizer" />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Organizerdashboard />} />
+              <Route path="Organizerdashboard" element={<Organizerdashboard />} />
+              <Route path="livedashboard" element={<LiveDashboard />} />
+              <Route path="livedashfoodboard" element={<LiveFoodDashboard />} />
+              <Route path="Complaint_page" element={<ComplaintPage />} />
+              <Route path="Feedback_page" element={<Feedback />} />
+              <Route path="CreateProgram" element={<CreateProgram />} />
+              <Route path="Receipt" element={<Receipt />} />
+              <Route path="EventReports" element={<EventReports />} />
+              <Route path="Abstract_Verification" element={<AbstractVerification />} />
+              <Route path="Manage_Stall" element={<ManageStall />} />
+              <Route path="SponsorshipPage" element={<SponsorshipPage />} />
+              <Route path="AdminApproval" element={<AdminApproval />} />
+              <Route path="Billing" element={<Billing />} />
+              <Route path="Contacts" element={<Contacts />} />
+              <Route path="ProgramCheckin" element={<ProgramCheckin />} />
+              <Route path="ProgramVerification" element={<ProgramVerification />} />
+              <Route path="BulkPassPage" element={<BulkPassPage />} />
+              <Route path="Venu" element={<Venuepage />} />
+              <Route path="Vendor" element={<VendorPage />} />
+              <Route path="CreateEvent" element={<Createvent />} />
+              <Route path="EditEvent/:id" element={<Createvent />} />
+              <Route path="EditEvent" element={<Createvent />} />
+              <Route path="ViewEvent/:id" element={<Createvent />} />
+              <Route path="ViewEvent" element={<Createvent />} />
+              <Route path="PolicyPage" element={<PolicyPage />} />
+              <Route path="Coupon" element={<Coupon />} />
+              <Route path="EventCheckIn" element={<EventCheckIn />} />
+              <Route path="FoodCheckIn" element={<FoodCheckIn />} />
+              <Route path="Messages" element={<Messagesgreeting />} />
+              <Route path="Messages/:eventId" element={<Messagesgreeting />} />
+              <Route path="pass" element={<Pass />} />
+              <Route path="Todo_task" element={<Todo_task />} />
+              <Route path="Verify_Event" element={<Verify_Event />} />
+              <Route path="MyProfile" element={<MyProfile />} />
+              <Route path="MyPlan" element={<Myplan />} />
+              <Route path="ExhibitorSpotRegistration" element={<Exhibitorspotregistration />} />
+              <Route path="Exhibitor" element={<Exhibitor />} />
+              <Route path="TeamManagement" element={<TeamManagementPage />} />
+              <Route path="RoleScreen" element={<TeamManagementPage />} />
+              <Route path="UserScreen" element={<TeamManagementPage />} />
+              <Route path="User" element={<User />} />
+              <Route path="AddonCheckIn" element={<Addoncheckinout />} />
+              <Route path="Sportbooking" element={<Sportbooking />} />
+            </Route>
 
-        <Route path="/superuser" element={<ProtectedRoute allowedRoles={["superuser", "superadmin"]}><WebSidebar role="superuser" /></ProtectedRoute>}>
-          <Route index element={<SuperUserDashboard />} />
-          <Route path="dashboard" element={<SuperUserDashboard />} />
-          <Route path="approvals" element={<EventApprovalQueue />} />
-          <Route path="event/:eventId" element={<EventInspectionDetail />} />
-          <Route path="approvals/:eventId" element={<EventInspectionDetail />} />
-          <Route path="inspection/:eventId" element={<EventInspectionDetail />} />
-          <Route path="categories" element={<CategoryMaster />} />
-          <Route path="kyc" element={<KycVerification />} />
-          <Route path="payouts" element={<PayoutsQueue />} />
-        </Route>
-        <Route path="/superadmin/*" element={<Navigate to="/superuser/dashboard" replace />} />
-        <Route path="/superadmin" element={<Navigate to="/superuser/dashboard" replace />} />
-      </Routes>
-      {location.pathname === "/" && <Chatbot />}
-      </PermissionProvider>
-    </AuthInitializer>
+            {/* ── TIER 4: EXHIBITOR PORTAL (Single Parent Guard) ── */}
+            <Route
+              path="/exhibitor"
+              element={
+                <ProtectedRoute allowedRoles={["exhibitor", "superuser", "superadmin"]}>
+                  <WebSidebar role="exhibitor" />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<ExhibitorHome />} />
+              <Route path="dashboard" element={<ExhibitorHome />} />
+              <Route path="my-bookings" element={<Exhibitormybooking />} />
+              <Route path="my-bookings/:id" element={<ExhibitorBookingDetail />} />
+              <Route path="upcoming-events" element={<ExhibitorUpcomingEvent />} />
+              <Route path="event/:id" element={<ExhibitorEventDetail />} />
+              <Route path="leads" element={<ExhibitorLeadsPage />} />
+            </Route>
+            <Route
+              path="/book-stall/:id"
+              element={
+                <ProtectedRoute allowedRoles={["exhibitor", "superuser", "superadmin"]}>
+                  <Exhibitorstall />
+                </ProtectedRoute>
+              }
+            />
 
+            {/* ── TIER 5: SUPERUSER / PLATFORM ADMIN ── */}
+            <Route
+              path="/superuser"
+              element={
+                <ProtectedRoute allowedRoles={["superuser", "superadmin"]}>
+                  <WebSidebar role="superuser" />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<SuperUserDashboard />} />
+              <Route path="dashboard" element={<SuperUserDashboard />} />
+              <Route path="approvals" element={<EventApprovalQueue />} />
+              <Route path="event/:eventId" element={<EventInspectionDetail />} />
+              <Route path="approvals/:eventId" element={<EventInspectionDetail />} />
+              <Route path="inspection/:eventId" element={<EventInspectionDetail />} />
+              <Route path="categories" element={<CategoryMaster />} />
+              <Route path="kyc" element={<KycVerification />} />
+              <Route path="payouts" element={<PayoutsQueue />} />
+            </Route>
+            <Route path="/superadmin/*" element={<Navigate to="/superuser/dashboard" replace />} />
+            <Route path="/superadmin" element={<Navigate to="/superuser/dashboard" replace />} />
+
+            {/* ── CATCH-ALL 404 ROUTE ── */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          {location.pathname === "/" && <Chatbot />}
+        </PermissionProvider>
+      </AuthInitializer>
+    </ErrorBoundary>
   );
 }

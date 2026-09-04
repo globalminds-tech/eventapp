@@ -55,24 +55,14 @@ export function Userbooking() {
 
   const [userId, setUserId] = useState(null);
 
-  // 1. Mandatory User Login Check & Profile Pre-fill
+  // 1. Profile Pre-fill for Logged In User
   useEffect(() => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-    if (!token) {
-      showToast("Please log in to your account before purchasing event tickets.", "warning");
-      setTimeout(() => {
-        navigate(`/login?redirect=/usersbooking/${id}`);
-      }, 1200);
-      return;
-    }
-
-    // Pre-fill user profile
     getUserProfile()
       .then((res) => {
         const u = res?.data || res || {};
         const extractedId = u.id || u.user_id || u.userId || localStorage.getItem("userId") || sessionStorage.getItem("userId");
         if (extractedId) {
-          setUserId(Number(extractedId));
+          setUserId(String(extractedId));
         }
         setForm((prev) => ({
           ...prev,
@@ -82,7 +72,7 @@ export function Userbooking() {
         }));
       })
       .catch(console.error);
-  }, [id, navigate]);
+  }, [id]);
 
   // 2. Fetch Event Data
   useEffect(() => {
@@ -394,8 +384,34 @@ export function Userbooking() {
         </div>
       )}
 
-      {/* STEPS 1 & 2: DESKTOP WEB CANVAS (2 COLUMNS) */}
-      {step < 3 && (
+      {/* LOADING SKELETON */}
+      {dataLoading ? (
+        <div className="max-w-6xl mx-auto w-full px-6 pt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            <div className="lg:col-span-2">
+              <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-6">
+                <div className="space-y-2 border-b border-slate-100 pb-4">
+                  <Skeleton className="h-6 w-48 rounded-lg" />
+                  <Skeleton className="h-4 w-72 rounded-lg" />
+                </div>
+                <div className="space-y-4">
+                  <Skeleton className="h-11 w-full rounded-xl" />
+                  <Skeleton className="h-11 w-full rounded-xl" />
+                  <Skeleton className="h-11 w-full rounded-xl" />
+                </div>
+              </Card>
+            </div>
+            <div className="lg:col-span-1">
+              <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 space-y-4">
+                <Skeleton className="h-44 w-full rounded-2xl" />
+                <Skeleton className="h-5 w-3/4 rounded-lg" />
+                <Skeleton className="h-4 w-1/2 rounded-lg" />
+                <Skeleton className="h-12 w-full rounded-xl mt-4" />
+              </Card>
+            </div>
+          </div>
+        </div>
+      ) : step < 3 && (
         <div className="max-w-6xl mx-auto w-full px-6 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             

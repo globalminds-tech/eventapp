@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { clearUser, setUser } from "@/app/store/userSlice";
 import { logout, setCredentials } from "@/app/store/authSlice";
-import { performLogout } from "@/shared/services/authHelper";
+import { performLogout, getUserAvailableRoles, switchWorkspaceRole } from "@/shared/services/authHelper";
 import { authApi } from "@/features/auth/api/auth.api";
 import {
   User, LogOut, LogIn, Edit3, ArrowLeft, ArrowRight,
@@ -24,41 +24,91 @@ export default function Profile() {
 
   const isAuthenticated = Boolean(reduxAuth.isAuthenticated || reduxAuth.accessToken || reduxUser.id);
 
-  const [userProfile, setUserProfile] = useState({
-    id: reduxUser.id || sessionStorage.getItem("id") || localStorage.getItem("id") || "",
-    name: reduxUser.name || sessionStorage.getItem("name") || localStorage.getItem("name") || (isAuthenticated ? "User" : "Guest"),
-    email: reduxUser.email || sessionStorage.getItem("email") || localStorage.getItem("email") || (isAuthenticated ? "Not provided" : "Not Signed In"),
-    role: (reduxUser.role || sessionStorage.getItem("role") || localStorage.getItem("role") || "user").toLowerCase(),
-    mobile: reduxUser.mobile || sessionStorage.getItem("mobile") || "",
-    organization_name: reduxUser.organization_name || sessionStorage.getItem("organization_name") || "",
-    profile_image: reduxUser.profile_image || "",
-    status: isAuthenticated ? "ACTIVE" : "GUEST",
+  // Initialize profile synchronously from all available client memory to prevent button flashing
+  const getInitialProfile = () => {
+    let storedUser = null;
+    try {
+      storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+    } catch {
+      storedUser = null;
+    }
+
+    const candidate = {
+      ...(storedUser || {}),
+      ...(reduxUser || {}),
+      ...(reduxAuth?.user || {}),
+    };
+
+    const initialRoles = getUserAvailableRoles(candidate);
+
+    return {
+      id: candidate.id || sessionStorage.getItem("id") || localStorage.getItem("id") || "",
+      name: candidate.name || sessionStorage.getItem("name") || localStorage.getItem("name") || (isAuthenticated ? "User" : "Guest"),
+      email: candidate.email || sessionStorage.getItem("email") || localStorage.getItem("email") || (isAuthenticated ? "Not provided" : "Not Signed In"),
+      roles: initialRoles,
+      active_role: candidate.active_role || candidate.role || sessionStorage.getItem("role") || localStorage.getItem("role") || "user",
+      role: candidate.active_role || candidate.role || sessionStorage.getItem("role") || localStorage.getItem("role") || "user",
+      mobile: candidate.mobile || sessionStorage.getItem("mobile") || "",
+      organization_name: candidate.organization_name || candidate.company_name || sessionStorage.getItem("organization_name") || "",
+      profile_image: candidate.profile_image || "",
+      profiles: candidate.profiles || storedUser?.profiles || reduxUser?.profiles || {},
+      status: isAuthenticated ? "ACTIVE" : "GUEST",
+    };
+  };
+
+  const [userProfile, setUserProfile] = useState(getInitialProfile);
+  const [isProfileLoading, setIsProfileLoading] = useState(() => {
+    if (!isAuthenticated) return false;
+    const candidate = userProfile || {};
+    const roles = candidate.roles || [];
+    const hasKnownAccess = roles.length > 1 ||
+      Boolean(candidate.profiles?.organizer) ||
+      Boolean(candidate.profiles?.exhibitor) ||
+      Boolean(candidate.organization_name);
+    return !hasKnownAccess;
   });
 
   useEffect(() => {
     if (isAuthenticated) {
       authApi.getMe()
         .then((res) => {
-          const fetched = res.data || res;
+          const fetched = res?.data?.data || res?.data || res;
           if (fetched && (fetched.id || fetched.email)) {
-            const updated = {
-              id: fetched.id || userProfile.id,
-              name: fetched.name || userProfile.name,
-              email: fetched.email || userProfile.email,
-              role: (fetched.role || userProfile.role).toLowerCase(),
-              mobile: fetched.mobile || userProfile.mobile,
-              organization_name: fetched.organization_name || userProfile.organization_name,
-              profile_image: fetched.profile_image || userProfile.profile_image || "",
-              roles: fetched.roles || [userProfile.role],
-              profiles: fetched.profiles || {},
-              status: fetched.status || "ACTIVE",
-            };
-            setUserProfile(updated);
-            dispatch(setUser(updated));
+            const mergedRoles = getUserAvailableRoles(fetched);
+            setUserProfile((prev) => {
+              const updated = {
+                ...prev,
+                id: fetched.id || prev.id,
+                name: fetched.name || prev.name,
+                email: fetched.email || prev.email,
+                role: (fetched.active_role || fetched.role || prev.role).toLowerCase(),
+                active_role: (fetched.active_role || fetched.role || prev.role).toLowerCase(),
+                mobile: fetched.mobile || prev.mobile,
+                organization_name: fetched.organization_name || prev.organization_name,
+                profile_image: fetched.profile_image || prev.profile_image || "",
+                roles: mergedRoles,
+                profiles: fetched.profiles || prev.profiles || {},
+                status: fetched.status || "ACTIVE",
+              };
+
+              localStorage.setItem("user", JSON.stringify(updated));
+              sessionStorage.setItem("user", JSON.stringify(updated));
+              if (mergedRoles.length > 0) {
+                localStorage.setItem("roles", JSON.stringify(mergedRoles));
+                sessionStorage.setItem("roles", JSON.stringify(mergedRoles));
+              }
+
+              dispatch(setUser(updated));
+              dispatch(setCredentials({ user: updated, role: updated.active_role }));
+              return updated;
+            });
           }
         })
         .catch((err) => {
           console.log("Profile fetch:", err?.message || err);
+        })
+        .finally(() => {
+          setIsProfileLoading(false);
         });
     }
   }, [isAuthenticated, dispatch]);
@@ -100,32 +150,35 @@ export default function Profile() {
     performLogout(dispatch, navigate);
   };
 
-  // Safe Workspace Switcher: activates target role in storage and Redux before navigating
-  const handleEnterWorkspace = (targetRole, path) => {
-    sessionStorage.setItem("role", targetRole);
-    localStorage.setItem("role", targetRole);
-    if (reduxAuth?.token || reduxAuth?.accessToken) {
-      dispatch(setCredentials({ ...reduxAuth, role: targetRole }));
-    }
-    navigate(path);
+  // Workspace Switcher using unified helper with background server persistence and retry
+  const handleEnterWorkspace = (targetRole) => {
+    switchWorkspaceRole(targetRole, dispatch, navigate);
   };
 
+  const effectiveUser = {
+    ...(reduxUser || {}),
+    ...(reduxAuth?.user || {}),
+    ...userProfile,
+  };
+  const effectiveRoles = getUserAvailableRoles(effectiveUser);
+
   const hasOrganizer = isAuthenticated && (
-    userProfile.role === "organizer" ||
-    Boolean(userProfile.profiles?.organizer) ||
-    (Array.isArray(userProfile.roles) && userProfile.roles.includes("organizer"))
+    effectiveRoles.includes("organizer") ||
+    Boolean(effectiveUser?.profiles?.organizer) ||
+    Boolean(userProfile?.profiles?.organizer) ||
+    Boolean(effectiveUser?.organization_name)
   );
 
   const hasExhibitor = isAuthenticated && (
-    userProfile.role === "exhibitor" ||
-    Boolean(userProfile.profiles?.exhibitor) ||
-    (Array.isArray(userProfile.roles) && userProfile.roles.includes("exhibitor"))
+    effectiveRoles.includes("exhibitor") ||
+    Boolean(effectiveUser?.profiles?.exhibitor) ||
+    Boolean(userProfile?.profiles?.exhibitor)
   );
 
   const isSuperuser = isAuthenticated && (
-    userProfile.role === "superuser" ||
-    userProfile.role === "superadmin" ||
-    userProfile.role === "admin"
+    effectiveRoles.includes("superuser") ||
+    effectiveRoles.includes("superadmin") ||
+    effectiveRoles.includes("admin")
   );
 
   const getRoleBadge = () => {
@@ -292,10 +345,10 @@ export default function Profile() {
 
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-slate-900">
-                  {hasOrganizer ? "Organizer Dashboard" : "Become an Organizer"}
+                  {hasOrganizer ? "Organizer Dashboard" : isProfileLoading ? "Event Organizer" : "Become an Organizer"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  {hasOrganizer ? "Active Access" : "Create and manage live events"}
+                  {hasOrganizer ? "Active Access" : isProfileLoading ? "Verifying access permissions..." : "Create and manage live events"}
                 </p>
               </div>
             </div>
@@ -303,12 +356,16 @@ export default function Profile() {
             <div className="pt-3 border-t border-slate-100">
               {hasOrganizer ? (
                 <button
-                  onClick={() => handleEnterWorkspace("organizer", "/OrganizerHome")}
+                  onClick={() => handleEnterWorkspace("organizer")}
                   className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold cursor-pointer transition shadow-xs"
                 >
                   <span>Go to Organizer Dashboard</span>
                   <ArrowRight size={13} />
                 </button>
+              ) : isProfileLoading ? (
+                <div className="w-full py-2.5 px-4 rounded-xl bg-slate-100/90 text-slate-400 text-xs font-medium flex items-center justify-center gap-2 animate-pulse">
+                  <span>Checking access...</span>
+                </div>
               ) : (
                 <button
                   onClick={() => navigate("/upgrade/organizer")}
@@ -335,10 +392,10 @@ export default function Profile() {
 
               <div className="mb-4">
                 <h3 className="text-lg font-bold text-slate-900">
-                  {hasExhibitor ? "Exhibitor Portal" : "Become an Exhibitor"}
+                  {hasExhibitor ? "Exhibitor Portal" : isProfileLoading ? "Exhibitor Vendor" : "Become an Exhibitor"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  {hasExhibitor ? "Active Access" : "Reserve stalls at upcoming expos"}
+                  {hasExhibitor ? "Active Access" : isProfileLoading ? "Verifying access permissions..." : "Reserve stalls at upcoming expos"}
                 </p>
               </div>
             </div>
@@ -346,12 +403,16 @@ export default function Profile() {
             <div className="pt-3 border-t border-slate-100">
               {hasExhibitor ? (
                 <button
-                  onClick={() => handleEnterWorkspace("exhibitor", "/exhibitor/dashboard")}
+                  onClick={() => handleEnterWorkspace("exhibitor")}
                   className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer transition shadow-xs"
                 >
                   <span>Go to Exhibitor Portal</span>
                   <ArrowRight size={13} />
                 </button>
+              ) : isProfileLoading ? (
+                <div className="w-full py-2.5 px-4 rounded-xl bg-slate-100/90 text-slate-400 text-xs font-medium flex items-center justify-center gap-2 animate-pulse">
+                  <span>Checking access...</span>
+                </div>
               ) : (
                 <button
                   onClick={() => navigate("/upgrade/exhibitor")}

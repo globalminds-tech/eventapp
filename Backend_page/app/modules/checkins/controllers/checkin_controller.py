@@ -19,3 +19,44 @@ class CheckinController:
             "success": True,
             "data": result
         }
+
+    @staticmethod
+    def get_events_summary(organizer_id: Optional[str] = None):
+        result = CheckinService.get_events_summary(organizer_id=organizer_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def get_event_attendees(event_id: str):
+        result = CheckinService.get_event_attendees(event_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def get_food_summary(organizer_id: Optional[str] = None):
+        result = CheckinService.get_food_summary(organizer_id=organizer_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def redeem_food_token(code_or_id: str):
+        result = CheckinService.redeem_food_token(code_or_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def get_addons(organizer_id: Optional[str] = None):
+        result = CheckinService.get_addons(organizer_id=organizer_id)
+        return {
+            "success": True,
+            "data": result
+        }
+

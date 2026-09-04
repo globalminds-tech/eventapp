@@ -1,5 +1,5 @@
-import { logout } from "@/app/store/authSlice";
-import { clearUser } from "@/app/store/userSlice";
+import { logout, setCredentials } from "@/app/store/authSlice";
+import { clearUser, setUser } from "@/app/store/userSlice";
 import axiosClient from "@/shared/api/axiosClient";
 
 /**
@@ -81,22 +81,43 @@ export const getUserInitials = (name) => {
  * Computes all accessible roles for a user based on backend roles array & profiles object
  */
 export const getUserAvailableRoles = (user) => {
-  if (!user) return ["user"];
-  if (Array.isArray(user.roles) && user.roles.length > 0) {
-    return user.roles;
+  const roles = new Set(["user"]);
+
+  // 1. Extract from user object
+  if (user) {
+    if (Array.isArray(user.roles)) {
+      user.roles.forEach((r) => r && roles.add(String(r).toLowerCase()));
+    }
+    if (user.active_role) {
+      roles.add(String(user.active_role).toLowerCase());
+    }
+    if (user.role) {
+      roles.add(String(user.role).toLowerCase());
+    }
+    if (user.profiles?.organizer || user.organizer_profile) {
+      roles.add("organizer");
+    }
+    if (user.profiles?.exhibitor || user.exhibitor_profile) {
+      roles.add("exhibitor");
+    }
   }
-  const roles = ["user"];
-  const currentRole = (user.role || "").toLowerCase();
-  if (["organizer", "exhibitor", "admin", "superadmin", "superuser"].includes(currentRole)) {
-    if (!roles.includes(currentRole)) roles.push(currentRole);
-  }
-  if (user.profiles?.organizer || user.organizer_profile) {
-    if (!roles.includes("organizer")) roles.push("organizer");
-  }
-  if (user.profiles?.exhibitor || user.exhibitor_profile) {
-    if (!roles.includes("exhibitor")) roles.push("exhibitor");
-  }
-  return roles;
+
+  // 2. Extract from storage fallback
+  try {
+    const storedRolesStr = localStorage.getItem("roles") || sessionStorage.getItem("roles");
+    if (storedRolesStr) {
+      const parsed = JSON.parse(storedRolesStr);
+      if (Array.isArray(parsed)) {
+        parsed.forEach((r) => r && roles.add(String(r).toLowerCase()));
+      }
+    }
+    const storedRole = localStorage.getItem("role") || sessionStorage.getItem("role");
+    if (storedRole) {
+      roles.add(storedRole.toLowerCase());
+    }
+  } catch (e) {}
+
+  return Array.from(roles);
 };
 
 /**
@@ -105,39 +126,96 @@ export const getUserAvailableRoles = (user) => {
 export const hasProfile = (user, roleName) => {
   if (!user) return false;
   const cleanRole = (roleName || "").toLowerCase();
+  const userRoles = getUserAvailableRoles(user);
   if (cleanRole === "organizer") {
-    return Boolean(user.profiles?.organizer || user.organizer_profile || (user.role || "").toLowerCase() === "organizer");
+    return userRoles.includes("organizer");
   }
   if (cleanRole === "exhibitor") {
-    return Boolean(user.profiles?.exhibitor || user.exhibitor_profile || (user.role || "").toLowerCase() === "exhibitor");
+    return userRoles.includes("exhibitor");
   }
   return true;
 };
 
 /**
  * Switches the active workspace role across LocalStorage, SessionStorage, Redux, and Backend API
+ * Includes retry logic and diagnostic logging.
  */
 export const switchWorkspaceRole = async (targetRole, dispatch, navigate) => {
   const cleanRole = (targetRole || "user").toLowerCase();
+  const previousRole = sessionStorage.getItem("role") || localStorage.getItem("role") || "unknown";
+
+  console.log(`%c[WorkspaceSwitch] Switching workspace from "${previousRole}" to "${cleanRole}"`, "color: #38bdf8; font-weight: bold;");
+
+  // 1. Immediately update local and session storage
   sessionStorage.setItem("role", cleanRole);
   localStorage.setItem("role", cleanRole);
   sessionStorage.setItem("userRole", cleanRole);
   localStorage.setItem("userRole", cleanRole);
 
-  try {
-    const res = await axiosClient.post("/api/v1/auth/switch-role", { role: cleanRole });
-    const newToken = res.data?.data?.token || res.data?.data?.access_token;
-    if (newToken) {
-      sessionStorage.setItem("token", newToken);
-      localStorage.setItem("token", newToken);
-      sessionStorage.setItem("accessToken", newToken);
-      localStorage.setItem("accessToken", newToken);
+  // 2. Immediately update Redux auth & user state
+  if (dispatch) {
+    try {
+      dispatch(setUser({ role: cleanRole, active_role: cleanRole }));
+      dispatch(setCredentials({ role: cleanRole }));
+    } catch (err) {
+      console.warn("[WorkspaceSwitch] Redux role sync notice:", err);
     }
-  } catch (err) {
-    console.warn("Server-side role switch note:", err?.message || err);
   }
 
+  // 3. Immediately resolve destination & navigate
   const destination = getRedirectPathForUser(cleanRole);
-  if (navigate) navigate(destination);
+  console.log(`[WorkspaceSwitch] Immediate navigation to destination: "${destination}"`);
+  if (navigate) {
+    navigate(destination);
+  }
+
+  // 4. Background server sync with retry logic
+  const syncWithServer = async (attempt = 1, maxAttempts = 3) => {
+    try {
+      console.log(`[WorkspaceSwitch] Syncing with server POST /api/v1/auth/switch-role (attempt ${attempt}/${maxAttempts})...`);
+      const res = await axiosClient.post("/api/v1/auth/switch-role", { role: cleanRole });
+      const resData = res.data?.data || res.data;
+      const newToken = resData?.token || resData?.access_token;
+      const updatedUser = resData?.user;
+
+      console.log(`[WorkspaceSwitch] Server sync SUCCESS:`, {
+        active_role: resData?.active_role || cleanRole,
+        tokenReceived: Boolean(newToken),
+        userRoles: updatedUser?.roles
+      });
+
+      if (newToken) {
+        sessionStorage.setItem("token", newToken);
+        localStorage.setItem("token", newToken);
+        sessionStorage.setItem("accessToken", newToken);
+        localStorage.setItem("accessToken", newToken);
+      }
+
+      if (dispatch) {
+        if (updatedUser) {
+          dispatch(setUser({ ...updatedUser, active_role: cleanRole, role: cleanRole }));
+        }
+        dispatch(
+          setCredentials({
+            user: updatedUser,
+            token: newToken,
+            accessToken: newToken,
+            role: cleanRole,
+          })
+        );
+      }
+    } catch (err) {
+      const isRetryable = !err.response || err.response.status >= 500;
+      if (isRetryable && attempt < maxAttempts) {
+        const delay = attempt * 800;
+        console.warn(`[WorkspaceSwitch] Server sync transient failure. Retrying in ${delay}ms...`, err.message);
+        await new Promise((res) => setTimeout(res, delay));
+        return syncWithServer(attempt + 1, maxAttempts);
+      }
+      console.error(`[WorkspaceSwitch] Server sync failed permanently:`, err?.response?.data || err.message);
+    }
+  };
+
+  syncWithServer();
 };
 

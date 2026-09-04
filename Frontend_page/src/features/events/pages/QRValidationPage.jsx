@@ -39,27 +39,34 @@ export default function QRValidation() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-        <p className="text-gray-500 font-bold tracking-widest uppercase text-sm">Validating Ticket...</p>
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm bg-white rounded-3xl p-8 shadow-2xl border border-slate-200/80 flex flex-col items-center text-center animate-pulse">
+          <div className="w-14 h-14 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mb-4">
+            <Loader2 className="w-7 h-7 text-cyan-600 animate-spin" />
+          </div>
+          <h3 className="text-base font-extrabold text-slate-800">Validating Pass</h3>
+          <p className="text-xs text-slate-400 mt-1 font-semibold">Checking attendee gate authorization...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-        <div className="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mb-6">
-           <AlertCircle className="w-12 h-12 text-red-600" />
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm bg-white rounded-3xl p-8 shadow-2xl border border-rose-200/80 flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-rose-50 border border-rose-100 rounded-2xl flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-rose-600" />
+          </div>
+          <h1 className="text-xl font-extrabold text-slate-900 mb-1">Invalid Ticket</h1>
+          <p className="text-xs text-slate-500 mb-6 font-medium max-w-xs">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-sm cursor-pointer"
+          >
+            Scan Next Ticket
+          </button>
         </div>
-        <h1 className="text-2xl font-black text-gray-900 mb-2">Invalid Ticket</h1>
-        <p className="text-gray-500 text-center mb-8 max-w-xs">{error}</p>
-        <button 
-           onClick={() => window.location.reload()}
-           className="px-8 py-3 bg-gray-900 text-white font-bold rounded-2xl"
-        >
-           Try Again
-        </button>
       </div>
     );
   }
