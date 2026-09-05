@@ -53,6 +53,7 @@ class Venue(db.Model):
             "latitude": float(self.latitude) if self.latitude else None,
             "longitude": float(self.longitude) if self.longitude else None,
             "google_place_id": self.google_place_id,
+            "created_at": str(self.created_at) if self.created_at else None,
         }
 
 

@@ -9,8 +9,19 @@ root_organizer_router = APIRouter(prefix="", tags=["Organizer Aliases"])
 @root_organizer_router.post("/api/upload-image")
 @root_organizer_router.post("/superadmin/upload/all-docs")
 async def upload_image_alias(file: UploadFile = File(...)):
+    import os, uuid, mimetypes
+    from app.extensions.storage import StorageService
     contents = await file.read()
-    return OrganizerController.upload_banner(contents, file.filename, file.content_type or "image/jpeg")
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    folder = "documents" if ext in [".pdf", ".doc", ".docx", ".txt", ".csv", ".xlsx"] else "banners"
+    mime_type = file.content_type or mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
+    url = StorageService.upload_file_bytes(
+        contents,
+        file.filename or f"doc_{uuid.uuid4().hex[:8]}",
+        mime_type,
+        folder=folder
+    )
+    return {"success": True, "url": url, "file_path": url}
 
 # ── ORGANIZER EVENT CREATION & WIZARD ──
 
@@ -77,6 +88,13 @@ async def create_venue_route(request: Request):
 @root_organizer_router.get("/superadmin/api/get-vendor-types")
 def get_vendor_types_alias():
     return OrganizerController.get_vendor_types()
+@root_organizer_router.get("/superadmin/api/get-policy-types")
+def get_policy_types_alias():
+    return OrganizerController.get_policy_types()
+
+@root_organizer_router.get("/superadmin/api/get-policy-groups")
+def get_policy_groups_alias():
+    return OrganizerController.get_policy_groups()
 
 @root_organizer_router.get("/superadmin/api/get-sponsor-names/{organizer_id}")
 @root_organizer_router.get("/superadmin/api/get-sponsor-names")
@@ -135,4 +153,50 @@ def get_document_types():
         {"type": "PAN", "maxLength": 10, "pattern": "^[A-Z]{5}[0-9]{4}[A-Z]{1}$", "placeholder": "ABCDE1234F"},
         {"type": "GST", "maxLength": 15, "pattern": "^\\d{2}[A-Z]{5}\\d{4}[A-Z]{1}[A-Z\\d]{1}[Z]{1}[A-Z\\d]{1}$", "placeholder": "22AAAAA0000A1Z5"}
     ]
+
+# ── UPDATE / DELETE ROUTES ──
+
+@root_organizer_router.put("/superadmin/api/update-vendor/{vendor_id}")
+@root_organizer_router.patch("/superadmin/api/update-vendor/{vendor_id}")
+async def update_vendor_route(vendor_id: str, request: Request):
+    data = await request.json()
+    result = OrganizerController.update_vendor(vendor_id, data)
+    return result
+
+@root_organizer_router.delete("/superadmin/api/delete-vendor/{vendor_id}")
+def delete_vendor_route(vendor_id: str):
+    return OrganizerController.delete_vendor(vendor_id)
+
+@root_organizer_router.put("/superadmin/api/update-venue/{venue_id}")
+@root_organizer_router.patch("/superadmin/api/update-venue/{venue_id}")
+async def update_venue_route(venue_id: str, request: Request):
+    data = await request.json()
+    result = OrganizerController.update_venue(venue_id, data)
+    return result
+
+@root_organizer_router.delete("/superadmin/api/delete-venue/{venue_id}")
+def delete_venue_route(venue_id: str):
+    return OrganizerController.delete_venue(venue_id)
+
+@root_organizer_router.put("/superadmin/api/update-policy/{policy_id}")
+@root_organizer_router.patch("/superadmin/api/update-policy/{policy_id}")
+async def update_policy_route(policy_id: str, request: Request):
+    data = await request.json()
+    result = OrganizerController.update_policy(policy_id, data)
+    return result
+
+@root_organizer_router.delete("/superadmin/api/delete-policy/{policy_id}")
+def delete_policy_route(policy_id: str):
+    return OrganizerController.delete_policy(policy_id)
+
+@root_organizer_router.put("/superadmin/api/update-sponsor/{sponsor_id}")
+@root_organizer_router.patch("/superadmin/api/update-sponsor/{sponsor_id}")
+async def update_sponsor_route(sponsor_id: str, request: Request):
+    data = await request.json()
+    result = OrganizerController.update_sponsor(sponsor_id, data)
+    return result
+
+@root_organizer_router.delete("/superadmin/api/delete-sponsor/{sponsor_id}")
+def delete_sponsor_route(sponsor_id: str):
+    return OrganizerController.delete_sponsor(sponsor_id)
 
