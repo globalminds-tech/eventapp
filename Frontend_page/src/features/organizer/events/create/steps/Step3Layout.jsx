@@ -528,15 +528,15 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                 </button>
               </label>
               <div className="px-4">
-                <label className="flex items-center gap-3 cursor-pointer group">
+                <label className="flex items-center gap-2.5 cursor-pointer group mt-1">
                   <input
                     type="checkbox"
                     name="dayBased"
                     checked={formData.layout?.dayBased || false}
                     onChange={handleChange}
-                    className="w-5 h-5 rounded border-2 border-blue-400 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                   />
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+                  <span className="text-sm font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">
                     Is Day Based
                   </span>
                 </label>
@@ -580,7 +580,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     name="stallSize"
                     value={formData.layout?.stallSize || "Feet"}
                     onChange={handleChange}
-                    triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
+                    triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                     className="flex-1"
                   >
                     <SelectItem value="Feet">Feet</SelectItem>
@@ -679,16 +679,16 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     </div>
                   </div>
 
-                  <div className="space-y-3 border-t border-gray-200 pt-3">
-                    <label className="flex items-center gap-3 cursor-pointer group px-2">
+                  <div className="space-y-3 border-t border-slate-200 pt-3">
+                    <label className="flex items-center gap-2.5 cursor-pointer group px-2">
                       <input
                         type="checkbox"
                         name="primeSeat"
                         checked={Boolean(formData.layout?.primeSeat)}
                         onChange={handleChange}
-                        className="w-5 h-5 rounded text-purple-600 border-gray-300 focus:ring-purple-500"
+                        className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                       />
-                      <span className="text-sm font-semibold text-gray-700">Mark as Prime Stall</span>
+                      <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">Mark as Prime Stall</span>
                     </label>
                     {formData.layout?.primeSeat && (
                       <div className="animate-in zoom-in-95 duration-200">
@@ -788,7 +788,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
               </div>
 
               <div className="pt-3 border-t border-slate-100 space-y-3 sm:col-span-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2.5 cursor-pointer group">
                   <input
                     type="checkbox"
                     name="includeTax"
@@ -802,9 +802,9 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                         }));
                       }
                     }}
-                    className="w-4 h-4 rounded text-cyan-600 border-slate-300 focus:ring-cyan-500 cursor-pointer"
+                    className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                   />
-                  <span className="text-xs font-bold text-slate-700">Include Tax in Final Price</span>
+                  <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">Include Tax in Final Price</span>
                 </label>
 
                 {formData.layout?.includeTax && (
@@ -825,7 +825,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
                     {isTaxDropdownOpen && (
                       <div className="absolute z-[9999] top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2">
-                        <div className="p-2 border-b border-slate-100 flex items-center gap-2 bg-white">
+                        <div className="p-2 border-b border-slate-100 flex items-center gap-2.5 bg-white">
                           <input
                             type="checkbox"
                             checked={
@@ -834,7 +834,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                                 .every(t => (formData.layout?.taxes || []).includes(t))
                             }
                             onChange={handleSelectAllTaxes}
-                            className="w-3.5 h-3.5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                            className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                           />
                           <div className="flex-1 flex items-center px-2 py-1 border border-slate-200 rounded-lg bg-slate-50">
                             <input
@@ -852,14 +852,14 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
                         <div className="max-h-48 overflow-y-auto">
                           {taxOptions.filter(t => t.toLowerCase().includes(taxSearch.toLowerCase())).map((tax, idx) => (
-                            <label key={tax} className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors text-xs ${idx === 0 ? 'bg-slate-50 hover:bg-slate-100' : 'bg-white hover:bg-slate-50'}`}>
+                            <label key={tax} className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors text-xs group ${idx === 0 ? 'bg-slate-50 hover:bg-slate-100' : 'bg-white hover:bg-slate-50'}`}>
                               <input
                                 type="checkbox"
                                 checked={(formData.layout?.taxes || []).includes(tax)}
                                 onChange={() => handleTaxToggle(tax)}
-                                className="w-3.5 h-3.5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer"
+                                className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                               />
-                              <span className="text-slate-700 font-medium">{tax}</span>
+                              <span className="text-slate-700 font-bold group-hover:text-cyan-700">{tax}</span>
                             </label>
                           ))}
                           {taxOptions.filter(t => t.toLowerCase().includes(taxSearch.toLowerCase())).length === 0 && (
@@ -1176,7 +1176,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                           }
                         });
                       }}
-                      triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
+                      triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                     >
                       <SelectItem value="Feet">Feet</SelectItem>
                       <SelectItem value="Inches">Inches</SelectItem>
@@ -1215,7 +1215,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                       label="Visibility"
                       value={editModal.data.visibility || "Public"}
                       onValueChange={(val) => setEditModal({ ...editModal, data: { ...editModal.data, visibility: val } })}
-                      triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
+                      triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                     >
                       <SelectItem value="Public">Public</SelectItem>
                       <SelectItem value="Private">Private</SelectItem>
@@ -1228,7 +1228,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                       label="Stall Type"
                       value={editModal.data.stallType || "Paid"}
                       onValueChange={(val) => setEditModal({ ...editModal, data: { ...editModal.data, stallType: val } })}
-                      triggerClassName="bg-white border-slate-200 rounded-xl h-10 text-xs font-semibold focus:ring-cyan-500"
+                      triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
                     >
                       <SelectItem value="Paid">Paid</SelectItem>
                       <SelectItem value="Free">Free</SelectItem>
@@ -1261,14 +1261,14 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                   {/* Mark as Prime Stall */}
                   {editModal.data.stallType !== "Free" && (
                     <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
+                      <label className="flex items-center gap-2.5 cursor-pointer group">
                         <input
                           type="checkbox"
                           checked={Boolean(editModal.data.primeSeat)}
                           onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, primeSeat: e.target.checked } })}
-                          className="w-4 h-4 rounded text-cyan-600 border-slate-300 focus:ring-cyan-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                         />
-                        <span className="text-xs font-bold text-slate-700">Mark as Prime Stall</span>
+                        <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">Mark as Prime Stall</span>
                       </label>
                       {editModal.data.primeSeat && (
                         <input
@@ -1284,7 +1284,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                   {/* Include Tax in Final Price & Tax Dropdown */}
                   {editModal.data.stallType !== "Free" && (
                     <div className="sm:col-span-2 pt-2 border-t border-slate-100 space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
+                      <label className="flex items-center gap-2.5 cursor-pointer group">
                         <input
                           type="checkbox"
                           checked={Boolean(editModal.data.includeTax)}
@@ -1296,9 +1296,9 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                               taxes: e.target.checked ? (editModal.data.taxes?.length ? editModal.data.taxes : formData.layout?.taxes || []) : []
                             }
                           })}
-                          className="w-4 h-4 rounded text-cyan-600 border-slate-300 focus:ring-cyan-500 cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                         />
-                        <span className="text-xs font-bold text-slate-700">Include Tax in Final Price</span>
+                        <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">Include Tax in Final Price</span>
                       </label>
 
                       {editModal.data.includeTax && (
@@ -1321,7 +1321,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                               {taxOptions.map((opt) => {
                                 const isChecked = (editModal.data.taxes || []).includes(opt);
                                 return (
-                                  <label key={opt} className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-xs font-semibold text-slate-700">
+                                  <label key={opt} className="flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-50 rounded-lg cursor-pointer text-xs font-bold text-slate-700 group">
                                     <input
                                       type="checkbox"
                                       checked={isChecked}
@@ -1330,9 +1330,9 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                                         const next = e.target.checked ? [...current, opt] : current.filter((t) => t !== opt);
                                         setEditModal({ ...editModal, data: { ...editModal.data, taxes: next } });
                                       }}
-                                      className="w-3.5 h-3.5 rounded text-cyan-600"
+                                      className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
                                     />
-                                    <span>{opt}</span>
+                                    <span className="group-hover:text-cyan-700 transition-colors">{opt}</span>
                                   </label>
                                 );
                               })}

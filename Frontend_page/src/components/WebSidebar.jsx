@@ -6,7 +6,7 @@ import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
   ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, User,
-  ArrowLeftRight, Shield, X, ChevronsUpDown, Check, CalendarDays, Building2, Compass, Ticket, Loader2
+  ArrowLeftRight, Shield, X, ChevronsUpDown, Check, CalendarDays, Building2, Compass, Ticket, Loader2, Database
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -114,6 +114,7 @@ export default function WebSidebar({ role }) {
       { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users },
       { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield },
       { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt },
+      { label: "Master Data", path: "/OrganizerHome/MasterData", icon: Database },
     ]
   }[activeRoleKey] || [];
 

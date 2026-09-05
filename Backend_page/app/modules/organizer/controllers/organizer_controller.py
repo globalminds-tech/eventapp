@@ -31,8 +31,12 @@ class OrganizerController:
         return OrganizerService.get_vendor_names(vendor_type)
 
     @staticmethod
-    def get_sponsors() -> list[dict]:
-        return OrganizerService.get_sponsors()
+    def get_sponsors(organizer_id: str = None) -> list[dict]:
+        return OrganizerService.get_sponsors(organizer_id)
+
+    @staticmethod
+    def get_vendors(organizer_id: str = None) -> list[dict]:
+        return OrganizerService.get_vendors(organizer_id)
 
     @staticmethod
     def create_vendor(vendor_data: dict, user_id = None) -> dict:
@@ -45,6 +49,10 @@ class OrganizerController:
     @staticmethod
     def create_venue(venue_data: dict, user_id = None) -> dict:
         return OrganizerService.create_venue(venue_data, user_id)
+
+    @staticmethod
+    def create_policy(policy_data: dict, user_id = None) -> dict:
+        return OrganizerService.create_policy(policy_data, user_id)
 
     @staticmethod
     def get_policies(organizer_id = None) -> list[dict]:

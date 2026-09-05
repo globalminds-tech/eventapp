@@ -101,7 +101,7 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
     }
 
     return (
-      <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+      <label className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all group ${
         checked
           ? "bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200"
           : "bg-slate-50 text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100"
@@ -110,10 +110,10 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
           type="checkbox"
           checked={checked}
           onChange={(e) => !locked && handleCheckbox(field, e.target.checked)}
-          className="w-3 h-3 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+          className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
           onClick={(e) => locked && e.preventDefault()}
         />
-        {label}
+        <span className={!checked ? "group-hover:text-cyan-700 transition-colors" : ""}>{label}</span>
       </label>
     );
   };
@@ -138,7 +138,7 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
       </AccordionSection>
 
       {/* ── Visitor Requirements ── */}
-      <AccordionSection icon={ShieldCheck} title="Visitor Requirements" accentColor="cyan" defaultOpen={true}>
+      <AccordionSection icon={ShieldCheck} title="Visitor Requirements" accentColor="cyan" defaultOpen={false}>
         <div className="space-y-3 pt-1">
           <div>
             <span className="text-[11px] font-bold text-slate-600 mb-1.5 block">Mandatory for On-Spot Visitors</span>
@@ -150,7 +150,7 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
               <ToggleChip label="Document Proof" field="documentProof" />
             </div>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="flex flex-wrap gap-2">
             <ToggleChip label="Day Pass" field="dayPass" />
             <ToggleChip label="International" field="isInternationalInclude" />
             <ToggleChip label="Include Program" field="includeProgram" />
@@ -170,14 +170,14 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
 
       {/* ── Food Provision ── */}
       <AccordionSection icon={Utensils} title="Food Provision"
-        badge={formData.eventDetails?.food ? "Enabled" : undefined} accentColor="amber" defaultOpen={true}>
+        badge={formData.eventDetails?.food ? "Enabled" : undefined} accentColor="amber" defaultOpen={false}>
         <div className="space-y-3 pt-1">
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
             <input type="checkbox" checked={Boolean(formData.eventDetails?.food)}
               onChange={() => handleToggle("food")}
-              className="w-4 h-4 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+              className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
             />
-            <span className="text-xs font-bold text-slate-700">Include Food for this event</span>
+            <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">Include Food for this event</span>
           </label>
           {Boolean(formData.eventDetails?.food) && (
             <StepFoodProvision formData={formData} setFormData={setFormData} />
@@ -191,17 +191,17 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
         title="Vehicle & Parking Pass Allotment"
         badge={formData.eventDetails?.vehiclePass ? "Enabled" : undefined}
         accentColor="indigo"
-        defaultOpen={true}
+        defaultOpen={false}
       >
         <div className="space-y-3 pt-1">
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-2.5 cursor-pointer group">
             <input
               type="checkbox"
               checked={Boolean(formData.eventDetails?.vehiclePass)}
               onChange={() => handleToggle("vehiclePass")}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
             />
-            <span className="text-xs font-bold text-slate-700">Enable Vehicle Parking Passes for this event</span>
+            <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">Enable Vehicle Parking Passes for this event</span>
           </label>
           {Boolean(formData.eventDetails?.vehiclePass) && (
             <StepVehicleProvision formData={formData} setFormData={setFormData} />
