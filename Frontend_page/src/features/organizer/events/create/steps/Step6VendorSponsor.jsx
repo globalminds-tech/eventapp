@@ -23,6 +23,8 @@ import {
 } from "@/Services/api";
 import { useSelector } from "react-redux";
 import { Select, SelectItem } from "@/components/ui/Select";
+import AddVendorModal from "../../../master-data/components/AddVendorModal";
+import AddSponsorModal from "../../../master-data/components/AddSponsorModal";
 
 const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   // ===========================
@@ -89,23 +91,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
     }, 3000);
   };
 
-  const [newVendor, setNewVendor] = useState({
-    vendor_type: "",
-    vendor_name: "",
-    company_name: "",
-    primary_contact: "",
-    mail_id: "",
-    address: "",
-    status: "Active"
-  });
 
-  const [newSponsor, setNewSponsor] = useState({
-    sponsor_name: "",
-    primary_contact: "",
-    mail_id: "",
-    address: "",
-    status: "Active"
-  });
 
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -403,60 +389,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
     });
   };
 
-  const handleCreateVendor = async (e) => {
-    e.preventDefault();
-    const errors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!newVendor.vendor_type) errors.vendor_type = "Required";
-    if (!newVendor.vendor_name.trim()) {
-      errors.vendor_name = "Name required";
-    } else if (newVendor.vendor_name.length > 30) {
-      errors.vendor_name = "Max 30 chars";
-    }
-
-    if (!newVendor.company_name.trim()) errors.company_name = "Required";
-
-    if (!newVendor.primary_contact.trim()) {
-      errors.primary_contact = "Required";
-    } else if (!/^\d{10}$/.test(newVendor.primary_contact)) {
-      errors.primary_contact = "10 digits required";
-    }
-
-    if (!newVendor.mail_id.trim()) {
-      errors.mail_id = "Required";
-    } else if (!emailRegex.test(newVendor.mail_id)) {
-      errors.mail_id = "Invalid email";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await createVendor({ ...newVendor, organizer_id: organizer.id });
-      await loadVendorTypes();
-      await loadVendorNames();
-      showNotification("Vendor created successfully!");
-      setShowAddVendorModal(false);
-      setNewVendor({
-        vendor_type: "",
-        vendor_name: "",
-        company_name: "",
-        primary_contact: "",
-        mail_id: "",
-        address: "",
-        status: "Active"
-      });
-      setFieldErrors({});
-    } catch (error) {
-      console.error("Vendor Create Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreateCategory = async (e) => {
     e.preventDefault();
@@ -500,54 +433,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
     }
   };
 
-  const handleCreateSponsor = async (e) => {
-    e.preventDefault();
-    const errors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!newSponsor.sponsor_name.trim()) {
-      errors.sponsor_name = "Name required";
-    } else if (newSponsor.sponsor_name.length > 30) {
-      errors.sponsor_name = "Max 30 chars";
-    }
-
-    if (!newSponsor.primary_contact.trim()) {
-      errors.primary_contact = "Required";
-    } else if (!/^\d{10}$/.test(newSponsor.primary_contact)) {
-      errors.primary_contact = "10 digits required";
-    }
-
-    if (!newSponsor.mail_id.trim()) {
-      errors.mail_id = "Required";
-    } else if (!emailRegex.test(newSponsor.mail_id)) {
-      errors.mail_id = "Invalid email";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await createSponsor({ ...newSponsor, organizer_id: organizer.id });
-      await loadSponsors();
-      showNotification("Sponsor created successfully!");
-      setShowAddSponsorModal(false);
-      setNewSponsor({
-        sponsor_name: "",
-        primary_contact: "",
-        mail_id: "",
-        address: "",
-        status: "Active"
-      });
-      setFieldErrors({});
-    } catch (error) {
-      console.error("Sponsor Create Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // ===========================
   // ✅ VALIDATION HELPERS
@@ -1283,229 +1169,24 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
       )}
 
       {/* QUICK ADD VENDOR MODAL */}
-      {showAddVendorModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-[1000] p-4">
-          <div className="w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="flex justify-between items-center px-8 py-6 bg-slate-50 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-800">Quick Add Vendor</h2>
-              <button onClick={() => setShowAddVendorModal(false)} className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-all">
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleCreateVendor} className="p-8 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1 relative">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Service Category</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowInlineCategoryInput(!showInlineCategoryInput);
-                        if (!showInlineCategoryInput) setNewCategoryName("");
-                      }}
-                      className="text-[10px] font-bold text-cyan-600 hover:text-cyan-800 bg-cyan-50 hover:bg-cyan-100 px-2 py-0.5 rounded-md transition-all"
-                    >
-                      {showInlineCategoryInput ? "Cancel" : "+ New Category"}
-                    </button>
-                  </div>
-                  {showInlineCategoryInput ? (
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Enter custom category"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 text-slate-800 rounded-2xl h-11 px-4 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500/20 pr-10"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleCreateCategory(e);
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => handleCreateCategory(e)}
-                        disabled={!newCategoryName.trim() || loading}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-cyan-100 text-cyan-600 rounded-full hover:bg-cyan-200 transition-colors disabled:opacity-50 flex items-center justify-center"
-                      >
-                        <Check size={14} strokeWidth={3} />
-                      </button>
-                    </div>
-                  ) : (
-                    <Select
-                      value={newVendor.vendor_type}
-                      onValueChange={(val) => {
-                        setNewVendor({ ...newVendor, vendor_type: val });
-                        setFieldErrors({ ...fieldErrors, vendor_type: "" });
-                      }}
-                      placeholder="Select Category"
-                      triggerClassName={`rounded-2xl h-11 text-xs font-bold ${fieldErrors.vendor_type ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'}`}
-                    >
-                      {vendorTypes.map((vt, idx) => (
-                        <SelectItem key={idx} value={vt.vendor_type}>{vt.vendor_type}</SelectItem>
-                      ))}
-                    </Select>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Vendor Name</label>
-                  <input
-                    placeholder="Vendor Name"
-                    maxLength={30}
-                    value={newVendor.vendor_name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "" || /^[a-zA-Z\s]*$/.test(val)) {
-                        setNewVendor({ ...newVendor, vendor_name: val });
-                        setFieldErrors({ ...fieldErrors, vendor_name: "" });
-                      }
-                    }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.vendor_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
-                  />
-                  {fieldErrors.vendor_name && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.vendor_name}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Company Name</label>
-                  <input
-                    placeholder="Company Name"
-                    value={newVendor.company_name}
-                    onChange={(e) => {
-                      setNewVendor({ ...newVendor, company_name: e.target.value });
-                      setFieldErrors({ ...fieldErrors, company_name: "" });
-                    }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.company_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
-                  />
-                  {fieldErrors.company_name && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.company_name}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Contact</label>
-                  <input
-                    placeholder="Primary Contact"
-                    maxLength={10}
-                    value={newVendor.primary_contact}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
-                      setNewVendor({ ...newVendor, primary_contact: val });
-                      setFieldErrors({ ...fieldErrors, primary_contact: "" });
-                    }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.primary_contact ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
-                  />
-                  {fieldErrors.primary_contact && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.primary_contact}</p>}
-                </div>
-                <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Email ID</label>
-                  <input
-                    type="email"
-                    placeholder="Email ID"
-                    maxLength={50}
-                    value={newVendor.mail_id}
-                    onChange={(e) => {
-                      const val = e.target.value.toLowerCase().replace(/\s/g, "");
-                      setNewVendor({ ...newVendor, mail_id: val });
-                      setFieldErrors({ ...fieldErrors, mail_id: "" });
-                    }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.mail_id ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm font-bold`}
-                  />
-                  {fieldErrors.mail_id && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.mail_id}</p>}
-                </div>
-                <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Address</label>
-                  <textarea
-                    placeholder="Address"
-                    value={newVendor.address}
-                    onChange={(e) => setNewVendor({ ...newVendor, address: e.target.value })}
-                    className="w-full px-5 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm h-20 resize-none"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setShowAddVendorModal(false)} className="px-6 py-2 font-bold text-slate-400">Cancel</button>
-                <button disabled={loading} type="submit" className="px-8 py-2 bg-cyan-600 text-white font-bold rounded-xl shadow-lg shadow-cyan-100">{loading ? "Saving..." : "Save Vendor"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddVendorModal
+        isOpen={showAddVendorModal}
+        onClose={() => setShowAddVendorModal(false)}
+        onSuccess={() => {
+          loadVendorNames();
+          loadVendorTypes();
+          setShowAddVendorModal(false);
+        }}
+      />
 
-      {/* QUICK ADD SPONSOR MODAL */}
-      {showAddSponsorModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-[1000] p-4">
-          <div className="w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="flex justify-between items-center px-8 py-6 bg-slate-50 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-800">Quick Add Sponsor</h2>
-              <button onClick={() => setShowAddSponsorModal(false)} className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-all">
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleCreateSponsor} className="p-8 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Sponsor Name</label>
-                  <input
-                    placeholder="Sponsor Name"
-                    maxLength={30}
-                    value={newSponsor.sponsor_name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "" || /^[a-zA-Z\s]*$/.test(val)) {
-                        setNewSponsor({ ...newSponsor, sponsor_name: val });
-                        setFieldErrors({ ...fieldErrors, sponsor_name: "" });
-                      }
-                    }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.sponsor_name ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold`}
-                  />
-                  {fieldErrors.sponsor_name && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.sponsor_name}</p>}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Contact</label>
-                  <input
-                    placeholder="Contact No"
-                    maxLength={10}
-                    value={newSponsor.primary_contact}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
-                      setNewSponsor({ ...newSponsor, primary_contact: val });
-                      setFieldErrors({ ...fieldErrors, primary_contact: "" });
-                    }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.primary_contact ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold`}
-                  />
-                  {fieldErrors.primary_contact && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.primary_contact}</p>}
-                </div>
-                <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Email ID</label>
-                  <input
-                    type="email"
-                    placeholder="Email ID"
-                    maxLength={50}
-                    value={newSponsor.mail_id}
-                    onChange={(e) => {
-                      const val = e.target.value.toLowerCase().replace(/\s/g, "");
-                      setNewSponsor({ ...newSponsor, mail_id: val });
-                      setFieldErrors({ ...fieldErrors, mail_id: "" });
-                    }}
-                    className={`w-full px-5 py-2.5 rounded-2xl border ${fieldErrors.mail_id ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-gray-50'} focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold`}
-                  />
-                  {fieldErrors.mail_id && <p className="text-[10px] text-red-500 ml-2 font-bold">{fieldErrors.mail_id}</p>}
-                </div>
-                <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 ml-2 uppercase">Address</label>
-                  <textarea
-                    placeholder="Address"
-                    value={newSponsor.address}
-                    onChange={(e) => setNewSponsor({ ...newSponsor, address: e.target.value })}
-                    className="w-full px-5 py-2.5 rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm h-20 resize-none"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setShowAddSponsorModal(false)} className="px-6 py-2 font-bold text-slate-400">Cancel</button>
-                <button disabled={loading} type="submit" className="px-8 py-2 bg-sky-600 text-white font-bold rounded-xl shadow-lg shadow-sky-100">{loading ? "Saving..." : "Save Sponsor"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddSponsorModal
+        isOpen={showAddSponsorModal}
+        onClose={() => setShowAddSponsorModal(false)}
+        onSuccess={() => {
+          loadSponsors();
+          setShowAddSponsorModal(false);
+        }}
+      />
 
       {croppingImage && (
         <ImageCropperModal
