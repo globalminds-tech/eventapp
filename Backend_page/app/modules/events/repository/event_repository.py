@@ -859,12 +859,12 @@ class EventRepository:
 
     @staticmethod
     def get_all_sponsors() -> list[SponsorDetails]:
-        stmt = select(SponsorDetails).order_by(desc(SponsorDetails.id))
+        stmt = select(SponsorDetails).order_by(desc(SponsorDetails.created_at))
         return list(db.session.scalars(stmt).all())
 
     @staticmethod
     def get_all_policies() -> list[Policy]:
-        stmt = select(Policy).order_by(desc(Policy.id))
+        stmt = select(Policy).order_by(desc(Policy.created_at))
         return list(db.session.scalars(stmt).all())
 
     @staticmethod

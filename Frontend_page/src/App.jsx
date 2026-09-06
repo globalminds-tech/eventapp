@@ -78,6 +78,7 @@ import MyPassesPage from "./features/users/pages/MyPassesPage";
 import AcceptInvitationPage from "./features/auth/pages/AcceptInvitationPage";
 import TeamManagementPage from "./features/organizer/team/pages/TeamManagementPage";
 import { PermissionProvider } from "./shared/context/PermissionContext";
+import MasterDataPage from "./features/organizer/master-data/pages/MasterDataPage";
 
 export default function App() {
   const location = useLocation();
@@ -174,6 +175,7 @@ export default function App() {
               <Route path="User" element={<User />} />
               <Route path="AddonCheckIn" element={<Addoncheckinout />} />
               <Route path="Sportbooking" element={<Sportbooking />} />
+              <Route path="MasterData" element={<MasterDataPage />} />
             </Route>
 
             {/* ── TIER 4: EXHIBITOR PORTAL (Single Parent Guard) ── */}
