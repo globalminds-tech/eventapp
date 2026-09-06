@@ -22,13 +22,37 @@ def get_event(event_id: str):
 
 @event_router.post("/", status_code=201)
 def create_event(payload: CreateEventSchema, current_user: dict = Depends(get_current_user)):
+    user_roles = [r.lower() for r in (current_user.get("roles") or [])]
+    active_role = str(current_user.get("role") or "").lower()
+    if active_role in ["superuser", "superadmin", "admin"] or any(r in ["superuser", "superadmin", "admin"] for r in user_roles):
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super administrators cannot create or edit events. Platform governance and approvals only."
+        )
     user_id = current_user.get("user_id") or current_user.get("id")
     return EventController.create_event(payload.dict(), user_id)
 
 @event_router.put("/{event_id}")
 def update_event(event_id: str, payload: UpdateEventSchema, current_user: dict = Depends(get_current_user)):
+    user_roles = [r.lower() for r in (current_user.get("roles") or [])]
+    active_role = str(current_user.get("role") or "").lower()
+    if active_role in ["superuser", "superadmin", "admin"] or any(r in ["superuser", "superadmin", "admin"] for r in user_roles):
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super administrators cannot create or edit events. Platform governance and approvals only."
+        )
     return EventController.update_event(event_id, payload.dict())
 
 @event_router.delete("/{event_id}")
 def delete_event(event_id: str, current_user: dict = Depends(get_current_user)):
+    user_roles = [r.lower() for r in (current_user.get("roles") or [])]
+    active_role = str(current_user.get("role") or "").lower()
+    if active_role in ["superuser", "superadmin", "admin"] or any(r in ["superuser", "superadmin", "admin"] for r in user_roles):
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super administrators cannot delete organizer events directly. Platform governance and approvals only."
+        )
     return EventController.delete_event(event_id)

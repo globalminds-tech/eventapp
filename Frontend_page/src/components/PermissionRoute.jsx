@@ -19,6 +19,7 @@ export default function PermissionRoute({ required, children }) {
   }
 
   if (!hasPermission(required)) {
+    const requiredDisplay = Array.isArray(required) ? required.join(" or ") : required;
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-8 text-center">
         <div className="mb-4 rounded-full bg-red-50 p-4 ring-8 ring-red-50/50">
@@ -26,7 +27,7 @@ export default function PermissionRoute({ required, children }) {
         </div>
         <h2 className="text-2xl font-bold text-slate-800">Access Restricted</h2>
         <p className="mt-2 max-w-md text-sm text-slate-500">
-          You do not have the required permission (<code>{required}</code>) to access this section. 
+          You do not have the required permission (<code>{requiredDisplay}</code>) to access this section. 
           Please contact your organization administrator to request access.
         </p>
         <button

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { registerUser } from "@/Services/api";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/app/store/userSlice";
 import { setCredentials } from "@/app/store/authSlice";
-import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Compass, ShieldCheck, Zap } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Compass, ShieldCheck, Zap, Check, X } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 
 export default function Register() {
@@ -33,9 +33,26 @@ export default function Register() {
     return emailRegex.test(email);
   };
 
-  const validatePassword = (password) => {
-    return password.length >= 6;
-  };
+  // Real-time password criteria validation
+  const passwordCriteria = useMemo(() => {
+    const pwd = formData.password || "";
+    return {
+      length: pwd.length >= 8,
+      hasUpper: /[A-Z]/.test(pwd),
+      hasLower: /[a-z]/.test(pwd),
+      hasNumber: /\d/.test(pwd),
+      hasSpecial: /[@$!%*?&#^()_\-+=]/.test(pwd),
+    };
+  }, [formData.password]);
+
+  const passwordStrength = useMemo(() => {
+    const metCount = Object.values(passwordCriteria).filter(Boolean).length;
+    if (metCount <= 2) return { score: 1, label: "Weak", color: "bg-red-500", text: "text-red-600" };
+    if (metCount === 3 || metCount === 4) return { score: 2, label: "Good", color: "bg-amber-500", text: "text-amber-600" };
+    return { score: 3, label: "Strong", color: "bg-emerald-500", text: "text-emerald-600" };
+  }, [passwordCriteria]);
+
+  const passwordsMatch = formData.password && formData.confirm_password && formData.password === formData.confirm_password;
 
   const handleChange = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -58,8 +75,10 @@ export default function Register() {
     }
     if (!formData.password) {
       errors.password = "Password is required";
-    } else if (!validatePassword(formData.password)) {
-      errors.password = "Password must be at least 6 characters";
+    } else if (formData.password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
+    } else if (passwordStrength.score < 2) {
+      errors.password = "Please choose a stronger password meeting the security criteria";
     }
     if (!formData.confirm_password) {
       errors.confirm_password = "Confirm Password is required";
@@ -295,7 +314,7 @@ export default function Register() {
                     data-1p-ignore="true"
                     value={formData.password}
                     onChange={(e) => handleChange("password", e.target.value)}
-                    placeholder="Min. 6 characters"
+                    placeholder="Min. 8 characters"
                     className={`w-full pl-3.5 pr-10 py-2.5 bg-slate-50 border ${
                       fieldErrors.password ? "border-orange-500" : "border-slate-200 focus:border-orange-500"
                     } rounded-xl text-xs font-medium focus:bg-white focus:outline-none transition-all`}
@@ -309,6 +328,52 @@ export default function Register() {
                   </button>
                 </div>
                 {fieldErrors.password && <span className="text-[11px] font-semibold text-orange-600">{fieldErrors.password}</span>}
+
+                {/* Password Strength Meter & Live Security Checklist */}
+                {formData.password && (
+                  <div className="mt-2 space-y-2 rounded-xl bg-slate-50 border border-slate-200/70 p-3">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-slate-500">Password Strength:</span>
+                      <span className={`font-black ${passwordStrength.text}`}>
+                        {passwordStrength.label}
+                      </span>
+                    </div>
+
+                    {/* Dynamic Strength Bar */}
+                    <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                        style={{
+                          width: `${(Object.values(passwordCriteria).filter(Boolean).length / 5) * 100}%`,
+                        }}
+                      />
+                    </div>
+
+                    {/* Criteria Checklist */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
+                      <div className={`flex items-center gap-1.5 ${passwordCriteria.length ? "text-emerald-600 font-bold" : "text-slate-400"}`}>
+                        {passwordCriteria.length ? <Check className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-300 ml-0.5 mr-1" />}
+                        8+ characters
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passwordCriteria.hasUpper ? "text-emerald-600 font-bold" : "text-slate-400"}`}>
+                        {passwordCriteria.hasUpper ? <Check className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-300 ml-0.5 mr-1" />}
+                        Uppercase letter
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passwordCriteria.hasLower ? "text-emerald-600 font-bold" : "text-slate-400"}`}>
+                        {passwordCriteria.hasLower ? <Check className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-300 ml-0.5 mr-1" />}
+                        Lowercase letter
+                      </div>
+                      <div className={`flex items-center gap-1.5 ${passwordCriteria.hasNumber ? "text-emerald-600 font-bold" : "text-slate-400"}`}>
+                        {passwordCriteria.hasNumber ? <Check className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-300 ml-0.5 mr-1" />}
+                        Number (0-9)
+                      </div>
+                      <div className={`col-span-2 flex items-center gap-1.5 ${passwordCriteria.hasSpecial ? "text-emerald-600 font-bold" : "text-slate-400"}`}>
+                        {passwordCriteria.hasSpecial ? <Check className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-300 ml-0.5 mr-1" />}
+                        Special character (!@#$%^&*)
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col gap-1">
@@ -338,6 +403,21 @@ export default function Register() {
                 </div>
                 {fieldErrors.confirm_password && (
                   <span className="text-[11px] font-semibold text-orange-600">{fieldErrors.confirm_password}</span>
+                )}
+
+                {/* Password match indicator */}
+                {formData.confirm_password && (
+                  <div className="flex items-center gap-1.5 text-[11px] pt-1">
+                    {passwordsMatch ? (
+                      <span className="flex items-center gap-1 text-emerald-600 font-bold">
+                        <Check className="h-3.5 w-3.5" /> Passwords match
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-red-500 font-semibold">
+                        <X className="h-3.5 w-3.5" /> Passwords do not match
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 

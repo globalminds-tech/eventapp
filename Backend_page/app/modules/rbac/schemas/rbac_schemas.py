@@ -33,3 +33,22 @@ class RegisterAndAcceptInvitationSchema(BaseModel):
     password: str
     name: Optional[str] = None
     mobile: Optional[str] = None
+
+
+class CreatePermissionSchema(BaseModel):
+    module: str
+    action: str
+    code: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+
+
+class UpdatePermissionSchema(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class UpdateMemberStatusSchema(BaseModel):
+    status: str
+
+

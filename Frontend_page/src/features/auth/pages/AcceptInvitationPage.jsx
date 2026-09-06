@@ -35,8 +35,20 @@ export default function AcceptInvitationPage() {
 
     const fetchInvitation = async () => {
       try {
-        const res = await axios.get(`${ENV.API_BASE_URL}/api/v1/auth/invitation/${token}`);
+        let res;
+        try {
+          res = await axios.get(`${ENV.API_BASE_URL}/api/v1/rbac/invitations/verify?token=${encodeURIComponent(token)}`);
+        } catch (e) {
+          // If the token is already accepted or explicitly invalid (400), don't trigger fallback
+          if (e.response && e.response.status === 400) {
+            throw e;
+          }
+          res = await axios.get(`${ENV.API_BASE_URL}/api/v1/auth/invitation/${encodeURIComponent(token)}`);
+        }
         setInvitation(res.data.data);
+        if (res.data.data?.name) {
+          setName(res.data.data.name);
+        }
       } catch (err) {
         setError(err.response?.data?.detail || "Invalid or expired invitation token.");
       } finally {
@@ -57,26 +69,41 @@ export default function AcceptInvitationPage() {
     setError("");
 
     try {
-      const res = await axios.post(`${ENV.API_BASE_URL}/api/v1/auth/invitation/accept`, {
-        token,
-        name,
-        password,
-      });
+      let res;
+      try {
+        res = await axios.post(`${ENV.API_BASE_URL}/api/v1/rbac/invitations/register-and-accept`, {
+          token,
+          name: name || invitation?.name || "",
+          password,
+        });
+      } catch (e) {
+        if (e.response?.status === 404) {
+          res = await axios.post(`${ENV.API_BASE_URL}/api/v1/auth/invitation/accept`, {
+            token,
+            name: name || invitation?.name || "",
+            password,
+          });
+        } else {
+          throw e;
+        }
+      }
 
       const resData = res.data?.data || res.data;
       const newToken = resData?.access_token || resData?.token;
       const userObj = resData?.user;
+      const targetRole = resData?.target_role || (invitation?.org_type === "EXHIBITOR" ? "exhibitor" : "organizer");
+      const redirectPath = targetRole === "exhibitor" ? "/exhibitor" : "/OrganizerHome";
 
       if (newToken && userObj) {
-        dispatch(setCredentials({ user: userObj, token: newToken, role: "organizer" }));
+        dispatch(setCredentials({ user: userObj, token: newToken, role: targetRole }));
         localStorage.setItem("user", JSON.stringify(userObj));
         sessionStorage.setItem("user", JSON.stringify(userObj));
-        localStorage.setItem("role", "organizer");
-        sessionStorage.setItem("role", "organizer");
+        localStorage.setItem("role", targetRole);
+        sessionStorage.setItem("role", targetRole);
         setSuccess(true);
         setTimeout(() => {
-          navigate("/OrganizerHome", { replace: true });
-        }, 1500);
+          navigate(redirectPath, { replace: true });
+        }, 1200);
       }
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to accept invitation. Please try again.");
@@ -90,21 +117,37 @@ export default function AcceptInvitationPage() {
     setError("");
 
     try {
-      const res = await axios.post(
-        `${ENV.API_BASE_URL}/api/v1/auth/invitation/accept-existing`,
-        { token },
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      let res;
+      try {
+        res = await axios.post(
+          `${ENV.API_BASE_URL}/api/v1/rbac/invitations/accept`,
+          { token },
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+      } catch (e) {
+        if (e.response?.status === 404) {
+          res = await axios.post(
+            `${ENV.API_BASE_URL}/api/v1/auth/invitation/accept-existing`,
+            { token },
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+        } else {
+          throw e;
+        }
+      }
 
       const resData = res.data?.data || res.data;
-      if (resData?.role) {
-        dispatch(setCredentials({ role: "organizer" }));
-        localStorage.setItem("role", "organizer");
-        sessionStorage.setItem("role", "organizer");
+      const targetRole = resData?.target_role || (invitation?.org_type === "EXHIBITOR" ? "exhibitor" : "organizer");
+      const redirectPath = targetRole === "exhibitor" ? "/exhibitor" : "/OrganizerHome";
+
+      if (resData?.role || resData?.success) {
+        dispatch(setCredentials({ role: targetRole }));
+        localStorage.setItem("role", targetRole);
+        sessionStorage.setItem("role", targetRole);
         setSuccess(true);
         setTimeout(() => {
-          navigate("/OrganizerHome", { replace: true });
-        }, 1500);
+          navigate(redirectPath, { replace: true });
+        }, 1200);
       }
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to setup account.");
@@ -145,19 +188,35 @@ export default function AcceptInvitationPage() {
   }
 
   if (error && !invitation) {
+    const isAlreadyAccepted = error.toLowerCase().includes("already accepted");
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 via-[#f8fafc] to-slate-100 p-4 select-none">
         <div className="w-full max-w-md rounded-3xl border border-slate-200/80 bg-white/95 p-8 text-center text-slate-900 shadow-2xl shadow-slate-200/60 backdrop-blur-md">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
-            <AlertCircle className="h-8 w-8" />
+          <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl ${
+            isAlreadyAccepted 
+              ? "bg-sky-50 text-sky-600 border border-sky-200" 
+              : "bg-rose-50 text-rose-600 border border-rose-200"
+          }`}>
+            {isAlreadyAccepted ? <CheckCircle2 className="h-8 w-8 text-sky-600" /> : <AlertCircle className="h-8 w-8 text-rose-600" />}
           </div>
-          <h2 className="text-xl font-extrabold text-slate-900">Invitation Invalid</h2>
-          <p className="mt-2 text-xs text-slate-500 font-medium leading-relaxed">{error}</p>
+          <h2 className="text-xl font-extrabold text-slate-900">
+            {isAlreadyAccepted ? "Invitation Already Accepted" : "Invitation Invalid"}
+          </h2>
+          <p className="mt-2 text-xs text-slate-500 font-medium leading-relaxed">
+            {isAlreadyAccepted
+              ? "You have already accepted this invitation and your account is active on the team. Please log in to access your organization dashboard."
+              : error}
+          </p>
           <Link
             to="/login"
-            className="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white transition hover:bg-slate-800 shadow-xs"
+            className={`mt-6 inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-xs font-bold text-white transition shadow-xs ${
+              isAlreadyAccepted
+                ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 shadow-cyan-500/25"
+                : "bg-slate-900 hover:bg-slate-800"
+            }`}
           >
-            Go to Login
+            {isAlreadyAccepted ? "Proceed to Login" : "Go to Login"}
           </Link>
         </div>
       </div>
@@ -257,7 +316,7 @@ export default function AcceptInvitationPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-bold text-slate-700">Create a Password</label>
+                    <label className="mb-1.5 block text-xs font-bold text-slate-700">Set Account Password</label>
                     <div className="relative">
                       <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                       <input
@@ -270,7 +329,7 @@ export default function AcceptInvitationPage() {
                         className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pl-10 pr-4 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:bg-white focus:outline-none transition"
                       />
                     </div>
-                    <span className="mt-1 block text-[11px] text-slate-400 font-medium">Minimum 6 characters</span>
+                    <span className="mt-1 block text-[11px] text-slate-400 font-medium">Use the temporary password from your email or choose a new password (min 6 characters)</span>
                   </div>
 
                   <button
@@ -278,7 +337,7 @@ export default function AcceptInvitationPage() {
                     disabled={isSubmitting}
                     className="mt-2 w-full rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 py-3.5 text-xs font-extrabold text-white shadow-md shadow-cyan-500/25 transition hover:brightness-105 disabled:opacity-50 cursor-pointer border-none"
                   >
-                    {isSubmitting ? "Setting up..." : "Create Account & Join Team"}
+                    {isSubmitting ? "Setting up..." : "Save Password & Join Team"}
                   </button>
                 </form>
               )}

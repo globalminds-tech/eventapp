@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { clearUser } from "@/app/store/userSlice";
+import { usePermissions } from "@/shared/context/PermissionContext";
 import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
@@ -16,6 +17,7 @@ export default function WebSidebar({ role }) {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const { hasPermission, loading, permissions } = usePermissions();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const reduxAuthUser = useSelector((state) => state.auth?.user);
@@ -91,31 +93,51 @@ export default function WebSidebar({ role }) {
     return location.pathname === path && !location.search;
   };
 
-  // Flat sidebar navigation items without 7-step item (event creation is launched from Dashboard button)
-  const navigationItems = {
-    superuser: [
-      { label: "Overview", path: "/superuser/dashboard", icon: BarChart3 },
-      { label: "Approvals Queue", path: "/superuser/approvals", icon: CheckCircle2 },
-      { label: "Category Master", path: "/superuser/categories", icon: Layers },
-      { label: "KYC Verification", path: "/superuser/kyc", icon: UserCheck },
-      { label: "Payouts Queue", path: "/superuser/payouts", icon: Landmark },
-    ],
-    exhibitor: [
-      { label: "Booth Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
-      { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store },
-      { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar },
-      { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users },
-    ],
-    organizer: [
-      { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard },
-      { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode },
-      { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils },
-      { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store },
-      { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users },
-      { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield },
-      { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt },
-    ]
-  }[activeRoleKey] || [];
+  // Flat sidebar navigation items with RBAC permission bindings
+  const navigationItems = useMemo(() => {
+    return {
+      superuser: [
+        { label: "Overview", path: "/superuser/dashboard", icon: BarChart3 },
+        { label: "Approvals Queue", path: "/superuser/approvals", icon: CheckCircle2 },
+        { label: "Category Master", path: "/superuser/categories", icon: Layers },
+        { label: "KYC Verification", path: "/superuser/kyc", icon: UserCheck },
+        { label: "Payouts Queue", path: "/superuser/payouts", icon: Landmark },
+      ],
+      exhibitor: [
+        { label: "Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard },
+        { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store, permission: "exhibitor.stalls.view" },
+        { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
+        { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users, permission: "exhibitor.leads.view" },
+        { label: "Team & Roles", path: "/exhibitor/team", icon: Shield, permission: "exhibitor.team.view" },
+      ],
+      organizer: [
+        { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: "events.view" },
+        { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode, permission: ["checkin.scan", "checkin.view"] },
+        { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils, permission: ["checkin.scan", "checkin.view"] },
+        { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store, permission: "stalls.view" },
+        { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users, permission: ["stalls.view", "events.view"] },
+        { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield, permission: ["team.view", "roles.view", "roles.manage"] },
+        { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt, permission: "finance.view" },
+      ]
+    }[activeRoleKey] || [];
+  }, [activeRoleKey]);
+
+  // Filter items based on user's authorized permissions
+  const visibleNavigationItems = useMemo(() => {
+    // If super admin, all items are visible
+    if (isSuperAdmin) return navigationItems;
+
+    // Do not blank the sidebar while permissions are being fetched
+    if (loading && permissions.length === 0) return navigationItems;
+
+    return navigationItems.filter((item) => {
+      if (!item.permission) return true;
+      if (Array.isArray(item.permission)) {
+        return item.permission.some((p) => hasPermission(p));
+      }
+      return hasPermission(item.permission);
+    });
+  }, [navigationItems, isSuperAdmin, hasPermission, loading, permissions.length]);
 
   const mainDashboardPath = activeRoleKey === "organizer" 
     ? "/OrganizerHome/Organizerdashboard" 
@@ -135,15 +157,18 @@ export default function WebSidebar({ role }) {
         {/* Toggle Button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-6 w-6 h-6 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center text-slate-300 hover:text-white cursor-pointer shadow-md hover:scale-105 active:scale-95 transition-all z-50"
+          className="absolute -right-3.5 top-7 bg-[#0f172a] border border-slate-700 text-slate-400 hover:text-white p-1 rounded-full shadow-lg z-50 cursor-pointer flex items-center justify-center transition-colors"
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          {isCollapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        {/* Header: Clickable Brand Logo navigating to Main Dashboard */}
-        <div
+        {/* Brand Header */}
+        <div 
           onClick={() => navigate(mainDashboardPath)}
-          className="p-4 py-4 flex items-center justify-between border-b border-slate-800/80 cursor-pointer hover:bg-slate-800/50 transition-colors"
+          className={`h-16 flex items-center px-4 border-b border-slate-800/80 cursor-pointer transition-all duration-300 ${
+            isCollapsed ? "justify-center px-0" : "gap-3"
+          }`}
           title="Go to Main Dashboard"
         >
           <BrandLogo isCollapsed={isCollapsed} roleLabel={theme.roleLabel} textColor="text-white" />
@@ -151,7 +176,7 @@ export default function WebSidebar({ role }) {
 
         {/* Flat Navigation Menu List */}
         <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar space-y-1.5">
-          {navigationItems.map((item, itemIdx) => {
+          {visibleNavigationItems.map((item, itemIdx) => {
             const Icon = item.icon;
             const isActive = getIsActive(item.path);
 

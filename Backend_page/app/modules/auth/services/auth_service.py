@@ -28,6 +28,13 @@ class AuthService:
         active_role = user.active_role or (user.roles[0] if user.roles else "user")
         access_token = generate_access_token(user.id, role=active_role, roles=user.roles)
         refresh_token = generate_refresh_token(user.id, role=active_role, roles=user.roles)
+
+        try:
+            from app.Services.mail_service import send_user_welcome_email
+            send_user_welcome_email(data.email, data.name)
+        except Exception as mail_err:
+            print(f"[WARN] User welcome mail trigger note: {mail_err}")
+
         return {
             "message": "User registered successfully",
             "token": access_token,
@@ -35,6 +42,7 @@ class AuthService:
             "refresh_token": refresh_token,
             "user": user.to_dict()
         }
+
 
     @staticmethod
     def register_organizer(raw_data: dict) -> dict:
@@ -183,6 +191,7 @@ class AuthService:
             "token": access_token,
             "access_token": access_token,
             "refresh_token": refresh_token,
+            "must_change_password": bool(user.must_change_password),
             "user": user_full,
             "message": "Login successful"
         }
@@ -218,13 +227,39 @@ class AuthService:
             if "exhibitor" not in roles:
                 roles.append("exhibitor")
 
+        # Automatically grant organizer/exhibitor role if user belongs to an active team
+        try:
+            from app.models.organization import OrganizationMember, Organization
+            from app.extensions.database import db
+            member_orgs = db.session.query(Organization.org_type).join(
+                OrganizationMember, OrganizationMember.organization_id == Organization.id
+            ).filter(
+                OrganizationMember.user_id == user.id,
+                OrganizationMember.status == 'ACTIVE',
+                OrganizationMember.deleted_at.is_(None)
+            ).all()
+            for (m_org_type,) in member_orgs:
+                if m_org_type == 'ORGANIZER' and 'organizer' not in roles:
+                    roles.append('organizer')
+                elif m_org_type == 'EXHIBITOR' and 'exhibitor' not in roles:
+                    roles.append('exhibitor')
+        except Exception:
+            pass
+
         # Sync back to DB if new profile roles were discovered
         if set(roles) != set(user.roles or []):
             user.roles = roles
             from app.extensions.database import db
             db.session.commit()
 
-        active_role = user.active_role or (roles[0] if roles else "user")
+        if user.active_role and user.active_role in roles and user.active_role != "user":
+            active_role = user.active_role
+        elif "organizer" in roles:
+            active_role = "organizer"
+        elif "exhibitor" in roles:
+            active_role = "exhibitor"
+        else:
+            active_role = user.active_role or (roles[0] if roles else "user")
         user_dict["roles"] = roles
         user_dict["active_role"] = active_role
         user_dict["profiles"] = {
@@ -326,3 +361,86 @@ class AuthService:
         AuthRepository.update_password(data.email, hashed_password)
         otp_service.clear_verified(data.email)
         return {"message": "Password updated successfully"}
+
+    @staticmethod
+    def change_password(user_id, raw_data: dict) -> dict:
+        current_password = raw_data.get("current_password") or ""
+        new_password = raw_data.get("new_password") or ""
+        if not new_password or len(new_password) < 6:
+            raise ApiError("New password must be at least 6 characters long.", 400)
+
+        user = AuthRepository.get_user_by_id(user_id)
+        if not user:
+            raise ApiError("User not found", 404)
+
+        if current_password and not check_password_hash(user.password, current_password):
+            raise ApiError("Current temporary password is incorrect.", 400)
+
+        user_id_clean = user.id
+        user_email_clean = str(user.email).lower().strip()
+        user_name_clean = user.name or "Team Member"
+
+        hashed_password = generate_password_hash(new_password)
+        AuthRepository.update_user_password(user_id_clean, hashed_password)
+
+        # Auto-accept any pending organization invitations for this invited team member
+        try:
+            from app.extensions.database import db
+            from app.models.organization import OrganizationInvitation, OrganizationMember, Organization
+            from app.models.user import User
+            from datetime import datetime, timezone
+
+            pending_inv = db.session.query(OrganizationInvitation).filter(
+                OrganizationInvitation.invited_email == user_email_clean,
+                OrganizationInvitation.status == 'PENDING'
+            ).order_by(OrganizationInvitation.created_at.desc()).first()
+
+            if pending_inv:
+                existing_m = db.session.query(OrganizationMember).filter(
+                    OrganizationMember.organization_id == pending_inv.organization_id,
+                    OrganizationMember.user_id == user_id_clean
+                ).first()
+                if existing_m:
+                    existing_m.role_id = pending_inv.role_id
+                    existing_m.status = 'ACTIVE'
+                    existing_m.deleted_at = None
+                else:
+                    new_m = OrganizationMember(
+                        organization_id=pending_inv.organization_id,
+                        user_id=user_id_clean,
+                        role_id=pending_inv.role_id,
+                        title=pending_inv.invited_name or user_name_clean,
+                        status='ACTIVE'
+                    )
+                    db.session.add(new_m)
+
+                pending_inv.status = 'ACCEPTED'
+                pending_inv.accepted_at = datetime.now(timezone.utc)
+                pending_inv.accepted_by_user_id = user_id_clean
+
+                # Assign organization workspace role
+                org = db.session.query(Organization).filter_by(id=pending_inv.organization_id).first()
+                target_role = "exhibitor" if (org and org.org_type == "EXHIBITOR") else "organizer"
+                db_user = db.session.query(User).filter_by(id=user_id_clean).first()
+                if db_user:
+                    u_roles = list(db_user.roles) if db_user.roles else ["user"]
+                    if target_role not in u_roles:
+                        u_roles.append(target_role)
+                    db_user.roles = u_roles
+                    db_user.active_role = target_role
+                    db_user.must_change_password = False
+
+                db.session.commit()
+        except Exception as inv_err:
+            print(f"[WARN] Auto-accept invitation error: {inv_err}")
+            db.session.rollback()
+
+        updated_user = AuthService.get_current_user(user_id_clean)
+        return {
+            "success": True,
+            "message": "Password updated successfully. You can now access your dashboard.",
+            "data": {
+                "user": updated_user
+            },
+            "user": updated_user
+        }

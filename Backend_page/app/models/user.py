@@ -25,6 +25,7 @@ class User(db.Model):
     profile_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     organization_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     email_verified: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
+    must_change_password: Mapped[Optional[bool]] = mapped_column(Boolean, default=False, nullable=True)
 
     # Multi-currency & Locale support
     locale: Mapped[Optional[str]] = mapped_column(String(10), default='en_IN')
@@ -59,5 +60,6 @@ class User(db.Model):
             "locale": self.locale,
             "currency_preference": self.currency_preference,
             "timezone": self.timezone,
+            "must_change_password": bool(self.must_change_password) if self.must_change_password is not None else False,
             "is_deleted": bool(self.deleted_at),
         }

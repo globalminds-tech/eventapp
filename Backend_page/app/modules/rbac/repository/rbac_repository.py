@@ -9,32 +9,109 @@ from app.models.rbac import Role, Permission, RolePermission
 from app.models.organization import Organization, OrganizationMember, OrganizationInvitation
 from app.models.user import User
 from app.models.audit_log import AuditLog
+from werkzeug.security import generate_password_hash
+
 
 
 class RBACRepository:
 
     @staticmethod
-    def get_all_permissions() -> List[Dict[str, Any]]:
+    def get_all_permissions(scope: Optional[str] = None) -> List[Dict[str, Any]]:
         session = db_session()
         try:
-            perms = session.query(Permission).order_by(Permission.module, Permission.code).all()
+            query = session.query(Permission)
+            if scope:
+                clean_scope = scope.strip().upper()
+                if clean_scope in ["ORGANIZER", "EXHIBITOR"]:
+                    query = query.filter(Permission.scope.in_([clean_scope, "BOTH"]))
+            perms = query.order_by(Permission.module, Permission.name).all()
             return [p.to_dict() for p in perms]
         finally:
             session.close()
 
     @staticmethod
+    def create_permission(module: str, action: str, code: Optional[str], name: str, description: Optional[str] = None) -> Dict[str, Any]:
+        session = db_session()
+        try:
+            clean_module = module.strip().lower()
+            clean_action = action.strip().lower()
+            clean_code = code.strip().lower() if code else f"{clean_module}.{clean_action}"
+
+            existing = session.query(Permission).filter(Permission.code == clean_code).first()
+            if existing:
+                raise ValueError(f"Permission with code '{clean_code}' already exists.")
+
+            perm = Permission(
+                module=clean_module,
+                action=clean_action,
+                code=clean_code,
+                name=name.strip(),
+                description=description.strip() if description else None
+            )
+            session.add(perm)
+            session.commit()
+            return perm.to_dict()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    @staticmethod
+    def update_permission(permission_id: str, name: Optional[str] = None, description: Optional[str] = None) -> Dict[str, Any]:
+        session = db_session()
+        try:
+            perm = session.query(Permission).filter(Permission.id == permission_id).first()
+            if not perm:
+                raise ValueError(f"Permission '{permission_id}' not found.")
+
+            if name:
+                perm.name = name.strip()
+            if description is not None:
+                perm.description = description.strip() if description else None
+
+            session.commit()
+            return perm.to_dict()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    @staticmethod
+    def delete_permission(permission_id: str) -> bool:
+        session = db_session()
+        try:
+            perm = session.query(Permission).filter(Permission.id == permission_id).first()
+            if not perm:
+                raise ValueError(f"Permission '{permission_id}' not found.")
+
+            session.query(RolePermission).filter(RolePermission.permission_id == perm.id).delete()
+            session.delete(perm)
+            session.commit()
+            return True
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+
+    @staticmethod
     def get_roles_for_tenant(organization_id: Optional[str] = None) -> List[Dict[str, Any]]:
         session = db_session()
         try:
-            query = session.query(Role).options(joinedload(Role.role_permissions).joinedload(RolePermission.permission))\
-                .filter(Role.deleted_at.is_(None))
-            
-            if organization_id:
-                query = query.filter(or_(Role.organization_id.is_(None), Role.organization_id == organization_id))
-            else:
-                query = query.filter(Role.organization_id.is_(None))
+            if not organization_id:
+                return []
 
-            roles = query.order_by(Role.is_system_role.desc(), Role.name).all()
+            roles = session.query(Role).options(joinedload(Role.role_permissions).joinedload(RolePermission.permission))\
+                .filter(
+                    Role.organization_id == organization_id,
+                    Role.deleted_at.is_(None),
+                    ~Role.code.in_(["superadmin", "super_admin", "org_owner", "organizer_owner"])
+                )\
+                .order_by(Role.created_at.desc(), Role.name)\
+                .all()
             return [r.to_dict() for r in roles]
         finally:
             session.close()
@@ -187,8 +264,12 @@ class RBACRepository:
             ).all()
 
             if active_members:
+                m_names = [m.user.name or m.user.email for m in active_members if m.user]
+                names_str = ", ".join(m_names[:3]) if m_names else "active users"
+                if len(m_names) > 3:
+                    names_str += f" and {len(m_names) - 3} more"
                 if not reassign_role_id:
-                    raise ValueError(f"Cannot delete role: {len(active_members)} active members are currently assigned to it. Provide a replacement role.")
+                    raise ValueError(f"Cannot delete role: Currently assigned to {len(active_members)} active team member(s) ({names_str}). Please reassign or remove these members first.")
                 
                 # Validate replacement role
                 reassign_role = session.query(Role).filter(
@@ -225,16 +306,90 @@ class RBACRepository:
             session.close()
 
     @staticmethod
+    def update_member_status(
+        organization_id: str,
+        member_id: str,
+        status_val: str,
+        updated_by: str
+    ) -> Dict[str, Any]:
+        session = db_session()
+        try:
+            member = session.query(OrganizationMember).filter(
+                OrganizationMember.id == member_id,
+                OrganizationMember.organization_id == organization_id,
+                OrganizationMember.deleted_at.is_(None)
+            ).first()
+            if not member:
+                raise ValueError("Organization member not found.")
+
+            clean_status = status_val.strip().upper()
+            if clean_status not in ["ACTIVE", "DEACTIVATED", "SUSPENDED"]:
+                raise ValueError("Invalid status. Allowed values: ACTIVE, DEACTIVATED")
+
+            member.status = clean_status
+            member.updated_by = updated_by
+
+            audit = AuditLog(
+                organization_id=organization_id,
+                user_id=updated_by,
+                action="team.member_status",
+                resource_type="team_member",
+                resource_id=member.id,
+                after_state={"status": clean_status}
+            )
+            session.add(audit)
+            session.commit()
+            return member.to_dict()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    @staticmethod
     def get_organization_members(organization_id: str) -> List[Dict[str, Any]]:
         session = db_session()
         try:
+            # 1. Fetch active and deactivated members
             members = session.query(OrganizationMember)\
                 .options(joinedload(OrganizationMember.user), joinedload(OrganizationMember.role))\
                 .filter(
                     OrganizationMember.organization_id == organization_id,
                     OrganizationMember.deleted_at.is_(None)
                 ).order_by(OrganizationMember.joined_at.desc()).all()
-            return [m.to_dict() for m in members]
+            
+            result = [m.to_dict() for m in members]
+            active_emails = {m.user.email.lower() for m in members if m.user and m.user.email}
+
+            # 2. Fetch pending invitations for this organization
+            invitations = session.query(OrganizationInvitation)\
+                .options(joinedload(OrganizationInvitation.role))\
+                .filter(
+                    OrganizationInvitation.organization_id == organization_id,
+                    OrganizationInvitation.status == 'PENDING'
+                ).order_by(OrganizationInvitation.created_at.desc()).all()
+
+            for inv in invitations:
+                if inv.invited_email.lower() not in active_emails:
+                    result.append({
+                        "id": str(inv.id),
+                        "organization_id": str(inv.organization_id),
+                        "user_id": None,
+                        "role_id": str(inv.role_id),
+                        "role_name": inv.role.name if inv.role else "Custom Role",
+                        "role_code": inv.role.code if inv.role else None,
+                        "user_name": inv.invited_name or inv.invited_email.split("@")[0].capitalize(),
+                        "user_email": inv.invited_email,
+                        "title": inv.invited_name,
+                        "department": None,
+                        "status": "PENDING",
+                        "joined_at": None,
+                        "created_at": inv.created_at.isoformat() if inv.created_at else None,
+                        "is_deleted": False,
+                        "is_invitation": True
+                    })
+
+            return result
         finally:
             session.close()
 
@@ -253,9 +408,28 @@ class RBACRepository:
             if not role:
                 raise ValueError("Target role not found.")
 
-            # Check if user is already an active member of this organization
+            # Generate secure temporary password for direct onboarding
+            temp_password = f"BME#{secrets.token_hex(3).upper()}"
+            hashed_temp_pw = generate_password_hash(temp_password)
+
+            # Check if user already exists
             existing_user = session.query(User).filter(User.email == email.lower().strip(), User.deleted_at.is_(None)).first()
             if existing_user:
+                # Disallow inviting registered Organizers or Exhibitors as team members
+                from app.models.organizer_profile import OrganizerProfile
+                from app.models.exhibitor_profile import ExhibitorProfile
+
+                has_org_profile = session.query(OrganizerProfile).filter(OrganizerProfile.user_id == existing_user.id).first() is not None
+                has_exh_profile = session.query(ExhibitorProfile).filter(ExhibitorProfile.user_id == existing_user.id).first() is not None
+                owns_organization = session.query(Organization).filter(Organization.created_by == existing_user.id, Organization.deleted_at.is_(None)).first() is not None
+
+                if has_org_profile or has_exh_profile or owns_organization:
+                    user_type = "Event Organizer" if (has_org_profile or owns_organization) else "Exhibitor"
+                    raise ValueError(
+                        f"The email '{email}' is registered as an independent {user_type} on BookMyEvent. "
+                        f"Registered {user_type}s cannot be added as team members. Please invite a different email address."
+                    )
+
                 existing_member = session.query(OrganizationMember).filter(
                     OrganizationMember.organization_id == organization_id,
                     OrganizationMember.user_id == existing_user.id,
@@ -263,6 +437,23 @@ class RBACRepository:
                 ).first()
                 if existing_member:
                     raise ValueError(f"{email} is already an active member of this organization.")
+
+                # Re-invited team member: Update temporary password and force password change
+                existing_user.password = hashed_temp_pw
+                existing_user.must_change_password = True
+                session.flush()
+            else:
+                # Auto-provision user account with temporary password
+                new_user = User(
+                    email=email.lower().strip(),
+                    name=name or email.split("@")[0].capitalize(),
+                    password=hashed_temp_pw,
+                    active_role="user",
+                    roles=["user"],
+                    must_change_password=True
+                )
+                session.add(new_user)
+                session.flush()
 
             # Invalidate previous pending invitations for this email + org
             session.query(OrganizationInvitation).filter(
@@ -299,7 +490,9 @@ class RBACRepository:
             session.commit()
             result = invitation.to_dict()
             result["raw_token"] = raw_token # Returned only once for email dispatch
+            result["temp_password"] = temp_password
             return result
+
         except Exception as e:
             session.rollback()
             raise e
@@ -338,6 +531,7 @@ class RBACRepository:
                 "email": invitation.invited_email,
                 "name": invitation.invited_name,
                 "organization_name": invitation.organization.name if invitation.organization else "Organization",
+                "org_type": invitation.organization.org_type if invitation.organization else "ORGANIZER",
                 "role_name": invitation.role.name if invitation.role else "Member",
                 "is_existing_user": bool(existing_user),
                 "organization_id": str(invitation.organization_id),
@@ -362,20 +556,40 @@ class RBACRepository:
             if not user:
                 raise ValueError("User not found.")
 
-            # Add to organization_members
-            member = OrganizationMember(
-                organization_id=invitation.organization_id,
-                user_id=user.id,
-                role_id=invitation.role_id,
-                title=invitation.invited_name or user.name,
-                status='ACTIVE'
-            )
-            session.add(member)
+            # Upsert organization_members to avoid duplicate key issues
+            member = session.query(OrganizationMember).filter(
+                OrganizationMember.organization_id == invitation.organization_id,
+                OrganizationMember.user_id == user.id
+            ).first()
+            if member:
+                member.role_id = invitation.role_id
+                member.title = invitation.invited_name or user.name or member.title
+                member.status = 'ACTIVE'
+                member.deleted_at = None
+            else:
+                member = OrganizationMember(
+                    organization_id=invitation.organization_id,
+                    user_id=user.id,
+                    role_id=invitation.role_id,
+                    title=invitation.invited_name or user.name,
+                    status='ACTIVE'
+                )
+                session.add(member)
+            session.flush()
 
             # Mark invitation accepted
             invitation.status = 'ACCEPTED'
             invitation.accepted_at = datetime.now(timezone.utc)
             invitation.accepted_by_user_id = user.id
+
+            # Sync organization workspace role to user profile
+            org = session.query(Organization).filter_by(id=invitation.organization_id).first()
+            target_role = "exhibitor" if (org and org.org_type == "EXHIBITOR") else "organizer"
+            user_roles = list(user.roles) if user.roles else ["user"]
+            if target_role not in user_roles:
+                user_roles.append(target_role)
+            user.roles = user_roles
+            user.active_role = target_role
 
             audit = AuditLog(
                 organization_id=invitation.organization_id,
@@ -388,7 +602,12 @@ class RBACRepository:
             session.add(audit)
 
             session.commit()
-            return {"success": True, "organization_id": str(invitation.organization_id), "member_id": str(member.id)}
+            return {
+                "success": True,
+                "organization_id": str(invitation.organization_id),
+                "member_id": str(member.id),
+                "target_role": target_role
+            }
         except Exception as e:
             session.rollback()
             raise e
@@ -396,7 +615,7 @@ class RBACRepository:
             session.close()
 
     @staticmethod
-    def remove_member(organization_id: str, member_id: str, deleted_by: str) -> bool:
+    def remove_member(organization_id: str, member_id: str, deleted_by: str, hard_delete: bool = True) -> bool:
         session = db_session()
         try:
             member = session.query(OrganizationMember).filter(
@@ -405,16 +624,51 @@ class RBACRepository:
                 OrganizationMember.deleted_at.is_(None)
             ).first()
             if not member:
-                raise ValueError("Team member not found.")
+                # Check if it is a pending invitation to revoke or delete
+                inv = session.query(OrganizationInvitation).filter(
+                    OrganizationInvitation.id == member_id,
+                    OrganizationInvitation.organization_id == organization_id
+                ).first()
+                if inv:
+                    if hard_delete:
+                        session.delete(inv)
+                    else:
+                        inv.status = 'REVOKED'
+                    session.commit()
+                    return True
+                raise ValueError("Team member or invitation not found.")
 
             # Prevent deleting the organization owner
             org = session.query(Organization).filter(Organization.id == organization_id).first()
             if org and org.owner_id == member.user_id:
                 raise ValueError("Cannot remove the organization owner.")
 
-            member.deleted_at = datetime.now(timezone.utc)
-            member.deleted_by = deleted_by
-            member.status = 'DEACTIVATED'
+            # Check if there's any invitation for this user/email in this organization to clean up
+            target_user = session.query(User).filter_by(id=member.user_id).first()
+            if target_user and hard_delete:
+                session.query(OrganizationInvitation).filter(
+                    OrganizationInvitation.organization_id == organization_id,
+                    OrganizationInvitation.invited_email == target_user.email
+                ).delete(synchronize_session=False)
+
+                # Check if target user has any other active memberships or own organization
+                other_memberships = session.query(OrganizationMember).filter(
+                    OrganizationMember.user_id == target_user.id,
+                    OrganizationMember.id != member.id,
+                    OrganizationMember.deleted_at.is_(None)
+                ).count()
+                owns_org = session.query(Organization).filter(Organization.owner_id == target_user.id).count()
+                is_admin = any(r in ['organizer', 'exhibitor', 'superadmin'] for r in (target_user.roles or [])) and owns_org > 0
+
+                if other_memberships == 0 and not is_admin:
+                    session.delete(target_user)
+
+            if hard_delete:
+                session.delete(member)
+            else:
+                member.deleted_at = datetime.now(timezone.utc)
+                member.deleted_by = deleted_by
+                member.status = 'DEACTIVATED'
 
             audit = AuditLog(
                 organization_id=organization_id,
@@ -447,9 +701,22 @@ class RBACRepository:
                 all_perms = session.query(Permission.code).all()
                 return [p[0] for p in all_perms] + ["*"]
 
-            # If organization_id provided, query membership role
+            # If organization_id provided, query membership role or check ownership
             perms = set()
             if organization_id:
+                org = session.query(Organization).filter(
+                    Organization.id == organization_id,
+                    Organization.deleted_at.is_(None)
+                ).first()
+
+                # Primary organization owner has implicit full control over their organization's scope
+                if org and str(org.owner_id) == str(user_id):
+                    org_scope = (org.org_type or "ORGANIZER").upper()
+                    owner_perms = session.query(Permission.code).filter(
+                        Permission.scope.in_([org_scope, "BOTH"])
+                    ).all()
+                    return [p[0] for p in owner_perms] + [f"{org_scope.lower()}.*"]
+
                 member = session.query(OrganizationMember)\
                     .options(joinedload(OrganizationMember.role).joinedload(Role.role_permissions).joinedload(RolePermission.permission))\
                     .filter(

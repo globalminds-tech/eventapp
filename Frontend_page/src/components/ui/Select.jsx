@@ -100,6 +100,31 @@ export const Select = ({
   }, [open]);
 
   // Context value for compound components
+  // Sync selectedLabel when options or value changes
+  useEffect(() => {
+    if (options && currentValue !== undefined && currentValue !== null) {
+      const matched = options.find((opt) => {
+        const optVal = typeof opt === "object" ? opt.value : opt;
+        return String(optVal) === String(currentValue);
+      });
+      if (matched) {
+        setSelectedLabel(typeof matched === "object" ? matched.label : matched);
+      }
+    }
+  }, [options, currentValue]);
+
+  // Sync selectedLabel when children change
+  useEffect(() => {
+    if (children && currentValue !== undefined && currentValue !== null) {
+      React.Children.forEach(children, (child) => {
+        if (React.isValidElement(child) && String(child.props?.value) === String(currentValue)) {
+          const label = extractTextFromChildren(child.props.children);
+          if (label) setSelectedLabel(label);
+        }
+      });
+    }
+  }, [children, currentValue]);
+
   const contextValue = {
     value: currentValue,
     onValueChange: handleValueChange,
@@ -112,6 +137,7 @@ export const Select = ({
     selectedLabel,
     setSelectedLabel
   };
+
 
   // Determine if this is drop-in shortcut mode (options prop or direct SelectItem/option children)
   const isDirectChildren = React.Children.toArray(children).some(
@@ -231,13 +257,16 @@ SelectTrigger.displayName = "SelectTrigger";
 
 export const SelectValue = ({ placeholder = "Select an option", className = "" }) => {
   const { value, selectedLabel } = useSelect();
-  const display = selectedLabel || value;
+  
+  // Prevent displaying raw UUID strings
+  const isUuid = typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim());
+  const display = selectedLabel || (isUuid ? "" : value);
 
   return (
     <span
       className={cn(
         "truncate block",
-        !display ? "text-slate-400 font-normal" : "text-slate-800",
+        !display ? "text-slate-400 font-normal" : "text-slate-800 font-medium",
         className
       )}
     >
@@ -245,6 +274,20 @@ export const SelectValue = ({ placeholder = "Select an option", className = "" }
     </span>
   );
 };
+
+
+function extractTextFromChildren(children) {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+  if (Array.isArray(children)) {
+    return children.map(extractTextFromChildren).join("");
+  }
+  if (React.isValidElement(children) && children.props?.children) {
+    return extractTextFromChildren(children.props.children);
+  }
+  return "";
+}
 
 export const SelectContent = ({
   className = "",
@@ -260,7 +303,7 @@ export const SelectContent = ({
     <div
       ref={contentRef}
       className={cn(
-        "absolute z-50 left-0 right-0 top-[calc(100%+4px)] min-w-[8rem] overflow-hidden rounded-xl border border-slate-200/90 bg-white p-1 text-slate-800 shadow-xl animate-in fade-in-80 zoom-in-95 duration-100 max-h-64 overflow-y-auto",
+        "absolute z-[100] left-0 right-0 top-[calc(100%+4px)] min-w-[8rem] rounded-xl border border-slate-200/90 bg-white p-1 text-slate-800 shadow-2xl animate-in fade-in-80 zoom-in-95 duration-100 max-h-60 overflow-y-auto",
         className
       )}
       {...props}
@@ -279,19 +322,19 @@ export const SelectItem = ({
 }) => {
   const { value, onValueChange, setSelectedLabel } = useSelect();
   const isSelected = String(value) === String(itemValue);
+  const itemText = React.useMemo(() => extractTextFromChildren(children), [children]);
 
   // Sync label if this item is currently selected
   useEffect(() => {
-    if (isSelected && typeof children === "string") {
-      setSelectedLabel(children);
+    if (isSelected && itemText) {
+      setSelectedLabel(itemText);
     }
-  }, [isSelected, children, setSelectedLabel]);
+  }, [isSelected, itemText, setSelectedLabel]);
 
   const handleSelect = (e) => {
     e.stopPropagation();
     if (!disabled) {
-      const label = typeof children === "string" ? children : undefined;
-      onValueChange(itemValue, label);
+      onValueChange(itemValue, itemText || undefined);
     }
   };
 

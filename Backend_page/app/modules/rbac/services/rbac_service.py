@@ -4,13 +4,33 @@ from app.modules.rbac.repository.rbac_repository import RBACRepository
 from app.Services.mail_service import send_team_invitation_email
 from app.extensions.database import db_session
 from app.models.organization import Organization
+from app.config import Config
 
 
 class RBACService:
 
     @staticmethod
-    def get_permissions() -> List[Dict[str, Any]]:
-        return RBACRepository.get_all_permissions()
+    def get_permissions(scope: Optional[str] = None) -> List[Dict[str, Any]]:
+        return RBACRepository.get_all_permissions(scope=scope)
+
+    @staticmethod
+    def create_permission(module: str, action: str, code: Optional[str], name: str, description: Optional[str] = None) -> Dict[str, Any]:
+        if not module or not module.strip():
+            raise ValueError("Module / Screen name is required.")
+        if not action or not action.strip():
+            raise ValueError("Action name is required.")
+        if not name or not name.strip():
+            raise ValueError("Display name is required.")
+        return RBACRepository.create_permission(module, action, code, name, description)
+
+    @staticmethod
+    def update_permission(permission_id: str, name: Optional[str] = None, description: Optional[str] = None) -> Dict[str, Any]:
+        return RBACRepository.update_permission(permission_id, name, description)
+
+    @staticmethod
+    def delete_permission(permission_id: str) -> bool:
+        return RBACRepository.delete_permission(permission_id)
+
 
     @staticmethod
     def get_roles(organization_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -105,6 +125,7 @@ class RBACService:
 
         role_name = invite_data.get("role_name") or "Team Member"
         raw_token = invite_data.get("raw_token")
+        temp_password = invite_data.get("temp_password")
 
         # Dispatch async/background email safely
         try:
@@ -113,7 +134,8 @@ class RBACService:
                 name=name.strip() if name else "Team Member",
                 org_name=org_name,
                 role_name=role_name,
-                raw_token=raw_token
+                raw_token=raw_token,
+                temp_password=temp_password
             )
         except Exception as err:
             print(f"[WARN] Failed to send team invitation email: {err}")
@@ -125,8 +147,17 @@ class RBACService:
             "role_name": role_name,
             "status": invite_data["status"],
             "expires_at": invite_data["expires_at"],
-            "invite_link": f"http://localhost:5173/accept-invite?token={raw_token}"
+            "invite_link": f"{Config.FRONTEND_URL}/accept-invite?token={raw_token}"
         }
+
+    @staticmethod
+    def update_member_status(
+        organization_id: str,
+        member_id: str,
+        status_val: str,
+        updated_by: str
+    ) -> Dict[str, Any]:
+        return RBACRepository.update_member_status(organization_id, member_id, status_val, updated_by)
 
     @staticmethod
     def verify_invitation(token: str) -> Dict[str, Any]:
@@ -141,11 +172,12 @@ class RBACService:
         return RBACRepository.accept_invitation(token.strip(), user_id)
 
     @staticmethod
-    def remove_member(organization_id: str, member_id: str, deleted_by: str) -> bool:
+    def remove_member(organization_id: str, member_id: str, deleted_by: str, hard_delete: bool = True) -> bool:
         return RBACRepository.remove_member(
             organization_id=organization_id,
             member_id=member_id,
-            deleted_by=deleted_by
+            deleted_by=deleted_by,
+            hard_delete=hard_delete
         )
 
     @staticmethod
