@@ -80,10 +80,81 @@ import Profile from "./features/organizer/settings/pages/ProfilePage";
 import MyPassesPage from "./features/users/pages/MyPassesPage";
 import AcceptInvitationPage from "./features/auth/pages/AcceptInvitationPage";
 import TeamManagementPage from "./features/organizer/team/pages/TeamManagementPage";
-import { PermissionProvider } from "./shared/context/PermissionContext";
+import { PermissionProvider, usePermissions } from "./shared/context/PermissionContext";
 import { useSelector } from "react-redux";
 import FirstLoginPasswordModal from "./components/FirstLoginPasswordModal";
 import MasterDataPage from "./features/organizer/master-data/pages/MasterDataPage";
+
+// Smart Index Redirect for Organizers: routes to first permitted tool if dashboard is prohibited
+function OrganizerIndexRedirect() {
+  const { hasPermission, loading, permissions } = usePermissions();
+
+  if (loading && permissions.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center py-20 text-slate-400">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          <span>Loading workspace...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasPermission("dashboard.view")) {
+    return <Organizerdashboard />;
+  }
+
+  if (hasPermission("checkin.scan") || hasPermission("checkin.view")) {
+    return <Navigate to="/OrganizerHome/EventCheckIn" replace />;
+  }
+  if (hasPermission("stalls.view")) {
+    return <Navigate to="/OrganizerHome/Manage_Stall" replace />;
+  }
+  if (hasPermission("team.view") || hasPermission("roles.view") || hasPermission("roles.manage")) {
+    return <Navigate to="/OrganizerHome/TeamManagement" replace />;
+  }
+  if (hasPermission("finance.view")) {
+    return <Navigate to="/OrganizerHome/Receipt" replace />;
+  }
+  if (hasPermission("master_data.view")) {
+    return <Navigate to="/OrganizerHome/MasterData" replace />;
+  }
+  return <Navigate to="/profile" replace />;
+}
+
+// Smart Index Redirect for Exhibitors: routes to first permitted tool if booth dashboard is prohibited
+function ExhibitorIndexRedirect() {
+  const { hasPermission, loading, permissions } = usePermissions();
+
+  if (loading && permissions.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center py-20 text-slate-400">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <span>Loading portal...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasPermission("exhibitor.dashboard.view")) {
+    return <ExhibitorHome />;
+  }
+
+  if (hasPermission("exhibitor.stalls.view")) {
+    return <Navigate to="/exhibitor/my-bookings" replace />;
+  }
+  if (hasPermission("exhibitor.events.browse")) {
+    return <Navigate to="/exhibitor/upcoming-events" replace />;
+  }
+  if (hasPermission("exhibitor.leads.view")) {
+    return <Navigate to="/exhibitor/leads" replace />;
+  }
+  if (hasPermission("exhibitor.team.view")) {
+    return <Navigate to="/exhibitor/team" replace />;
+  }
+  return <Navigate to="/profile" replace />;
+}
 
 export default function App() {
   const location = useLocation();
@@ -153,8 +224,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Organizerdashboard />} />
-              <Route path="Organizerdashboard" element={<Organizerdashboard />} />
+              <Route index element={<OrganizerIndexRedirect />} />
+              <Route path="Organizerdashboard" element={<PermissionRoute required="dashboard.view"><Organizerdashboard /></PermissionRoute>} />
               <Route path="livedashboard" element={<LiveDashboard />} />
               <Route path="livedashfoodboard" element={<LiveFoodDashboard />} />
               <Route path="Complaint_page" element={<ComplaintPage />} />
@@ -197,7 +268,7 @@ export default function App() {
               <Route path="User" element={<User />} />
               <Route path="AddonCheckIn" element={<Addoncheckinout />} />
               <Route path="Sportbooking" element={<Sportbooking />} />
-              <Route path="MasterData" element={<MasterDataPage />} />
+              <Route path="MasterData" element={<PermissionRoute required="master_data.view"><MasterDataPage /></PermissionRoute>} />
             </Route>
 
             {/* ── TIER 4: EXHIBITOR PORTAL (Single Parent Guard) ── */}
@@ -209,8 +280,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<ExhibitorHome />} />
-              <Route path="dashboard" element={<ExhibitorHome />} />
+              <Route index element={<ExhibitorIndexRedirect />} />
+              <Route path="dashboard" element={<PermissionRoute required="exhibitor.dashboard.view"><ExhibitorHome /></PermissionRoute>} />
               <Route path="my-bookings" element={<PermissionRoute required="exhibitor.stalls.view"><Exhibitormybooking /></PermissionRoute>} />
               <Route path="my-bookings/:id" element={<PermissionRoute required="exhibitor.stalls.view"><ExhibitorBookingDetail /></PermissionRoute>} />
               <Route path="upcoming-events" element={<PermissionRoute required="exhibitor.events.browse"><ExhibitorUpcomingEvent /></PermissionRoute>} />

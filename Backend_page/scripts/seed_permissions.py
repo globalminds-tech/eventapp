@@ -44,7 +44,17 @@ MASTER_PERMISSIONS = [
 
     # Venues & Logistics
     {"module": "venues", "action": "view", "code": "venues.view", "name": "View Venues", "description": "Can browse venue directory and floor layouts"},
-    {"module": "venues", "action": "manage", "code": "venues.manage", "name": "Manage Venues", "description": "Can create and update venues and attach documents"}
+    {"module": "venues", "action": "manage", "code": "venues.manage", "name": "Manage Venues", "description": "Can create and update venues and attach documents"},
+
+    # Master Data & Directories
+    {"module": "master_data", "action": "view", "code": "master_data.view", "name": "View Master Data", "description": "Can browse master directories: Venues, Vendors, Policies, and Sponsors", "scope": "ORGANIZER"},
+    {"module": "master_data", "action": "create", "code": "master_data.create", "name": "Create Master Data", "description": "Can add new Venues, Vendors, Policies, and Sponsors", "scope": "ORGANIZER"},
+    {"module": "master_data", "action": "edit", "code": "master_data.edit", "name": "Edit Master Data", "description": "Can update existing Venues, Vendors, Policies, and Sponsors", "scope": "ORGANIZER"},
+    {"module": "master_data", "action": "delete", "code": "master_data.delete", "name": "Delete Master Data", "description": "Can remove Venues, Vendors, Policies, and Sponsors", "scope": "ORGANIZER"},
+
+    # Dashboard & Executive Analytics
+    {"module": "dashboard", "action": "view", "code": "dashboard.view", "name": "View Executive Dashboard", "description": "Can access executive analytics, revenue KPIs, and event statistics", "scope": "ORGANIZER"},
+    {"module": "exhibitor_dashboard", "action": "view", "code": "exhibitor.dashboard.view", "name": "View Booth Dashboard", "description": "Can view stall booking metrics, lead counters, and booth overview", "scope": "EXHIBITOR"}
 ]
 
 def seed_permissions():
@@ -55,13 +65,15 @@ def seed_permissions():
         updated = 0
         for item in MASTER_PERMISSIONS:
             existing = session.query(Permission).filter_by(code=item["code"]).first()
+            scope_val = item.get("scope", "ORGANIZER")
             if not existing:
                 perm = Permission(
                     module=item["module"],
                     action=item["action"],
                     code=item["code"],
                     name=item["name"],
-                    description=item["description"]
+                    description=item["description"],
+                    scope=scope_val
                 )
                 session.add(perm)
                 inserted += 1
@@ -70,10 +82,33 @@ def seed_permissions():
                 existing.action = item["action"]
                 existing.name = item["name"]
                 existing.description = item["description"]
+                existing.scope = scope_val
                 updated += 1
 
         session.commit()
         print(f"[SUCCESS] Permissions seeded directly in DB: {inserted} inserted, {updated} updated, {len(MASTER_PERMISSIONS)} total.")
+
+        # Map Master Data & Dashboard permissions to system roles:
+        # 1: Super Admin, 2: Organization Owner, 3: Event Manager, 4: Finance Manager
+        target_role_ids = [
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000003",
+            "00000000-0000-0000-0000-000000000004",
+        ]
+        relevant_perms = session.query(Permission).filter(Permission.module.in_(["master_data", "dashboard"])).all()
+        assigned_count = 0
+        for role_id in target_role_ids:
+            role = session.query(Role).filter_by(id=role_id).first()
+            if role:
+                for p in relevant_perms:
+                    exists = session.query(RolePermission).filter_by(role_id=role.id, permission_id=p.id).first()
+                    if not exists:
+                        session.add(RolePermission(role_id=role.id, permission_id=p.id))
+                        assigned_count += 1
+
+        session.commit()
+        print(f"[SUCCESS] Assigned {assigned_count} master data and dashboard permissions to default roles.")
         return True
     except Exception as e:
         session.rollback()

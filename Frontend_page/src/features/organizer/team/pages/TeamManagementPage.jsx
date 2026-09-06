@@ -7,7 +7,7 @@ import {
   Users, Shield, Plus, Mail, Trash2, CheckCircle, Clock, AlertCircle,
   X, Check, Lock, UserPlus, Layers, Key, ArrowLeft, Edit3, Sparkles,
   AlertTriangle, XCircle, UserCheck, UserX, Eye, CheckCircle2, Calendar,
-  Store, QrCode, Landmark, Building2, Loader2
+  Store, QrCode, Landmark, Building2, Loader2, Database, LayoutDashboard
 } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -105,8 +105,8 @@ export default function TeamManagementPage({ userScope }) {
         checkboxTick: "text-emerald-600 focus:ring-emerald-500",
         focusBorder: "focus:border-emerald-500",
         dotColor: "bg-emerald-500",
-        activeTabRing: "ring-1 ring-emerald-500/20 border-slate-200/60 text-emerald-800",
-        activeTabBadge: "bg-emerald-100 text-emerald-800",
+        activeTabGradient: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs",
+        activeTabBadge: "bg-white/20 text-white",
       }
     : {
         roleBadge: "bg-cyan-50 text-cyan-700 border-cyan-100",
@@ -118,8 +118,8 @@ export default function TeamManagementPage({ userScope }) {
         checkboxTick: "text-cyan-600 focus:ring-cyan-500",
         focusBorder: "focus:border-cyan-500",
         dotColor: "bg-cyan-500",
-        activeTabRing: "ring-1 ring-cyan-500/20 border-slate-200/60 text-cyan-800",
-        activeTabBadge: "bg-cyan-100 text-cyan-800",
+        activeTabGradient: "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white shadow-xs",
+        activeTabBadge: "bg-white/20 text-white",
       };
 
   const fetchData = async () => {
@@ -452,10 +452,16 @@ export default function TeamManagementPage({ userScope }) {
       case "team":
       case "roles":
         return { label: "Organization & Team Governance", icon: Shield, color: "text-cyan-600 bg-cyan-50 border-cyan-200" };
+      case "dashboard":
+        return { label: "Executive Dashboard", icon: LayoutDashboard, color: "text-sky-600 bg-sky-50 border-sky-200" };
       case "venues":
         return { label: "Venue & Hall Management", icon: Building2, color: "text-indigo-600 bg-indigo-50 border-indigo-200" };
+      case "master_data":
+        return { label: "Master Data & Directories", icon: Database, color: "text-purple-600 bg-purple-50 border-purple-200" };
 
       // Exhibitor Modules
+      case "exhibitor_dashboard":
+        return { label: "Booth Dashboard", icon: LayoutDashboard, color: "text-emerald-600 bg-emerald-50 border-emerald-200" };
       case "exhibitor_events":
         return { label: "Upcoming Expos & Floorplans", icon: Calendar, color: "text-blue-600 bg-blue-50 border-blue-200" };
       case "exhibitor_stalls":
@@ -965,48 +971,52 @@ export default function TeamManagementPage({ userScope }) {
         </div>
       </div>
 
-      {/* Redesigned Sleek Segmented Tab Navigation with Zero-Jerk Transitions */}
+      {/* ── TABS BAR (Clean Pill Style matching Master Data & Create Event) ── */}
       {(canViewTeam || canViewRoles) && (
-        <div className="inline-flex items-center gap-1.5 rounded-2xl border border-slate-200/80 bg-slate-100/90 p-1.5 shadow-inner">
+        <div className="flex flex-wrap items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/80 w-fit gap-1">
           {canViewTeam && (
             <button
               onClick={() => setActiveTab("members")}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-colors duration-150 border ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-extrabold transition-all cursor-pointer border-none ${
                 activeTab === "members"
-                  ? `bg-white shadow-xs ${theme.activeTabRing}`
-                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  ? `${theme.activeTabGradient}`
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60 bg-transparent"
               }`}
             >
-              <Users className="h-4 w-4" />
-              Team Members
-              <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                  activeTab === "members" ? theme.activeTabBadge : "bg-slate-200 text-slate-600"
-                }`}
-              >
-                {members.length}
-              </span>
+              <Users size={14} className={activeTab === "members" ? "text-white" : "text-slate-500"} />
+              <span>Team Members</span>
+              {members.length > 0 && (
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    activeTab === "members" ? theme.activeTabBadge : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {members.length}
+                </span>
+              )}
             </button>
           )}
 
           {canViewRoles && (
             <button
               onClick={() => setActiveTab("roles")}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-colors duration-150 border ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-extrabold transition-all cursor-pointer border-none ${
                 activeTab === "roles"
-                  ? `bg-white shadow-xs ${theme.activeTabRing}`
-                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  ? `${theme.activeTabGradient}`
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/60 bg-transparent"
               }`}
             >
-              <Shield className="h-4 w-4" />
-              Roles & Permissions
-              <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                  activeTab === "roles" ? theme.activeTabBadge : "bg-slate-200 text-slate-600"
-                }`}
-              >
-                {roles.length}
-              </span>
+              <Shield size={14} className={activeTab === "roles" ? "text-white" : "text-slate-500"} />
+              <span>Roles & Permissions</span>
+              {roles.length > 0 && (
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    activeTab === "roles" ? theme.activeTabBadge : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {roles.length}
+                </span>
+              )}
             </button>
           )}
         </div>

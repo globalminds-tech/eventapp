@@ -78,14 +78,15 @@ export function PermissionProvider({ children }) {
       // Fallback: If Organizer Owner, grant standard organizer permissions
       if (userRoles.includes("organizer") && !isExhibitorPortal) {
         setPermissions([
-          "events.view", "events.create", "events.edit", "events.delete", "events.publish",
+          "dashboard.view", "events.view", "events.create", "events.edit", "events.delete", "events.publish",
           "stalls.view", "stalls.create", "stalls.edit", "stalls.approve", "stalls.delete",
-          "checkin.view", "checkin.scan", "finance.view", "team.view", "roles.view", "organizer.*"
+          "checkin.view", "checkin.scan", "finance.view", "team.view", "roles.view",
+          "master_data.view", "master_data.create", "master_data.edit", "master_data.delete", "organizer.*"
         ]);
         lastFetchedKeyRef.current = cacheKey;
       } else if (userRoles.includes("exhibitor") && isExhibitorPortal) {
         setPermissions([
-          "exhibitor.events.browse", "exhibitor.stalls.book", "exhibitor.stalls.view", "exhibitor.stalls.manage",
+          "exhibitor.dashboard.view", "exhibitor.events.browse", "exhibitor.stalls.book", "exhibitor.stalls.view", "exhibitor.stalls.manage",
           "exhibitor.leads.view", "exhibitor.leads.export", "exhibitor.leads.scan",
           "exhibitor.booth.manage", "exhibitor.billing.view",
           "exhibitor.team.view", "exhibitor.team.invite", "exhibitor.team.edit", "exhibitor.team.remove", "exhibitor.roles.manage", "exhibitor.*"
