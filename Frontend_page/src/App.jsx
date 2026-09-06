@@ -83,6 +83,7 @@ import TeamManagementPage from "./features/organizer/team/pages/TeamManagementPa
 import { PermissionProvider } from "./shared/context/PermissionContext";
 import { useSelector } from "react-redux";
 import FirstLoginPasswordModal from "./components/FirstLoginPasswordModal";
+import MasterDataPage from "./features/organizer/master-data/pages/MasterDataPage";
 
 export default function App() {
   const location = useLocation();
@@ -196,6 +197,7 @@ export default function App() {
               <Route path="User" element={<User />} />
               <Route path="AddonCheckIn" element={<Addoncheckinout />} />
               <Route path="Sportbooking" element={<Sportbooking />} />
+              <Route path="MasterData" element={<MasterDataPage />} />
             </Route>
 
             {/* ── TIER 4: EXHIBITOR PORTAL (Single Parent Guard) ── */}

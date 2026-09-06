@@ -3,6 +3,7 @@ import { getPolicies, createPolicy } from "@/Services/api";
 import { useSelector } from "react-redux";
 import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
+import AddPolicyModal from "../../../master-data/components/AddPolicyModal";
 
 const Step5Terms = ({ formData, setFormData }) => {
   const [policyData, setPolicyData] = useState({});
@@ -15,13 +16,7 @@ const Step5Terms = ({ formData, setFormData }) => {
   const [viewDescription, setViewDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
-  const [newPolicy, setNewPolicy] = useState({
-    policy_name: "",
-    policy_type: "",
-    policy_group: "",
-    description: "",
-    status: "Active"
-  });
+
   const [editingIndex, setEditingIndex] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,35 +54,6 @@ const Step5Terms = ({ formData, setFormData }) => {
     }
   }, [organizer?.id]);
 
-  const DEFAULT_POLICIES = {
-    "Cancellation Policy": {
-      "General Cancellation": {
-        "Standard 48-Hour Refund Policy": "Full refund available up to 48 hours before event start date.",
-        "Non-Refundable Ticket": "Tickets are strictly non-refundable once purchased.",
-        "Partial 50% Refund": "50% refund available up to 7 days prior to the event."
-      },
-      "Event Reschedule": {
-        "Reschedule Ticket Validity": "Tickets will automatically transfer to the new date if event is rescheduled."
-      }
-    },
-    "Refund Policy": {
-      "Payment Return": {
-        "5-7 Business Days Payout": "Refunds will be credited to original payment method within 5-7 business days."
-      }
-    },
-    "Safety Policy": {
-      "Venue Security": {
-        "Mandatory Government ID Verification": "All attendees must present a valid government-issued photo ID at entry.",
-        "Prohibited Items Policy": "Outside food, weapons, and hazardous items are strictly prohibited."
-      }
-    },
-    "Privacy Policy": {
-      "Data Collection": {
-        "Attendee Contact Usage": "Your details are used solely for event badge generation and gate entry check-in."
-      }
-    }
-  };
-
   const fetchPolicies = async () => {
     try {
       const res = await getPolicies(organizer?.id || 1);
@@ -111,14 +77,10 @@ const Step5Terms = ({ formData, setFormData }) => {
         Object.assign(grouped, data);
       }
 
-      if (Object.keys(grouped).length > 0) {
-        setPolicyData(grouped);
-      } else {
-        setPolicyData(DEFAULT_POLICIES);
-      }
+      setPolicyData(grouped);
     } catch (error) {
-      console.error("Failed to load policies, using defaults", error);
-      setPolicyData(DEFAULT_POLICIES);
+      console.error("Failed to load policies", error);
+      setPolicyData({});
     }
   };
 
@@ -259,32 +221,7 @@ const Step5Terms = ({ formData, setFormData }) => {
     showNotification("You can now edit the selected policy", "success");
   };
 
-  const handleCreatePolicy = async (e) => {
-    e.preventDefault();
-    const errors = {};
-    if (!newPolicy.policy_name.trim()) errors.policy_name = "Policy name is required";
-    if (!newPolicy.policy_type) errors.policy_type = "Policy Type is required";
-    if (!newPolicy.policy_group) errors.policy_group = "Policy Group is required";
 
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await createPolicy({ ...newPolicy, organizer_id: organizer.id });
-      await fetchPolicies();
-      showNotification("Policy created successfully!");
-      setShowAddModal(false);
-      setNewPolicy({ policy_name: "", policy_type: "", policy_group: "", description: "", status: "Active" });
-      setFieldErrors({});
-    } catch (error) {
-      console.error("Failed to create policy", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -350,16 +287,7 @@ const Step5Terms = ({ formData, setFormData }) => {
                       >
                         All Groups
                       </div>
-                      {Array.from(new Set([
-                        "Cancellation Policy",
-                        "Refund Policy",
-                        "Safety Policy",
-                        "Privacy Policy",
-                        "Payment Policy",
-                        "Paper Submission Guidelines",
-                        "Registration Policy",
-                        ...Object.keys(policyData)
-                      ])).map((group) => (
+                      {Object.keys(policyData).map((group) => (
                         <div
                           key={group}
                           onClick={() => { setPolicyGroup(group); setPolicyType(""); setPolicyName(""); setIsGroupOpen(false); }}
@@ -628,84 +556,14 @@ const Step5Terms = ({ formData, setFormData }) => {
       )}
 
       {/* MODAL: ADD NEW POLICY (RE-PREMIUMIZED) */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex justify-center items-center z-[5000] p-4">
-          <div className="w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
-            <div className="flex justify-between items-center px-12 py-8 bg-slate-50 border-b border-slate-100">
-              <div>
-                <h2 className="text-2xl font-black text-slate-800 tracking-tight ">Master Policy Creator</h2>
-                <p className="text-[10px] font-bold text-slate-400  tracking-[0.2em] mt-1">Register new criteria in your database</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 shadow-sm border border-slate-100 transition-all">
-                <X size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreatePolicy} className="p-12 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Policy Name</label>
-                  <input
-                    value={newPolicy.policy_name}
-                    onChange={(e) => setNewPolicy({ ...newPolicy, policy_name: e.target.value })}
-                    className="w-full px-6 py-4 rounded-full bg-slate-50 border-none focus:ring-2 focus:ring-purple-500 text-sm font-bold text-slate-700 shadow-inner"
-                    placeholder="e.g. Exhibitor Safety"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Select
-                    label="Policy Type"
-                    value={newPolicy.policy_type}
-                    onValueChange={(val) => setNewPolicy({ ...newPolicy, policy_type: val })}
-                    placeholder="Select Category"
-                    triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-11 text-xs font-semibold focus:ring-cyan-500"
-                  >
-                    <SelectItem value="Exhibitor">Exhibitor</SelectItem>
-                    <SelectItem value="Visitor">Visitor</SelectItem>
-                    <SelectItem value="Vendor">Vendor</SelectItem>
-                  </Select>
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <Select
-                    label="Policy Group"
-                    value={newPolicy.policy_group}
-                    onValueChange={(val) => setNewPolicy({ ...newPolicy, policy_group: val })}
-                    placeholder="Select Grouping"
-                    triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-11 text-xs font-semibold focus:ring-cyan-500"
-                  >
-                    <SelectItem value="Cancellation Policy">Cancellation Policy</SelectItem>
-                    <SelectItem value="Refund Policy">Refund Policy</SelectItem>
-                    <SelectItem value="Safety Policy">Safety Policy</SelectItem>
-                    <SelectItem value="Privacy Policy">Privacy Policy</SelectItem>
-                    <SelectItem value="Payment Policy">Payment Policy</SelectItem>
-                    <SelectItem value="Paper Submission Guidelines">Paper Submission Guidelines</SelectItem>
-                    <SelectItem value="Registration Policy">Registration Policy</SelectItem>
-                  </Select>
-                </div>
-                <div className="md:col-span-2 space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2 ml-1">Detailed Description</label>
-                  <textarea
-                    value={newPolicy.description}
-                    onChange={(e) => setNewPolicy({ ...newPolicy, description: e.target.value })}
-                    rows="4"
-                    className="w-full px-8 py-6 rounded-[2rem] bg-slate-50 border-none focus:ring-2 focus:ring-purple-500 text-sm font-medium text-slate-600 shadow-inner resize-none leading-relaxed"
-                    placeholder="Elaborate on the policy details here..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-5 pt-8">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 py-2 text-[10px] font-black text-slate-300 hover:text-slate-600  tracking-[0.2em] transition-all">
-                  Discard
-                </button>
-                <button type="submit" disabled={loading} className="px-12 py-4 bg-slate-900 text-white rounded-full font-black text-xs  tracking-widest shadow-2xl shadow-slate-200 hover:scale-105 active:scale-95 transition-all disabled:opacity-50">
-                  {loading ? "Synching..." : "Register Policy"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddPolicyModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          fetchPolicies();
+          setShowAddModal(false);
+        }}
+      />
     </div>
   );
 };
