@@ -6,6 +6,7 @@ import { setUser } from "@/app/store/userSlice";
 import { getUserAvailableRoles } from "@/shared/services/authHelper";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { ShieldCheck } from "lucide-react";
+import FirstLoginPasswordModal from "./FirstLoginPasswordModal";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const dispatch = useDispatch();
@@ -108,6 +109,50 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     const returnUrl = encodeURIComponent(location.pathname + location.search);
     console.warn(`[ProtectedRoute] Unauthenticated access to "${location.pathname}". Redirecting to /login?returnUrl=${returnUrl}`);
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;
+  }
+
+  // 5.5. Mandatory First-Time Password Reset Lock
+  const mustChangePassword = Boolean(
+    reduxAuth?.user?.must_change_password ||
+    reduxUser?.must_change_password ||
+    (() => {
+      try {
+        const u = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+        return u?.must_change_password;
+      } catch {
+        return false;
+      }
+    })()
+  );
+
+  if (mustChangePassword) {
+    let effectiveUser = reduxAuth?.user || reduxUser;
+    try {
+      if (!effectiveUser?.email) {
+        effectiveUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+      }
+    } catch {}
+
+    return (
+      <FirstLoginPasswordModal
+        isOpen={true}
+        user={effectiveUser}
+        token={token}
+        onSuccess={(user) => {
+          const roles = user?.roles || [];
+          const role = user?.active_role || user?.role || (roles.includes("organizer") ? "organizer" : "user");
+          if (roles.includes("superuser") || roles.includes("superadmin")) {
+            window.location.replace("/superuser/dashboard");
+          } else if (role === "organizer" || roles.includes("organizer")) {
+            window.location.replace("/OrganizerHome");
+          } else if (role === "exhibitor" || roles.includes("exhibitor")) {
+            window.location.replace("/exhibitor");
+          } else {
+            window.location.replace("/");
+          }
+        }}
+      />
+    );
   }
 
   // 6. Role permission evaluation

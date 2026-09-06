@@ -54,6 +54,7 @@ class Permission(db.Model):
     code: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)  # events.view, events.create
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    scope: Mapped[str] = mapped_column(String(50), default='ORGANIZER', nullable=False) # ORGANIZER, EXHIBITOR, BOTH
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def to_dict(self):
@@ -63,7 +64,8 @@ class Permission(db.Model):
             "action": self.action,
             "code": self.code,
             "name": self.name,
-            "description": self.description
+            "description": self.description,
+            "scope": self.scope
         }
 
 

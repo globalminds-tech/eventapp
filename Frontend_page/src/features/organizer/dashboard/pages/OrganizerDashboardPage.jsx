@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Select, SelectItem } from "@/components/ui/Select";
+import Can from "@/components/Can";
 
 export default function OrganizerDashboardPage() {
   const navigate = useNavigate();
@@ -198,13 +199,15 @@ export default function OrganizerDashboardPage() {
             <span>Refresh Data</span>
           </Button>
 
-          <Button
-            onClick={() => navigate("/OrganizerHome/CreateEvent")}
-            className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl border-none cursor-pointer gap-2 shadow-md shadow-cyan-500/25 hover:opacity-95 transition-all"
-          >
-            <PlusCircle size={16} />
-            <span>+ Create New Event</span>
-          </Button>
+          <Can I="events.create">
+            <Button
+              onClick={() => navigate("/OrganizerHome/CreateEvent")}
+              className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl border-none cursor-pointer gap-2 shadow-md shadow-cyan-500/25 hover:opacity-95 transition-all"
+            >
+              <PlusCircle size={16} />
+              <span>+ Create New Event</span>
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -483,27 +486,33 @@ export default function OrganizerDashboardPage() {
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleView(evt)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
-                            title="View Event Details"
-                          >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(evt)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
-                            title="Edit Event"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleGateScanner(evt)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer border border-slate-200"
-                            title="Gate Check In"
-                          >
-                            <QrCode size={15} />
-                          </button>
+                          <Can I="events.view">
+                            <button
+                              onClick={() => handleView(evt)}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
+                              title="View Event Details"
+                            >
+                              <Eye size={15} />
+                            </button>
+                          </Can>
+                          <Can I="events.edit">
+                            <button
+                              onClick={() => handleEdit(evt)}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
+                              title="Edit Event"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                          </Can>
+                          <Can anyOf={["checkin.view", "checkin.scan"]}>
+                            <button
+                              onClick={() => handleGateScanner(evt)}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer border border-slate-200"
+                              title="Gate Check In"
+                            >
+                              <QrCode size={15} />
+                            </button>
+                          </Can>
                         </div>
                       </td>
                     </tr>

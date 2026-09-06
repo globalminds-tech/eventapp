@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import axios from "axios";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { ENV } from "@/config/env";
-import { setCredentials, setAuthLoading } from "@/app/store/authSlice";
+import { setCredentials, setAuthLoading, logout } from "@/app/store/authSlice";
 import { setUser } from "@/app/store/userSlice";
 import BrandLogo from "@/components/ui/BrandLogo";
 
@@ -11,6 +11,22 @@ export default function AuthInitializer({ children }) {
   const dispatch = useDispatch();
   const { accessToken } = useSelector((state) => state.auth);
   const [isInitializing, setIsInitializing] = useState(true);
+
+  // Multi-tab logout synchronization: when user logs out in Tab A, Tab B syncs logout
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      if (
+        (event.key === "is_logged_out" && event.newValue === "true") ||
+        (event.key === "token" && !event.newValue)
+      ) {
+        console.log("[AuthInitializer] Auth change detected from another tab. Synchronizing state...");
+        dispatch(logout());
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [dispatch]);
 
   // Check if a stored user exists (indicating a returning authenticated session)
   const isExplicitlyLoggedOut = (
@@ -31,6 +47,17 @@ export default function AuthInitializer({ children }) {
     const restoreSessionWithRetry = async (attempt = 1, maxAttempts = 3) => {
       // If user explicitly logged out, do not attempt to restore session
       if (isExplicitlyLoggedOut) {
+        if (isMounted) {
+          dispatch(setAuthLoading(false));
+          setIsInitializing(false);
+        }
+        return;
+      }
+
+      // If user is on a public guest route and has no stored session, skip background refresh
+      const currentPath = window.location.pathname.toLowerCase();
+      const isPublicGuestPath = ["/accept-invite", "/login", "/register", "/reset-password"].some((p) => currentPath.startsWith(p));
+      if (!hasStoredSession && isPublicGuestPath) {
         if (isMounted) {
           dispatch(setAuthLoading(false));
           setIsInitializing(false);
@@ -153,17 +180,18 @@ export default function AuthInitializer({ children }) {
 
           {/* Text Labels */}
           <h3 className="text-sm font-bold text-slate-800 tracking-tight mt-3">
-            Preparing your workspace
+            Welcome to BookMyEvent
           </h3>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Synchronizing session & permissions...
+            Getting everything ready for you...
           </p>
 
-          {/* Enterprise Security Badge */}
+          {/* Security & Verification Badge */}
           <div className="flex items-center gap-1.5 mt-6 px-3 py-1 rounded-full bg-slate-50 border border-slate-200/80 text-[11px] font-semibold text-slate-500">
             <ShieldCheck size={13} className="text-emerald-500" />
-            <span>Encrypted Workspace Session</span>
+            <span>Secure &amp; Verified Session</span>
           </div>
+
         </div>
       </div>
     );

@@ -23,6 +23,9 @@ from app.modules.checkins import checkin_router
 from app.modules.admin import admin_router, root_admin_router
 from app.modules.chatbot import chatbot_router
 from app.modules.rbac import rbac_router
+from app.config import Config
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -42,7 +45,13 @@ def create_app() -> FastAPI:
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5001",
     ]
+    if hasattr(Config, "FRONTEND_URL") and Config.FRONTEND_URL:
+        if Config.FRONTEND_URL not in ALLOWED_ORIGINS:
+            ALLOWED_ORIGINS.append(Config.FRONTEND_URL)
 
+    # Middleware Pipeline (executed bottom-to-top on incoming request)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,

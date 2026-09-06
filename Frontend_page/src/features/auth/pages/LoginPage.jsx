@@ -8,6 +8,7 @@ import { setCredentials } from "@/app/store/authSlice";
 import { getUserAvailableRoles } from "@/shared/services/authHelper";
 import BrandLogo from "@/components/ui/BrandLogo";
 import RoleSelectionModal from "@/components/RoleSelectionModal";
+import FirstLoginPasswordModal from "@/components/FirstLoginPasswordModal";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -28,7 +29,22 @@ export default function Login() {
   const [userRoles, setUserRoles] = useState([]);
   const [loggedInUser, setLoggedInUser] = useState(null);
 
+  // Mandatory First-Time Login Password Reset State
+  const [isFirstLoginModalOpen, setIsFirstLoginModalOpen] = useState(false);
+  const [firstLoginData, setFirstLoginData] = useState(null);
+
   useEffect(() => {
+    // If URL has email and/or password prefill parameters (e.g. from invitation email direct link)
+    const emailParam = searchParams.get("email");
+    const tempPwParam = searchParams.get("temp_password") || searchParams.get("password");
+    if (emailParam || tempPwParam) {
+      setFormData((prev) => ({
+        ...prev,
+        email: emailParam || prev.email,
+        password: tempPwParam || prev.password,
+      }));
+    }
+
     if (isAuthenticated && accessToken) {
       let storedUser = null;
       try {
@@ -36,6 +52,25 @@ export default function Login() {
       } catch {
         storedUser = null;
       }
+
+      // CRITICAL: If user must change password, DO NOT AUTO-NAVIGATE! Open the modal instead!
+      const userMustChange = Boolean(
+        storedUser?.must_change_password ||
+        authUser?.must_change_password
+      );
+      if (userMustChange) {
+        setFirstLoginData({
+          user: storedUser || authUser,
+          tempPassword: "",
+          token: accessToken,
+          userRole: storedUser?.active_role || authUser?.active_role || storedUser?.role || "user",
+          detectedRoles: storedUser?.roles || authUser?.roles || [],
+          isSuperAdmin: false,
+        });
+        setIsFirstLoginModalOpen(true);
+        return;
+      }
+
       const cleanRole = String(authRole || storedUser?.active_role || storedUser?.role || "").toLowerCase();
       const rolesArr = Array.isArray(storedUser?.roles) ? storedUser.roles.map((r) => String(r).toLowerCase()) : [];
       const isSuper = (
@@ -54,6 +89,14 @@ export default function Login() {
         navigate(returnUrl, { replace: true });
         return;
       }
+      if (cleanRole === "organizer") {
+        navigate("/OrganizerHome", { replace: true });
+        return;
+      }
+      if (cleanRole === "exhibitor") {
+        navigate("/exhibitor", { replace: true });
+        return;
+      }
       navigate("/", { replace: true });
       return;
     }
@@ -64,7 +107,7 @@ export default function Login() {
       setFormData((prev) => ({ ...prev, email: savedEmail }));
       setRememberMe(true);
     }
-  }, [navigate, isAuthenticated, accessToken, authRole, returnUrl]);
+  }, [navigate, isAuthenticated, accessToken, authRole, returnUrl, searchParams]);
 
   const handleChange = (name, value) => {
     setFormData({ ...formData, [name]: value });
@@ -135,6 +178,54 @@ export default function Login() {
         profiles: userProfiles,
       };
 
+      const isSuperAdmin = ["superadmin", "superuser"].includes(String(userRole || "").toLowerCase()) ||
+        detectedRoles.some((r) => ["superadmin", "superuser"].includes(String(r).toLowerCase()));
+
+      const mustChangePassword = Boolean(
+        data.must_change_password ||
+        userObj.must_change_password ||
+        userToStore.must_change_password
+      );
+
+      // CRITICAL: If user must change password, DO NOT dispatch setCredentials yet!
+      // Dispatching setCredentials immediately sets isAuthenticated=true in Redux, which triggers
+      // the useEffect auto-navigation before the user can set their password!
+      if (mustChangePassword) {
+        userToStore.must_change_password = true;
+
+        sessionStorage.setItem("role", userRole);
+        sessionStorage.setItem("roles", JSON.stringify(detectedRoles));
+        sessionStorage.setItem("id", userId.toString());
+        sessionStorage.setItem("userId", userId.toString());
+        sessionStorage.setItem("name", userName);
+        sessionStorage.setItem("email", userEmail);
+        localStorage.setItem("role", userRole);
+        localStorage.setItem("roles", JSON.stringify(detectedRoles));
+        localStorage.setItem("id", userId.toString());
+        localStorage.setItem("userId", userId.toString());
+        localStorage.setItem("name", userName);
+        localStorage.setItem("email", userEmail);
+        localStorage.setItem("user", JSON.stringify(userToStore));
+        sessionStorage.setItem("user", JSON.stringify(userToStore));
+        localStorage.removeItem("is_logged_out");
+        sessionStorage.removeItem("is_logged_out");
+
+        dispatch(setCredentials({ user: userToStore, token: token, role: userRole }));
+        dispatch(setUser(userToStore));
+
+        setFirstLoginData({
+          user: userToStore,
+          tempPassword: formData.password,
+          token: token,
+          userRole,
+          detectedRoles,
+          isSuperAdmin,
+        });
+        setIsFirstLoginModalOpen(true);
+        setIsLoading(false);
+        return;
+      }
+
       sessionStorage.setItem("role", userRole);
       sessionStorage.setItem("roles", JSON.stringify(detectedRoles));
       sessionStorage.setItem("id", userId.toString());
@@ -180,9 +271,6 @@ export default function Login() {
         })
       );
 
-      const isSuperAdmin = ["superadmin", "superuser"].includes(String(userRole || "").toLowerCase()) ||
-        detectedRoles.some((r) => ["superadmin", "superuser"].includes(String(r).toLowerCase()));
-
       if (isSuperAdmin) {
         navigate("/superuser/dashboard", { replace: true });
         return;
@@ -197,6 +285,10 @@ export default function Login() {
 
       if (returnUrl) {
         navigate(returnUrl, { replace: true });
+      } else if (userRole === "organizer") {
+        navigate("/OrganizerHome", { replace: true });
+      } else if (userRole === "exhibitor") {
+        navigate("/exhibitor", { replace: true });
       } else {
         navigate("/", { replace: true });
       }
@@ -414,6 +506,64 @@ export default function Login() {
         onClose={() => setIsRoleModalOpen(false)}
         roles={userRoles}
         user={loggedInUser}
+      />
+
+      {/* First-Time Login Password Reset Modal */}
+      <FirstLoginPasswordModal
+        isOpen={isFirstLoginModalOpen}
+        user={firstLoginData?.user}
+        tempPassword={firstLoginData?.tempPassword}
+        token={firstLoginData?.token}
+        onSuccess={(updatedUser) => {
+          setIsFirstLoginModalOpen(false);
+          const rawUser = updatedUser || {};
+          const allRoles = Array.isArray(rawUser.roles) ? rawUser.roles : (rawUser.role ? [rawUser.role] : ["user"]);
+          const activeRole = rawUser.active_role || (allRoles.includes("organizer") ? "organizer" : (allRoles.includes("exhibitor") ? "exhibitor" : (firstLoginData?.userRole || "organizer")));
+
+          const sanitizedUser = {
+            ...rawUser,
+            roles: allRoles,
+            active_role: activeRole,
+            role: activeRole,
+            must_change_password: false,
+          };
+
+          sessionStorage.setItem("role", activeRole);
+          localStorage.setItem("role", activeRole);
+          sessionStorage.setItem("active_role", activeRole);
+          localStorage.setItem("active_role", activeRole);
+          sessionStorage.setItem("roles", JSON.stringify(allRoles));
+          localStorage.setItem("roles", JSON.stringify(allRoles));
+          localStorage.setItem("user", JSON.stringify(sanitizedUser));
+          sessionStorage.setItem("user", JSON.stringify(sanitizedUser));
+
+          dispatch(setCredentials({
+            user: sanitizedUser,
+            token: firstLoginData?.token,
+            role: activeRole,
+            active_role: activeRole,
+          }));
+          dispatch(setUser(sanitizedUser));
+
+          if (firstLoginData?.isSuperAdmin || allRoles.includes("superuser") || allRoles.includes("superadmin")) {
+            window.location.replace("/superuser/dashboard");
+            return;
+          }
+          if (returnUrl) {
+            window.location.replace(returnUrl);
+            return;
+          }
+          if (activeRole === "organizer" || allRoles.includes("organizer")) {
+            window.location.replace("/OrganizerHome");
+            return;
+          }
+          if (activeRole === "exhibitor" || allRoles.includes("exhibitor")) {
+            window.location.replace("/exhibitor");
+            return;
+          }
+          window.location.replace("/");
+        }}
+        onCancel={() => setIsFirstLoginModalOpen(false)}
       />
     </div>
   );

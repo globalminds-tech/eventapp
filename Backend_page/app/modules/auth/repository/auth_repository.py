@@ -297,7 +297,22 @@ class AuthRepository:
         user = AuthRepository.get_user_by_email(email)
         if user:
             user.password = password_hash
+            user.must_change_password = False
             db.session.commit()
             return True
         return False
+
+    @staticmethod
+    def update_user_password(user_id, password_hash: str) -> bool:
+        try:
+            user = AuthRepository.get_user_by_id(user_id)
+            if user:
+                user.password = password_hash
+                user.must_change_password = False
+                db.session.commit()
+                return True
+            return False
+        except Exception as e:
+            db.session.rollback()
+            raise e
 

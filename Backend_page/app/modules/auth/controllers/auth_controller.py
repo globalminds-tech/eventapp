@@ -112,3 +112,12 @@ class AuthController:
             "success": True,
             "data": result
         }
+
+    @staticmethod
+    def change_password(user_id, raw_data: dict):
+        result = AuthService.change_password(user_id, raw_data)
+        return {
+            "success": True,
+            "data": result
+        }
+

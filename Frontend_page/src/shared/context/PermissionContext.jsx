@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import { ENV } from "@/config/env";
@@ -11,6 +12,7 @@ const PermissionContext = createContext({
 });
 
 export function PermissionProvider({ children }) {
+  const location = useLocation();
   const { accessToken, user, role } = useSelector((state) => state.auth);
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,6 +23,10 @@ export function PermissionProvider({ children }) {
   const rolesSignature = Array.isArray(user?.roles) ? user.roles.slice().sort().join(",") : "user";
   const userId = user?.id || "";
 
+  // Determine current active workspace scope based on route or role
+  const isExhibitorPortal = location.pathname.toLowerCase().startsWith("/exhibitor") || String(role || "").toLowerCase() === "exhibitor";
+  const activeScope = isExhibitorPortal ? "exhibitor" : "organizer";
+
   const fetchPermissions = useCallback(async (force = false) => {
     if (!accessToken) {
       setPermissions([]);
@@ -28,8 +34,8 @@ export function PermissionProvider({ children }) {
       return;
     }
 
-    // Cache key based on auth state primitives to prevent redundant duplicate calls
-    const cacheKey = `${userId}_${role || "user"}_${rolesSignature}_${accessToken.slice(-10)}`;
+    // Cache key based on auth state primitives AND activeScope to prevent redundant calls
+    const cacheKey = `${userId}_${activeScope}_${rolesSignature}_${accessToken.slice(-10)}`;
     if (!force && lastFetchedKeyRef.current === cacheKey) {
       return;
     }
@@ -46,9 +52,9 @@ export function PermissionProvider({ children }) {
       return;
     }
 
-    // Exhibitors and regular attendees do not have organizer team RBAC permissions
-    const isOrganizer = userRoles.some((r) => String(r).toLowerCase() === "organizer");
-    if (!isOrganizer) {
+    // Allow both Organizers and Exhibitors to load their workspace team RBAC permissions
+    const hasRbacAccess = userRoles.some((r) => ["organizer", "exhibitor"].includes(String(r).toLowerCase()));
+    if (!hasRbacAccess) {
       setPermissions([]);
       lastFetchedKeyRef.current = cacheKey;
       return;
@@ -58,7 +64,10 @@ export function PermissionProvider({ children }) {
     setLoading(true);
     try {
       const res = await axios.get(`${ENV.API_BASE_URL}/api/v1/rbac/me/permissions`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: { 
+          Authorization: `Bearer ${accessToken}`,
+          "X-Workspace-Scope": activeScope
+        },
       });
       if (res.data?.success && Array.isArray(res.data.data)) {
         setPermissions(res.data.data);
@@ -67,11 +76,20 @@ export function PermissionProvider({ children }) {
     } catch (err) {
       console.warn("[PermissionContext] Failed to load permissions:", err);
       // Fallback: If Organizer Owner, grant standard organizer permissions
-      if (userRoles.includes("organizer")) {
+      if (userRoles.includes("organizer") && !isExhibitorPortal) {
         setPermissions([
-          "events.view", "events.create", "events.edit", "events.delete", "events.publish",
+          "dashboard.view", "events.view", "events.create", "events.edit", "events.delete", "events.publish",
           "stalls.view", "stalls.create", "stalls.edit", "stalls.approve", "stalls.delete",
-          "checkin.view", "checkin.scan", "finance.view", "team.view", "roles.view"
+          "checkin.view", "checkin.scan", "finance.view", "team.view", "roles.view",
+          "master_data.view", "master_data.create", "master_data.edit", "master_data.delete", "organizer.*"
+        ]);
+        lastFetchedKeyRef.current = cacheKey;
+      } else if (userRoles.includes("exhibitor") && isExhibitorPortal) {
+        setPermissions([
+          "exhibitor.dashboard.view", "exhibitor.events.browse", "exhibitor.stalls.book", "exhibitor.stalls.view", "exhibitor.stalls.manage",
+          "exhibitor.leads.view", "exhibitor.leads.export", "exhibitor.leads.scan",
+          "exhibitor.booth.manage", "exhibitor.billing.view",
+          "exhibitor.team.view", "exhibitor.team.invite", "exhibitor.team.edit", "exhibitor.team.remove", "exhibitor.roles.manage", "exhibitor.*"
         ]);
         lastFetchedKeyRef.current = cacheKey;
       }
@@ -79,7 +97,7 @@ export function PermissionProvider({ children }) {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [accessToken, userId, role, rolesSignature]);
+  }, [accessToken, userId, activeScope, rolesSignature]);
 
   useEffect(() => {
     fetchPermissions();
@@ -89,6 +107,21 @@ export function PermissionProvider({ children }) {
     (requiredPermission) => {
       if (!requiredPermission) return true;
       if (permissions.includes("*")) return true;
+
+      // Handle array of required permissions (anyOf logic)
+      if (Array.isArray(requiredPermission)) {
+        return requiredPermission.some((p) => hasPermission(p));
+      }
+
+      // Check workspace wildcard: "organizer.*" covers all organizer permissions
+      if (permissions.includes("organizer.*") && !requiredPermission.startsWith("exhibitor.")) {
+        return true;
+      }
+
+      // Check workspace wildcard: "exhibitor.*" covers all exhibitor permissions
+      if (permissions.includes("exhibitor.*") && requiredPermission.startsWith("exhibitor.")) {
+        return true;
+      }
 
       // Direct match
       if (permissions.includes(requiredPermission)) return true;

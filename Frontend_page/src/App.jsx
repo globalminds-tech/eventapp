@@ -1,8 +1,10 @@
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import PermissionRoute from "./components/PermissionRoute";
 import WebSidebar from "./components/WebSidebar";
 import AuthInitializer from "./components/AuthInitializer";
 import ErrorBoundary from "./components/ErrorBoundary";
+import NetworkStatusWatcher from "./components/NetworkStatusWatcher";
 
 import Home from "./features/public/pages/HomePage";
 import AllEvents from "./features/events/pages/AllEventsPage";
@@ -50,6 +52,7 @@ import PayoutsQueue from "./features/superuser/pages/PayoutsQueuePage";
 
 import ForgotPassword from "./features/auth/pages/ForgotPasswordPage";
 
+
 import Coupon from "./features/organizer/events/pages/CouponPage";
 import EventCheckIn from "./features/organizer/checkins/pages/EventCheckInPage";
 import FoodCheckIn from "./features/organizer/checkins/pages/FoodCheckInPage";
@@ -77,11 +80,101 @@ import Profile from "./features/organizer/settings/pages/ProfilePage";
 import MyPassesPage from "./features/users/pages/MyPassesPage";
 import AcceptInvitationPage from "./features/auth/pages/AcceptInvitationPage";
 import TeamManagementPage from "./features/organizer/team/pages/TeamManagementPage";
-import { PermissionProvider } from "./shared/context/PermissionContext";
+import { PermissionProvider, usePermissions } from "./shared/context/PermissionContext";
+import { useSelector } from "react-redux";
+import FirstLoginPasswordModal from "./components/FirstLoginPasswordModal";
 import MasterDataPage from "./features/organizer/master-data/pages/MasterDataPage";
+
+// Smart Index Redirect for Organizers: routes to first permitted tool if dashboard is prohibited
+function OrganizerIndexRedirect() {
+  const { hasPermission, loading, permissions } = usePermissions();
+
+  if (loading && permissions.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center py-20 text-slate-400">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+          <span>Loading workspace...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasPermission("dashboard.view")) {
+    return <Organizerdashboard />;
+  }
+
+  if (hasPermission("checkin.scan") || hasPermission("checkin.view")) {
+    return <Navigate to="/OrganizerHome/EventCheckIn" replace />;
+  }
+  if (hasPermission("stalls.view")) {
+    return <Navigate to="/OrganizerHome/Manage_Stall" replace />;
+  }
+  if (hasPermission("team.view") || hasPermission("roles.view") || hasPermission("roles.manage")) {
+    return <Navigate to="/OrganizerHome/TeamManagement" replace />;
+  }
+  if (hasPermission("finance.view")) {
+    return <Navigate to="/OrganizerHome/Receipt" replace />;
+  }
+  if (hasPermission("master_data.view")) {
+    return <Navigate to="/OrganizerHome/MasterData" replace />;
+  }
+  return <Navigate to="/profile" replace />;
+}
+
+// Smart Index Redirect for Exhibitors: routes to first permitted tool if booth dashboard is prohibited
+function ExhibitorIndexRedirect() {
+  const { hasPermission, loading, permissions } = usePermissions();
+
+  if (loading && permissions.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center py-20 text-slate-400">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <span>Loading portal...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasPermission("exhibitor.dashboard.view")) {
+    return <ExhibitorHome />;
+  }
+
+  if (hasPermission("exhibitor.stalls.view")) {
+    return <Navigate to="/exhibitor/my-bookings" replace />;
+  }
+  if (hasPermission("exhibitor.events.browse")) {
+    return <Navigate to="/exhibitor/upcoming-events" replace />;
+  }
+  if (hasPermission("exhibitor.leads.view")) {
+    return <Navigate to="/exhibitor/leads" replace />;
+  }
+  if (hasPermission("exhibitor.team.view")) {
+    return <Navigate to="/exhibitor/team" replace />;
+  }
+  return <Navigate to="/profile" replace />;
+}
 
 export default function App() {
   const location = useLocation();
+  const authUser = useSelector((state) => state.auth?.user);
+  const userSliceUser = useSelector((state) => state.user);
+  const accessToken = useSelector((state) => state.auth?.accessToken);
+
+  let storedUser = null;
+  try {
+    storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+  } catch {
+    storedUser = null;
+  }
+
+  const effectiveUser = authUser || storedUser || userSliceUser;
+  const mustChangePassword = Boolean(
+    effectiveUser?.must_change_password ||
+    storedUser?.must_change_password ||
+    authUser?.must_change_password
+  );
 
   return (
     <ErrorBoundary>
@@ -131,35 +224,35 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Organizerdashboard />} />
-              <Route path="Organizerdashboard" element={<Organizerdashboard />} />
+              <Route index element={<OrganizerIndexRedirect />} />
+              <Route path="Organizerdashboard" element={<PermissionRoute required="dashboard.view"><Organizerdashboard /></PermissionRoute>} />
               <Route path="livedashboard" element={<LiveDashboard />} />
               <Route path="livedashfoodboard" element={<LiveFoodDashboard />} />
               <Route path="Complaint_page" element={<ComplaintPage />} />
               <Route path="Feedback_page" element={<Feedback />} />
               <Route path="CreateProgram" element={<CreateProgram />} />
-              <Route path="Receipt" element={<Receipt />} />
+              <Route path="Receipt" element={<PermissionRoute required="finance.view"><Receipt /></PermissionRoute>} />
               <Route path="EventReports" element={<EventReports />} />
               <Route path="Abstract_Verification" element={<AbstractVerification />} />
-              <Route path="Manage_Stall" element={<ManageStall />} />
+              <Route path="Manage_Stall" element={<PermissionRoute required="stalls.view"><ManageStall /></PermissionRoute>} />
               <Route path="SponsorshipPage" element={<SponsorshipPage />} />
               <Route path="AdminApproval" element={<AdminApproval />} />
-              <Route path="Billing" element={<Billing />} />
+              <Route path="Billing" element={<PermissionRoute required="finance.view"><Billing /></PermissionRoute>} />
               <Route path="Contacts" element={<Contacts />} />
               <Route path="ProgramCheckin" element={<ProgramCheckin />} />
               <Route path="ProgramVerification" element={<ProgramVerification />} />
               <Route path="BulkPassPage" element={<BulkPassPage />} />
-              <Route path="Venu" element={<Venuepage />} />
+              <Route path="Venu" element={<PermissionRoute required="venues.view"><Venuepage /></PermissionRoute>} />
               <Route path="Vendor" element={<VendorPage />} />
-              <Route path="CreateEvent" element={<Createvent />} />
-              <Route path="EditEvent/:id" element={<Createvent />} />
-              <Route path="EditEvent" element={<Createvent />} />
-              <Route path="ViewEvent/:id" element={<Createvent />} />
-              <Route path="ViewEvent" element={<Createvent />} />
+              <Route path="CreateEvent" element={<PermissionRoute required="events.create"><Createvent /></PermissionRoute>} />
+              <Route path="EditEvent/:id" element={<PermissionRoute required="events.edit"><Createvent /></PermissionRoute>} />
+              <Route path="EditEvent" element={<PermissionRoute required="events.edit"><Createvent /></PermissionRoute>} />
+              <Route path="ViewEvent/:id" element={<PermissionRoute required="events.view"><Createvent /></PermissionRoute>} />
+              <Route path="ViewEvent" element={<PermissionRoute required="events.view"><Createvent /></PermissionRoute>} />
               <Route path="PolicyPage" element={<PolicyPage />} />
               <Route path="Coupon" element={<Coupon />} />
-              <Route path="EventCheckIn" element={<EventCheckIn />} />
-              <Route path="FoodCheckIn" element={<FoodCheckIn />} />
+              <Route path="EventCheckIn" element={<PermissionRoute required="checkin.view"><EventCheckIn /></PermissionRoute>} />
+              <Route path="FoodCheckIn" element={<PermissionRoute required="checkin.view"><FoodCheckIn /></PermissionRoute>} />
               <Route path="Messages" element={<Messagesgreeting />} />
               <Route path="Messages/:eventId" element={<Messagesgreeting />} />
               <Route path="pass" element={<Pass />} />
@@ -169,13 +262,13 @@ export default function App() {
               <Route path="MyPlan" element={<Myplan />} />
               <Route path="ExhibitorSpotRegistration" element={<Exhibitorspotregistration />} />
               <Route path="Exhibitor" element={<Exhibitor />} />
-              <Route path="TeamManagement" element={<TeamManagementPage />} />
-              <Route path="RoleScreen" element={<TeamManagementPage />} />
-              <Route path="UserScreen" element={<TeamManagementPage />} />
+              <Route path="TeamManagement" element={<PermissionRoute required={["team.view", "roles.view", "roles.manage"]}><TeamManagementPage /></PermissionRoute>} />
+              <Route path="RoleScreen" element={<PermissionRoute required={["roles.view", "roles.manage", "team.view"]}><TeamManagementPage /></PermissionRoute>} />
+              <Route path="UserScreen" element={<PermissionRoute required={["team.view", "roles.view", "roles.manage"]}><TeamManagementPage /></PermissionRoute>} />
               <Route path="User" element={<User />} />
               <Route path="AddonCheckIn" element={<Addoncheckinout />} />
               <Route path="Sportbooking" element={<Sportbooking />} />
-              <Route path="MasterData" element={<MasterDataPage />} />
+              <Route path="MasterData" element={<PermissionRoute required="master_data.view"><MasterDataPage /></PermissionRoute>} />
             </Route>
 
             {/* ── TIER 4: EXHIBITOR PORTAL (Single Parent Guard) ── */}
@@ -187,13 +280,14 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<ExhibitorHome />} />
-              <Route path="dashboard" element={<ExhibitorHome />} />
-              <Route path="my-bookings" element={<Exhibitormybooking />} />
-              <Route path="my-bookings/:id" element={<ExhibitorBookingDetail />} />
-              <Route path="upcoming-events" element={<ExhibitorUpcomingEvent />} />
-              <Route path="event/:id" element={<ExhibitorEventDetail />} />
-              <Route path="leads" element={<ExhibitorLeadsPage />} />
+              <Route index element={<ExhibitorIndexRedirect />} />
+              <Route path="dashboard" element={<PermissionRoute required="exhibitor.dashboard.view"><ExhibitorHome /></PermissionRoute>} />
+              <Route path="my-bookings" element={<PermissionRoute required="exhibitor.stalls.view"><Exhibitormybooking /></PermissionRoute>} />
+              <Route path="my-bookings/:id" element={<PermissionRoute required="exhibitor.stalls.view"><ExhibitorBookingDetail /></PermissionRoute>} />
+              <Route path="upcoming-events" element={<PermissionRoute required="exhibitor.events.browse"><ExhibitorUpcomingEvent /></PermissionRoute>} />
+              <Route path="event/:id" element={<PermissionRoute required="exhibitor.events.browse"><ExhibitorEventDetail /></PermissionRoute>} />
+              <Route path="leads" element={<PermissionRoute required="exhibitor.leads.view"><ExhibitorLeadsPage /></PermissionRoute>} />
+              <Route path="team" element={<PermissionRoute required="exhibitor.team.view"><TeamManagementPage userScope="exhibitor" /></PermissionRoute>} />
             </Route>
             <Route
               path="/book-stall/:id"
@@ -230,6 +324,29 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           {location.pathname === "/" && <Chatbot />}
+          <NetworkStatusWatcher />
+
+          {/* Mandatory First-Login Password Reset Dialog (Locks interactions until password is set) */}
+          {mustChangePassword && !["/login", "/Login"].includes(location.pathname) && (
+            <FirstLoginPasswordModal
+              isOpen={true}
+              user={effectiveUser}
+              token={accessToken}
+              onSuccess={(user) => {
+                const roles = user?.roles || [];
+                const role = user?.active_role || user?.role || (roles.includes("organizer") ? "organizer" : "user");
+                if (roles.includes("superuser") || roles.includes("superadmin")) {
+                  window.location.replace("/superuser/dashboard");
+                } else if (role === "organizer" || roles.includes("organizer")) {
+                  window.location.replace("/OrganizerHome");
+                } else if (role === "exhibitor" || roles.includes("exhibitor")) {
+                  window.location.replace("/exhibitor");
+                } else {
+                  window.location.replace("/");
+                }
+              }}
+            />
+          )}
         </PermissionProvider>
       </AuthInitializer>
     </ErrorBoundary>

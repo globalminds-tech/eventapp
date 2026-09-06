@@ -16,6 +16,7 @@ const getInitialUser = () => {
           mobile: u.mobile || "",
           organization_name: u.organization_name || u.company_name || "",
           profile_image: u.profile_image || "",
+          must_change_password: Boolean(u.must_change_password),
           profiles: u.profiles || {},
         };
       }
@@ -38,6 +39,7 @@ const getInitialUser = () => {
     mobile: localStorage.getItem("mobile") || sessionStorage.getItem("mobile") || "",
     organization_name: localStorage.getItem("organization_name") || sessionStorage.getItem("organization_name") || "",
     profile_image: localStorage.getItem("profile_image") || sessionStorage.getItem("profile_image") || "",
+    must_change_password: false,
     profiles: {},
   };
 };
@@ -57,6 +59,9 @@ const userSlice = createSlice({
       state.mobile = p.mobile || state.mobile;
       state.organization_name = p.organization_name || p.company_name || state.organization_name;
       state.profile_image = p.profile_image || state.profile_image;
+      if (p.must_change_password !== undefined) {
+        state.must_change_password = Boolean(p.must_change_password);
+      }
       if (p.profiles) state.profiles = p.profiles;
 
       const keysToSync = ["id", "name", "email", "role", "mobile", "organization_name", "profile_image"];

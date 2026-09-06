@@ -25,8 +25,14 @@ import AddVendorModal from "../components/AddVendorModal";
 import AddVenueModal from "../components/AddVenueModal";
 import AddPolicyModal from "../components/AddPolicyModal";
 import AddSponsorModal from "../components/AddSponsorModal";
+import { usePermissions } from "@/shared/context/PermissionContext";
 
 export default function MasterDataPage() {
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission(["master_data.create", "master_data.manage"]);
+  const canEdit = hasPermission(["master_data.edit", "master_data.manage"]);
+  const canDelete = hasPermission(["master_data.delete", "master_data.manage"]);
+
   const [selectedTab, setSelectedTab] = useState("vendor");
   const [loading, setLoading] = useState(false);
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
@@ -212,13 +218,15 @@ export default function MasterDataPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              onClick={handleOpenAddModal}
-              className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-9 px-4 rounded-xl shadow-xs border-none cursor-pointer flex items-center gap-1.5 transition-all"
-            >
-              <Plus size={14} />
-              <span>{getAddButtonLabel()}</span>
-            </Button>
+            {canCreate && (
+              <Button
+                onClick={handleOpenAddModal}
+                className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-9 px-4 rounded-xl shadow-xs border-none cursor-pointer flex items-center gap-1.5 transition-all"
+              >
+                <Plus size={14} />
+                <span>{getAddButtonLabel()}</span>
+              </Button>
+            )}
 
             <Button
               variant="outline"
@@ -303,14 +311,16 @@ export default function MasterDataPage() {
                           Add vendors for catering, AV, staging, and logistics to link them to your events.
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddVendorOpen(true)}
-                        className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
-                      >
-                        <Plus size={13} className="mr-1" />
-                        <span>Add First Vendor</span>
-                      </Button>
+                      {canCreate && (
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddVendorOpen(true)}
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                        >
+                          <Plus size={13} className="mr-1" />
+                          <span>Add First Vendor</span>
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
@@ -321,7 +331,7 @@ export default function MasterDataPage() {
                             <th className="py-3 px-4">Company</th>
                             <th className="py-3 px-4">Contact</th>
                             <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4 text-right">Action</th>
+                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
@@ -338,24 +348,30 @@ export default function MasterDataPage() {
                                   {v.status || "Active"}
                                 </Badge>
                               </td>
-                              <td className="py-3 px-4 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Edit"
-                                    onClick={() => handleEdit("vendor", v)}
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Delete"
-                                    onClick={() => handleDeleteConfirm("vendor", v.id, v.vendor_name || v.name)}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
+                              {(canEdit || canDelete) && (
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {canEdit && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Edit"
+                                        onClick={() => handleEdit("vendor", v)}
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Delete"
+                                        onClick={() => handleDeleteConfirm("vendor", v.id, v.vendor_name || v.name)}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -379,14 +395,16 @@ export default function MasterDataPage() {
                           Configure convention centers, stadiums, and grounds for fast event assignment.
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddVenueOpen(true)}
-                        className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
-                      >
-                        <Plus size={13} className="mr-1" />
-                        <span>Add First Venue</span>
-                      </Button>
+                      {canCreate && (
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddVenueOpen(true)}
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                        >
+                          <Plus size={13} className="mr-1" />
+                          <span>Add First Venue</span>
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
@@ -397,7 +415,7 @@ export default function MasterDataPage() {
                             <th className="py-3 px-4">Location</th>
                             <th className="py-3 px-4">Address</th>
                             <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4 text-right">Action</th>
+                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
@@ -415,24 +433,30 @@ export default function MasterDataPage() {
                                   {v.status || "Active"}
                                 </Badge>
                               </td>
-                              <td className="py-3 px-4 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Edit"
-                                    onClick={() => handleEdit("venue", v)}
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Delete"
-                                    onClick={() => handleDeleteConfirm("venue", v.id, v.venue_name || v.name)}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
+                              {(canEdit || canDelete) && (
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {canEdit && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Edit"
+                                        onClick={() => handleEdit("venue", v)}
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Delete"
+                                        onClick={() => handleDeleteConfirm("venue", v.id, v.venue_name || v.name)}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -456,14 +480,16 @@ export default function MasterDataPage() {
                           Create standard terms, cancellation rules, and entry policies for easy re-use in Step 5 of event creation.
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddPolicyOpen(true)}
-                        className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
-                      >
-                        <Plus size={13} className="mr-1" />
-                        <span>Add First Policy</span>
-                      </Button>
+                      {canCreate && (
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddPolicyOpen(true)}
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                        >
+                          <Plus size={13} className="mr-1" />
+                          <span>Add First Policy</span>
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
@@ -474,7 +500,7 @@ export default function MasterDataPage() {
                             <th className="py-3 px-4">Group</th>
                             <th className="py-3 px-4">Type</th>
                             <th className="py-3 px-4">Description</th>
-                            <th className="py-3 px-4 text-right">Action</th>
+                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
@@ -490,24 +516,30 @@ export default function MasterDataPage() {
                               <td className="py-3 px-4 text-xs font-semibold text-slate-500 max-w-md truncate" title={p.description}>
                                 {p.description || "-"}
                               </td>
-                              <td className="py-3 px-4 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Edit"
-                                    onClick={() => handleEdit("policy", p)}
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Delete"
-                                    onClick={() => handleDeleteConfirm("policy", p.id, p.policy_name)}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
+                              {(canEdit || canDelete) && (
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {canEdit && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Edit"
+                                        onClick={() => handleEdit("policy", p)}
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Delete"
+                                        onClick={() => handleDeleteConfirm("policy", p.id, p.policy_name)}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -531,14 +563,16 @@ export default function MasterDataPage() {
                           Record corporate partners, title sponsors, and brand collaborators for easy inclusion in your events.
                         </p>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddSponsorOpen(true)}
-                        className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
-                      >
-                        <Plus size={13} className="mr-1" />
-                        <span>Add First Sponsor</span>
-                      </Button>
+                      {canCreate && (
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddSponsorOpen(true)}
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                        >
+                          <Plus size={13} className="mr-1" />
+                          <span>Add First Sponsor</span>
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
@@ -549,7 +583,7 @@ export default function MasterDataPage() {
                             <th className="py-3 px-4">Contact</th>
                             <th className="py-3 px-4">Address</th>
                             <th className="py-3 px-4">Status</th>
-                            <th className="py-3 px-4 text-right">Action</th>
+                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
@@ -568,24 +602,30 @@ export default function MasterDataPage() {
                                   {s.status || "Active"}
                                 </Badge>
                               </td>
-                              <td className="py-3 px-4 text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Edit"
-                                    onClick={() => handleEdit("sponsor", s)}
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
-                                  <button
-                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Delete"
-                                    onClick={() => handleDeleteConfirm("sponsor", s.id, s.sponsor_name)}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </td>
+                              {(canEdit || canDelete) && (
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1">
+                                    {canEdit && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Edit"
+                                        onClick={() => handleEdit("sponsor", s)}
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                    )}
+                                    {canDelete && (
+                                      <button
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                        title="Delete"
+                                        onClick={() => handleDeleteConfirm("sponsor", s.id, s.sponsor_name)}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>

@@ -14,10 +14,10 @@ const axiosClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000,
+  timeout: 15000,
 });
 
-// Request Interceptor: Attach Bearer token from Redux in-memory state or localStorage fallback
+// Request Interceptor: Attach Bearer token & track request start for slow-network detection
 axiosClient.interceptors.request.use(
   (config) => {
     let token = null;
@@ -30,6 +30,19 @@ axiosClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Set slow request timer (warn if an active request takes > 4000ms)
+    if (typeof window !== "undefined") {
+      const slowTimer = setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("network:slow-request", {
+            detail: { message: "Server request is taking longer than expected. Retrying in background..." },
+          })
+        );
+      }, 4000);
+      config._slowTimer = slowTimer;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -49,11 +62,51 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Response Interceptor: Global 401 handling & automatic silent token refresh
+// Response Interceptor: Global 401 handling, 429 rate limit toasts, and slow-network cleanup
 axiosClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config?._slowTimer) {
+      clearTimeout(response.config._slowTimer);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
+    if (originalRequest?._slowTimer) {
+      clearTimeout(originalRequest._slowTimer);
+    }
+
+    // Intercept HTTP 429 Rate Limit
+    if (error.response?.status === 429) {
+      if (typeof window !== "undefined") {
+        const retryAfter =
+          error.response.data?.retry_after ||
+          parseInt(error.response.headers?.["retry-after"], 10) ||
+          60;
+        const detail =
+          error.response.data?.detail ||
+          `Rate limit exceeded. Please slow down and wait ${retryAfter}s.`;
+        window.dispatchEvent(
+          new CustomEvent("network:rate-limited", {
+            detail: { detail, retry_after: retryAfter },
+          })
+        );
+      }
+      return Promise.reject(error);
+    }
+
+    // Auto-retry once for idempotent GET requests on network failure or timeout
+    if (
+      originalRequest &&
+      originalRequest.method?.toLowerCase() === "get" &&
+      !originalRequest._retry &&
+      !originalRequest._networkRetry &&
+      (!error.response || error.code === "ECONNABORTED")
+    ) {
+      originalRequest._networkRetry = true;
+      await new Promise((res) => setTimeout(res, 1200));
+      return axiosClient(originalRequest);
+    }
 
     // Check if error is 401 and request hasn't been retried yet
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {

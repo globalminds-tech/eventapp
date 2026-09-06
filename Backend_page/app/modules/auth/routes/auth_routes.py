@@ -226,3 +226,65 @@ def verify_otp(payload: VerifyOTPSchema):
 @root_auth_router.post("/otp/reset-password")
 def reset_password(payload: ResetPasswordSchema):
     return AuthController.reset_password(payload.dict())
+
+
+@auth_router.post("/change-password")
+@root_auth_router.post("/change-password")
+@root_auth_router.post("/auth/change-password")
+def change_password(payload: dict, request: Request):
+    # Support both Bearer JWT token or email credentials in body
+    user_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and "Bearer " in auth_header:
+        try:
+            token_str = auth_header.split(" ")[1]
+            token_data = decode_token(token_str)
+            if token_data:
+                user_id = token_data.get("user_id") or token_data.get("id")
+        except Exception:
+            pass
+
+    if not user_id:
+        email = payload.get("email")
+        if email:
+            user = AuthRepository.get_user_by_email(email)
+            if user:
+                user_id = user.id
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required to change password.")
+
+    return AuthController.change_password(user_id, payload)
+
+
+# --- Invitation Aliases ---
+from app.modules.rbac.controllers.rbac_controller import RBACController
+
+@auth_router.get("/invitation/{token}")
+@legacy_auth_router.get("/invitation/{token}")
+@root_auth_router.get("/invitation/{token}")
+def verify_invitation_alias(token: str):
+    return RBACController.verify_invitation(token)
+
+
+@auth_router.post("/invitation/accept")
+@legacy_auth_router.post("/invitation/accept")
+@root_auth_router.post("/invitation/accept")
+def accept_invitation_alias(payload: dict, request: Request):
+    auth_header = request.headers.get("Authorization")
+    if auth_header and "Bearer " in auth_header:
+        try:
+            token_str = auth_header.split(" ")[1]
+            token_data = decode_token(token_str)
+            if token_data:
+                return RBACController.accept_invitation(payload, token_data)
+        except Exception:
+            pass
+    return RBACController.register_and_accept(payload)
+
+
+@auth_router.post("/invitation/accept-existing")
+@legacy_auth_router.post("/invitation/accept-existing")
+@root_auth_router.post("/invitation/accept-existing")
+def accept_existing_invitation_alias(payload: dict, current_user: dict = Depends(get_current_user)):
+    return RBACController.accept_invitation(payload, current_user)
