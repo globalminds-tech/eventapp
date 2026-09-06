@@ -5,7 +5,16 @@ import { Sparkles, Store, Ticket, ShieldCheck, ArrowRight, X, Compass } from "lu
 export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }) {
   const navigate = useNavigate();
 
-  if (!isOpen) return null;
+  const isSuper = roles.includes("admin") || roles.includes("superadmin") || roles.includes("superuser");
+
+  React.useEffect(() => {
+    if (isOpen && isSuper) {
+      onClose();
+      navigate("/superuser/dashboard", { replace: true });
+    }
+  }, [isOpen, isSuper, onClose, navigate]);
+
+  if (!isOpen || isSuper) return null;
 
   const roleOptions = [
     {
@@ -36,18 +45,6 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
       enabled: true, // Always accessible to registered users
     },
   ];
-
-  if (roles.includes("admin") || roles.includes("superadmin") || roles.includes("superuser")) {
-    roleOptions.unshift({
-      id: "admin",
-      title: "Super Admin Workspace",
-      desc: "System approvals, category master control, KYC verifications & platform payouts.",
-      icon: ShieldCheck,
-      gradient: "from-purple-600 to-indigo-600",
-      path: "/superuser/dashboard",
-      enabled: true,
-    });
-  }
 
   const handleSelectRole = (path) => {
     onClose();

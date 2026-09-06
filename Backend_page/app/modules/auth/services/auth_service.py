@@ -11,7 +11,11 @@ class AuthService:
     @staticmethod
     def register_user(raw_data: dict) -> dict:
         data = RegisterSchema(**raw_data)
-        allowed_roles = ["organizer", "exhibitor", "user", "visitor", "superuser", "superadmin", "admin"]
+        disallowed_admin_roles = {"superuser", "superadmin", "admin"}
+        if data.role.lower() in disallowed_admin_roles:
+            raise ApiError("Administrative roles cannot be registered publicly.", 403)
+
+        allowed_roles = ["organizer", "exhibitor", "user", "visitor"]
         if data.role not in allowed_roles:
             raise ApiError("Invalid user role specified", 400)
 
@@ -65,6 +69,8 @@ class AuthService:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
+        if any(r in ["superuser", "superadmin", "admin"] for r in (user.roles or [])):
+            raise ApiError("Super administrators cannot register or upgrade as an organizer.", 403)
         user = AuthRepository.save_organizer_step1(user, raw_data)
         return {
             "message": "Organizer KYC Step 1 saved successfully",
@@ -76,6 +82,8 @@ class AuthService:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
+        if any(r in ["superuser", "superadmin", "admin"] for r in (user.roles or [])):
+            raise ApiError("Super administrators cannot register or upgrade as an organizer.", 403)
         
         user = AuthRepository.attach_organizer_profile(user, raw_data)
         access_token = generate_access_token(user.id, "organizer")
@@ -94,6 +102,8 @@ class AuthService:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
+        if any(r in ["superuser", "superadmin", "admin"] for r in (user.roles or [])):
+            raise ApiError("Super administrators cannot register or upgrade as an exhibitor.", 403)
         user = AuthRepository.save_exhibitor_step1(user, raw_data)
         return {
             "message": "Exhibitor KYC Step 1 saved successfully",
@@ -133,6 +143,8 @@ class AuthService:
         user = AuthRepository.get_user_by_id(user_id)
         if not user:
             raise ApiError("User not found", 404)
+        if any(r in ["superuser", "superadmin", "admin"] for r in (user.roles or [])):
+            raise ApiError("Super administrators cannot register or upgrade as an exhibitor.", 403)
         
         user = AuthRepository.attach_exhibitor_profile(user, raw_data)
         access_token = generate_access_token(user.id, "exhibitor")
@@ -158,7 +170,12 @@ class AuthService:
 
         user_full = AuthService.get_current_user(user.id)
         all_roles = user_full.get("roles") or ["user"]
-        active_role = user.active_role or (all_roles[0] if all_roles else "user")
+        active_role = user_full.get("active_role") or (all_roles[0] if all_roles else "user")
+
+        # Security Guard: Only the genuine designated email can log in with superadmin privileges
+        is_super = any(r in ["superuser", "superadmin", "admin"] for r in all_roles) or user.active_role in ["superuser", "superadmin", "admin"]
+        if is_super and user.email.lower() != "bookmyevent2026@gmail.com":
+            raise ApiError("Unauthorized administrative access.", 403)
 
         access_token = generate_access_token(user.id, role=active_role, roles=all_roles)
         refresh_token = generate_refresh_token(user.id, role=active_role, roles=all_roles)
@@ -178,10 +195,22 @@ class AuthService:
         
         user_dict = user.to_dict()
 
+        roles = list(user.roles) if user.roles else ["user"]
+        is_admin_user = any(r in ["superuser", "superadmin", "admin"] for r in roles) or user.active_role in ["superuser", "superadmin", "admin"]
+
+        # Super administrators are strictly isolated to platform administration
+        if is_admin_user:
+            user_dict["roles"] = ["superadmin"]
+            user_dict["active_role"] = "superadmin"
+            user_dict["profiles"] = {
+                "organizer": None,
+                "exhibitor": None,
+            }
+            return user_dict
+
         org_profile = AuthRepository.get_organizer_profile_by_user_id(user.id)
         exh_profile = AuthRepository.get_exhibitor_profile_by_user_id(user.id)
 
-        roles = list(user.roles) if user.roles else ["user"]
         if org_profile and org_profile.kyc_status in ["VERIFIED", "IN_PROGRESS"]:
             if "organizer" not in roles:
                 roles.append("organizer")
@@ -198,7 +227,6 @@ class AuthService:
         active_role = user.active_role or (roles[0] if roles else "user")
         user_dict["roles"] = roles
         user_dict["active_role"] = active_role
-        user_dict["role"] = active_role
         user_dict["profiles"] = {
             "organizer": org_profile.to_dict() if org_profile else None,
             "exhibitor": exh_profile.to_dict() if exh_profile else None,
@@ -234,9 +262,19 @@ class AuthService:
         
         user_full = AuthService.get_current_user(user_id)
         allowed_roles = [r.lower() for r in (user_full.get("roles") or ["user"])]
-        
+        is_super = any(r in ["superuser", "superadmin", "admin"] for r in allowed_roles)
+
         target_role_clean = target_role.strip().lower()
-        if target_role_clean not in allowed_roles and "superuser" not in allowed_roles and "admin" not in allowed_roles:
+
+        # Super administrators are platform governors and cannot switch into attendee, organizer, or exhibitor roles
+        if is_super and target_role_clean not in ["superuser", "superadmin", "admin"]:
+            raise ApiError("Super administrators cannot switch into attendee, organizer, or exhibitor portals.", 403)
+
+        # Non-admins cannot switch to administrative roles
+        if target_role_clean in ["superuser", "superadmin", "admin"] and not is_super:
+            raise ApiError("Unauthorized: You do not possess administrative privileges.", 403)
+
+        if target_role_clean not in allowed_roles:
             raise ApiError(f"You do not possess the '{target_role}' role yet. Please onboard first.", 403)
         
         user.active_role = target_role_clean
@@ -245,7 +283,6 @@ class AuthService:
 
         new_access_token = generate_access_token(user.id, role=target_role_clean, roles=allowed_roles)
         user_full["active_role"] = target_role_clean
-        user_full["role"] = target_role_clean
 
         return {
             "token": new_access_token,

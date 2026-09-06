@@ -12,10 +12,11 @@ def generate_access_token(user_id, role: str = "user", roles: list[str] = None, 
     """
     now = datetime.datetime.utcnow()
     user_roles = roles if roles else [role]
+    active_role = role or (user_roles[0] if user_roles else "user")
     payload = {
         "user_id": str(user_id),
         "id": str(user_id),
-        "role": role,
+        "active_role": active_role,
         "roles": user_roles,
         "type": "access",
         "iat": now,
@@ -30,10 +31,11 @@ def generate_refresh_token(user_id, role: str = "user", roles: list[str] = None,
     """
     now = datetime.datetime.utcnow()
     user_roles = roles if roles else [role]
+    active_role = role or (user_roles[0] if user_roles else "user")
     payload = {
         "user_id": str(user_id),
         "id": str(user_id),
-        "role": role,
+        "active_role": active_role,
         "roles": user_roles,
         "type": "refresh",
         "iat": now,

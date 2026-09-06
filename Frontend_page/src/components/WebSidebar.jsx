@@ -30,7 +30,7 @@ export default function WebSidebar({ role }) {
   const activeRoleKey = (role === "superadmin" || role === "superuser") ? "superuser" : role;
   const isSuperAdmin = activeRoleKey === "superuser" || String(role).toLowerCase() === "superadmin" || String(role).toLowerCase() === "superuser";
   const currentRoleNormalized = String(activeRoleKey || role || "").toLowerCase();
-  const switchableRoles = availableRoles.filter((r) => {
+  const switchableRoles = isSuperAdmin ? [] : availableRoles.filter((r) => {
     const rLower = String(r).toLowerCase();
     return !["superuser", "superadmin", "admin"].includes(rLower) && rLower !== currentRoleNormalized;
   });

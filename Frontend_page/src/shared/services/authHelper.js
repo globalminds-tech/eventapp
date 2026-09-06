@@ -7,29 +7,43 @@ import axiosClient from "@/shared/api/axiosClient";
  * Wipes all storage (localStorage & sessionStorage), resets Redux auth/user states,
  * and seamlessly navigates to /login via React Router.
  */
-export const performLogout = (dispatch, navigate) => {
+export const performLogout = async (dispatch, navigate) => {
+  // 1. Clear Authorization header and Redux store immediately
   try {
+    delete axiosClient.defaults.headers.common["Authorization"];
     if (dispatch) {
       dispatch(logout());
       dispatch(clearUser());
     }
   } catch (err) {
     console.error("Logout dispatch note:", err);
-  } finally {
-    const rememberedEmail = localStorage.getItem("rememberedEmail");
-    const rememberedRememberMe = localStorage.getItem("rememberMe");
+  }
 
-    localStorage.clear();
-    sessionStorage.clear();
+  // 2. Call backend logout to invalidate and delete the HttpOnly refresh_token cookie
+  try {
+    await axiosClient.post("/api/v1/auth/logout").catch(() => {});
+  } catch (err) {
+    console.error("Backend logout call note:", err);
+  }
 
-    if (rememberedEmail) localStorage.setItem("rememberedEmail", rememberedEmail);
-    if (rememberedRememberMe) localStorage.setItem("rememberMe", rememberedRememberMe);
+  // 3. Clear client storage
+  const rememberedEmail = localStorage.getItem("rememberedEmail");
+  const rememberedRememberMe = localStorage.getItem("rememberMe");
 
-    if (navigate) {
-      navigate("/login", { replace: true });
-    } else {
-      window.location.replace("/login");
-    }
+  localStorage.clear();
+  sessionStorage.clear();
+
+  if (rememberedEmail) localStorage.setItem("rememberedEmail", rememberedEmail);
+  if (rememberedRememberMe) localStorage.setItem("rememberMe", rememberedRememberMe);
+
+  // Set explicit logged-out flag to prevent AuthInitializer from attempting token refresh
+  localStorage.setItem("is_logged_out", "true");
+  sessionStorage.setItem("is_logged_out", "true");
+
+  if (navigate) {
+    navigate("/login", { replace: true });
+  } else {
+    window.location.replace("/login");
   }
 };
 
@@ -81,28 +95,43 @@ export const getUserInitials = (name) => {
  * Computes all accessible roles for a user based on backend roles array & profiles object
  */
 export const getUserAvailableRoles = (user) => {
-  const roles = new Set(["user"]);
+  if (!user) return ["user"];
 
-  // 1. Extract from user object
-  if (user) {
-    if (Array.isArray(user.roles)) {
-      user.roles.forEach((r) => r && roles.add(String(r).toLowerCase()));
-    }
-    if (user.active_role) {
-      roles.add(String(user.active_role).toLowerCase());
-    }
-    if (user.role) {
-      roles.add(String(user.role).toLowerCase());
-    }
-    if (user.profiles?.organizer || user.organizer_profile) {
-      roles.add("organizer");
-    }
-    if (user.profiles?.exhibitor || user.exhibitor_profile) {
-      roles.add("exhibitor");
-    }
+  const rawRoles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
+  const activeRole = String(user.active_role || user.role || "").toLowerCase();
+
+  // 1. Strict Super Administrator Isolation:
+  // Super admins cannot be attendees, organizers, or exhibitors
+  const isSuper = (
+    rawRoles.includes("superadmin") ||
+    rawRoles.includes("superuser") ||
+    rawRoles.includes("admin") ||
+    activeRole === "superadmin" ||
+    activeRole === "superuser" ||
+    activeRole === "admin"
+  );
+
+  if (isSuper) {
+    return ["superadmin", "superuser"];
   }
 
-  // 2. Extract from storage fallback
+  // 2. Normal users start with default "user" role
+  const roles = new Set(["user"]);
+
+  rawRoles.forEach((r) => r && roles.add(String(r).toLowerCase()));
+
+  // 3. Extract from attached profiles (must be an object with valid status)
+  const orgProfile = user.profiles?.organizer || user.organizer_profile;
+  if (orgProfile && typeof orgProfile === "object" && orgProfile.kyc_status !== "REJECTED") {
+    roles.add("organizer");
+  }
+
+  const exhProfile = user.profiles?.exhibitor || user.exhibitor_profile;
+  if (exhProfile && typeof exhProfile === "object" && exhProfile.kyc_status !== "REJECTED") {
+    roles.add("exhibitor");
+  }
+
+  // 4. Fallback from legitimate stored roles list
   try {
     const storedRolesStr = localStorage.getItem("roles") || sessionStorage.getItem("roles");
     if (storedRolesStr) {
@@ -110,10 +139,6 @@ export const getUserAvailableRoles = (user) => {
       if (Array.isArray(parsed)) {
         parsed.forEach((r) => r && roles.add(String(r).toLowerCase()));
       }
-    }
-    const storedRole = localStorage.getItem("role") || sessionStorage.getItem("role");
-    if (storedRole) {
-      roles.add(storedRole.toLowerCase());
     }
   } catch (e) {}
 
@@ -127,13 +152,7 @@ export const hasProfile = (user, roleName) => {
   if (!user) return false;
   const cleanRole = (roleName || "").toLowerCase();
   const userRoles = getUserAvailableRoles(user);
-  if (cleanRole === "organizer") {
-    return userRoles.includes("organizer");
-  }
-  if (cleanRole === "exhibitor") {
-    return userRoles.includes("exhibitor");
-  }
-  return true;
+  return userRoles.includes(cleanRole);
 };
 
 /**

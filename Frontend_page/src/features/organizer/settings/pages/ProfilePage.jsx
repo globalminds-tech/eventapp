@@ -162,23 +162,32 @@ export default function Profile() {
   };
   const effectiveRoles = getUserAvailableRoles(effectiveUser);
 
-  const hasOrganizer = isAuthenticated && (
-    effectiveRoles.includes("organizer") ||
-    Boolean(effectiveUser?.profiles?.organizer) ||
-    Boolean(userProfile?.profiles?.organizer) ||
-    Boolean(effectiveUser?.organization_name)
-  );
-
-  const hasExhibitor = isAuthenticated && (
-    effectiveRoles.includes("exhibitor") ||
-    Boolean(effectiveUser?.profiles?.exhibitor) ||
-    Boolean(userProfile?.profiles?.exhibitor)
-  );
-
   const isSuperuser = isAuthenticated && (
     effectiveRoles.includes("superuser") ||
     effectiveRoles.includes("superadmin") ||
-    effectiveRoles.includes("admin")
+    effectiveRoles.includes("admin") ||
+    String(userProfile?.active_role || userProfile?.role || "").toLowerCase() === "superadmin" ||
+    String(userProfile?.active_role || userProfile?.role || "").toLowerCase() === "superuser" ||
+    String(reduxAuth?.role || "").toLowerCase() === "superadmin" ||
+    String(reduxAuth?.role || "").toLowerCase() === "superuser"
+  );
+
+  useEffect(() => {
+    if (isSuperuser) {
+      navigate("/superuser/dashboard", { replace: true });
+    }
+  }, [isSuperuser, navigate]);
+
+  const hasOrganizer = isAuthenticated && !isSuperuser && (
+    effectiveRoles.includes("organizer") ||
+    Boolean(effectiveUser?.profiles?.organizer?.id) ||
+    Boolean(userProfile?.profiles?.organizer?.id)
+  );
+
+  const hasExhibitor = isAuthenticated && !isSuperuser && (
+    effectiveRoles.includes("exhibitor") ||
+    Boolean(effectiveUser?.profiles?.exhibitor?.id) ||
+    Boolean(userProfile?.profiles?.exhibitor?.id)
   );
 
   const getRoleBadge = () => {
@@ -189,6 +198,17 @@ export default function Profile() {
     if (hasExhibitor) return "Exhibitor Vendor";
     return "Verified Member";
   };
+
+  if (isSuperuser) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#f8fafc]">
+        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-white border border-slate-200 shadow-xs">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-600 border-t-transparent" />
+          <span className="text-xs font-bold text-slate-700">Redirecting to Super Admin Dashboard...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans pb-20 select-none">
@@ -424,37 +444,6 @@ export default function Profile() {
               )}
             </div>
           </div>
-
-          {/* 3. Super Admin Card (If applicable) */}
-          {isSuperuser && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col justify-between sm:col-span-2 hover:border-purple-300 transition">
-              <div>
-                <div className="flex items-start justify-between mb-4">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Super Administration
-                  </span>
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                    <Shield size={18} />
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <h3 className="text-lg font-bold text-slate-900">Admin Dashboard</h3>
-                  <p className="text-xs text-slate-500 mt-1">Platform management, approvals, and payout audits</p>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100">
-                <button
-                  onClick={() => handleEnterWorkspace("superuser", "/superuser/dashboard")}
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 py-2.5 px-5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold cursor-pointer transition shadow-xs"
-                >
-                  <span>Go to Admin Dashboard</span>
-                  <ArrowRight size={13} />
-                </button>
-              </div>
-            </div>
-          )}
 
         </div>
 

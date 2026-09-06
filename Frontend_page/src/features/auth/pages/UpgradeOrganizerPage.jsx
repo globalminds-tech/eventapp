@@ -8,6 +8,14 @@ import { authApi } from "@/features/auth/api/auth.api";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { Select, SelectItem } from "@/components/ui/Select";
 import {
+  validateGSTIN,
+  validatePAN,
+  validateIFSC,
+  validateBankAccountNumber,
+  validateMobile,
+  validatePincode,
+} from "@/shared/utils/kycValidation";
+import {
   Sparkles,
   Building2,
   Landmark,
@@ -33,6 +41,7 @@ export default function UpgradeOrganizerPage() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [successMsg, setSuccessMsg] = useState("");
 
   const [formData, setFormData] = useState({
@@ -69,7 +78,7 @@ export default function UpgradeOrganizerPage() {
       return;
     }
 
-    // Pre-fill existing fields from org profile or shared cross-fill KYC data
+    // Pre-fill existing fields from organizer profile or shared cross-fill KYC data (e.g. from exhibitor profile)
     const initialData = {
       company_name: orgProfile?.company_name || sharedKyc?.company_name || user?.organization_name || "",
       business_type: orgProfile?.business_type || "Private Limited",
@@ -80,7 +89,7 @@ export default function UpgradeOrganizerPage() {
       state: orgProfile?.state || sharedKyc?.state || user?.state || "",
       pincode: orgProfile?.pincode || sharedKyc?.pincode || "",
       website_url: orgProfile?.website_url || sharedKyc?.website_url || "",
-      mobile: user?.mobile || "",
+      mobile: orgProfile?.mobile || sharedKyc?.mobile || user?.mobile || "",
       bank_name: orgProfile?.bank_name || sharedKyc?.bank_name || "",
       account_number: orgProfile?.account_number || sharedKyc?.account_number || "",
       ifsc_code: orgProfile?.ifsc_code || sharedKyc?.ifsc_code || "",
@@ -113,6 +122,7 @@ export default function UpgradeOrganizerPage() {
             city: res.city || prev.city,
             state: res.state || prev.state,
           }));
+          setFieldErrors((prev) => ({ ...prev, pincode: "", city: "", state: "" }));
           setPincodeSuccess(true);
           setTimeout(() => setPincodeSuccess(false), 3500);
         }
@@ -123,9 +133,22 @@ export default function UpgradeOrganizerPage() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let { name, value } = e.target;
+    if (["gstin", "pan_number", "ifsc_code"].includes(name)) {
+      value = value.toUpperCase();
+    }
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === "gstin" && value.length >= 12) {
+        const derivedPan = value.slice(2, 12);
+        if (!prev.pan_number || prev.pan_number === prev.gstin?.slice(2, 12)) {
+          next.pan_number = derivedPan;
+        }
+      }
+      return next;
+    });
     setError("");
+    setFieldErrors((prev) => ({ ...prev, [name]: "" }));
 
     if (name === "pincode") {
       const clean = value.replace(/\D/g, "").slice(0, 6);
@@ -139,9 +162,44 @@ export default function UpgradeOrganizerPage() {
   const handleSaveStep1 = async (e) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
 
-    if (!formData.company_name) {
-      setError("Company or Organization name is required.");
+    const errs = {};
+    if (!formData.company_name?.trim()) {
+      errs.company_name = "Company Name is required.";
+    }
+    if (!formData.business_type) {
+      errs.business_type = "Business Entity Type is required.";
+    }
+    const mobCheck = validateMobile(formData.mobile);
+    if (!mobCheck.isValid) {
+      errs.mobile = mobCheck.error;
+    }
+    const panCheck = validatePAN(formData.pan_number, formData.gstin);
+    if (!panCheck.isValid) {
+      errs.pan_number = panCheck.error;
+    }
+    const gstinCheck = validateGSTIN(formData.gstin);
+    if (!gstinCheck.isValid) {
+      errs.gstin = gstinCheck.error;
+    }
+    if (!formData.business_address?.trim()) {
+      errs.business_address = "Business Address is required.";
+    }
+    const pinCheck = validatePincode(formData.pincode);
+    if (!pinCheck.isValid) {
+      errs.pincode = pinCheck.error;
+    }
+    if (!formData.city?.trim()) {
+      errs.city = "City is required.";
+    }
+    if (!formData.state?.trim()) {
+      errs.state = "State is required.";
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setError("Please fix the highlighted field errors below.");
       return;
     }
 
@@ -176,9 +234,27 @@ export default function UpgradeOrganizerPage() {
   const handleCompleteKYC = async (e) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
 
-    if (!formData.bank_name || !formData.account_number || !formData.ifsc_code) {
-      setError("Bank Name, Account Number, and IFSC Code are required for payout setup.");
+    const errs = {};
+    if (!formData.account_holder?.trim()) {
+      errs.account_holder = "Account Holder Name is required.";
+    }
+    if (!formData.bank_name?.trim()) {
+      errs.bank_name = "Bank Name is required.";
+    }
+    const accCheck = validateBankAccountNumber(formData.account_number);
+    if (!accCheck.isValid) {
+      errs.account_number = accCheck.error;
+    }
+    const ifscCheck = validateIFSC(formData.ifsc_code);
+    if (!ifscCheck.isValid) {
+      errs.ifsc_code = ifscCheck.error;
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setError("Please fix the highlighted bank details below.");
       return;
     }
 
@@ -205,6 +281,8 @@ export default function UpgradeOrganizerPage() {
       sessionStorage.setItem("user", JSON.stringify(userToStore));
       localStorage.setItem("role", "organizer");
       sessionStorage.setItem("role", "organizer");
+      localStorage.setItem("active_role", "organizer");
+      sessionStorage.setItem("active_role", "organizer");
       localStorage.setItem("roles", JSON.stringify(fullRoles));
       sessionStorage.setItem("roles", JSON.stringify(fullRoles));
 
@@ -349,95 +427,161 @@ export default function UpgradeOrganizerPage() {
             </div>
           )}
 
-          {/* STEP 1: Business & Legal GST */}
+          {/* STEP 1: Legal / Business Details */}
           {step === 1 && (
             <form onSubmit={handleSaveStep1} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Company / Organization Name *</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Company / Organization Name <span className="text-red-500 font-bold ml-1">*</span></label>
                 <input
                   type="text"
                   name="company_name"
                   value={formData.company_name}
                   onChange={handleChange}
                   placeholder="Acme Events Pvt Ltd"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
-                  required
+                  className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                    fieldErrors.company_name
+                      ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                  }`}
                 />
+                {fieldErrors.company_name && (
+                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0 text-red-500" />
+                    <span>{fieldErrors.company_name}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Select
-                    label="Business Entity Type"
+                    label="Business Entity Type *"
                     name="business_type"
                     value={formData.business_type}
                     onChange={handleChange}
                     placeholder="Select entity type"
-                    triggerClassName="bg-slate-50 border-slate-200/90 focus:border-cyan-500 focus:bg-white rounded-xl h-[38px] text-xs font-semibold"
+                    triggerClassName={`bg-slate-50 rounded-xl h-[38px] text-xs font-semibold ${
+                      fieldErrors.business_type
+                        ? "border-red-500 bg-red-50/20"
+                        : "border-slate-200/90 focus:border-cyan-500 focus:bg-white"
+                    }`}
                   >
                     <SelectItem value="Private Limited">Private Limited</SelectItem>
                     <SelectItem value="Sole Proprietorship">Sole Proprietorship</SelectItem>
                     <SelectItem value="Partnership / LLP">Partnership / LLP</SelectItem>
                     <SelectItem value="Individual / Freelancer">Individual / Freelancer</SelectItem>
                   </Select>
+                  {fieldErrors.business_type && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.business_type}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Contact Mobile Number</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Contact Mobile Number <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="tel"
                     name="mobile"
                     value={formData.mobile}
                     onChange={handleChange}
                     maxLength={10}
-                    placeholder="9876543210"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                    placeholder="Enter 10-digit mobile"
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                      fieldErrors.mobile
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.mobile && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.mobile}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">PAN Card Number</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">PAN Card Number <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">10 characters</span>
+                  </div>
                   <input
                     type="text"
                     name="pan_number"
                     value={formData.pan_number}
                     onChange={handleChange}
                     maxLength={10}
-                    placeholder="ABCDE1234F"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold uppercase focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                    placeholder="e.g. ABCDE1234F"
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold uppercase focus:outline-none transition ${
+                      fieldErrors.pan_number
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.pan_number && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.pan_number}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">GSTIN Number</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">GSTIN Number <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">15 characters</span>
+                  </div>
                   <input
                     type="text"
                     name="gstin"
                     value={formData.gstin}
                     onChange={handleChange}
-                    placeholder="22AAAAA0000A1Z5"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold uppercase focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                    maxLength={15}
+                    placeholder="e.g. 27ABCDE1234F2Z5"
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold uppercase focus:outline-none transition ${
+                      fieldErrors.gstin
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.gstin && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.gstin}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Business Address</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Business Address <span className="text-red-500 font-bold ml-1">*</span></label>
                 <input
                   type="text"
                   name="business_address"
                   value={formData.business_address}
                   onChange={handleChange}
                   placeholder="Street, Building, Area"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                  className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                    fieldErrors.business_address
+                      ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                  }`}
                 />
+                {fieldErrors.business_address && (
+                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0 text-red-500" />
+                    <span>{fieldErrors.business_address}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* 1. Pincode (First for automatic city/state lookup) */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-700">Pincode</label>
+                    <label className="text-xs font-bold text-slate-700">Pincode <span className="text-red-500 font-bold ml-1">*</span></label>
                     {isPincodeLoading && (
                       <span className="text-[10px] text-cyan-600 font-bold flex items-center gap-1">
                         <Loader2 className="w-3 h-3 animate-spin" />
@@ -459,7 +603,11 @@ export default function UpgradeOrganizerPage() {
                       value={formData.pincode}
                       onChange={handleChange}
                       placeholder="600001"
-                      className="w-full p-2.5 pr-8 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                      className={`w-full p-2.5 pr-8 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                        fieldErrors.pincode
+                          ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                      }`}
                     />
                     <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                       {isPincodeLoading ? (
@@ -469,32 +617,58 @@ export default function UpgradeOrganizerPage() {
                       )}
                     </div>
                   </div>
+                  {fieldErrors.pincode && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.pincode}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* 2. City */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">City</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">City <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
                     placeholder="Chennai"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                      fieldErrors.city
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.city && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.city}</span>
+                    </p>
+                  )}
                 </div>
 
                 {/* 3. State */}
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">State</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">State <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="state"
                     value={formData.state}
                     onChange={handleChange}
                     placeholder="Tamil Nadu"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                      fieldErrors.state
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.state && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.state}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -523,57 +697,101 @@ export default function UpgradeOrganizerPage() {
           {step === 2 && (
             <form onSubmit={handleCompleteKYC} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Account Holder Name *</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Account Holder Name <span className="text-red-500 font-bold ml-1">*</span></label>
                 <input
                   type="text"
                   name="account_holder"
                   value={formData.account_holder}
                   onChange={handleChange}
                   placeholder="Acme Events Pvt Ltd"
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
-                  required
+                  className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                    fieldErrors.account_holder
+                      ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                      : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                  }`}
                 />
+                {fieldErrors.account_holder && (
+                  <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0 text-red-500" />
+                    <span>{fieldErrors.account_holder}</span>
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Bank Name *</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Bank Name <span className="text-red-500 font-bold ml-1">*</span></label>
                   <input
                     type="text"
                     name="bank_name"
                     value={formData.bank_name}
                     onChange={handleChange}
                     placeholder="HDFC Bank"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
-                    required
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                      fieldErrors.bank_name
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.bank_name && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.bank_name}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Bank Account Number *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">Bank Account Number <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">9-18 digits</span>
+                  </div>
                   <input
                     type="text"
                     name="account_number"
+                    maxLength={18}
                     value={formData.account_number}
                     onChange={handleChange}
                     placeholder="50100234567890"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold focus:bg-white focus:border-cyan-500 focus:outline-none transition"
-                    required
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold focus:outline-none transition ${
+                      fieldErrors.account_number
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.account_number && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.account_number}</span>
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">IFSC Code *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">IFSC Code <span className="text-red-500 font-bold ml-1">*</span></label>
+                    <span className="text-[10px] text-slate-400 font-mono">11 characters</span>
+                  </div>
                   <input
                     type="text"
                     name="ifsc_code"
+                    maxLength={11}
                     value={formData.ifsc_code}
                     onChange={handleChange}
                     placeholder="HDFC0001234"
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-semibold uppercase focus:bg-white focus:border-cyan-500 focus:outline-none transition"
-                    required
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-semibold uppercase focus:outline-none transition ${
+                      fieldErrors.ifsc_code
+                        ? "border-red-500 bg-red-50/20 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        : "border-slate-200/90 focus:bg-white focus:border-cyan-500"
+                    }`}
                   />
+                  {fieldErrors.ifsc_code && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-red-500" />
+                      <span>{fieldErrors.ifsc_code}</span>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">UPI ID / Settlement Preference</label>

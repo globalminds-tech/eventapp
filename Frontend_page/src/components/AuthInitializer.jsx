@@ -13,7 +13,12 @@ export default function AuthInitializer({ children }) {
   const [isInitializing, setIsInitializing] = useState(true);
 
   // Check if a stored user exists (indicating a returning authenticated session)
-  const hasStoredSession = Boolean(
+  const isExplicitlyLoggedOut = (
+    localStorage.getItem("is_logged_out") === "true" ||
+    sessionStorage.getItem("is_logged_out") === "true"
+  );
+
+  const hasStoredSession = !isExplicitlyLoggedOut && Boolean(
     localStorage.getItem("user") ||
     sessionStorage.getItem("user") ||
     localStorage.getItem("role") ||
@@ -24,6 +29,15 @@ export default function AuthInitializer({ children }) {
     let isMounted = true;
 
     const restoreSessionWithRetry = async (attempt = 1, maxAttempts = 3) => {
+      // If user explicitly logged out, do not attempt to restore session
+      if (isExplicitlyLoggedOut) {
+        if (isMounted) {
+          dispatch(setAuthLoading(false));
+          setIsInitializing(false);
+        }
+        return;
+      }
+
       // If access token is already present in Redux, no initialization refresh needed
       if (accessToken) {
         if (isMounted) setIsInitializing(false);
@@ -65,6 +79,22 @@ export default function AuthInitializer({ children }) {
           );
         }
       } catch (err) {
+        // If 401 Unauthorized or 403 Forbidden, session cookie is invalid or dead -> clean up completely
+        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+          console.log(`[AuthInitializer] No active session cookie or session expired.`);
+          localStorage.removeItem("user");
+          sessionStorage.removeItem("user");
+          localStorage.removeItem("role");
+          sessionStorage.removeItem("role");
+          localStorage.removeItem("roles");
+          sessionStorage.removeItem("roles");
+          if (isMounted) {
+            dispatch(setAuthLoading(false));
+            setIsInitializing(false);
+          }
+          return;
+        }
+
         // If it's a network error or 5xx error and we have attempts left, retry with backoff
         const isNetworkOrServerError = !err.response || err.response.status >= 500;
         if (isNetworkOrServerError && attempt < maxAttempts && isMounted) {
@@ -73,7 +103,7 @@ export default function AuthInitializer({ children }) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
           return restoreSessionWithRetry(attempt + 1, maxAttempts);
         }
-        console.log(`[AuthInitializer] No active session cookie or refresh failed:`, err?.response?.data?.detail || err.message);
+        console.log(`[AuthInitializer] Session refresh ended:`, err?.response?.data?.detail || err.message);
       } finally {
         if (isMounted) {
           dispatch(setAuthLoading(false));

@@ -14,7 +14,8 @@ const initialUser = getStoredUser();
 const initialState = {
   user: initialUser,
   accessToken: null, // Purely in-memory access token (XSS safe)
-  role: initialUser?.active_role || initialUser?.role || localStorage.getItem("role") || sessionStorage.getItem("role") || null,
+  active_role: initialUser?.active_role || localStorage.getItem("active_role") || sessionStorage.getItem("active_role") || "user",
+  role: initialUser?.active_role || localStorage.getItem("active_role") || "user",
   isAuthenticated: Boolean(initialUser),
   loading: Boolean(initialUser), // Start loading if a previous session exists so routes await token refresh
   error: null
@@ -25,7 +26,7 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      const { user, token, accessToken, role } = action.payload || {};
+      const { user, token, accessToken, role, active_role } = action.payload || {};
       const validToken = accessToken || token;
       
       if (validToken && !validToken.includes("authenticated-user-token")) {
@@ -36,25 +37,26 @@ const authSlice = createSlice({
         sessionStorage.removeItem("token");
       }
 
-      // If a role is passed (e.g. during workspace switch), immediately sync it
-      if (role) {
-        const cleanRole = String(role).toLowerCase();
+      // If a role or active_role is passed (e.g. during workspace switch), immediately sync it
+      if (active_role || role) {
+        const cleanRole = String(active_role || role).toLowerCase();
+        state.active_role = cleanRole;
         state.role = cleanRole;
         if (state.user) {
-          state.user = { ...state.user, active_role: cleanRole, role: cleanRole };
+          state.user = { ...state.user, active_role: cleanRole };
         }
+        localStorage.setItem("active_role", cleanRole);
+        sessionStorage.setItem("active_role", cleanRole);
         localStorage.setItem("role", cleanRole);
         sessionStorage.setItem("role", cleanRole);
-        localStorage.setItem("userRole", cleanRole);
-        sessionStorage.setItem("userRole", cleanRole);
       }
       
       if (user) {
         state.user = { ...state.user, ...user };
-        const currentActiveRole = role || user.active_role || (user.roles && user.roles[0]) || user.role || state.role || "user";
-        state.role = String(currentActiveRole).toLowerCase();
-        state.user.active_role = state.role;
-        state.user.role = state.role;
+        const currentActiveRole = active_role || role || user.active_role || (user.roles && user.roles[0]) || state.active_role || "user";
+        state.active_role = String(currentActiveRole).toLowerCase();
+        state.role = state.active_role;
+        state.user.active_role = state.active_role;
         
         localStorage.setItem("user", JSON.stringify(state.user));
         sessionStorage.setItem("user", JSON.stringify(state.user));

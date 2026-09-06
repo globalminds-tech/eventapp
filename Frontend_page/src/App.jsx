@@ -126,7 +126,7 @@ export default function App() {
             <Route
               path="/OrganizerHome"
               element={
-                <ProtectedRoute allowedRoles={["organizer", "superuser", "superadmin"]}>
+                <ProtectedRoute allowedRoles={["organizer"]}>
                   <WebSidebar role="organizer" />
                 </ProtectedRoute>
               }
@@ -182,7 +182,7 @@ export default function App() {
             <Route
               path="/exhibitor"
               element={
-                <ProtectedRoute allowedRoles={["exhibitor", "superuser", "superadmin"]}>
+                <ProtectedRoute allowedRoles={["exhibitor"]}>
                   <WebSidebar role="exhibitor" />
                 </ProtectedRoute>
               }
@@ -198,7 +198,7 @@ export default function App() {
             <Route
               path="/book-stall/:id"
               element={
-                <ProtectedRoute allowedRoles={["exhibitor", "superuser", "superadmin"]}>
+                <ProtectedRoute allowedRoles={["exhibitor"]}>
                   <Exhibitorstall />
                 </ProtectedRoute>
               }
