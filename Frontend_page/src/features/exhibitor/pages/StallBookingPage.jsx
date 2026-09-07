@@ -7,6 +7,7 @@ import {
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { bookStall, getEventById, getCountries, getStates, getCities } from "@/Services/api";
 import { useSelector } from "react-redux";
+import { getAuthUserId } from "@/shared/services/authHelper";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -166,9 +167,12 @@ const Stall = () => {
     if (formData.mobile && !/^\d{10}$/.test(formData.mobile)) newErrors.mobile = "Must be 10 digits";
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); setLoading(false); return; }
 
+    const effectiveUserId = user?.id || getAuthUserId();
     const fd = new FormData();
     Object.keys(formData).forEach((k) => fd.append(k, formData[k]));
-    fd.append("event_id", id); fd.append("user_id", user.id); fd.append("eventName", eventName);
+    fd.append("event_id", id);
+    if (effectiveUserId) fd.append("user_id", effectiveUserId);
+    fd.append("eventName", eventName);
 
     try {
       await bookStall(fd);

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "axios";
-import { completeEvent, updateEvent, uploadImage } from "@/Services/api";
+import { completeEvent, updateEvent, uploadImage, clearEventsCache } from "@/Services/api";
+import { getAuthUserId } from "@/shared/services/authHelper";
 
 import Step1EventIdentity from "./steps/Step1EventIdentity";
 import Step2TicketsPricing from "./steps/Step2TicketsPricing";
@@ -63,11 +64,13 @@ const CreateEvent = ({ onBack, editData, isView }) => {
   };
 
   const Redexorganizer = useSelector((state) => state.user);
+  const authUser = useSelector((state) => state.auth?.user);
+  const currentOrganizerId = getAuthUserId(Redexorganizer) || getAuthUserId(authUser);
   const storedUser = {
-    id: sessionStorage.getItem("userId"),
-    name: sessionStorage.getItem("userName"),
+    id: currentOrganizerId,
+    name: Redexorganizer?.name || authUser?.name || sessionStorage.getItem("name") || localStorage.getItem("name") || "",
   };
-  const organizer = Redexorganizer?.id ? Redexorganizer : storedUser;
+  const organizer = { ...storedUser, ...(Redexorganizer?.id ? Redexorganizer : authUser) };
 
   const [popup, setPopup] = useState({ show: false, message: "", type: "" });
 
@@ -411,13 +414,16 @@ const CreateEvent = ({ onBack, editData, isView }) => {
           sponsors: vs.sponsors || (Array.isArray(formData.sponsors) ? formData.sponsors : []),
           guests: vs.guests || formData.guests || [],
         },
-        user_id: organizer?.id || 1,
+        user_id: currentOrganizerId || organizer?.id,
+        created_by: currentOrganizerId || organizer?.id,
       };
       if (targetEventId) {
         await updateEvent(targetEventId, payload);
+        clearEventsCache();
         setPopup({ show: true, message: "🎉 Event Details Updated Successfully!", type: "success" });
       } else {
         await completeEvent(payload);
+        clearEventsCache();
         setPopup({ show: true, message: "🎉 Event Published Successfully!", type: "success" });
       }
       setTimeout(() => { if (onBack) onBack(); }, 1500);

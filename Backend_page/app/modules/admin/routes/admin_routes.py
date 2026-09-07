@@ -17,14 +17,24 @@ admin_auth = Depends(require_roles(["admin", "superuser"]))
 def get_dashboard_stats_alias(period: str = "30d"):
     return AdminController.get_dashboard_stats(period=period)
 
-# ── SUPER ADMIN EVENTS & APPROVAL QUEUE ──
+# ── PUBLIC / ATTENDEE / EXHIBITOR HOME EVENTS (APPROVED ONLY) ──
+
+@root_admin_router.get("/superadmin/home/get-events")
+@root_admin_router.post("/superadmin/home/get-events")
+def get_home_events(request: Request):
+    try:
+        host_url = str(request.base_url)
+        return AdminController.get_events(host_url=host_url, organizer_id=None, only_approved=True)
+    except Exception as e:
+        print("[get_home_events Exception]:", e)
+        return {"success": True, "data": []}
+
+# ── SUPER ADMIN & ORGANIZER PORTAL EVENTS ──
 
 @admin_router.get("/events")
 @admin_router.post("/events")
 @root_admin_router.get("/superadmin/api/events_detail")
 @root_admin_router.get("/superadmin/api/eventshow")
-@root_admin_router.get("/superadmin/home/get-events")
-@root_admin_router.post("/superadmin/home/get-events")
 @root_admin_router.get("/superadmin/api/get-events")
 @root_admin_router.post("/superadmin/api/get-events")
 @root_admin_router.get("/superadmin/get-events")
@@ -42,13 +52,18 @@ def get_events(request: Request, organizer: str = None, organizer_id: str = None
                     import jwt
                     from app.utils.jwt_utils import JWT_SECRET_KEY, JWT_ALGORITHM
                     payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
-                    user_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
-                    if user_id:
-                        target_organizer = str(user_id)
+                    active_role = str(payload.get("active_role") or payload.get("role") or "").lower()
+                    user_roles = [str(r).lower() for r in (payload.get("roles") or [])]
+                    is_admin = active_role in ["superuser", "superadmin", "admin"] or any(r in ["superuser", "superadmin", "admin"] for r in user_roles)
+                    # If not a super administrator, scope to authenticated user's ID
+                    if not is_admin:
+                        user_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
+                        if user_id:
+                            target_organizer = str(user_id)
                 except Exception:
                     pass
 
-        return AdminController.get_events(host_url=host_url, organizer_id=target_organizer)
+        return AdminController.get_events(host_url=host_url, organizer_id=target_organizer, only_approved=False)
     except Exception as e:
         print("[get_events Exception]:", e)
         return {"success": True, "data": []}

@@ -17,9 +17,16 @@ class ExhibitorService:
 
         visiting_card_path = None
         if file_obj:
+            os.makedirs(upload_folder, exist_ok=True)
             filename = secure_filename(file_obj.filename)
             visiting_card_path = os.path.join(upload_folder, filename)
-            file_obj.save(visiting_card_path)
+            try:
+                content = file_obj.file.read()
+                with open(visiting_card_path, "wb") as buffer:
+                    buffer.write(content)
+            except Exception as e:
+                print(f"Warning: Failed to write visiting card file: {e}")
+                visiting_card_path = None
 
         data_dict = {
             "user_id": form_data.get("user_id"),
