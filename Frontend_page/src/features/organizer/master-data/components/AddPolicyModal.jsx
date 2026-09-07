@@ -210,6 +210,16 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
                   >
                     <Check size={15} />
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setNewType("");
+                      setIsAddingNewType(false);
+                    }}
+                    className="h-10 px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl"
+                  >
+                    <X size={15} />
+                  </Button>
                 </div>
               ) : (
                 <Select
@@ -272,6 +282,16 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
                   >
                     <Check size={15} />
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setNewGroup("");
+                      setIsAddingNewGroup(false);
+                    }}
+                    className="h-10 px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl"
+                  >
+                    <X size={15} />
+                  </Button>
                 </div>
               ) : (
                 <Select
@@ -282,60 +302,9 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
                 />
               )}
             </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700">Status</label>
-              <div className="h-10 px-3 rounded-xl border border-emerald-200 bg-emerald-50/60 flex items-center justify-between text-xs font-bold text-emerald-800">
-                <span>Active & Published</span>
-                <Badge variant="success" className="text-[10px] font-bold px-2 py-0.5">
-                  Active
-                </Badge>
-              </div>
-            </div>
           </div>
 
-          {/* Quick Templates */}
-          <div className="pt-1">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Sparkles size={13} className="text-cyan-600" />
-              <span className="text-[11px] font-bold text-slate-600">Quick Template Starters:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  applyTemplate(
-                    "All ticket purchases are final. In case of official event rescheduling, tickets will be transferred to the new date. Refunds are processed within 7-10 business days only if the event is cancelled permanently."
-                  )
-                }
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-cyan-50 hover:text-cyan-700 text-[11px] font-semibold text-slate-600 transition-colors border border-slate-200 cursor-pointer"
-              >
-                Refund Standard
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  applyTemplate(
-                    "Entry requires a valid digital badge QR code with government-issued photo ID. Organizers reserve the right to refuse entry or inspect baggage at security checkpoints."
-                  )
-                }
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-cyan-50 hover:text-cyan-700 text-[11px] font-semibold text-slate-600 transition-colors border border-slate-200 cursor-pointer"
-              >
-                Gate Security
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  applyTemplate(
-                    "Exhibitors must complete stall setup 4 hours prior to gate opening. Sub-leasing or transferring allotted stalls without written approval is strictly prohibited."
-                  )
-                }
-                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-cyan-50 hover:text-cyan-700 text-[11px] font-semibold text-slate-600 transition-colors border border-slate-200 cursor-pointer"
-              >
-                Exhibitor Rule
-              </button>
-            </div>
-          </div>
+
 
           <Textarea
             label="Policy Terms & Description *"

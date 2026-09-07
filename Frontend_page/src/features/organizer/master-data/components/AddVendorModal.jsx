@@ -142,6 +142,13 @@ export default function AddVendorModal({ isOpen, onClose, onSuccess, editData = 
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "primary_contact" || name === "secondary_contact") {
+      const val = value.replace(/\D/g, "");
+      if (val.length <= 10) {
+        setFormData((prev) => ({ ...prev, [name]: val }));
+      }
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -243,6 +250,60 @@ export default function AddVendorModal({ isOpen, onClose, onSuccess, editData = 
     if (!formData.vendor_name || !formData.company_name || !formData.primary_contact || !formData.mail_id) {
       alert("Please fill in the required vendor details (Name, Company, Contact, Mail).");
       return;
+    }
+
+    const contactRegex = /^\d{10}$/;
+    if (!contactRegex.test(formData.primary_contact)) {
+      alert("Primary contact must be a valid 10-digit number.");
+      return;
+    }
+    if (formData.secondary_contact && !contactRegex.test(formData.secondary_contact)) {
+      alert("Secondary contact must be a valid 10-digit number.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.mail_id)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
+    if (formData.account_number) {
+      const accNumRegex = /^\d{9,18}$/;
+      if (!accNumRegex.test(formData.account_number)) {
+        alert("Account number must be between 9 and 18 digits.");
+        return;
+      }
+    }
+
+    if (formData.ifsc_code) {
+      const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+      const swiftRegex = /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+      const code = formData.ifsc_code.toUpperCase();
+      if (!ifscRegex.test(code) && !swiftRegex.test(code)) {
+        alert("Please enter a valid IFSC or SWIFT code.");
+        return;
+      }
+    }
+
+    for (let i = 0; i < documents.length; i++) {
+      const doc = documents[i];
+      if (doc.document_type && doc.document_number) {
+        const type = doc.document_type.toUpperCase();
+        const num = doc.document_number.toUpperCase();
+        if (type.includes("AADHAR") && !/^\d{12}$/.test(num)) {
+          alert(`Document #${i + 1}: Aadhar number must be exactly 12 digits.`);
+          return;
+        }
+        if (type.includes("PAN") && !/^[A-Z]{5}\d{4}[A-Z]{1}$/.test(num)) {
+          alert(`Document #${i + 1}: Invalid PAN format.`);
+          return;
+        }
+        if (type.includes("GST") && !/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(num)) {
+          alert(`Document #${i + 1}: Invalid GST format.`);
+          return;
+        }
+      }
     }
 
     if (isUploadingBank || uploadingDocIndex !== null) {
@@ -368,6 +429,16 @@ export default function AddVendorModal({ isOpen, onClose, onSuccess, editData = 
                   >
                     <Check size={15} />
                   </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setNewType("");
+                      setIsAddingNewType(false);
+                    }}
+                    className="h-10 px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl"
+                  >
+                    <X size={15} />
+                  </Button>
                 </div>
               ) : (
                 <Select
@@ -402,6 +473,7 @@ export default function AddVendorModal({ isOpen, onClose, onSuccess, editData = 
                 value={formData.primary_contact}
                 onChange={handleChange}
                 placeholder="10-digit mobile"
+                maxLength={10}
               />
               <Input
                 label="Secondary Contact"
@@ -409,6 +481,7 @@ export default function AddVendorModal({ isOpen, onClose, onSuccess, editData = 
                 value={formData.secondary_contact}
                 onChange={handleChange}
                 placeholder="Optional"
+                maxLength={10}
               />
             </div>
 
