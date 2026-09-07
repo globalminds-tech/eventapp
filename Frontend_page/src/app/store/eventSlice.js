@@ -16,12 +16,18 @@ export const fetchEventsThunk = createAsyncThunk(
       const force = isObject ? Boolean(param.force) : false;
 
       const state = getState();
-      if (!force && state.events?.loaded && Array.isArray(state.events?.list) && state.events.list.length > 0) {
-        return state.events.list;
+      if (
+        !force &&
+        state.events?.loaded &&
+        state.events?.currentOrganizerId === organizerId &&
+        Array.isArray(state.events?.list) &&
+        state.events.list.length > 0
+      ) {
+        return { data: state.events.list, organizerId };
       }
 
-      const data = await eventApi.getEventshow(organizerId);
-      return ensureArray(data);
+      const data = await eventApi.getEventshow(organizerId, force);
+      return { data: ensureArray(data), organizerId };
     } catch (err) {
       return rejectWithValue(err.response?.data || "Failed to fetch events");
     }
@@ -34,6 +40,7 @@ const eventSlice = createSlice({
     list: [],
     loading: false,
     loaded: false,
+    currentOrganizerId: null,
     error: null,
   },
   reducers: {
@@ -68,6 +75,13 @@ const eventSlice = createSlice({
     invalidateEvents: (state) => {
       state.loaded = false;
     },
+    clearEvents: (state) => {
+      state.list = [];
+      state.loaded = false;
+      state.loading = false;
+      state.currentOrganizerId = null;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -78,7 +92,8 @@ const eventSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchEventsThunk.fulfilled, (state, action) => {
-        state.list = ensureArray(action.payload);
+        state.list = ensureArray(action.payload?.data);
+        state.currentOrganizerId = action.payload?.organizerId || null;
         state.loading = false;
         state.loaded = true;
       })
@@ -95,6 +110,7 @@ export const {
   updateEventInStore,
   deleteEventFromStore,
   invalidateEvents,
+  clearEvents,
 } = eventSlice.actions;
 
 export default eventSlice.reducer;

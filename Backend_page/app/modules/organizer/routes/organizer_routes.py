@@ -40,6 +40,11 @@ async def complete_event_alias(request: Request):
                 user_id = payload.get("user_id") or payload.get("id")
             except Exception:
                 pass
+        if not user_id:
+            user_id = body.get("created_by") or body.get("user_id")
+        if user_id:
+            body["created_by"] = str(user_id)
+            body["user_id"] = str(user_id)
         return OrganizerController.create_event(body, user_id=user_id)
     except HTTPException as http_err:
         raise http_err
@@ -61,6 +66,17 @@ def get_event_detail_alias(event_id: str):
 @root_organizer_router.post("/superadmin/api/update_event/{event_id}")
 async def update_event_alias(event_id: str, request: Request):
     body = await request.json()
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            from app.utils.jwt_utils import decode_token
+            tok = auth_header.split(" ")[1]
+            payload = decode_token(tok)
+            uid = payload.get("user_id") or payload.get("id")
+            if uid and not body.get("user_id"):
+                body["user_id"] = str(uid)
+        except Exception:
+            pass
     return OrganizerController.update_event(event_id, body)
 
 # ── ORGANIZER VENUES & MASTERS ──
@@ -175,28 +191,45 @@ async def update_venue_route(venue_id: str, request: Request):
     return result
 
 @root_organizer_router.delete("/superadmin/api/delete-venue/{venue_id}")
+@root_organizer_router.delete("/superadmin/api/delete_venue/{venue_id}")
 def delete_venue_route(venue_id: str):
     return OrganizerController.delete_venue(venue_id)
 
 @root_organizer_router.put("/superadmin/api/update-policy/{policy_id}")
 @root_organizer_router.patch("/superadmin/api/update-policy/{policy_id}")
+@root_organizer_router.put("/superadmin/api/update_policy/{policy_id}")
+@root_organizer_router.patch("/superadmin/api/update_policy/{policy_id}")
 async def update_policy_route(policy_id: str, request: Request):
     data = await request.json()
     result = OrganizerController.update_policy(policy_id, data)
     return result
 
 @root_organizer_router.delete("/superadmin/api/delete-policy/{policy_id}")
+@root_organizer_router.delete("/superadmin/api/delete_policy/{policy_id}")
 def delete_policy_route(policy_id: str):
     return OrganizerController.delete_policy(policy_id)
 
 @root_organizer_router.put("/superadmin/api/update-sponsor/{sponsor_id}")
 @root_organizer_router.patch("/superadmin/api/update-sponsor/{sponsor_id}")
+@root_organizer_router.put("/superadmin/api/update_sponsor/{sponsor_id}")
+@root_organizer_router.patch("/superadmin/api/update_sponsor/{sponsor_id}")
 async def update_sponsor_route(sponsor_id: str, request: Request):
     data = await request.json()
     result = OrganizerController.update_sponsor(sponsor_id, data)
     return result
 
 @root_organizer_router.delete("/superadmin/api/delete-sponsor/{sponsor_id}")
+@root_organizer_router.delete("/superadmin/api/delete_sponsor/{sponsor_id}")
+@root_organizer_router.delete("/superadmin/api/delete_sponsorship/{sponsor_id}")
 def delete_sponsor_route(sponsor_id: str):
     return OrganizerController.delete_sponsor(sponsor_id)
+
+# ── EVENT DELETION (SOFT DELETE) ──
+@root_organizer_router.delete("/superadmin/api/delete_event/{event_id}")
+@root_organizer_router.delete("/superadmin/api/delete-event/{event_id}")
+@root_organizer_router.delete("/api/v1/events/{event_id}")
+def delete_event_alias(event_id: str):
+    from app.modules.events.services.event_service import EventService
+    return EventService.delete_event(event_id)
+
 

@@ -5,6 +5,7 @@ from app.modules.admin.repository.admin_repository import AdminRepository
 from app.modules.admin.schemas.admin_schema import (
     UpdateEventStatusSchema, CategorySchema, UpdateKycStatusSchema
 )
+from app.extensions.redis import redis_cache
 
 from sqlalchemy import select, desc
 from app.extensions.database import db
@@ -103,22 +104,35 @@ class AdminService:
             }
 
     @staticmethod
-    def get_events(host_url: str = "", organizer_id: str = None) -> list[dict]:
+    def get_events(host_url: str = "", organizer_id: str = None, only_approved: bool = False) -> list[dict]:
         from app.extensions.database import SessionLocal
+        from sqlalchemy import or_, func
+        import uuid
         session = SessionLocal()
         try:
-            stmt = select(EventDetails).order_by(desc(EventDetails.created_at))
-            events = session.scalars(stmt).all()
+            stmt = select(EventDetails).where(EventDetails.deleted_at.is_(None)).order_by(desc(EventDetails.created_at))
+
+            if only_approved:
+                stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE"]))
 
             if organizer_id:
-                org_str = str(organizer_id)
-                filtered = [
-                    e for e in events 
-                    if str(getattr(e, "user_id", "")) == org_str 
-                    or str(getattr(e, "organizer_id", "")) == org_str
+                org_str = str(organizer_id).strip()
+                org_uuid = None
+                try:
+                    org_uuid = uuid.UUID(org_str)
+                except (ValueError, AttributeError):
+                    pass
+
+                filter_conds = [
+                    EventDetails.created_by == org_str
                 ]
-                if filtered:
-                    events = filtered
+                if org_uuid:
+                    filter_conds.append(EventDetails.user_id == org_uuid)
+                    filter_conds.append(EventDetails.organization_id == org_uuid)
+
+                stmt = stmt.where(or_(*filter_conds))
+
+            events = session.scalars(stmt).all()
 
             if not events:
                 return []
@@ -146,6 +160,18 @@ class AdminService:
                 if status in ["approved", "confirmed", "paid"]:
                     stalls_booked_map[b.event_id] = stalls_booked_map.get(b.event_id, 0) + 1
 
+            from app.models.booking import UserBookingDetails
+            user_bookings = session.scalars(select(UserBookingDetails).where(
+                UserBookingDetails.event_id.in_(event_ids),
+                UserBookingDetails.deleted_at.is_(None)
+            )).all()
+            user_booking_map = {}
+            gate_scans_map = {}
+            for ub in user_bookings:
+                user_booking_map[ub.event_id] = user_booking_map.get(ub.event_id, 0) + 1
+                if ub.is_scanned or ub.is_checked_in:
+                    gate_scans_map[ub.event_id] = gate_scans_map.get(ub.event_id, 0) + 1
+
             events_list = []
             for event in events:
                 booking = booking_map.get(event.id)
@@ -153,8 +179,8 @@ class AdminService:
 
                 price_val = float(getattr(booking, "price_inr", 0) or getattr(booking, "price", 0) or getattr(event, "pass_fee", 0) or 0)
                 capacity_val = int(getattr(booking, "capacity", 500) or getattr(event, "total_capacity", 500) or 500)
-                passes_sold_val = int(getattr(event, "passes_sold", 0) or getattr(booking, "passes_sold", 0) or 0)
-                gate_scans_val = int(getattr(event, "gate_scans", 0) or getattr(event, "arrived", 0) or 0)
+                passes_sold_val = user_booking_map.get(event.id, 0) or int(getattr(event, "passes_sold", 0) or getattr(booking, "passes_sold", 0) or 0)
+                gate_scans_val = gate_scans_map.get(event.id, 0) or int(getattr(event, "gate_scans", 0) or getattr(event, "arrived", 0) or 0)
 
                 events_list.append({
                     "id": str(event.id),
@@ -178,7 +204,9 @@ class AdminService:
                     "price": price_val,
                     "price_inr": price_val,
                     "passesSold": passes_sold_val,
+                    "passes_sold": passes_sold_val,
                     "gateScans": gate_scans_val,
+                    "gate_scans": gate_scans_val,
                     "totalCapacity": capacity_val,
                     "capacity": capacity_val,
                     "total_stalls": stall_map.get(event.id, 0),
@@ -203,14 +231,16 @@ class AdminService:
     @staticmethod
     def update_event_status(event_id, raw_data: dict) -> dict:
         data = UpdateEventStatusSchema(**raw_data)
-        if data.status not in ["APPROVED", "REJECTED", "PENDING"]:
+        st_upper = data.status.strip().upper()
+        if st_upper not in ["APPROVED", "REJECTED", "PENDING", "ACTIVE", "DRAFT"]:
             raise ApiError("Invalid status value", 400)
 
-        event = AdminRepository.update_event_status(event_id, data.status)
+        event = AdminRepository.update_event_status(event_id, st_upper)
         if not event:
             raise ApiError("Event not found", 404)
 
-        return {"message": f"Event status updated to {data.status}"}
+        redis_cache.clear_pattern("events:*")
+        return {"message": f"Event status updated to {st_upper}"}
 
     @staticmethod
     def get_categories() -> list[dict]:

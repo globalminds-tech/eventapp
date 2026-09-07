@@ -55,7 +55,7 @@ def parse_time(val: Any) -> Optional[time]:
 class EventRepository:
     @staticmethod
     def get_all() -> list[EventDetails]:
-        stmt = select(EventDetails).order_by(desc(EventDetails.id))
+        stmt = select(EventDetails).where(EventDetails.deleted_at.is_(None)).order_by(desc(EventDetails.id))
         return list(db.session.scalars(stmt).all())
 
     @staticmethod
@@ -272,6 +272,7 @@ class EventRepository:
             "occurrence": event.occurrence or "",
             "status": event.status or "Active",
             "user_id": event.user_id,
+            "created_by": event.created_by,
             "banner_url": banner_preview,
             "banner": banner_preview,
             "image": banner_preview,
@@ -489,8 +490,10 @@ class EventRepository:
         event.address = event_details.get("address") or raw_data.get("address") or ""
         event.event_type = event_details.get("eventType") or event_details.get("event_type") or raw_data.get("event_type") or "OneTime"
         event.occurrence = event_details.get("occurrence") or raw_data.get("occurrence") or ""
-        event.visibility = event_details.get("visibility") or raw_data.get("visibility") or "Public"
-        event.status = raw_data.get("status") or "Pending"
+        if event_id and not raw_data.get("status"):
+            event.status = event.status or "Pending"
+        else:
+            event.status = raw_data.get("status") or "Pending"
         
         # Checkbox & facility toggles
         event.mail = bool(event_details.get("mail"))
@@ -515,10 +518,25 @@ class EventRepository:
         event.amenities = event_details.get("amenities") or ""
         event.tags = event_details.get("tags") or ""
 
-        if user_id:
-            event.user_id = user_id
-        elif not event.user_id:
-            event.user_id = raw_data.get("user_id") or 1
+        effective_user_id = user_id or raw_data.get("created_by") or raw_data.get("user_id") or raw_data.get("organizer_id")
+        if effective_user_id:
+            import uuid
+            try:
+                event.user_id = uuid.UUID(str(effective_user_id))
+            except (ValueError, AttributeError):
+                pass
+            if not event.created_by:
+                event.created_by = str(effective_user_id)
+
+        if not event.created_by and event.user_id:
+            event.created_by = str(event.user_id)
+
+        if event_id and effective_user_id:
+            import uuid
+            try:
+                event.updated_by = uuid.UUID(str(effective_user_id))
+            except (ValueError, AttributeError):
+                pass
 
         start_date_val = event_details.get("startDate") or event_details.get("start_date") or raw_data.get("start_date")
         end_date_val = event_details.get("endDate") or event_details.get("end_date") or raw_data.get("end_date")
@@ -839,10 +857,24 @@ class EventRepository:
         return EventRepository.get_by_id(event_id)
 
     @staticmethod
-    def delete(event_id: int) -> bool:
-        event = db.session.get(EventDetails, event_id)
+    def delete(event_id, deleted_by=None) -> bool:
+        import uuid
+        event = None
+        try:
+            eid = uuid.UUID(str(event_id))
+            event = db.session.get(EventDetails, eid)
+        except Exception:
+            event = db.session.scalars(select(EventDetails).where(
+                (EventDetails.event_code == str(event_id)) | (EventDetails.slug == str(event_id))
+            )).first()
+
         if event:
-            db.session.delete(event)
+            event.deleted_at = datetime.utcnow()
+            if deleted_by:
+                try:
+                    event.deleted_by = uuid.UUID(str(deleted_by))
+                except Exception:
+                    pass
             db.session.commit()
             return True
         return False
