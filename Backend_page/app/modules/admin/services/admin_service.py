@@ -203,10 +203,11 @@ class AdminService:
     @staticmethod
     def update_event_status(event_id, raw_data: dict) -> dict:
         data = UpdateEventStatusSchema(**raw_data)
-        if data.status not in ["APPROVED", "REJECTED", "PENDING"]:
+        status_upper = data.status.upper()
+        if status_upper not in ["APPROVED", "REJECTED", "PENDING", "SUSPENDED"]:
             raise ApiError("Invalid status value", 400)
 
-        event = AdminRepository.update_event_status(event_id, data.status)
+        event = AdminRepository.update_event_status(event_id, status_upper)
         if not event:
             raise ApiError("Event not found", 404)
 
