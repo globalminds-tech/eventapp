@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, Request
 from app.modules.users.controllers.user_controller import UserController
 from app.modules.users.schemas.user_schema import BookEventSchema, UpdateProfileSchema
 from app.middleware.auth import get_current_user
@@ -50,8 +50,32 @@ async def upload_avatar(file: UploadFile = File(...), current_user: dict = Depen
 @users_router.post("/book-event", status_code=201)
 @root_users_router.post("/user/book-event", status_code=201)
 @root_users_router.post("/api/v1/user/book-event", status_code=201)
-def book_event(payload: BookEventSchema):
-    return UserController.book_event(payload.dict())
+def book_event(payload: BookEventSchema, request: Request):
+    data = payload.dict()
+    if not data.get("user_id"):
+        from app.middleware.auth import get_current_user
+        try:
+            current_user = get_current_user(request)
+            if current_user and isinstance(current_user, dict):
+                data["user_id"] = current_user.get("user_id") or current_user.get("id")
+        except Exception:
+            pass
+    if not data.get("user_id") and data.get("email"):
+        from app.modules.auth.repository.auth_repository import AuthRepository
+        try:
+            existing_user = AuthRepository.get_user_by_email(data["email"])
+            if existing_user:
+                data["user_id"] = str(existing_user.id)
+        except Exception:
+            pass
+
+    if not data.get("user_id"):
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required: You must be signed in with a valid account to book an event pass."
+        )
+
+    return UserController.book_event(data)
 
 @users_router.get("/validate-booking/{code_or_id}")
 @users_router.get("/validate-qr/{code_or_id}")

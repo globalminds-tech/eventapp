@@ -31,11 +31,20 @@ class UserService:
     @staticmethod
     def book_event(raw_data: dict) -> dict:
         data = BookEventSchema(**raw_data)
+        if not data.user_id:
+            raise ApiError("Authentication required: Valid user ID is mandatory to book an event pass.", 401)
+
         email_clean = data.email.strip().lower()
 
         event = UserRepository.get_event_by_id(data.event_id)
         if not event:
             raise ApiError("Event not found", 404)
+
+        event_status = (getattr(event, "status", None) or "Active").strip().upper()
+        if event_status == "SUSPENDED":
+            raise ApiError("This event is currently suspended by administration and cannot accept bookings.", 400)
+        if event_status not in ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"]:
+            raise ApiError(f"This event is currently in '{event_status}' status and not open for public booking.", 400)
 
         booking = UserRepository.create_booking(
             event_id=data.event_id,

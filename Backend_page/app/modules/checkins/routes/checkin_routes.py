@@ -10,11 +10,14 @@ checkin_router = APIRouter(prefix="/api/v1/checkins", tags=["Checkins"])
 def verify_checkin(payload: CheckinRequestSchema, current_user: dict = Depends(get_current_user)):
     code_or_id = payload.ticket_code or payload.booking_id
     action = payload.action or "CHECK_IN"
+    staff_id = str(current_user.get("user_id") or current_user.get("id") or payload.scanner_id or "GATE_STAFF")
     return CheckinController.checkin_attendee(
         code_or_id,
         action=action,
-        scanner_id=payload.scanner_id,
-        gate_name=payload.gate_name
+        scanner_id=payload.scanner_id or staff_id,
+        gate_name=payload.gate_name or "MAIN_GATE",
+        event_id=payload.event_id,
+        override_duplicate=bool(payload.override_duplicate)
     )
 
 @checkin_router.get("/events")
@@ -28,6 +31,11 @@ def get_events_checkin_summary(current_user: dict = Depends(get_current_user)):
 @checkin_router.get("/events/{event_id}/attendees")
 def get_event_attendees(event_id: str, current_user: dict = Depends(get_current_user)):
     return CheckinController.get_event_attendees(event_id=event_id)
+
+@checkin_router.get("/events/{event_id}/logs")
+def get_event_checkin_logs(event_id: str, current_user: dict = Depends(get_current_user)):
+    return CheckinController.get_event_checkin_logs(event_id=event_id)
+
 
 @checkin_router.get("/food/summary")
 def get_food_checkin_summary(current_user: dict = Depends(get_current_user)):

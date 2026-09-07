@@ -182,6 +182,7 @@ const formatEventsList = (list) => {
       image: e.banner_url || e.banner || e.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
       banner_type: e.banner_type,
       bookingEnds: e.end_date || e.start_date + "T23:59:59",
+      status: (e.status || "APPROVED").toUpperCase(),
     };
   });
 };
@@ -270,6 +271,11 @@ const EventCarouselSection = ({ title, icon: Icon, badge, events = [], onEventCl
                 <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-bold">
                   {ev.category}
                 </span>
+                {ev.status === "SUSPENDED" && (
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-black uppercase tracking-wider shadow-sm">
+                    Bookings Paused
+                  </span>
+                )}
               </div>
 
               {/* Likes & Rating */}
@@ -298,16 +304,25 @@ const EventCarouselSection = ({ title, icon: Icon, badge, events = [], onEventCl
             {/* Price & Book Button */}
             <div className="mt-3 pt-2.5 flex items-center justify-between border-t border-slate-100 px-0.5">
               <span className="text-xs font-black text-slate-900">{ev.price}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEventClick(ev);
-                }}
-                className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 active:scale-95 text-white font-black text-[10px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm shadow-orange-500/25 tracking-wider"
-              >
-                BOOK
-              </button>
+              {ev.status === "SUSPENDED" ? (
+                <span
+                  title="Currently we are not taking bookings for this event"
+                  className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[9px] px-2.5 py-1.5 rounded-lg tracking-wider uppercase text-center"
+                >
+                  Bookings Paused
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEventClick(ev);
+                  }}
+                  className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 active:scale-95 text-white font-black text-[10px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm shadow-orange-500/25 tracking-wider"
+                >
+                  BOOK
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -946,8 +961,8 @@ const App = () => {
 
         {!isLoading && (
           <>
-            {/* 1. Pick Up Where You Left Off (Recently Viewed) */}
-            {recentlyViewed.length > 0 && (
+            {/* 1. Pick Up Where You Left Off (Recently Viewed) - Only visible on "All" category tab */}
+            {selectedCategory === "All" && recentlyViewed.length > 0 && (
               <EventCarouselSection
                 title="Pick Up Where You Left Off"
                 badge="RECENTLY VIEWED"

@@ -23,7 +23,8 @@ class ExhibitorRepository:
     def get_user_bookings(user_id):
         stmt = select(
             ExhibitorStallBooking,
-            EventDetails.event_name
+            EventDetails.event_name,
+            EventDetails.status
         ).outerjoin(
             EventDetails, ExhibitorStallBooking.event_id == EventDetails.id
         ).where(ExhibitorStallBooking.user_id == user_id)
@@ -37,7 +38,8 @@ class ExhibitorRepository:
     def get_all_applications():
         stmt = select(
             ExhibitorStallBooking,
-            EventDetails.event_name
+            EventDetails.event_name,
+            EventDetails.status
         ).outerjoin(
             EventDetails, ExhibitorStallBooking.event_id == EventDetails.id
         ).order_by(ExhibitorStallBooking.created_at.desc())

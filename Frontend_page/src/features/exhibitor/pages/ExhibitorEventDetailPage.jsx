@@ -118,6 +118,7 @@ const ExhibitorEventDetailPage = () => {
 
   const d = event;
   const ed = d?.eventDetails || {};
+  const isSuspended = (ed?.status || d?.status || "").toUpperCase() === "SUSPENDED";
   const layout = d?.layout || {};
   const stalls = d?.stalls || layout?.stalls || [];
   const amenities = d?.amenities || [];
@@ -143,6 +144,26 @@ const ExhibitorEventDetailPage = () => {
         <span className="text-slate-300">/</span>
         <span className="text-xs font-bold text-slate-700 truncate max-w-[260px]">{d?.event_name || ed?.event_name}</span>
       </div>
+
+      {/* ── Suspended Notice Banner ── */}
+      {isSuspended && (
+        <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3.5 text-amber-900 shadow-xs animate-fadeIn">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div className="space-y-1 text-xs flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-extrabold text-amber-950 text-sm">Booth Reservations Temporarily Paused</span>
+              <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-extrabold text-[10px]">
+                Currently Not Taking Bookings
+              </Badge>
+            </div>
+            <p className="text-amber-800 font-medium leading-relaxed text-xs">
+              The event organizer or platform administrator has temporarily paused new stall reservations for this event. No new exhibitor booth bookings are being accepted at this time.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Hero Banner ── */}
       {banner && (
@@ -393,14 +414,24 @@ const ExhibitorEventDetailPage = () => {
             Secure your booth at <span className="text-emerald-600">{d?.event_name || ed?.event_name}</span>
           </p>
         </div>
-        <Button
-          onClick={handleReserveBooth}
-          className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm px-6 py-2.5 rounded-xl shadow-lg border-none cursor-pointer gap-2 shrink-0"
-        >
-          <Store className="w-4 h-4" />
-          Reserve Booth
-          <ArrowRight className="w-4 h-4" />
-        </Button>
+        {isSuspended ? (
+          <Button
+            disabled
+            className="bg-slate-200 text-slate-500 font-extrabold text-sm px-6 py-2.5 rounded-xl border-none cursor-not-allowed gap-2 shrink-0"
+          >
+            <Store className="w-4 h-4" />
+            Bookings Paused
+          </Button>
+        ) : (
+          <Button
+            onClick={handleReserveBooth}
+            className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm px-6 py-2.5 rounded-xl shadow-lg border-none cursor-pointer gap-2 shrink-0"
+          >
+            <Store className="w-4 h-4" />
+            Reserve Booth
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        )}
       </div>
     </div>
   );

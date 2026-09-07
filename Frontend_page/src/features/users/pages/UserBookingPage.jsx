@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 import {
   MapPin, CheckCircle2, XCircle, Info, AlertTriangle,
-  Loader2, ChevronRight, ArrowLeft, ShieldCheck, CreditCard, UserCheck, QrCode
+  Loader2, ChevronRight, ArrowLeft, ShieldCheck, CreditCard, UserCheck, QrCode,
+  Calendar, Printer, Ticket, Check
 } from "lucide-react";
 import {
   getEventById, bookEvent, createRazorpayOrder, getUserProfile,
@@ -11,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Input } from "@/components/ui/Input";
 
 const Toast = ({ show, message, type, onClose }) => {
   if (!show) return null;
@@ -37,23 +40,47 @@ const Toast = ({ show, message, type, onClose }) => {
 export function Userbooking() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const auth = useSelector((state) => state.auth);
+
+  const getStoredUserInfo = () => {
+    try {
+      const stored = localStorage.getItem("user") || sessionStorage.getItem("user");
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return {};
+  };
+
+  const storedUser = getStoredUserInfo();
+  const initialUserId =
+    auth?.user?.id ||
+    auth?.user?.user_id ||
+    storedUser?.id ||
+    storedUser?.user_id ||
+    localStorage.getItem("userId") ||
+    sessionStorage.getItem("userId") ||
+    null;
 
   const [eventData, setEventData] = useState(null);
-  const [form, setForm]         = useState({ name:"", email:"", phone:"", food_preference:"Veg" });
+  const [form, setForm]         = useState({
+    name: auth?.user?.name || storedUser?.name || storedUser?.full_name || localStorage.getItem("name") || "",
+    email: auth?.user?.email || storedUser?.email || localStorage.getItem("email") || "",
+    phone: auth?.user?.mobile || storedUser?.mobile || storedUser?.phone || "",
+    food_preference: "Veg"
+  });
   const [loading, setLoading]   = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [step, setStep]         = useState(1);
   const [agreed, setAgreed]     = useState(false);
   const [successData, setSuccessData] = useState(null);
-  const [toast, setToast]       = useState({ show:false, message:"", type:"info" });
-  const [redirectTimer, setRedirectTimer] = useState(6);
+  const [toast, setToast]       = useState({ show: false, message: "", type: "info" });
+  const [redirectTimer, setRedirectTimer] = useState(8);
 
-  const showToast = (message, type="info") => {
-    setToast({ show:true, message, type });
-    setTimeout(() => setToast({ show:false, message:"", type:"info" }), 3500);
+  const showToast = (message, type = "info") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: "", type: "info" }), 3500);
   };
 
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState(initialUserId);
 
   // 1. Profile Pre-fill for Logged In User
   useEffect(() => {
@@ -68,10 +95,12 @@ export function Userbooking() {
           ...prev,
           name: u.full_name || u.name || u.username || prev.name,
           email: u.email || prev.email,
-          phone: u.phone || u.phone_number || prev.phone,
+          phone: u.phone || u.phone_number || u.mobile || prev.phone,
         }));
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.warn("Could not fetch remote profile, using cached user:", err);
+      });
   }, [id]);
 
   // 2. Fetch Event Data
@@ -86,7 +115,7 @@ export function Userbooking() {
       .finally(() => setDataLoading(false));
   }, [id]);
 
-  // 3. Auto Redirect to My Account / Bookings after successful purchase
+  // 3. Auto Redirect to My Account / Passes after successful purchase
   useEffect(() => {
     let interval;
     if (step === 3 && successData && redirectTimer > 0) {
@@ -94,17 +123,19 @@ export function Userbooking() {
         setRedirectTimer((prev) => prev - 1);
       }, 1000);
     } else if (step === 3 && redirectTimer === 0) {
-      navigate("/profile");
+      navigate("/my-passes");
     }
     return () => clearInterval(interval);
   }, [step, successData, redirectTimer, navigate]);
 
-  const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
-  const validateEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   // Safe DB Property Extraction
   const ev = eventData?.eventDetails || eventData || {};
   const booking = eventData?.booking || {};
+  const eventStatus = (ev.status || eventData?.status || "Active").toUpperCase();
+  const isSuspended = eventStatus === "SUSPENDED";
 
   const rawPrice = 
     booking?.priceINR ?? 
@@ -131,6 +162,9 @@ export function Userbooking() {
   const isPaidEvent = (chargeType === "paid") || (passFeeNum > 0);
   const priceDisplay = isPaidEvent ? `₹ ${passFeeNum.toLocaleString('en-IN')}` : "FREE PASS";
   const bannerUrl = ev?.banner_url || ev?.banner || ev?.image || eventData?.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800";
+  const eventName = ev?.event_name || ev?.eventName || "Event Pass";
+  const eventVenue = ev?.venue || "Exhibition Venue";
+  const eventDate = ev?.start_date || ev?.startDate || "Upcoming Date";
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -144,6 +178,22 @@ export function Userbooking() {
   };
 
   const handleBook = async () => {
+    const effectiveUserId =
+      userId ||
+      auth?.user?.id ||
+      auth?.user?.user_id ||
+      storedUser?.id ||
+      storedUser?.user_id ||
+      localStorage.getItem("userId") ||
+      sessionStorage.getItem("userId") ||
+      null;
+
+    if (!effectiveUserId) {
+      showToast("Authentication required: Please sign in to book your ticket.", "warning");
+      navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+
     if (!form.name.trim()) return showToast("Enter your full name", "warning");
     if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
 
@@ -172,12 +222,22 @@ export function Userbooking() {
         const razorpayOrder = razorpayData?.order || {};
         const keyId = razorpayData?.key_id || razorpayOrder?.key_id || "rzp_test_1DP5mmOlF5G5ag";
 
+        const effectiveUserId =
+          userId ||
+          auth?.user?.id ||
+          auth?.user?.user_id ||
+          storedUser?.id ||
+          storedUser?.user_id ||
+          localStorage.getItem("userId") ||
+          sessionStorage.getItem("userId") ||
+          null;
+
         const options = {
           key: keyId,
           amount: passFeeNum * 100,
           currency: "INR",
           name: "BookMyEvent",
-          description: `Entry Ticket: ${ev?.event_name || ev?.eventName || "Event Pass"}`,
+          description: `Entry Ticket: ${eventName}`,
           image: bannerUrl,
           order_id: razorpayOrder?.id,
           prefill: {
@@ -191,7 +251,7 @@ export function Userbooking() {
               setLoading(true);
               const res = await bookEvent({
                 event_id: id,
-                user_id: userId,
+                user_id: effectiveUserId,
                 ...form,
                 food_preference: ev?.food == 1 ? form.food_preference : "None",
                 payment_id: response.razorpay_payment_id || `pay_rzp_${Date.now()}`,
@@ -229,9 +289,19 @@ export function Userbooking() {
     } else {
       try {
         setLoading(true);
+        const effectiveUserId =
+          userId ||
+          auth?.user?.id ||
+          auth?.user?.user_id ||
+          storedUser?.id ||
+          storedUser?.user_id ||
+          localStorage.getItem("userId") ||
+          sessionStorage.getItem("userId") ||
+          null;
+
         const res = await bookEvent({
           event_id: id,
-          user_id: userId,
+          user_id: effectiveUserId,
           ...form,
           food_preference: ev?.food == 1 ? form.food_preference : "None",
         });
@@ -254,56 +324,71 @@ export function Userbooking() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans select-none pb-24">
-      <Toast {...toast} onClose={() => setToast(t => ({ ...t, show:false }))} />
+      <Toast {...toast} onClose={() => setToast((t) => ({ ...t, show: false }))} />
 
       {/* Top Desktop Web Navbar */}
-      <div className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => {
                 if (step > 1 && step < 3) setStep(step - 1);
                 else navigate(-1);
               }}
-              className="p-2 hover:bg-slate-100 rounded-xl cursor-pointer text-slate-600 border-none bg-transparent transition flex items-center gap-2 font-bold text-xs"
+              className="p-2 hover:bg-slate-100 rounded-xl cursor-pointer text-slate-600 border-none bg-transparent transition flex items-center gap-1.5 font-bold text-xs"
             >
-              <ArrowLeft size={18} />
-              <span>Back to Event</span>
+              <ArrowLeft size={16} />
+              <span>Back</span>
             </button>
             <div className="h-5 w-px bg-slate-200" />
-            <h1 className="text-base font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
               Event Pass Registration
             </h1>
           </div>
 
-          <Badge className="bg-orange-50 text-orange-600 border-orange-200 font-extrabold text-xs px-3.5 py-1">
-            {dataLoading ? <Skeleton className="h-4 w-28" /> : (ev?.event_name || ev?.eventName || 'BookMyEvent Pass')}
+          <Badge className="bg-orange-50 text-orange-600 border-orange-200 font-extrabold text-xs px-3 py-1 truncate max-w-[200px] sm:max-w-none">
+            {dataLoading ? <Skeleton className="h-4 w-28" /> : eventName}
           </Badge>
         </div>
       </div>
 
-      {/* Improved Fit Progress Stepper */}
+      {/* Suspended Event Notice */}
+      {isSuspended && (
+        <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-5">
+          <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 shadow-sm">
+            <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-extrabold text-sm">Event Booking Temporarily Suspended</h4>
+              <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                This event has been temporarily paused by platform administration. Pass registration and ticket purchases are currently unavailable. Please check back later or contact the event host.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Progress Stepper */}
       {step < 3 && (
-        <div className="max-w-md mx-auto w-full px-6 pt-6 pb-2">
+        <div className="max-w-md mx-auto w-full px-6 pt-6 pb-4">
           <div className="flex items-center justify-between relative">
-            <div className="absolute left-8 right-8 top-4.5 h-1 bg-slate-200 z-0 rounded-full" />
+            <div className="absolute left-8 right-8 top-4.5 h-0.5 bg-slate-200 z-0 rounded-full" />
             <div
-              className="absolute left-8 top-4.5 h-1 bg-gradient-to-r from-orange-500 to-amber-500 z-0 rounded-full transition-all duration-300"
+              className="absolute left-8 top-4.5 h-0.5 bg-gradient-to-r from-orange-500 to-amber-500 z-0 rounded-full transition-all duration-300"
               style={{ width: step === 1 ? "0%" : "calc(100% - 64px)" }}
             />
 
             <div className="relative z-10 flex flex-col items-center">
               <div className={`w-9 h-9 rounded-full font-black text-xs flex items-center justify-center transition-all ${
-                step >= 1 ? "bg-orange-500 text-white shadow-md ring-4 ring-orange-100" : "bg-white text-slate-400 border border-slate-300"
+                step >= 1 ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md ring-4 ring-orange-100" : "bg-white text-slate-400 border border-slate-300"
               }`}>
-                1
+                {step > 1 ? <Check size={16} /> : "1"}
               </div>
               <span className="text-[11px] font-extrabold mt-1.5 uppercase text-orange-600">Visitor Details</span>
             </div>
 
             <div className="relative z-10 flex flex-col items-center">
               <div className={`w-9 h-9 rounded-full font-black text-xs flex items-center justify-center transition-all ${
-                step >= 2 ? "bg-orange-500 text-white shadow-md ring-4 ring-orange-100" : "bg-white text-slate-400 border border-slate-300"
+                step >= 2 ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md ring-4 ring-orange-100" : "bg-white text-slate-400 border border-slate-300"
               }`}>
                 2
               </div>
@@ -315,28 +400,30 @@ export function Userbooking() {
 
       {/* STEP 3: SUCCESS TICKET PASS VIEW */}
       {step === 3 && successData && (
-        <div className="max-w-2xl mx-auto w-full px-6 pt-8 flex flex-col items-center">
+        <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 pt-6 sm:pt-8 flex flex-col items-center">
           <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 shadow-md">
             <CheckCircle2 size={32} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 text-center">Ticket Pass Confirmed!</h2>
-          <p className="text-xs text-slate-500 font-semibold text-center mt-1 mb-6">
-            Your entry ticket pass and digital QR code have been added to your account.
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 text-center">Ticket Pass Confirmed!</h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-semibold text-center mt-1 mb-6">
+            Your official entry ticket pass and digital QR code are confirmed and linked to your account.
           </p>
 
           {/* Ticket Pass Card */}
           <Card className="w-full bg-white border-slate-200/90 shadow-xl rounded-3xl overflow-hidden mb-6">
-            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 space-y-2">
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white p-6 space-y-2">
               <div className="flex justify-between items-center">
-                <Badge className="bg-orange-500 text-white font-extrabold text-[10px] border-none">
+                <Badge className="bg-orange-500 text-white font-extrabold text-[10px] border-none px-2.5 py-0.5">
                   Official Entry Pass
                 </Badge>
-                <span className="text-[10px] font-mono text-slate-400">BKG-{successData.booking_id || successData.data?.booking_id || Math.floor(100000 + Math.random() * 900000)}</span>
+                <span className="text-[11px] font-mono text-amber-300">
+                  REF: {successData.booking_id || successData.data?.booking_id || `BKG-${Date.now().toString().slice(-6)}`}
+                </span>
               </div>
-              <h3 className="text-xl font-black text-white">{successData.event_details?.name || ev?.event_name || ev?.eventName}</h3>
-              <p className="text-xs text-slate-300 flex items-center gap-1">
+              <h3 className="text-lg sm:text-xl font-black text-white">{successData.event_details?.name || eventName}</h3>
+              <p className="text-xs text-slate-300 flex items-center gap-1.5">
                 <MapPin size={13} className="text-orange-400" />
-                <span>{successData.event_details?.venue || ev?.venue || 'Exhibition Venue'}</span>
+                <span>{successData.event_details?.venue || eventVenue}</span>
               </p>
             </div>
 
@@ -350,43 +437,74 @@ export function Userbooking() {
                   />
                 ) : (
                   <div className="w-36 h-36 bg-slate-50 border border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 gap-2">
-                    <QrCode size={40} />
+                    <QrCode size={40} className="text-slate-400" />
                     <span className="text-[10px] font-bold">QR Pass Issued</span>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-2 text-xs text-slate-600 font-semibold text-center sm:text-left">
+              <div className="space-y-3 text-xs text-slate-600 font-semibold text-center sm:text-left flex-1">
                 <div>
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase">Attendee Name</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Attendee Name</span>
                   <p className="text-sm font-extrabold text-slate-900">{form.name}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase">Email Address</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Email Address</span>
                   <p className="text-slate-700">{form.email}</p>
                 </div>
+                {form.phone && (
+                  <div>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Contact Phone</span>
+                    <p className="text-slate-700">{form.phone}</p>
+                  </div>
+                )}
                 {ev?.food == 1 && (
                   <div>
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase">Meal Pass</span>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Meal Pass Preference</span>
                     <p className="text-emerald-700 font-extrabold">{form.food_preference}</p>
                   </div>
                 )}
               </div>
             </CardContent>
+
+            <div className="bg-slate-50 border-t border-slate-100 p-4 px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
+                <ShieldCheck size={15} className="text-emerald-600" />
+                <span>Present this QR code at the entrance turnstile or scanner</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.print()}
+                className="text-xs font-bold text-slate-700 border-slate-200 hover:bg-white rounded-xl gap-1.5"
+              >
+                <Printer size={14} />
+                <span>Print Ticket</span>
+              </Button>
+            </div>
           </Card>
 
-          <Button
-            onClick={() => navigate("/profile")}
-            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md border-none cursor-pointer"
-          >
-            Go to My Account / Bookings ({redirectTimer}s)
-          </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            <Button
+              onClick={() => navigate("/my-passes")}
+              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md border-none cursor-pointer"
+            >
+              View in My Passes ({redirectTimer}s)
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/")}
+              className="w-full text-slate-700 font-extrabold text-xs py-3.5 rounded-2xl border-slate-200 hover:bg-slate-50 cursor-pointer"
+            >
+              Back to Home
+            </Button>
+          </div>
         </div>
       )}
 
       {/* LOADING SKELETON */}
       {dataLoading ? (
-        <div className="max-w-6xl mx-auto w-full px-6 pt-4">
+        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2">
               <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-6">
@@ -412,7 +530,7 @@ export function Userbooking() {
           </div>
         </div>
       ) : step < 3 && (
-        <div className="max-w-6xl mx-auto w-full px-6 pt-4">
+        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
             {/* LEFT COLUMN: FORM / REVIEW (2 COLS WIDE) */}
@@ -425,58 +543,51 @@ export function Userbooking() {
                     <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
                       <div>
                         <h2 className="text-xl font-black text-slate-900">Guest Information</h2>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">Contact details automatically linked to your account.</p>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Attendee contact details automatically linked to your account.</p>
                       </div>
                       <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-xs px-3 py-1 gap-1">
                         <UserCheck size={14} />
-                        <span>Logged In Account</span>
+                        <span>Verified Account</span>
                       </Badge>
                     </div>
 
-                    <div className="space-y-4 text-xs font-semibold">
-                      <div>
-                        <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Full Name *</label>
-                        <input
-                          name="name"
-                          type="text"
-                          placeholder="Enter your full name"
-                          value={form.name}
-                          onChange={handleChange}
-                          className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500"
-                        />
-                      </div>
+                    <div className="space-y-4">
+                      <Input
+                        label="Full Name *"
+                        name="name"
+                        placeholder="Enter your full name"
+                        value={form.name}
+                        onChange={handleChange}
+                        required
+                      />
 
-                      <div>
-                        <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Email Address *</label>
-                        <input
-                          name="email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={form.email}
-                          onChange={handleChange}
-                          className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500"
-                        />
-                      </div>
+                      <Input
+                        label="Email Address *"
+                        name="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={form.email}
+                        onChange={handleChange}
+                        required
+                      />
 
-                      <div>
-                        <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Phone Number *</label>
-                        <input
-                          name="phone"
-                          type="text"
-                          placeholder="10 digit mobile number"
-                          maxLength={10}
-                          value={form.phone}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, "");
-                            if (val.length <= 10) setForm({ ...form, phone: val });
-                          }}
-                          className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl px-3.5 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500"
-                        />
-                      </div>
+                      <Input
+                        label="Mobile Phone Number"
+                        name="phone"
+                        placeholder="10 digit mobile number"
+                        maxLength={10}
+                        value={form.phone}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          if (val.length <= 10) setForm({ ...form, phone: val });
+                        }}
+                      />
 
                       {ev?.food == 1 && (
-                        <div>
-                          <label className="block text-[11px] font-extrabold text-slate-600 uppercase mb-1.5">Meal Preference</label>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-700 tracking-tight block">
+                            Meal Preference
+                          </label>
                           <div className="flex gap-3">
                             {["Veg", "Non-Veg"].map((opt) => (
                               <button
@@ -499,14 +610,20 @@ export function Userbooking() {
 
                     <Button
                       onClick={() => {
+                        if (isSuspended) return showToast("This event is currently suspended and cannot accept bookings", "error");
                         if (!form.name.trim()) return showToast("Enter your full name", "warning");
                         if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
                         setStep(2);
                       }}
-                      className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-xl shadow-md border-none cursor-pointer gap-1 mt-2"
+                      disabled={isSuspended}
+                      className={`w-full font-extrabold text-xs py-3.5 rounded-xl shadow-md border-none gap-1 mt-2 transition ${
+                        isSuspended
+                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                          : "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white cursor-pointer"
+                      }`}
                     >
-                      <span>Continue to Review &amp; Pay</span>
-                      <ChevronRight size={16} />
+                      <span>{isSuspended ? "Pass Registration Suspended" : "Continue to Review & Pay"}</span>
+                      {!isSuspended && <ChevronRight size={16} />}
                     </Button>
                   </div>
                 )}
@@ -516,27 +633,36 @@ export function Userbooking() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <div>
-                        <h2 className="text-xl font-black text-slate-900">Review Summary</h2>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">Confirm details before issuing entry pass.</p>
+                        <h2 className="text-xl font-black text-slate-900">Review Ticket Summary</h2>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">Confirm attendee details before issuing your entry pass.</p>
                       </div>
-                      <button onClick={() => setStep(1)} className="text-xs font-extrabold text-orange-600 hover:underline bg-transparent border-none cursor-pointer">
+                      <button 
+                        onClick={() => setStep(1)} 
+                        className="text-xs font-extrabold text-orange-600 hover:underline bg-transparent border-none cursor-pointer"
+                      >
                         Edit Details
                       </button>
                     </div>
 
-                    <div className="bg-slate-50 rounded-2xl p-5 space-y-3 border border-slate-200/80 text-xs font-semibold">
-                      <div className="flex justify-between py-1 border-b border-slate-200/60">
-                        <span className="text-slate-500">Visitor Name</span>
+                    <div className="bg-slate-50/80 rounded-2xl p-5 space-y-3 border border-slate-200/80 text-xs font-semibold">
+                      <div className="flex justify-between py-1.5 border-b border-slate-200/60">
+                        <span className="text-slate-500">Visitor Full Name</span>
                         <span className="font-extrabold text-slate-900">{form.name}</span>
                       </div>
-                      <div className="flex justify-between py-1 border-b border-slate-200/60">
+                      <div className="flex justify-between py-1.5 border-b border-slate-200/60">
                         <span className="text-slate-500">Email Address</span>
                         <span className="font-extrabold text-slate-900">{form.email}</span>
                       </div>
-                      <div className="flex justify-between py-1">
+                      <div className="flex justify-between py-1.5 border-b border-slate-200/60">
                         <span className="text-slate-500">Phone Number</span>
                         <span className="font-extrabold text-slate-900">{form.phone || '—'}</span>
                       </div>
+                      {ev?.food == 1 && (
+                        <div className="flex justify-between py-1.5">
+                          <span className="text-slate-500">Catering Preference</span>
+                          <span className="font-extrabold text-emerald-700">{form.food_preference}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -544,9 +670,9 @@ export function Userbooking() {
               </Card>
             </div>
 
-            {/* RIGHT COLUMN: DESKTOP ORDER & PASS SUMMARY (1 COL WIDE, STICKY TOP-20) */}
+            {/* RIGHT COLUMN: ORDER & PASS SUMMARY */}
             <div className="sticky top-20 space-y-6">
-              <Card className="bg-white border border-slate-200/90 shadow-md rounded-3xl p-6 space-y-6">
+              <Card className="bg-white border border-slate-200/90 shadow-lg rounded-3xl p-6 space-y-6">
                 
                 <div className="flex gap-4 items-center border-b border-slate-100 pb-4">
                   {dataLoading ? (
@@ -558,7 +684,7 @@ export function Userbooking() {
                       className="w-16 h-16 rounded-2xl object-cover shrink-0 border border-slate-100 shadow-xs"
                     />
                   )}
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     {dataLoading ? (
                       <>
                         <Skeleton className="h-3 w-20 rounded-md" />
@@ -569,21 +695,31 @@ export function Userbooking() {
                         <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-[10px] mb-1">
                           {ev?.category || 'Event Pass'}
                         </Badge>
-                        <h3 className="text-sm font-extrabold text-slate-900 line-clamp-1">{ev?.event_name || ev?.eventName || 'Cultural Fest 2026'}</h3>
-                        <p className="text-[11px] text-slate-400 line-clamp-1">{ev?.venue || 'Exhibition Venue'}</p>
+                        <h3 className="text-sm font-extrabold text-slate-900 truncate">{eventName}</h3>
+                        <p className="text-[11px] text-slate-400 truncate">{eventVenue}</p>
                       </>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-xs font-semibold">
+                <div className="space-y-3 text-xs">
+                  <div className="flex justify-between items-center font-semibold">
                     <span className="text-slate-500">Pass Type</span>
-                    <span className="font-extrabold text-slate-900">{booking?.passType || booking?.pass_type || 'Single Entry'}</span>
+                    <span className="font-extrabold text-slate-900">{booking?.passType || booking?.pass_type || 'Single Entry Pass'}</span>
                   </div>
 
-                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-orange-900 uppercase">Total Pass Fee</span>
+                  <div className="flex justify-between items-center font-semibold">
+                    <span className="text-slate-500">Base Registration Fee</span>
+                    <span className="font-extrabold text-slate-900">{priceDisplay}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center font-semibold">
+                    <span className="text-slate-500">Convenience &amp; Platform Fee</span>
+                    <span className="font-extrabold text-emerald-600">₹ 0 (Waived)</span>
+                  </div>
+
+                  <div className="p-4 bg-orange-50/80 border border-orange-200 rounded-2xl flex items-center justify-between mt-2">
+                    <span className="text-xs font-extrabold text-orange-900 uppercase">Total Payable</span>
                     {dataLoading ? (
                       <Skeleton className="h-7 w-24 rounded-lg" />
                     ) : (
@@ -602,13 +738,13 @@ export function Userbooking() {
                         className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-0 mt-0.5"
                       />
                       <span className="text-[11px] text-slate-600 font-medium">
-                        I agree to the event terms &amp; conditions and cancellation policies.
+                        I agree to the event guidelines, gate security policies, and terms of service.
                       </span>
                     </label>
 
                     <Button
                       onClick={handleBook}
-                      disabled={loading || !agreed || dataLoading}
+                      disabled={loading || !agreed || dataLoading || isSuspended}
                       className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-4 rounded-2xl shadow-md border-none cursor-pointer gap-2 disabled:opacity-50"
                     >
                       {loading ? (
@@ -631,7 +767,7 @@ export function Userbooking() {
                 <div className="pt-1 text-center">
                   <span className="text-[11px] text-slate-400 font-semibold flex items-center justify-center gap-1">
                     <ShieldCheck size={14} className="text-emerald-600" />
-                    <span>Instant E-Pass Generation &amp; QR Access</span>
+                    <span>Instant Digital QR Pass • Official Confirmation</span>
                   </span>
                 </div>
 
@@ -644,3 +780,4 @@ export function Userbooking() {
     </div>
   );
 }
+export default Userbooking;

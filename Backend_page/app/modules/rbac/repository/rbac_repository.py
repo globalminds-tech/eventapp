@@ -727,9 +727,34 @@ class RBACRepository:
                     ).first()
                 if member and member.role:
                     for rp in member.role.role_permissions:
-                        if rp.permission:
+                        if rp.permission and rp.permission.code:
                             perms.add(rp.permission.code)
+
+            if not perms:
+                from app.models.organizer_profile import OrganizerProfile
+                from app.models.exhibitor_profile import ExhibitorProfile
+
+                is_organizer = (
+                    "organizer" in clean_roles or
+                    session.query(OrganizerProfile).filter(OrganizerProfile.user_id == user.id).first() is not None
+                )
+                if is_organizer:
+                    owner_perms = session.query(Permission.code).filter(
+                        Permission.scope.in_(["ORGANIZER", "BOTH"])
+                    ).all()
+                    return [p[0] for p in owner_perms] + ["organizer.*"]
+
+                is_exhibitor = (
+                    "exhibitor" in clean_roles or
+                    session.query(ExhibitorProfile).filter(ExhibitorProfile.user_id == user.id).first() is not None
+                )
+                if is_exhibitor:
+                    owner_perms = session.query(Permission.code).filter(
+                        Permission.scope.in_(["EXHIBITOR", "BOTH"])
+                    ).all()
+                    return [p[0] for p in owner_perms] + ["exhibitor.*"]
 
             return list(perms)
         finally:
             session.close()
+

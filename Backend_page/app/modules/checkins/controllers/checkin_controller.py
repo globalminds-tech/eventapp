@@ -7,18 +7,31 @@ class CheckinController:
         code_or_id: str | int,
         action: str = "CHECK_IN",
         scanner_id: Optional[str] = None,
-        gate_name: Optional[str] = None
+        gate_name: Optional[str] = None,
+        event_id: Optional[str] = None,
+        override_duplicate: bool = False
     ):
         result = CheckinService.checkin_attendee(
             code_or_id=code_or_id,
             action=action,
             scanner_id=scanner_id,
-            gate_name=gate_name
+            gate_name=gate_name,
+            event_id=event_id,
+            override_duplicate=override_duplicate
         )
         return {
             "success": True,
             "data": result
         }
+
+    @staticmethod
+    def get_event_checkin_logs(event_id: str):
+        result = CheckinService.get_event_checkin_logs(event_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
 
     @staticmethod
     def get_events_summary(organizer_id: Optional[str] = None):

@@ -406,24 +406,25 @@ export default function OrganizerDashboardPage() {
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3 px-4">Event Details</th>
-                <th className="py-3 px-4">Date & Time</th>
+                <th className="py-3 px-4">Date &amp; Time</th>
                 <th className="py-3 px-4">Tickets Sold</th>
                 <th className="py-3 px-4">Stalls Booked</th>
                 <th className="py-3 px-4">Total Earnings</th>
-                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-center">Approval Status</th>
+                <th className="py-3 px-4 text-center">Lifecycle</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {loading && !loaded ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center">
+                  <td colSpan="8" className="p-8 text-center">
                     <Skeleton className="w-full h-10 rounded-lg" />
                   </td>
                 </tr>
               ) : filteredEvents.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-12 text-center text-slate-500 font-semibold text-xs bg-slate-50/50">
+                  <td colSpan="8" className="p-12 text-center text-slate-500 font-semibold text-xs bg-slate-50/50">
                     <div className="max-w-xs mx-auto space-y-3">
                       <p className="font-bold text-slate-700">No events found</p>
                       <p className="text-[11px] text-slate-400">Create your first event to start managing registrations, tickets, and exhibitors.</p>
@@ -445,6 +446,12 @@ export default function OrganizerDashboardPage() {
                   const stallsTotal = Number(evt.total_stalls || 50);
                   const price = Number(evt.price_inr || evt.priceINR || evt.price || evt.pass_fee || 0);
                   const earnings = price * sold;
+
+                  const rawSt = (evt.status || evt.approval_status || "PENDING").toUpperCase();
+                  const isApproved = ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"].includes(rawSt);
+                  const isSuspended = rawSt === "SUSPENDED";
+                  const isRejected = rawSt === "REJECTED";
+                  const isDraft = rawSt === "DRAFT";
 
                   return (
                     <tr key={evt.id} className="hover:bg-slate-50/80 transition-colors">
@@ -472,7 +479,45 @@ export default function OrganizerDashboardPage() {
                       <td className="py-3.5 px-4 text-xs font-black text-slate-900">
                         {formatLakhs(earnings)}
                       </td>
-                      <td className="py-3.5 px-4">
+
+                      {/* Approval Status Column */}
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 ${
+                          isApproved
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
+                            : isSuspended
+                            ? "bg-rose-50 text-rose-800 border border-rose-300"
+                            : isRejected
+                            ? "bg-red-50 text-red-800 border border-red-300"
+                            : isDraft
+                            ? "bg-slate-100 text-slate-700 border border-slate-300"
+                            : "bg-amber-50 text-amber-800 border border-amber-300"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            isApproved
+                              ? "bg-emerald-500"
+                              : isSuspended
+                              ? "bg-rose-500 animate-pulse"
+                              : isRejected
+                              ? "bg-red-500"
+                              : isDraft
+                              ? "bg-slate-400"
+                              : "bg-amber-500 animate-pulse"
+                          }`} />
+                          {isApproved
+                            ? "Approved & Live"
+                            : isSuspended
+                            ? "Suspended"
+                            : isRejected
+                            ? "Rejected"
+                            : isDraft
+                            ? "Draft"
+                            : "Pending Approval"}
+                        </span>
+                      </td>
+
+                      {/* Lifecycle Column */}
+                      <td className="py-3.5 px-4 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
                           eventStatus === "Active"
                             ? "bg-emerald-100 text-emerald-700 border border-emerald-200"

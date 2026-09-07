@@ -28,14 +28,18 @@ def register_error_handlers(app: FastAPI):
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
         safe_rollback()
+        content = {
+            "success": False,
+            "message": exc.message
+        }
+        if getattr(exc, "data", None) is not None:
+            content["data"] = exc.data
         return JSONResponse(
             status_code=exc.status_code,
             headers=get_cors_headers(request),
-            content={
-                "success": False,
-                "message": exc.message
-            }
+            content=content
         )
+
 
     @app.exception_handler(ValidationError)
     async def validation_error_handler(request: Request, exc: ValidationError):

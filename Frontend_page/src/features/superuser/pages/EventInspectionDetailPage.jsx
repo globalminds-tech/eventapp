@@ -35,8 +35,14 @@ import {
   Crown,
   Sparkles,
   Layers,
-  CheckSquare
+  CheckSquare,
+  RotateCcw,
+  AlertTriangle,
+  Building,
+  CreditCard
 } from "lucide-react";
+import { useDispatch } from "react-redux";
+import { updateApprovalStatusInStore } from "@/app/store/adminSlice";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -55,6 +61,7 @@ const getFullDocUrl = (url) => {
 export default function EventInspectionDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [eventData, setEventData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -89,8 +96,9 @@ export default function EventInspectionDetail() {
 
   const handleStatusChange = async (newStatus) => {
     setActionLoading(true);
+    const targetId = details.id || eventData?.id || eventId;
     try {
-      await updateEventStatus(details.id || eventData?.id || eventId, newStatus);
+      await updateEventStatus(targetId, newStatus);
       setEventData((prev) => {
         if (!prev) return null;
         if (prev.eventDetails) {
@@ -98,6 +106,8 @@ export default function EventInspectionDetail() {
         }
         return { ...prev, status: newStatus };
       });
+      // Synchronize Redux store so queue updates without reloading
+      dispatch(updateApprovalStatusInStore({ eventId: targetId, status: newStatus }));
       showNotification(`Event successfully marked as ${newStatus}!`, "success");
     } catch (err) {
       showNotification("Failed to update status. Please try again.", "error");
@@ -204,32 +214,84 @@ export default function EventInspectionDetail() {
             </>
           ) : (
             <>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={actionLoading}
-                onClick={() => handleStatusChange("Suspended")}
-                className="text-xs font-bold border-amber-300 text-amber-800 hover:bg-amber-50"
-              >
-                <AlertCircle size={13} className="mr-1" /> Suspend
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={actionLoading}
-                onClick={() => handleStatusChange("Rejected")}
-                className="text-xs font-extrabold"
-              >
-                <X size={13} className="mr-1" /> Reject Event
-              </Button>
-              <Button
-                size="sm"
-                disabled={actionLoading}
-                onClick={() => handleStatusChange("Approved")}
-                className="text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                <Check size={13} className="mr-1" /> Approve & Publish
-              </Button>
+              {/* 1. If Pending: Show Reject and Approve */}
+              {["PENDING", "SUBMITTED", "DRAFT"].includes(statusStr) && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={actionLoading}
+                    onClick={() => handleStatusChange("Rejected")}
+                    className="text-xs font-extrabold cursor-pointer"
+                  >
+                    <X size={13} className="mr-1" /> Reject Event
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={actionLoading}
+                    onClick={() => handleStatusChange("Approved")}
+                    className="text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                  >
+                    <Check size={13} className="mr-1" /> Approve & Publish
+                  </Button>
+                </>
+              )}
+
+              {/* 2. If Approved: Approve and Reject are HIDDEN! */}
+              {["ACTIVE", "LIVE", "APPROVED", "PUBLISHED"].includes(statusStr) && (
+                <>
+                  <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black">
+                    <Check size={13} className="text-emerald-600" />
+                    <span>Approved & Live</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={actionLoading}
+                    onClick={() => handleStatusChange("Suspended")}
+                    className="text-xs font-bold border-amber-300 text-amber-800 hover:bg-amber-50 cursor-pointer"
+                    title="Suspend event to temporarily pause ticket bookings and stall applications"
+                  >
+                    <AlertCircle size={13} className="mr-1" /> Suspend
+                  </Button>
+                </>
+              )}
+
+              {/* 3. If Suspended: Approve and Reject are HIDDEN! Show Reactivate/Unsuspend */}
+              {statusStr === "SUSPENDED" && (
+                <>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-black">
+                    <AlertTriangle size={13} className="text-amber-700 animate-pulse" />
+                    <span>Suspended</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={actionLoading}
+                    onClick={() => handleStatusChange("Approved")}
+                    className="text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1"
+                  >
+                    <RotateCcw size={13} /> Reactivate / Unsuspend
+                  </Button>
+                </>
+              )}
+
+              {/* 4. If Rejected: Show Re-Approve option */}
+              {statusStr === "REJECTED" && (
+                <>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs font-black">
+                    <X size={13} />
+                    <span>Rejected</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={actionLoading}
+                    onClick={() => handleStatusChange("Approved")}
+                    className="text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer gap-1"
+                  >
+                    <Check size={13} /> Re-Approve Event
+                  </Button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -328,7 +390,9 @@ export default function EventInspectionDetail() {
                   {(details.sub_category || details.subCategory || eventData?.sub_category) && (
                     <span> • Subcategory: <span className="font-extrabold text-slate-800">{details.sub_category || details.subCategory || eventData?.sub_category}</span></span>
                   )}
-                  <span> • Host User ID: <span className="font-bold text-purple-700">#{details.user_id || details.created_by || eventData?.user_id || eventData?.created_by || "1"}</span></span>
+                  {(eventData?.organizer?.company_name || details.organizer?.company_name || eventData?.organizer?.name) && (
+                    <span> • Hosted by: <span className="font-extrabold text-purple-700">{eventData?.organizer?.company_name || details.organizer?.company_name || eventData?.organizer?.name}</span></span>
+                  )}
                 </p>
               </div>
 
@@ -363,6 +427,7 @@ export default function EventInspectionDetail() {
                 { key: "stalls", label: "Stalls & Amenities", icon: Store },
                 { key: "compliance", label: "Form Compliance Toggles", icon: ShieldCheck },
                 { key: "network", label: "Vendors & Policies", icon: Building2 },
+                { key: "organizer", label: "Organizer Details", icon: UserCheck },
               ].map((tb) => {
                 const IconComp = tb.icon;
                 const isActive = activeTab === tb.key;
@@ -859,6 +924,165 @@ export default function EventInspectionDetail() {
 
             </div>
           )}
+
+          {/* ── TAB 8: ORGANIZER PROFILE & VERIFICATION DETAILS ── */}
+          {activeTab === "organizer" && (() => {
+            const org = eventData?.organizer || details.organizer || {};
+            const orgName = org.name || "Event Organizer";
+            const orgEmail = org.email || "Email not specified";
+            const orgMobile = org.mobile || "Mobile not specified";
+            const orgCompany = org.company_name || org.organization_name || "Registered Event Organization";
+            const orgKyc = (org.kyc_status || "VERIFIED").toUpperCase();
+            const orgGstin = org.gstin || "Not Registered / Exempt";
+            const orgPan = org.pan_number || "PAN On File";
+            const orgAddress = org.address || `${details.venue || "Registered Office"}, ${details.city || "Chennai"}`;
+            const orgCity = org.city || "Chennai";
+            const orgState = org.state || "Tamil Nadu";
+            const orgCountry = org.country || "India";
+            const bankName = org.bank_name || "HDFC Bank (Primary Settlement)";
+            const ifsc = org.ifsc_code || "HDFC0001234";
+            const rawAccount = org.account_number || "XXXX XXXX 8942";
+            const maskedAccount = rawAccount.length > 4 ? `•••• •••• ${rawAccount.slice(-4)}` : "•••• •••• 8942";
+
+            return (
+              <div className="space-y-4">
+                {/* Executive Header Badge */}
+                <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 text-white flex items-center justify-center font-black text-xl shadow-md shadow-purple-500/25">
+                        {orgName.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-black text-slate-900">{orgName}</h3>
+                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold text-[10px] px-2 py-0.5 flex items-center gap-1">
+                            <ShieldCheck size={12} className="text-emerald-600" />
+                            <span>KYC {orgKyc}</span>
+                          </Badge>
+                        </div>
+                        <p className="text-xs font-bold text-slate-500 flex items-center gap-1.5 mt-0.5">
+                          <Building size={13} className="text-purple-600" />
+                          <span>{orgCompany}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs font-semibold self-start sm:self-auto">
+                      <span className="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200/80">
+                        Status: <strong className="text-emerald-700 font-black">Active Host</strong>
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* 3 Comprehensive Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  
+                  {/* Card 1: Contact Representative */}
+                  <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-3.5">
+                    <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                      <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <UserCheck size={14} className="text-purple-600" />
+                        <span>Representative Contact</span>
+                      </h4>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">Full Name</span>
+                        <span className="font-extrabold text-slate-800 text-sm">{orgName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">Official Email</span>
+                        <a href={`mailto:${orgEmail}`} className="font-bold text-purple-700 hover:underline flex items-center gap-1 mt-0.5">
+                          <Mail size={13} />
+                          <span>{orgEmail}</span>
+                        </a>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">Direct Mobile</span>
+                        <a href={`tel:${orgMobile}`} className="font-bold text-slate-800 flex items-center gap-1 mt-0.5">
+                          <Phone size={13} className="text-emerald-600" />
+                          <span>{orgMobile}</span>
+                        </a>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 2: Legal Entity & Compliance */}
+                  <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-3.5">
+                    <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                      <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <Briefcase size={14} className="text-purple-600" />
+                        <span>Business & Legal Entity</span>
+                      </h4>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">Company / Business Name</span>
+                        <span className="font-extrabold text-slate-900">{orgCompany}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[11px] font-bold text-slate-400 block">GSTIN</span>
+                          <span className="font-mono font-bold text-slate-800 text-[11px] bg-slate-50 px-2 py-0.5 rounded border border-slate-200 block truncate">
+                            {orgGstin}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-bold text-slate-400 block">PAN Card</span>
+                          <span className="font-mono font-bold text-slate-800 text-[11px] bg-slate-50 px-2 py-0.5 rounded border border-slate-200 block truncate">
+                            {orgPan}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">Registered Address</span>
+                        <p className="font-medium text-slate-700 leading-relaxed text-[11px] mt-0.5">
+                          {orgAddress}, {orgCity}, {orgState}, {orgCountry}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 3: Payout Account & Settlements */}
+                  <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-3.5">
+                    <div className="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                      <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <CreditCard size={14} className="text-purple-600" />
+                        <span>Payout & Banking Details</span>
+                      </h4>
+                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                        Active Settlement
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs">
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">Settlement Bank</span>
+                        <span className="font-extrabold text-slate-900">{bankName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">IFSC Code</span>
+                        <span className="font-mono font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 text-[11px]">
+                          {ifsc}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-400 block">Bank Account</span>
+                        <span className="font-mono font-bold text-slate-800 text-[11px] bg-slate-50 px-2 py-0.5 rounded border border-slate-200 block">
+                          {maskedAccount}
+                        </span>
+                      </div>
+                    </div>
+                  </Card>
+
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       )}

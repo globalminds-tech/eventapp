@@ -12,29 +12,78 @@ class CheckinService:
         code_or_id: str,
         action: str = "CHECK_IN",
         scanner_id: Optional[str] = None,
-        gate_name: Optional[str] = None
+        gate_name: Optional[str] = None,
+        event_id: Optional[str] = None,
+        override_duplicate: bool = False
     ) -> dict:
+        from datetime import datetime
+        from app.models.event import EventDetails
+        from app.extensions.database import db
+
         is_checkout = str(action).upper() in ["CHECK_OUT", "CHECKOUT", "OUT"]
 
         if is_checkout:
-            success, booking, message = UserRepository.mark_booking_checkout(code_or_id, scanner_id=scanner_id, gate_name=gate_name)
+            success, booking, message, status_code = UserRepository.mark_booking_checkout(
+                code_or_id,
+                scanner_id=scanner_id,
+                gate_name=gate_name,
+                expected_event_id=event_id
+            )
         else:
-            success, booking, message = UserRepository.mark_booking_checkin(code_or_id, scanner_id=scanner_id, gate_name=gate_name)
+            success, booking, message, status_code = UserRepository.mark_booking_checkin(
+                code_or_id,
+                scanner_id=scanner_id,
+                gate_name=gate_name,
+                expected_event_id=event_id,
+                override_duplicate=override_duplicate
+            )
 
         if not booking:
-            raise ApiError("Invalid Ticket / Booking not found", 404)
-        if not success:
-            raise ApiError(message or ("Already checked in" if not is_checkout else "Already checked out"), 400)
+            raise ApiError("Invalid Ticket: Pass code not found in registry", 404)
 
-        return {
+        event = db.session.get(EventDetails, booking.event_id)
+
+        attendee_data = {
+            "id": str(booking.id),
+            "booking_id": str(booking.id),
+            "name": booking.name,
+            "email": booking.email,
+            "phone": booking.phone or "N/A",
+            "ticket_code": booking.ticket_code or f"BME-{str(booking.id)[:8].upper()}",
+            "food_preference": booking.food_preference or "None",
+            "is_checked_in": bool(booking.is_checked_in),
+            "is_checked_out": bool(booking.is_checked_out),
+            "checkin_at": booking.checkin_at.isoformat() if booking.checkin_at else None,
+            "checkout_at": booking.checkout_at.isoformat() if booking.checkout_at else None,
+            "checkin_time": booking.checkin_at.strftime("%I:%M %p") if booking.checkin_at else "",
+            "checkout_time": booking.checkout_at.strftime("%I:%M %p") if booking.checkout_at else "",
+            "total_checkins": booking.total_checkins or 0,
+            "total_checkouts": booking.total_checkouts or 0,
+        }
+
+        event_data = {
+            "id": str(event.id) if event else str(booking.event_id),
+            "name": event.event_name if event else "Event",
+            "code": event.event_code if event else "",
+            "venue": event.venue if event else "Venue",
+        }
+
+        payload = {
+            "success": success,
+            "status": status_code,
             "message": message,
             "action": "CHECK_OUT" if is_checkout else "CHECK_IN",
-            "booking_id": str(booking.id),
-            "ticket_code": getattr(booking, "ticket_code", str(booking.id)),
-            "is_checked_in": getattr(booking, "is_checked_in", True),
-            "is_checked_out": getattr(booking, "is_checked_out", False),
-            "timestamp": str(booking.checkout_at if is_checkout else booking.checkin_at or "")
+            "gate_name": gate_name or ("EXIT_GATE" if is_checkout else "MAIN_GATE"),
+            "scanner_id": scanner_id or "GATE_SCANNER",
+            "attendee": attendee_data,
+            "event": event_data,
+            "timestamp": (booking.checkout_at if is_checkout else booking.checkin_at or datetime.utcnow()).isoformat()
         }
+
+        if not success:
+            raise ApiError(message, 400, data=payload)
+
+        return payload
 
     @staticmethod
     def get_events_summary(organizer_id: Optional[str] = None):
@@ -45,16 +94,31 @@ class CheckinService:
         return CheckinRepository.get_event_attendees(event_id)
 
     @staticmethod
+    def get_event_checkin_logs(event_id: str):
+        return CheckinRepository.get_event_checkin_logs(event_id)
+
+    @staticmethod
     def get_food_summary(organizer_id: Optional[str] = None):
         return CheckinRepository.get_food_checkin_summary(organizer_id)
 
     @staticmethod
     def redeem_food_token(code_or_id: str):
-        success, booking, message = UserRepository.mark_booking_checkin(code_or_id, gate_name="FOOD_COUNTER")
-        if not booking:
-            raise ApiError("Invalid Food Token / Pass not found", 404)
+        result = UserRepository.get_booking_with_event(code_or_id)
+        if not result:
+            raise ApiError("Invalid Food Pass: Ticket code not found in registry", 404)
+        booking, event = result
+
+        # Food redemption
+        success, booking, message, status_code = UserRepository.mark_booking_checkin(
+            code_or_id,
+            scanner_id="FOOD_STAFF",
+            gate_name="FOOD_COUNTER",
+            override_duplicate=True
+        )
+
         return {
             "success": True,
+            "status": "FOOD_VERIFIED",
             "message": f"Meal token verified for {booking.name} ({booking.food_preference or 'Meal'})",
             "booking_id": str(booking.id),
             "ticket_code": booking.ticket_code or str(booking.id),
@@ -65,4 +129,5 @@ class CheckinService:
     @staticmethod
     def get_addons(organizer_id: Optional[str] = None):
         return CheckinRepository.get_addon_checkins(organizer_id)
+
 

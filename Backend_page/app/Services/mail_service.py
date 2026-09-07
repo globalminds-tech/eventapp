@@ -5,6 +5,7 @@ from email.mime.image import MIMEImage
 import os
 import base64
 from app.Services.email_templates import (
+    BRAND_LOGO_MARK_B64,
     get_otp_email_template,
     get_organizer_welcome_template,
     get_exhibitor_welcome_template,
@@ -14,6 +15,7 @@ from app.Services.email_templates import (
     render_email_layout
 )
 
+_BRAND_LOGO_PNG_BYTES = base64.b64decode(BRAND_LOGO_MARK_B64)
 
 SMTP_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("MAIL_PORT", 587))
@@ -40,39 +42,46 @@ def _smtp_deliver_task(msg, to_email):
         print(f"[MAIL DEV FALLBACK] SMTP send exception (handled gracefully): {e}")
 
 def send_email(to_email, subject, message, is_html=False, qr_base64=None, sync=False):
-    """Universal Email Sender with HTML Support, QR attachments, and asynchronous non-blocking dispatch."""
+    """Universal Email Sender with HTML Support, brand mark & QR attachments, and asynchronous non-blocking dispatch."""
     if not to_email:
         print("[WARN] send_email called with empty recipient email.")
         return False
 
-    if qr_base64:
+    if is_html:
         msg = MIMEMultipart('related')
         msg_alternative = MIMEMultipart('alternative')
         msg.attach(msg_alternative)
-        
-        if is_html:
-            part = MIMEText(message, 'html')
-        else:
-            part = MIMEText(message, 'plain')
-        msg_alternative.attach(part)
-        
-        # Attach QR Code
-        try:
-            qr_data = base64.b64decode(qr_base64)
-            img = MIMEImage(qr_data)
-            img.add_header('Content-ID', '<qrcode>')
-            msg.attach(img)
-        except Exception as err:
-            print(f"[WARN] QR image attachment failed: {err}")
-    else:
-        if is_html:
-            msg = MIMEText(message, "html")
-        else:
-            msg = MIMEText(message, "plain")
 
+        part = MIMEText(message, 'html')
+        msg_alternative.attach(part)
+
+        # Attach signature 3-pill brand mark as inline CID resource (no filename to prevent Gmail treating it as a downloadable file)
+        try:
+            logo_img = MIMEImage(_BRAND_LOGO_PNG_BYTES)
+            logo_img.add_header('Content-ID', '<bme_logo_mark>')
+            msg.attach(logo_img)
+        except Exception as err:
+            print(f"[WARN] Brand logo image attachment failed: {err}")
+
+        # Attach QR Code if provided
+        if qr_base64:
+            try:
+                qr_data = base64.b64decode(qr_base64)
+                img = MIMEImage(qr_data)
+                img.add_header('Content-ID', '<qrcode>')
+                msg.attach(img)
+            except Exception as err:
+                print(f"[WARN] QR image attachment failed: {err}")
+    else:
+        msg = MIMEText(message, 'plain')
+
+    import email.utils
+    import uuid
     msg['Subject'] = subject
     msg['From'] = SMTP_USERNAME or "noreply@bookmyevent.com"
     msg['To'] = to_email
+    msg['Message-ID'] = email.utils.make_msgid(domain='bookmyevent.com')
+    msg['X-Entity-Ref-ID'] = str(uuid.uuid4())
 
     # Dev Mode Simulation if credentials are missing
     if not SMTP_USERNAME or not SMTP_PASSWORD:

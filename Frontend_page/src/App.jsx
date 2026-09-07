@@ -119,7 +119,7 @@ function OrganizerIndexRedirect() {
   if (hasPermission("master_data.view")) {
     return <Navigate to="/OrganizerHome/MasterData" replace />;
   }
-  return <Navigate to="/profile" replace />;
+  return <Organizerdashboard />;
 }
 
 // Smart Index Redirect for Exhibitors: routes to first permitted tool if booth dashboard is prohibited

@@ -1,43 +1,60 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, Eye, Check, X, Clock, FileText, Calendar, Filter, RefreshCw, ShieldCheck, AlertTriangle } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import {
+  Search,
+  Eye,
+  Check,
+  X,
+  Clock,
+  FileText,
+  Calendar,
+  Filter,
+  RefreshCw,
+  ShieldCheck,
+  AlertTriangle,
+  AlertCircle,
+  RotateCcw
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { approvalApi } from "../api/approval.api";
+import {
+  fetchApprovalQueueThunk,
+  updateApprovalStatusInStore
+} from "@/app/store/adminSlice";
 
 export default function EventApprovalQueuePage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Connect to Redux store
+  const { approvalQueue, approvalLoading, approvalLoaded } = useSelector((state) => state.admin);
+
   const initialTab = (searchParams.get("tab") || "all").toUpperCase();
-
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState(null);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
+  // Sync tab with URL query parameter
   useEffect(() => {
     const queryTab = (searchParams.get("tab") || "all").toUpperCase();
     setActiveTab(queryTab);
   }, [searchParams]);
 
+  // Initial load using Redux thunk (uses cache if available)
   useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const res = await approvalApi.getEvents();
-      const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      setEvents(list);
-    } catch (err) {
-      console.error("Error fetching events:", err);
-    } finally {
-      setLoading(false);
+    if (!approvalLoaded || !approvalQueue || approvalQueue.length === 0) {
+      dispatch(fetchApprovalQueueThunk(false));
     }
+  }, [dispatch, approvalLoaded, approvalQueue]);
+
+  const handleRefresh = () => {
+    dispatch(fetchApprovalQueueThunk(true));
   };
 
   const showNotification = (message, type = "success") => {
@@ -46,14 +63,17 @@ export default function EventApprovalQueuePage() {
   };
 
   const handleStatusUpdate = async (eventId, newStatus) => {
+    setActionLoadingId(eventId);
     try {
       await approvalApi.updateEventStatus(eventId, newStatus);
-      setEvents((prev) =>
-        prev.map((e) => (e.id === eventId ? { ...e, status: newStatus } : e))
-      );
-      showNotification(`Event marked as ${newStatus}!`, "success");
+      // Immediately update Redux store so the queue reflects changes across views
+      dispatch(updateApprovalStatusInStore({ eventId, status: newStatus }));
+      showNotification(`Event successfully marked as ${newStatus}!`, "success");
     } catch (err) {
-      showNotification("Failed to update event status", "error");
+      console.error("Failed to update event status:", err);
+      showNotification(err?.response?.data?.detail || "Failed to update event status", "error");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -70,30 +90,71 @@ export default function EventApprovalQueuePage() {
     return true;
   };
 
-  const filteredEvents = events.filter((e) => {
-    const matchesSearch = searchQuery
-      ? (e.event_name || e.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (e.event_code || e.code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (e.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (e.venue || "").toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
+  const eventsList = Array.isArray(approvalQueue) ? approvalQueue : [];
 
-    return matchesSearch && checkMatchesTab(e.status, activeTab);
-  });
+  // Compute count for each tab
+  const tabCounts = useMemo(() => {
+    const counts = {
+      ALL: eventsList.length,
+      LIVE: 0,
+      UPCOMING: 0,
+      COMPLETED: 0,
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      SUSPENDED: 0,
+    };
+    eventsList.forEach((e) => {
+      const st = (e.status || "PENDING").toUpperCase();
+      if (["LIVE", "ACTIVE"].includes(st)) counts.LIVE++;
+      if (["UPCOMING", "APPROVED", "PUBLISHED"].includes(st)) counts.UPCOMING++;
+      if (["COMPLETED", "PAST"].includes(st)) counts.COMPLETED++;
+      if (["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"].includes(st)) counts.PENDING++;
+      if (["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"].includes(st)) counts.APPROVED++;
+      if (["REJECTED"].includes(st)) counts.REJECTED++;
+      if (["SUSPENDED"].includes(st)) counts.SUSPENDED++;
+    });
+    return counts;
+  }, [eventsList]);
+
+  const filteredEvents = useMemo(() => {
+    return eventsList.filter((e) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = q
+        ? (e.event_name || e.name || "").toLowerCase().includes(q) ||
+          (e.event_code || e.code || "").toLowerCase().includes(q) ||
+          (e.category || "").toLowerCase().includes(q) ||
+          (e.venue || "").toLowerCase().includes(q) ||
+          (e.city || "").toLowerCase().includes(q)
+        : true;
+
+      return matchesSearch && checkMatchesTab(e.status, activeTab);
+    });
+  }, [eventsList, searchQuery, activeTab]);
+
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    setSearchParams(key === "ALL" ? {} : { tab: key.toLowerCase() });
+  };
 
   const tabList = [
     { key: "ALL", label: "All Events" },
+    { key: "PENDING", label: "Pending Approval" },
+    { key: "APPROVED", label: "Approved" },
+    { key: "SUSPENDED", label: "Suspended" },
+    { key: "REJECTED", label: "Rejected" },
     { key: "LIVE", label: "Live Events" },
     { key: "UPCOMING", label: "Upcoming" },
     { key: "COMPLETED", label: "Completed" },
-    { key: "PENDING", label: "Pending Approval" },
-    { key: "APPROVED", label: "Approved" },
-    { key: "REJECTED", label: "Rejected" },
-    { key: "SUSPENDED", label: "Suspended" },
   ];
+
+  // Whether to show skeleton inside the table content
+  const showContentSkeleton = approvalLoading && eventsList.length === 0;
 
   return (
     <div className="space-y-5 pb-12 select-none text-slate-800 font-sans">
+      
+      {/* ── HEADER TITLE & ACTIONS ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 pb-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
@@ -110,51 +171,75 @@ export default function EventApprovalQueuePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button onClick={fetchEvents} variant="outline" className="text-xs font-bold gap-1.5 rounded-xl cursor-pointer">
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            <span>Refresh</span>
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            disabled={approvalLoading}
+            className="text-xs font-bold gap-1.5 rounded-xl cursor-pointer hover:bg-slate-50 border-slate-200"
+          >
+            <RefreshCw size={14} className={approvalLoading ? "animate-spin text-purple-600" : "text-slate-600"} />
+            <span>Refresh Queue</span>
           </Button>
         </div>
       </div>
 
       {toast && (
-        <div className="p-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-extrabold flex items-center justify-between shadow-lg">
+        <div className={`p-3.5 rounded-xl text-xs font-extrabold flex items-center justify-between shadow-lg text-white ${
+          toast.type === "error" ? "bg-red-600" : "bg-gradient-to-r from-purple-600 to-indigo-600"
+        }`}>
           <span>{toast.message}</span>
           <button onClick={() => setToast(null)} className="border-none bg-transparent text-white font-bold cursor-pointer">✕</button>
         </div>
       )}
 
-      {/* ── FILTER TABS BAR ── */}
+      {/* ── FILTER TABS & SEARCH BAR ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-          {tabList.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none whitespace-nowrap ${
-                activeTab === t.key
-                  ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                  : "bg-transparent text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+          {tabList.map((t) => {
+            const count = tabCounts[t.key] || 0;
+            const isActive = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => handleTabChange(t.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none whitespace-nowrap flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                    : "bg-transparent text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span>{t.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                  isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="relative w-full md:w-64">
+        <div className="relative w-full md:w-72 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
           <input
             type="text"
-            placeholder="Filter by name, code, category..."
+            placeholder="Search name, code, category, venue..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500 transition"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold border-none bg-transparent cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ── EVENTS DATA TABLE ── */}
+      {/* ── EVENTS DATA TABLE (Skeleton loads ONLY in table content rows!) ── */}
       <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
@@ -169,66 +254,178 @@ export default function EventApprovalQueuePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredEvents.map((ev) => (
-                <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="p-3.5 pl-5">
-                    <div className="font-extrabold text-slate-900 text-sm">{ev.event_name || ev.name || "Untitled Event"}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">Code: {ev.event_code || ev.code || `EVT-${ev.id}`}</div>
-                  </td>
-                  <td className="p-3.5">
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-bold text-[10px]">
-                      {ev.category || "General"}
-                    </Badge>
-                  </td>
-                  <td className="p-3.5 text-slate-600 font-semibold">{ev.venue || ev.city || "Chennai, TN"}</td>
-                  <td className="p-3.5 text-slate-500 text-[11px] font-semibold">{ev.start_date || "Oct 24, 2026"}</td>
-                  <td className="p-3.5 text-center">
-                    <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] ${
-                      ["APPROVED", "LIVE", "ACTIVE"].includes((ev.status || "").toUpperCase())
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : ["REJECTED"].includes((ev.status || "").toUpperCase())
-                        ? "bg-red-50 text-red-700 border border-red-200"
-                        : "bg-amber-50 text-amber-700 border border-amber-200"
-                    }`}>
-                      {(ev.status || "PENDING").toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="p-3.5 pr-5 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={() => navigate(`/superuser/inspection/${ev.id}`)}
-                        className="text-[11px] font-bold gap-1 cursor-pointer"
-                      >
-                        <Eye size={12} /> Inspect
-                      </Button>
-                      <Button
-                        size="xs"
-                        onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
-                        className="bg-emerald-600 text-white font-bold text-[11px] cursor-pointer border-none"
-                      >
-                        <Check size={12} /> Approve
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={() => handleStatusUpdate(ev.id, "REJECTED")}
-                        className="text-red-600 border-red-200 font-bold text-[11px] cursor-pointer"
-                      >
-                        <X size={12} /> Reject
-                      </Button>
+              
+              {/* SKELETON ROWS: only for table content, table header remains static */}
+              {showContentSkeleton ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={`skel-row-${idx}`} className="animate-pulse">
+                    <td className="p-3.5 pl-5">
+                      <Skeleton className="h-4 w-48 rounded-md mb-1.5" />
+                      <Skeleton className="h-3 w-28 rounded-md" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-4 w-28 rounded-md" />
+                    </td>
+                    <td className="p-3.5">
+                      <Skeleton className="h-4 w-24 rounded-md" />
+                    </td>
+                    <td className="p-3.5 text-center">
+                      <Skeleton className="h-5 w-20 rounded-full mx-auto" />
+                    </td>
+                    <td className="p-3.5 pr-5 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Skeleton className="h-7 w-16 rounded-xl" />
+                        <Skeleton className="h-7 w-20 rounded-xl" />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : filteredEvents.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-10 text-center text-slate-400 font-semibold text-xs bg-slate-50/50">
+                    <div className="max-w-xs mx-auto space-y-1">
+                      <p className="font-bold text-slate-600 text-sm">No events found</p>
+                      <p className="text-slate-400 text-[11px]">
+                        {searchQuery ? `No matches found for "${searchQuery}" in ${activeTab.toLowerCase()} view.` : `No events currently in ${activeTab.toLowerCase()} status.`}
+                      </p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredEvents.map((ev) => {
+                  const st = (ev.status || "PENDING").toUpperCase();
+                  const isApproved = ["APPROVED", "LIVE", "ACTIVE", "PUBLISHED"].includes(st);
+                  const isSuspended = st === "SUSPENDED";
+                  const isRejected = st === "REJECTED";
+                  const isPending = ["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"].includes(st);
+                  const isActionBusy = actionLoadingId === ev.id;
 
-              {filteredEvents.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 font-semibold text-xs">
-                    No events found in this view.
-                  </td>
-                </tr>
+                  return (
+                    <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-3.5 pl-5">
+                        <div className="font-extrabold text-slate-900 text-sm hover:text-purple-700 transition-colors cursor-pointer" onClick={() => navigate(`/superuser/inspection/${ev.id}`)}>
+                          {ev.event_name || ev.name || "Untitled Event"}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          Code: {ev.event_code || ev.code || `EVT-${ev.id}`}
+                        </div>
+                      </td>
+
+                      <td className="p-3.5">
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-bold text-[10px]">
+                          {ev.category || "General"}
+                        </Badge>
+                      </td>
+
+                      <td className="p-3.5 text-slate-600 font-semibold">
+                        {ev.venue || ev.city || "Venue Setup"}
+                      </td>
+
+                      <td className="p-3.5 text-slate-500 text-[11px] font-semibold">
+                        {ev.start_date || ev.date || "Date Pending"}
+                      </td>
+
+                      <td className="p-3.5 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] inline-flex items-center gap-1 ${
+                          isApproved
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : isSuspended
+                            ? "bg-amber-100 text-amber-800 border border-amber-300"
+                            : isRejected
+                            ? "bg-red-50 text-red-700 border border-red-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            isApproved ? "bg-emerald-500" : isSuspended ? "bg-amber-500 animate-pulse" : isRejected ? "bg-red-500" : "bg-amber-500"
+                          }`} />
+                          {st}
+                        </span>
+                      </td>
+
+                      <td className="p-3.5 pr-5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Inspect Button is always accessible */}
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            onClick={() => navigate(`/superuser/inspection/${ev.id}`)}
+                            className="text-[11px] font-bold gap-1 cursor-pointer hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200"
+                          >
+                            <Eye size={12} /> Inspect
+                          </Button>
+
+                          {/* ── BUTTON VISIBILITY RULES ── */}
+
+                          {/* 1. If Pending: Show Approve and Reject */}
+                          {isPending && (
+                            <>
+                              <Button
+                                size="xs"
+                                disabled={isActionBusy}
+                                onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none"
+                              >
+                                <Check size={12} /> Approve
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                disabled={isActionBusy}
+                                onClick={() => handleStatusUpdate(ev.id, "REJECTED")}
+                                className="text-red-600 border-red-200 hover:bg-red-50 font-bold text-[11px] cursor-pointer"
+                              >
+                                <X size={12} /> Reject
+                              </Button>
+                            </>
+                          )}
+
+                          {/* 2. If Approved: Approve and Reject are HIDDEN! Show Suspend action */}
+                          {isApproved && (
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              disabled={isActionBusy}
+                              onClick={() => handleStatusUpdate(ev.id, "SUSPENDED")}
+                              className="border-amber-300 text-amber-800 hover:bg-amber-50 font-bold text-[11px] cursor-pointer gap-1"
+                              title="Temporarily pause public ticket purchases and stall reservations"
+                            >
+                              <AlertCircle size={12} /> Suspend
+                            </Button>
+                          )}
+
+                          {/* 3. If Suspended: Approve and Reject are HIDDEN! Show Reactivate/Unsuspend action */}
+                          {isSuspended && (
+                            <Button
+                              size="xs"
+                              disabled={isActionBusy}
+                              onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none gap-1"
+                              title="Reactivate event back to live approved status"
+                            >
+                              <RotateCcw size={12} /> Reactivate
+                            </Button>
+                          )}
+
+                          {/* 4. If Rejected: Allow re-approval if organizer corrected compliance */}
+                          {isRejected && (
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              disabled={isActionBusy}
+                              onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
+                              className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 font-bold text-[11px] cursor-pointer gap-1"
+                            >
+                              <Check size={12} /> Re-Approve
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

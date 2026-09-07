@@ -69,6 +69,7 @@ export default function AllEvents() {
           likes: `${(120 + index * 18).toFixed(1)}K+`,
           rating: (8.6 + (index % 12) * 0.1).toFixed(1),
           image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
+          status: (e.status || "APPROVED").toUpperCase(),
         };
       });
 
@@ -239,7 +240,12 @@ export default function AllEvents() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
-                  <div className="absolute top-2.5 right-2.5">
+                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                    {ev.status === "SUSPENDED" && (
+                      <Badge className="bg-amber-500 text-white font-extrabold text-[10px] px-2.5 py-0.5 shadow-sm border border-amber-400">
+                        Bookings Paused
+                      </Badge>
+                    )}
                     <Badge className="bg-slate-900/80 backdrop-blur-md text-white font-extrabold text-[10px] px-2.5 py-0.5 border border-white/20">
                       {ev.price}
                     </Badge>
@@ -274,16 +280,25 @@ export default function AllEvents() {
 
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-bold text-slate-400">Entry Pass</span>
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/event-detail/${ev.id}`);
-                      }}
-                      className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl border-none cursor-pointer gap-1 shadow-xs"
-                    >
-                      <span>Book</span>
-                      <ArrowRight size={13} />
-                    </Button>
+                    {ev.status === "SUSPENDED" ? (
+                      <span
+                        title="Currently we are not taking bookings for this event"
+                        className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-3 py-1 rounded-xl tracking-wider uppercase text-center"
+                      >
+                        Bookings Paused
+                      </span>
+                    ) : (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/event-detail/${ev.id}`);
+                        }}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl border-none cursor-pointer gap-1 shadow-xs"
+                      >
+                        <span>Book</span>
+                        <ArrowRight size={13} />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>

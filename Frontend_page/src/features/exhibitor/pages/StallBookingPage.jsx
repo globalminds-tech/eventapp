@@ -106,8 +106,11 @@ const Stall = () => {
   const user = useSelector((state) => state.user);
 
   const [eventName, setEventName] = useState("");
+  const [eventStatus, setEventStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const isSuspended = eventStatus.toUpperCase() === "SUSPENDED" || (location.state?.event?.status || "").toUpperCase() === "SUSPENDED";
 
   const initial = {
     title: "Mr.", firstName: "", lastName: "", email: "", mobile: "",
@@ -121,8 +124,11 @@ const Stall = () => {
   const [cities, setCities] = useState([]);
 
   useEffect(() => {
-    if (location.state?.event) setEventName(location.state.event.title);
-    else fetchEvent();
+    if (location.state?.event) {
+      setEventName(location.state.event.title || location.state.event.eventName || "");
+      if (location.state.event.status) setEventStatus(location.state.event.status);
+    }
+    fetchEvent();
     loadCountries();
   }, []);
 
@@ -132,7 +138,17 @@ const Stall = () => {
 
   useEffect(() => { if (eventName) setFormData((p) => ({ ...p, eventName })); }, [eventName]);
 
-  const fetchEvent = async () => { try { const r = await getEventById(id); setEventName(r.event_name); } catch (e) { console.error(e); } };
+  const fetchEvent = async () => {
+    try {
+      const r = await getEventById(id);
+      if (r) {
+        setEventName(r.event_name || r.name || "");
+        setEventStatus(r.status || "");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
   const loadCountries = async () => { try { setCountries(await getCountries()); } catch (e) { console.error(e); } };
   const loadStates = async (cId) => { try { setStates(await getStates(cId)); setCities([]); } catch (e) { console.error(e); } };
   const loadCities = async (cId, sId) => { try { setCities(await getCities(cId, sId)); } catch (e) { console.error(e); } };
@@ -158,6 +174,10 @@ const Stall = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSuspended) {
+      setToast({ message: "Stall reservations are currently paused for this event.", type: "error" });
+      return;
+    }
     setLoading(true);
     const newErrors = {};
     const required = ["firstName", "lastName", "email", "mobile", "companyName", "country", "state", "city", "address", "stallArea", "products", "pinCode"];
@@ -211,6 +231,20 @@ const Stall = () => {
           <Badge variant="secondary">Exhibitor Portal</Badge>
         </div>
       </div>
+
+      {/* ── Suspended Notice Banner ── */}
+      {isSuspended && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 text-amber-900 shrink-0 animate-fadeIn">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex-1 text-xs">
+            <span className="font-extrabold text-amber-950">Stall Bookings Temporarily Paused: </span>
+            <span className="text-amber-800 font-medium">The event organizer or platform administrator has temporarily paused new stall reservations. New booth booking applications cannot be submitted at this time.</span>
+          </div>
+          <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-extrabold text-[10px] shrink-0">
+            Bookings Paused
+          </Badge>
+        </div>
+      )}
 
       {/* ── 3-Column Form Body ─────────────────────────────── */}
       <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
@@ -437,8 +471,8 @@ const Stall = () => {
                   <Button type="button" variant="outline" size="default" onClick={() => navigate(-1)} className="gap-1.5 flex-1">
                     <ArrowLeft className="w-3.5 h-3.5" /> Cancel
                   </Button>
-                  <Button type="submit" variant="gradient" size="default" disabled={loading} className="gap-1.5 flex-[2]">
-                    {loading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</> : <><Send className="w-3.5 h-3.5" /> Reserve Stall</>}
+                  <Button type="submit" variant="gradient" size="default" disabled={loading || isSuspended} className="gap-1.5 flex-[2]">
+                    {loading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</> : isSuspended ? <><AlertCircle className="w-3.5 h-3.5" /> Bookings Paused</> : <><Send className="w-3.5 h-3.5" /> Reserve Stall</>}
                   </Button>
                 </div>
                 <p className="text-[10px] text-slate-400 text-center">By submitting, you agree to our terms</p>

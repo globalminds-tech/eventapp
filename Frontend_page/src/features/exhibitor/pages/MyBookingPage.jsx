@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { getMyBookings, getBookingById, updateBooking } from "@/Services/api";
 import {
   Store, Search, CheckCircle2, Clock, Eye, Pencil, CreditCard,
-  MapPin, XCircle, Phone, Mail, Building, AlertCircle
+  MapPin, XCircle, Phone, Mail, Building, AlertCircle, ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -235,10 +235,23 @@ const MyBookings = () => {
                     <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4">
                         <div>
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
-                            {b.company_name || 'Exhibitor Firm'}
-                          </Badge>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
+                              {b.company_name || 'Exhibitor Firm'}
+                            </Badge>
+                            {(b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED")) && (
+                              <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-extrabold text-[9px] gap-1 inline-flex items-center">
+                                <ShieldCheck size={11} className="text-amber-700 shrink-0" />
+                                <span>Stall Safe • Event Paused</span>
+                              </Badge>
+                            )}
+                          </div>
                           <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm mt-1">{b.event_name}</h4>
+                          {(b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED")) && (
+                            <p className="text-[10px] text-amber-800 font-medium mt-1 bg-amber-50/80 border border-amber-200/80 rounded-lg p-1.5 leading-tight">
+                              🛡️ <strong>Booking Safe:</strong> New booth registrations are paused. If this event is cancelled or rescheduled, your booking is guaranteed a 100% full refund.
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 px-4">

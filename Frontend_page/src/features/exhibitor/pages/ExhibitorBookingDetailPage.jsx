@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Store, Building2, User, MapPin, Phone, Mail, FileText,
-  CreditCard, CheckCircle2, Clock, XCircle, Briefcase, Info, Loader2, AlertCircle
+  CreditCard, CheckCircle2, Clock, XCircle, Briefcase, Info, Loader2, AlertCircle, ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -152,6 +152,26 @@ const ExhibitorBookingDetailPage = () => {
           )}
         </div>
       </div>
+
+      {/* ── Stall Reservation Safety & Refund Guarantee Banner ── */}
+      {(b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED")) && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 flex items-start gap-3.5 text-amber-950 shadow-xs animate-fadeIn">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
+            <ShieldCheck size={22} />
+          </div>
+          <div className="space-y-1 text-xs flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-black text-amber-950 text-sm">Your Stall Reservation is Safe &amp; Protected</span>
+              <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-extrabold text-[10px]">
+                Event Registrations Paused
+              </Badge>
+            </div>
+            <p className="text-amber-800 font-medium leading-relaxed text-xs">
+              The organizer or platform administrator has temporarily paused new stall bookings for this expo. <strong>Your existing stall application and reservation remain 100% safe and secured.</strong> If any issue arises or if the event is rescheduled or cancelled, you are entitled to a full 100% refund of any amounts paid under our exhibitor protection guarantee.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         

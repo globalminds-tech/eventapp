@@ -35,14 +35,36 @@ export const getEventAttendees = async (eventId) => {
   return res.data;
 };
 
-export const verifyCheckinTicket = async (ticketCodeOrId, action = "CHECK_IN", gateName = "MAIN_GATE") => {
-  const res = await apiClient.post("/api/v1/checkins/verify", {
-    ticket_code: ticketCodeOrId,
-    action: action,
-    gate_name: gateName
-  });
+export const verifyCheckinTicket = async (ticketCodeOrId, action = "CHECK_IN", gateName = "MAIN_GATE", eventId = null, overrideDuplicate = false) => {
+  let payload = {};
+  if (typeof ticketCodeOrId === "object" && ticketCodeOrId !== null) {
+    payload = {
+      ticket_code: ticketCodeOrId.ticket_code || ticketCodeOrId.ticketCode || ticketCodeOrId.code,
+      booking_id: ticketCodeOrId.booking_id || ticketCodeOrId.bookingId,
+      action: ticketCodeOrId.action || "CHECK_IN",
+      gate_name: ticketCodeOrId.gate_name || ticketCodeOrId.gateName || "MAIN_GATE",
+      scanner_id: ticketCodeOrId.scanner_id || ticketCodeOrId.scannerId,
+      event_id: ticketCodeOrId.event_id || ticketCodeOrId.eventId,
+      override_duplicate: Boolean(ticketCodeOrId.override_duplicate ?? ticketCodeOrId.overrideDuplicate)
+    };
+  } else {
+    payload = {
+      ticket_code: ticketCodeOrId,
+      action: action,
+      gate_name: gateName,
+      event_id: eventId,
+      override_duplicate: Boolean(overrideDuplicate)
+    };
+  }
+  const res = await apiClient.post("/api/v1/checkins/verify", payload);
   return res.data;
 };
+
+export const getEventCheckinLogs = async (eventId) => {
+  const res = await apiClient.get(`/api/v1/checkins/events/${eventId}/logs`);
+  return res.data;
+};
+
 
 export const getFoodCheckinSummary = async () => {
   const res = await apiClient.get("/api/v1/checkins/food/summary");
