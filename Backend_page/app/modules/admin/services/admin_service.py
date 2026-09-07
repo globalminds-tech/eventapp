@@ -231,16 +231,16 @@ class AdminService:
     @staticmethod
     def update_event_status(event_id, raw_data: dict) -> dict:
         data = UpdateEventStatusSchema(**raw_data)
-        st_upper = data.status.strip().upper()
-        if st_upper not in ["APPROVED", "REJECTED", "PENDING", "ACTIVE", "DRAFT", "SUSPENDED"]:
+        status_upper = data.status.strip().upper()
+        if status_upper not in ["APPROVED", "REJECTED", "PENDING", "ACTIVE", "DRAFT", "SUSPENDED"]:
             raise ApiError("Invalid status value", 400)
 
-        event = AdminRepository.update_event_status(event_id, st_upper)
+        event = AdminRepository.update_event_status(event_id, status_upper)
         if not event:
             raise ApiError("Event not found", 404)
 
         redis_cache.clear_pattern("events:*")
-        return {"message": f"Event status updated to {st_upper}", "status": st_upper}
+        return {"message": f"Event status updated to {status_upper}", "status": status_upper}
 
     @staticmethod
     def get_categories() -> list[dict]:

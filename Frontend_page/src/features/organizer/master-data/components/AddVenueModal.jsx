@@ -115,6 +115,11 @@ export default function AddVenueModal({ isOpen, onClose, onSuccess, editData = n
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "pin_code") {
+      const numericValue = value.replace(/\D/g, "").slice(0, 6);
+      setFormData((prev) => ({ ...prev, [name]: numericValue }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -493,8 +498,24 @@ export default function AddVenueModal({ isOpen, onClose, onSuccess, editData = n
                   <Input
                     label="Document Number / Permit No"
                     value={doc.document_number}
-                    onChange={(e) => handleDocChange(index, "document_number", e.target.value.toUpperCase())}
-                    placeholder="e.g. NOC-2026-Delhi"
+                    onChange={(e) => {
+                      let val = e.target.value.toUpperCase();
+                      const dType = (doc.document_type || "").toLowerCase();
+                      if (dType.includes("aadhar") || dType.includes("aadhaar")) {
+                        val = val.replace(/\D/g, "").slice(0, 12);
+                      } else if (dType.includes("pan")) {
+                        val = val.replace(/[^A-Z0-9]/g, "").slice(0, 10);
+                      } else if (dType.includes("gst")) {
+                        val = val.replace(/[^A-Z0-9]/g, "").slice(0, 15);
+                      }
+                      handleDocChange(index, "document_number", val);
+                    }}
+                    placeholder={
+                      (doc.document_type || "").toLowerCase().includes("aadhar") || (doc.document_type || "").toLowerCase().includes("aadhaar") ? "e.g. 123456789012 (12 digits)" :
+                      (doc.document_type || "").toLowerCase().includes("pan") ? "e.g. ABCDE1234F (10 chars)" :
+                      (doc.document_type || "").toLowerCase().includes("gst") ? "e.g. 22AAAAA0000A1Z5 (15 chars)" :
+                      "e.g. NOC-2026-Delhi"
+                    }
                   />
 
                   {/* Hidden Input for Venue Document */}
@@ -547,7 +568,13 @@ export default function AddVenueModal({ isOpen, onClose, onSuccess, editData = n
                         </a>
                         <button
                           type="button"
-                          onClick={() => document.getElementById(`venue-doc-input-${index}`)?.click()}
+                          onClick={() => {
+                            if (!doc.document_type) {
+                              alert("Please select a Document Type before replacing.");
+                              return;
+                            }
+                            document.getElementById(`venue-doc-input-${index}`)?.click();
+                          }}
                           className="text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs cursor-pointer"
                         >
                           Replace
@@ -557,7 +584,13 @@ export default function AddVenueModal({ isOpen, onClose, onSuccess, editData = n
                   ) : (
                     <button
                       type="button"
-                      onClick={() => document.getElementById(`venue-doc-input-${index}`)?.click()}
+                      onClick={() => {
+                        if (!doc.document_type) {
+                          alert("Please select a Document Type before uploading.");
+                          return;
+                        }
+                        document.getElementById(`venue-doc-input-${index}`)?.click();
+                      }}
                       className="w-full h-14 border-2 border-dashed border-slate-200 hover:border-cyan-500 hover:bg-cyan-50/40 transition-all rounded-xl flex items-center justify-center gap-2 text-slate-600 hover:text-cyan-700 cursor-pointer bg-white group"
                     >
                       <Plus size={14} className="text-cyan-600 group-hover:scale-110 transition-transform" />

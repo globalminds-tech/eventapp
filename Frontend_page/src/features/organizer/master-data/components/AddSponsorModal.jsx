@@ -96,6 +96,13 @@ export default function AddSponsorModal({ isOpen, onClose, onSuccess, editData =
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "primary_contact" || name === "secondary_contact") {
+      const val = value.replace(/\D/g, "");
+      if (val.length <= 10) {
+        setFormData((prev) => ({ ...prev, [name]: val }));
+      }
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -160,6 +167,26 @@ export default function AddSponsorModal({ isOpen, onClose, onSuccess, editData =
     if (!formData.sponsor_name || !formData.mail_id || !formData.primary_contact) {
       alert("Please fill in all required fields (Sponsor Name, Mail ID, Primary Contact).");
       return;
+    }
+
+    for (let i = 0; i < documents.length; i++) {
+      const doc = documents[i];
+      if (doc.document_type && doc.document_number) {
+        const type = doc.document_type.toUpperCase();
+        const num = doc.document_number.toUpperCase();
+        if (type.includes("AADHAR") && !/^\d{12}$/.test(num)) {
+          alert(`Document #${i + 1}: Aadhar number must be exactly 12 digits.`);
+          return;
+        }
+        if (type.includes("PAN") && !/^[A-Z]{5}\d{4}[A-Z]{1}$/.test(num)) {
+          alert(`Document #${i + 1}: Invalid PAN format.`);
+          return;
+        }
+        if (type.includes("GST") && !/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(num)) {
+          alert(`Document #${i + 1}: Invalid GST format.`);
+          return;
+        }
+      }
     }
 
     if (uploadingDocIndex !== null) {
@@ -256,6 +283,7 @@ export default function AddSponsorModal({ isOpen, onClose, onSuccess, editData =
                 value={formData.primary_contact}
                 onChange={handleChange}
                 placeholder="10-digit mobile"
+                maxLength={10}
               />
               <Input
                 label="Secondary Contact"
@@ -263,6 +291,7 @@ export default function AddSponsorModal({ isOpen, onClose, onSuccess, editData =
                 value={formData.secondary_contact}
                 onChange={handleChange}
                 placeholder="Optional"
+                maxLength={10}
               />
             </div>
 
@@ -293,6 +322,7 @@ export default function AddSponsorModal({ isOpen, onClose, onSuccess, editData =
             </div>
 
             {documents.map((doc, index) => {
+              const docConfig = docTypes.find((d) => d.type === doc.document_type) || {};
               const isUploadingThis = uploadingDocIndex === index;
               return (
                 <div key={index} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3 relative">
@@ -320,8 +350,14 @@ export default function AddSponsorModal({ isOpen, onClose, onSuccess, editData =
                   <Input
                     label="Document / Agreement ID"
                     value={doc.document_number}
-                    onChange={(e) => handleDocChange(index, "document_number", e.target.value.toUpperCase())}
-                    placeholder="e.g. MOU-2026-SPON-01"
+                    onChange={(e) => {
+                      let val = e.target.value.toUpperCase();
+                      if (docConfig.type === "Aadhar") val = val.replace(/\D/g, "");
+                      else val = val.replace(/[^A-Z0-9]/g, "");
+                      handleDocChange(index, "document_number", val);
+                    }}
+                    maxLength={docConfig.maxLength || (docConfig.type === "Aadhar" ? 12 : docConfig.type === "PAN" ? 10 : docConfig.type === "GST" ? 15 : 50)}
+                    placeholder={docConfig.placeholder || "e.g. MOU-2026-SPON-01"}
                   />
 
                   {/* Hidden Input for Sponsor Document */}
