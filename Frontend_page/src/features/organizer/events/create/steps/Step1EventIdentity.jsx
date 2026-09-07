@@ -38,13 +38,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
   const todayLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
     .toISOString().split("T")[0];
 
-  const [categoriesList, setCategoriesList] = useState([
-    { name: "Music & Concerts", subcategories: ["Rock", "Pop", "EDM", "Classical", "Jazz"] },
-    { name: "Tech & Business Expos", subcategories: ["AI & Tech", "Startups", "Web3", "Finance"] },
-    { name: "Sports & Fitness", subcategories: ["Football", "Cricket", "Marathon", "Esports"] },
-    { name: "Food & Culinary", subcategories: ["Food Fest", "Wine Tasting", "Baking Workshop"] },
-    { name: "Arts & Theatre", subcategories: ["Standup Comedy", "Drama", "Art Gallery"] },
-  ]);
+  const [categoriesList, setCategoriesList] = useState([]);
 
   useEffect(() => {
     getAdminCategories()
@@ -385,7 +379,9 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
             </label>
             <div
               onClick={() => setSubcategoryOpen(!subcategoryOpen)}
-              className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-cyan-400"
+              className={`w-full h-10 bg-slate-50 border rounded-xl px-3 flex items-center justify-between cursor-pointer text-sm transition-all hover:border-cyan-400 ${
+                !formData.eventDetails?.category ? "opacity-60 border-slate-200" : "border-slate-200"
+              }`}
             >
               <span className={(formData.eventDetails?.sub_category || formData.eventDetails?.subCategory || formData.eventDetails?.subcategory) ? "text-slate-900 font-medium" : "text-slate-400"}>
                 {(formData.eventDetails?.sub_category || formData.eventDetails?.subCategory || formData.eventDetails?.subcategory) || "Select Subcategory"}
@@ -394,23 +390,34 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
             </div>
             {subcategoryOpen && (
               <div className="absolute z-30 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                <div className="p-2 border-b border-slate-100">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search subcategory..."
-                      value={subcategorySearch}
-                      onChange={(e) => setSubcategorySearch(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 h-8 px-3 pr-8 rounded-lg text-xs outline-none focus:ring-1 focus:ring-cyan-500"
-                    />
-                    <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                {!formData.eventDetails?.category ? (
+                  <div className="p-3 text-xs text-amber-600 font-semibold bg-amber-50">
+                    Please select an Event Category first.
                   </div>
-                </div>
-                <div className="max-h-40 overflow-y-auto">
-                  {(() => {
-                    const selectedCatObj = categoriesList.find((c) => (typeof c === "object" ? c.name : c) === formData.eventDetails?.category);
-                    const subList = selectedCatObj && Array.isArray(selectedCatObj.subcategories) ? selectedCatObj.subcategories : ["General", "Expo", "Workshop", "Conference", "Festival"];
-                    return subList
+                ) : (
+                  <>
+                    <div className="p-2 border-b border-slate-100">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search subcategory..."
+                          value={subcategorySearch}
+                          onChange={(e) => setSubcategorySearch(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 h-8 px-3 pr-8 rounded-lg text-xs outline-none focus:ring-1 focus:ring-cyan-500"
+                        />
+                        <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                      </div>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto">
+                      {(() => {
+                        const selectedCatObj = categoriesList.find((c) => (typeof c === "object" ? c.name : c) === formData.eventDetails?.category);
+                        const subList = selectedCatObj && Array.isArray(selectedCatObj.subcategories) ? selectedCatObj.subcategories : [];
+                        
+                        if (subList.length === 0) {
+                          return <div className="px-3 py-2 text-xs text-slate-400">No subcategories available</div>;
+                        }
+
+                        return subList
                       .filter((s) => s.toLowerCase().includes(subcategorySearch.toLowerCase()))
                       .map((sub) => (
                         <div
@@ -432,7 +439,9 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
                         </div>
                       ));
                   })()}
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

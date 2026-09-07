@@ -176,7 +176,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
     const visibility = layout.visibility || "Public";
     const stallType = layout.stallType || "Paid";
     const sizeRange = layout.sizeRange || (layout.length && layout.width ? `${layout.length}/${layout.width}` : "");
-    const stallQty = parseInt(layout.stallQty || "1", 10) || 1;
+    const stallQty = layout.stallQty !== undefined && layout.stallQty !== "" ? parseInt(layout.stallQty, 10) : 0;
 
     // Validation: Empty not allowed
     if (!layout.stallName?.trim()) return showModal("Stall Name is required");
@@ -257,7 +257,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
         // Clear inputs after adding
         stallName: "",
         sizeRange: "",
-        stallQty: "1",
+        stallQty: "0",
         priceINR: "",
         primeSeat: false,
         primePriceINR: "",
@@ -564,10 +564,10 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                 <input
                   type="number"
                   name="stallQty"
-                  min="1"
+                  min="0"
                   max="100"
                   placeholder="e.g. 5"
-                  value={formData.layout?.stallQty || "1"}
+                  value={formData.layout?.stallQty !== undefined ? formData.layout.stallQty : "0"}
                   onChange={handleChange}
                   className={inputClasses}
                 />
