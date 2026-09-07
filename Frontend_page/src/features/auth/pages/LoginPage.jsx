@@ -15,7 +15,7 @@ export default function Login() {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
-  const { isAuthenticated, accessToken, role: authRole } = useSelector((state) => state.auth);
+  const { isAuthenticated, accessToken, role: authRole, user: authUser } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
@@ -107,7 +107,7 @@ export default function Login() {
       setFormData((prev) => ({ ...prev, email: savedEmail }));
       setRememberMe(true);
     }
-  }, [navigate, isAuthenticated, accessToken, authRole, returnUrl, searchParams]);
+  }, [navigate, isAuthenticated, accessToken, authRole, authUser, returnUrl, searchParams]);
 
   const handleChange = (name, value) => {
     setFormData({ ...formData, [name]: value });

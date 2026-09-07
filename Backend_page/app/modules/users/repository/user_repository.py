@@ -23,7 +23,14 @@ class UserRepository:
 
     @staticmethod
     def get_event_by_id(event_id) -> EventDetails | None:
-        return db.session.get(EventDetails, event_id)
+        import uuid
+        try:
+            eid = uuid.UUID(str(event_id))
+            return db.session.get(EventDetails, eid)
+        except Exception:
+            return db.session.scalars(select(EventDetails).where(
+                (EventDetails.event_code == str(event_id)) | (EventDetails.slug == str(event_id))
+            )).first()
 
     @staticmethod
     def generate_ticket_code(event_id) -> str:
@@ -34,10 +41,23 @@ class UserRepository:
 
     @staticmethod
     def create_booking(event_id, name: str, email: str, phone: str, food_preference: str, qr_data: str = "PENDING", user_id = None) -> UserBookingDetails:
+        import uuid
+        try:
+            parsed_event_id = uuid.UUID(str(event_id))
+        except Exception:
+            parsed_event_id = event_id
+
+        parsed_user_id = None
+        if user_id:
+            try:
+                parsed_user_id = uuid.UUID(str(user_id))
+            except Exception:
+                parsed_user_id = None
+
         ticket_code = UserRepository.generate_ticket_code(event_id)
         booking = UserBookingDetails(
-            event_id=event_id,
-            user_id=user_id,
+            event_id=parsed_event_id,
+            user_id=parsed_user_id,
             name=name,
             email=email.strip().lower(),
             phone=phone,

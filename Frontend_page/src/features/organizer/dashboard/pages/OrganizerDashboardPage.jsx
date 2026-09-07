@@ -32,7 +32,9 @@ export default function OrganizerDashboardPage() {
 
   useEffect(() => {
     const userId = reduxUser.id || sessionStorage.getItem("userId") || sessionStorage.getItem("id") || localStorage.getItem("userId") || localStorage.getItem("id") || "";
-    dispatch(fetchEventsThunk(userId));
+    if (userId) {
+      dispatch(fetchEventsThunk({ organizerId: userId, force: true }));
+    }
   }, [dispatch, reduxUser.id]);
 
   // Filter events by selected scope dropdown

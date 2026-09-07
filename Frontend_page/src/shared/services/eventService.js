@@ -5,6 +5,11 @@ const eventsMemoryCache = new Map();
 
 export const clearEventsCache = () => {
   eventsMemoryCache.clear();
+  homeEventsCache = null;
+  homeEventsCacheTimestamp = 0;
+  try {
+    sessionStorage.removeItem("home_events_cache");
+  } catch (e) {}
 };
 
 export const getevent = async () => {

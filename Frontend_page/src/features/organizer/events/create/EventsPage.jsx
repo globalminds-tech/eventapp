@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchEventsThunk } from "@/app/store/eventSlice";
+import { getAuthUserId } from "@/shared/services/authHelper";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
   Plus,
@@ -85,15 +86,17 @@ const EventsPage = () => {
   const [isLoadingFullData, setIsLoadingFullData] = useState(false);
 
   const Redexorganizer = useSelector((state) => state.user);
+  const authUser = useSelector((state) => state.auth?.user);
   const organizerId =
-    Redexorganizer?.id ||
+    getAuthUserId(Redexorganizer) ||
+    getAuthUserId(authUser) ||
     sessionStorage.getItem("id") ||
     localStorage.getItem("id") ||
     sessionStorage.getItem("userId");
 
   useEffect(() => {
     if (organizerId) {
-      dispatch(fetchEventsThunk(organizerId));
+      dispatch(fetchEventsThunk({ organizerId, force: true }));
     }
   }, [dispatch, organizerId]);
 

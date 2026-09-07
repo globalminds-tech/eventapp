@@ -6,6 +6,7 @@ import {
   getapprovalBookingById,
   updateBookingStatus,
 } from "@/Services/api";
+import { getAuthUserId } from "@/shared/services/authHelper";
 import {
   X,
   Eye,
@@ -48,11 +49,13 @@ const AdminApproval = () => {
   const [openStatusId, setOpenStatusId] = useState(null);
 
   const Redexorganizer = useSelector((state) => state.user);
+  const authUser = useSelector((state) => state.auth?.user);
+  const currentOrganizerId = getAuthUserId(Redexorganizer) || getAuthUserId(authUser);
   const storedUser = {
-    id: sessionStorage.getItem("userId"),
-    name: sessionStorage.getItem("userName"),
+    id: currentOrganizerId,
+    name: Redexorganizer?.name || authUser?.name || sessionStorage.getItem("name") || localStorage.getItem("name") || "",
   };
-  const organizer = Redexorganizer?.id ? Redexorganizer : storedUser;
+  const organizer = { ...storedUser, ...(Redexorganizer?.id ? Redexorganizer : authUser) };
 
   useEffect(() => {
     if (viewMode === "events") {

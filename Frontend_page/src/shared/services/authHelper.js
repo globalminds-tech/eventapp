@@ -1,5 +1,7 @@
 import { logout, setCredentials } from "@/app/store/authSlice";
 import { clearUser, setUser } from "@/app/store/userSlice";
+import { clearEvents } from "@/app/store/eventSlice";
+import { clearEventsCache } from "@/shared/services/eventService";
 import axiosClient from "@/shared/api/axiosClient";
 
 /**
@@ -14,7 +16,9 @@ export const performLogout = async (dispatch, navigate) => {
     if (dispatch) {
       dispatch(logout());
       dispatch(clearUser());
+      dispatch(clearEvents());
     }
+    clearEventsCache();
   } catch (err) {
     console.error("Logout dispatch note:", err);
   }

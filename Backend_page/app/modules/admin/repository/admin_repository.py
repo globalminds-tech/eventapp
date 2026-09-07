@@ -51,12 +51,22 @@ class AdminRepository:
 
     @staticmethod
     def update_event_status(event_id, status: str):
-        event = db.session.get(EventDetails, event_id)
+        import uuid
+        event = None
+        try:
+            eid = uuid.UUID(str(event_id))
+            event = db.session.get(EventDetails, eid)
+        except Exception:
+            event = db.session.scalars(select(EventDetails).where(
+                (EventDetails.event_code == str(event_id)) | (EventDetails.slug == str(event_id))
+            )).first()
+
         if event:
             event.status = status
-            if status == "APPROVED":
+            st_upper = status.upper()
+            if st_upper in ["APPROVED", "ACTIVE"]:
                 event.approved_at = datetime.utcnow()
-            elif status == "REJECTED":
+            elif st_upper == "REJECTED":
                 event.rejected_at = datetime.utcnow()
             db.session.commit()
             return event
