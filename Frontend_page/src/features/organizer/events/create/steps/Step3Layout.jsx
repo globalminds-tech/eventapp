@@ -71,7 +71,6 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
   const [amenity, setAmenity] = useState("");
   const [qty, setQty] = useState("");
-  const [draftAmenities, setDraftAmenities] = useState([]);
   const [showTips, setShowTips] = useState(false);
   const [viewData, setViewData] = useState(null); // { data, type }
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, index: null, type: "" }); // type: 'stall' | 'amenity'
@@ -213,13 +212,6 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
       if (!layout.priceINR || layout.priceINR === "0") return showModal("Price in INR is required for Paid stalls");
     }
 
-    // Associate draft amenities with this stallName
-    const stallAmenities = draftAmenities.map((d) => ({
-      stallName: layout.stallName.trim(),
-      amenity: d.amenity,
-      qty: d.qty,
-    }));
-
     const newStall = {
       stallName: layout.stallName.trim(),
       size: `${parts[0]}/${parts[1]} ${layout.stallSize || "Feet"}`,
@@ -236,7 +228,6 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
       personPass: layout.personPass || 1,
       includeTax: stallType === "Free" ? false : Boolean(layout.includeTax),
       taxes: (layout.includeTax && layout.taxes?.length > 0) ? layout.taxes : (formData.layout?.taxes || []),
-      amenities: stallAmenities,
     };
 
     // Validation: Duplicate Name Check
@@ -246,14 +237,12 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
     if (isDuplicate) return showModal("Stall Name already exists");
 
     const updatedStalls = [...stallList, newStall];
-    const updatedAmenities = [...amenitiesList, ...stallAmenities];
 
     setFormData({
       ...formData,
       layout: {
         ...formData.layout,
         stalls: updatedStalls,
-        amenities: updatedAmenities,
         // Clear inputs after adding
         stallName: "",
         sizeRange: "",
@@ -266,21 +255,34 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
         width: "",
       },
     });
-
-    setDraftAmenities([]);
   };
 
-  // ADD AMENITIES (Local Draft)
+  // ADD AMENITIES
   const addAmenity = () => {
     if (!amenity.trim()) return showModal("Amenity Name is required");
     if (!qty || qty <= 0) return showModal("Valid Quantity is required");
+    const currentStallName = formData.layout?.stallName?.trim();
+    if (!currentStallName) return showModal("Please enter a Stall Name first before adding amenities");
 
-    const isDuplicate = draftAmenities.some(
-      (a) => a.amenity.toLowerCase() === amenity.trim().toLowerCase()
+    const isDuplicate = amenitiesList.some(
+      (a) => a.amenity.toLowerCase() === amenity.trim().toLowerCase() && a.stallName.toLowerCase() === currentStallName.toLowerCase()
     );
-    if (isDuplicate) return showModal("This amenity is already in your pending list");
+    if (isDuplicate) return showModal("This amenity is already added to this stall");
 
-    setDraftAmenities((prev) => [...prev, { amenity: amenity.trim(), qty }]);
+    const newAmenity = {
+      stallName: currentStallName,
+      amenity: amenity.trim(),
+      qty: qty
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      layout: {
+        ...prev.layout,
+        amenities: [...(prev.layout?.amenities || []), newAmenity]
+      }
+    }));
+
     setAmenity("");
     setQty("");
   };
@@ -298,6 +300,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
       type: "stall",
       data: {
         stallName: stall.stallName || stall.stall_name || "",
+        stallQty: stall.stallQty !== undefined ? stall.stallQty : (stall.quantity || stall.stall_count || 1),
         stallSize: sizeParts[1] || "Feet",
         length: dimParts[0] || "10",
         width: dimParts[1] || "10",
@@ -341,6 +344,8 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
       stallName: newStallName,
       size: `${data.length || parts[0]}/${data.width || parts[1]} ${data.stallSize || "Feet"}`,
       sizeRange: `${data.length || parts[0]}/${data.width || parts[1]}`,
+      quantity: parseInt(data.stallQty, 10) || 1,
+      stallQty: parseInt(data.stallQty, 10) || 1,
       visibility: data.visibility || "Public",
       type: data.stallType || "Paid",
       priceINR: data.stallType === "Free" ? "Free" : (data.priceINR || "Free"),
@@ -764,27 +769,6 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                   </button>
                 </div>
 
-                {/* Pending Draft Amenities List */}
-                {draftAmenities.length > 0 && (
-                  <div className="pt-2 flex flex-wrap gap-1.5 border-t border-slate-100 mt-2">
-                    <span className="text-[11px] font-bold text-slate-500 w-full block">
-                      Stall Amenities (Saved when stall is confirmed):
-                    </span>
-                    {draftAmenities.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-50 border border-cyan-200 text-xs font-bold text-cyan-800">
-                        <span>{item.amenity} (x{item.qty})</span>
-                        <button
-                          type="button"
-                          onClick={() => setDraftAmenities(prev => prev.filter((_, i) => i !== idx))}
-                          className="text-cyan-600 hover:text-red-500 border-none bg-transparent cursor-pointer p-0.5"
-                          title="Remove"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="pt-3 border-t border-slate-100 space-y-3 sm:col-span-2">
@@ -1153,6 +1137,18 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                       className={inputClasses}
                       value={editModal.data.stallName || ""}
                       onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, stallName: e.target.value } })}
+                    />
+                  </div>
+
+                  {/* Stall Quantity (Count) */}
+                  <div className="space-y-1">
+                    <label className={labelClasses}>Stall Quantity (Count) <span className="text-red-500">*</span></label>
+                    <input
+                      type="number"
+                      min="1"
+                      className={inputClasses}
+                      value={editModal.data.stallQty !== undefined ? editModal.data.stallQty : ""}
+                      onChange={(e) => setEditModal({ ...editModal, data: { ...editModal.data, stallQty: e.target.value } })}
                     />
                   </div>
 
