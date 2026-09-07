@@ -1,5 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40">
-  <rect x="5" y="5" width="20" height="20" rx="4" fill="#3b82f6" transform="rotate(-12 15 15)" />
-  <rect x="35" y="5" width="20" height="20" rx="4" fill="#f97316" transform="rotate(6 45 15)" />
-  <rect x="65" y="5" width="20" height="20" rx="4" fill="#22c55e" transform="rotate(-3 75 15)" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 24" width="36" height="24" fill="none">
+  <!-- Pill 1: Blue -12deg -->
+  <rect x="4" y="3" width="6" height="18" rx="3" fill="#3b82f6" transform="rotate(-12 7 12)" />
+  <!-- Pill 2: Orange +12deg -->
+  <rect x="15" y="3" width="6" height="18" rx="3" fill="#f97316" transform="rotate(12 18 12)" />
+  <!-- Pill 3: Green -6deg -->
+  <rect x="26" y="3" width="6" height="18" rx="3" fill="#22c55e" transform="rotate(-6 29 12)" />
 </svg>

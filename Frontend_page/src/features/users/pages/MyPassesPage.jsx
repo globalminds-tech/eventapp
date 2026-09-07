@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Ticket, MapPin, Calendar, Clock, ArrowLeft, QrCode, Search,
-  Download, Printer, Sparkles, AlertCircle, CheckCircle2, User
+  Download, Printer, Sparkles, AlertCircle, CheckCircle2, User, LogOut as LogOutIcon, ShieldCheck
 } from "lucide-react";
 import apiClient from "@/shared/api/axiosClient";
 import { getUserProfile } from "@/Services/api";
@@ -176,17 +176,62 @@ export default function MyPassesPage() {
                         </Badge>
                         <h3 className="text-base font-black text-white line-clamp-1">{pass.event_name || pass.eventName}</h3>
                       </div>
-                      <span className="text-[10px] font-mono text-orange-300 font-bold bg-slate-900/80 px-2.5 py-1 rounded-lg border border-white/10">
-                        BKG-#{pass.id}
+                      <span className="text-[10px] font-mono text-amber-300 font-bold bg-slate-900/80 px-2.5 py-1 rounded-lg border border-white/10">
+                        {pass.ticket_code || `BKG-#${pass.id}`}
                       </span>
                     </div>
                   </div>
 
                   {/* Body Content */}
-                  <CardContent className="p-6 space-y-5">
+                  <CardContent className="p-6 space-y-4">
                     
+                    {/* Booking Safety & Refund Assurance Notice for Suspended Events */}
+                    {(pass.is_suspended || pass.event_status === "SUSPENDED") && (
+                      <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 flex items-start gap-3 text-amber-950 shadow-xs animate-fadeIn">
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                          <ShieldCheck size={18} />
+                        </div>
+                        <div className="space-y-1 text-xs flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-black text-amber-950">Your Booking is Safe &amp; Confirmed</span>
+                            <Badge className="bg-amber-200 text-amber-800 border-amber-300 font-extrabold text-[9px]">
+                              New Registrations Paused
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                            The event organizer has temporarily paused new attendee registrations. <strong>Your existing pass and entry reservation remain 100% secure.</strong> In the event of any issue or cancellation, you are protected by our attendee guarantee and will receive a full 100% refund.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Live Turnstile Status Badge */}
+                    <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
+                      <div className="flex items-center gap-2">
+                        {pass.is_checked_in ? (
+                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-black gap-1">
+                            <CheckCircle2 size={12} />
+                            <span>INSIDE VENUE</span>
+                          </Badge>
+                        ) : pass.is_checked_out ? (
+                          <Badge className="bg-slate-100 text-slate-700 border-slate-300 text-[10px] font-bold gap-1">
+                            <LogOutIcon size={12} />
+                            <span>CHECKED OUT</span>
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 text-[10px] font-black gap-1">
+                            <Sparkles size={12} />
+                            <span>VALID ENTRY PASS</span>
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-mono font-black text-slate-700">
+                        {pass.ticket_code || `REF-${String(pass.id).slice(0, 8)}`}
+                      </span>
+                    </div>
+
                     {/* Event Details */}
-                    <div className="space-y-2 text-xs font-semibold text-slate-600 border-b border-slate-100 pb-4">
+                    <div className="space-y-2 text-xs font-semibold text-slate-600 border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-2 text-slate-800">
                         <MapPin size={15} className="text-orange-500 shrink-0" />
                         <span className="line-clamp-1">{pass.venue || "Venue Details"}, {pass.address || ""}</span>
@@ -207,7 +252,7 @@ export default function MyPassesPage() {
 
                     {/* QR Code & Attendee Info */}
                     <div className="flex items-center gap-5">
-                      <div className="p-2.5 bg-white border border-slate-200 rounded-2xl shadow-xs shrink-0 flex items-center justify-center">
+                      <div className="p-2.5 bg-white border border-slate-200 rounded-2xl shadow-xs shrink-0 flex flex-col items-center justify-center">
                         {qrSrc ? (
                           <img
                             src={qrSrc}
@@ -220,6 +265,9 @@ export default function MyPassesPage() {
                             <span className="text-[9px] font-bold">QR Code</span>
                           </div>
                         )}
+                        <span className="text-[9px] font-mono font-bold text-slate-500 mt-1 max-w-[120px] truncate">
+                          {pass.ticket_code || pass.id}
+                        </span>
                       </div>
 
                       <div className="space-y-1.5 text-xs">
@@ -241,6 +289,7 @@ export default function MyPassesPage() {
                         )}
                       </div>
                     </div>
+
 
                     {/* Footer Actions */}
                     <div className="pt-2 flex gap-3">

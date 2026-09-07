@@ -186,11 +186,8 @@ def get_user_profile(user_id: str, request: Request):
             return AuthController.me(uid)
         except Exception:
             raise ApiError("User ID missing and unauthenticated", 400)
-    try:
-        uid = int(user_id)
-        return AuthController.me(uid)
-    except ValueError:
-        raise ApiError("Invalid user ID", 400)
+    
+    return AuthController.me(user_id)
 
 @auth_router.post("/otp/send")
 @auth_router.post("/otp/send-otp")

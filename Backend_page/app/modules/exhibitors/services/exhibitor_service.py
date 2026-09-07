@@ -12,6 +12,17 @@ class ExhibitorService:
         if not email or not event_id:
             raise ApiError("Email and Event ID are required", 400)
 
+        from app.modules.users.repository.user_repository import UserRepository
+        event = UserRepository.get_event_by_id(event_id)
+        if not event:
+            raise ApiError("Event not found", 404)
+
+        event_status = (getattr(event, "status", None) or "Active").strip().upper()
+        if event_status == "SUSPENDED":
+            raise ApiError("This event is currently suspended. Stall booking is temporarily unavailable.", 400)
+        if event_status not in ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"]:
+            raise ApiError(f"This event is currently in '{event_status}' status and not open for stall reservations.", 400)
+
         if ExhibitorRepository.get_existing_booking(email, event_id):
             raise ApiError("You have already booked a stall for this event", 400)
 
@@ -62,13 +73,18 @@ class ExhibitorService:
         data = []
         base_url = host_url.rstrip("/")
 
-        for booking, event_name in rows:
+        for row in rows:
+            booking = row[0]
+            event_name = row[1] if len(row) > 1 else ""
+            ev_status = row[2] if len(row) > 2 else "ACTIVE"
             b_dict = {
                 "id": str(booking.id),
                 "event_id": str(booking.event_id) if booking.event_id else None,
                 "user_id": str(booking.user_id) if booking.user_id else None,
                 "eventName": event_name or getattr(booking, "event_name", ""),
                 "event_name": event_name,
+                "event_status": (ev_status or "ACTIVE").upper(),
+                "is_suspended": (ev_status or "").upper() == "SUSPENDED",
                 "title": booking.title,
                 "first_name": booking.first_name,
                 "last_name": booking.last_name,
@@ -120,6 +136,8 @@ class ExhibitorService:
             "user_id": str(booking.user_id) if booking.user_id else None,
             "eventName": event.event_name if event else getattr(booking, "event_name", ""),
             "event_name": event.event_name if event else getattr(booking, "event_name", ""),
+            "event_status": (event.status or "ACTIVE").upper() if event else "ACTIVE",
+            "is_suspended": ((event.status or "").upper() == "SUSPENDED") if event else False,
             "event_code": event.event_code if event else None,
             "title": booking.title,
             "first_name": booking.first_name,

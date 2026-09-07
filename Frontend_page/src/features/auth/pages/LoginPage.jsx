@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Compass, ShieldCheck, Zap } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Compass, ShieldCheck, Zap, Ticket } from "lucide-react";
 import { loginUser } from "@/Services/api";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "@/app/store/userSlice";
@@ -15,6 +15,9 @@ export default function Login() {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
+  const eventName = searchParams.get("eventName");
+  const eventBanner = searchParams.get("eventBanner");
+  const isBookingFlow = Boolean(returnUrl && returnUrl.includes("/usersbooking"));
   const { isAuthenticated, accessToken, role: authRole, user: authUser } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -382,15 +385,45 @@ export default function Login() {
                 className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-500 hover:text-orange-600 transition-colors cursor-pointer bg-transparent border-none"
               >
                 <ArrowLeft size={14} />
-                <span>Back</span>
+                <span>{isBookingFlow ? "Back to Event" : "Back"}</span>
               </button>
             </div>
 
+            {/* Contextual Booking Hold Alert */}
+            {isBookingFlow && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-4 mb-5 flex items-center gap-3.5 shadow-xs">
+                {eventBanner ? (
+                  <img
+                    src={eventBanner}
+                    alt={eventName || "Event"}
+                    className="w-12 h-12 rounded-xl object-cover shrink-0 border border-amber-200 shadow-xs"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0">
+                    <Ticket className="w-6 h-6" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider text-orange-700 bg-orange-100/90 px-2 py-0.5 rounded-md">
+                    Ticket Reservation in Progress
+                  </span>
+                  <h4 className="text-xs font-black text-slate-900 truncate mt-1">
+                    {eventName || "Your Selected Event Pass"}
+                  </h4>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    Sign in below to link this pass to your account and proceed to checkout.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Header */}
             <div className="mb-6">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Sign In</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {isBookingFlow ? "Sign In to Complete Booking" : "Sign In"}
+              </h2>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                Enter your account credentials to continue
+                {isBookingFlow ? "Quickly sign in to finalize your pass purchase" : "Enter your account credentials to continue"}
               </p>
             </div>
 
@@ -488,7 +521,11 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => {
-                  const query = returnUrl ? `?returnUrl=${returnUrl}` : "";
+                  const params = new URLSearchParams();
+                  if (returnUrl) params.set("returnUrl", returnUrl);
+                  if (eventName) params.set("eventName", eventName);
+                  if (eventBanner) params.set("eventBanner", eventBanner);
+                  const query = params.toString() ? `?${params.toString()}` : "";
                   navigate(`/register${query}`);
                 }}
                 className="font-extrabold text-orange-600 hover:underline cursor-pointer bg-transparent border-none"

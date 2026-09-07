@@ -22,14 +22,21 @@ class AuthRepository:
 
     @staticmethod
     def get_user_by_id(user_id) -> User | None:
+        import uuid
+        parsed_id = user_id
+        if isinstance(user_id, str):
+            try:
+                parsed_id = uuid.UUID(user_id)
+            except Exception:
+                parsed_id = user_id
         try:
-            return db.session.get(User, user_id)
+            return db.session.get(User, parsed_id)
         except Exception:
             try:
                 db.session.rollback()
             except Exception:
                 pass
-            return db.session.get(User, user_id)
+            return db.session.get(User, parsed_id)
 
     @staticmethod
     def get_organizer_profile_by_user_id(user_id) -> OrganizerProfile | None:

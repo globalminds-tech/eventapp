@@ -113,7 +113,7 @@ class AdminService:
             stmt = select(EventDetails).where(EventDetails.deleted_at.is_(None)).order_by(desc(EventDetails.created_at))
 
             if only_approved:
-                stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE"]))
+                stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "SUSPENDED"]))
 
             if organizer_id:
                 org_str = str(organizer_id).strip()
@@ -231,8 +231,8 @@ class AdminService:
     @staticmethod
     def update_event_status(event_id, raw_data: dict) -> dict:
         data = UpdateEventStatusSchema(**raw_data)
-        status_upper = data.status.upper()
-        if status_upper not in ["APPROVED", "REJECTED", "PENDING", "SUSPENDED"]:
+        status_upper = data.status.strip().upper()
+        if status_upper not in ["APPROVED", "REJECTED", "PENDING", "ACTIVE", "DRAFT", "SUSPENDED"]:
             raise ApiError("Invalid status value", 400)
 
         event = AdminRepository.update_event_status(event_id, status_upper)
@@ -240,7 +240,7 @@ class AdminService:
             raise ApiError("Event not found", 404)
 
         redis_cache.clear_pattern("events:*")
-        return {"message": f"Event status updated to {status_upper}"}
+        return {"message": f"Event status updated to {status_upper}", "status": status_upper}
 
     @staticmethod
     def get_categories() -> list[dict]:

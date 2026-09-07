@@ -111,7 +111,9 @@ const adminSlice = createSlice({
   reducers: {
     updateApprovalStatusInStore: (state, action) => {
       const { eventId, status } = action.payload || {};
-      const evt = state.approvalQueue.find((e) => e.id === eventId || e.event_code === eventId);
+      const evt = state.approvalQueue.find(
+        (e) => String(e.id) === String(eventId) || String(e.event_code) === String(eventId) || String(e.code) === String(eventId)
+      );
       if (evt) {
         evt.status = status;
         evt.event_status = status;

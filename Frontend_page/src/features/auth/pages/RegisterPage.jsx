@@ -4,7 +4,7 @@ import { registerUser } from "@/Services/api";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/app/store/userSlice";
 import { setCredentials } from "@/app/store/authSlice";
-import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Compass, ShieldCheck, Zap, Check, X } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, Compass, ShieldCheck, Zap, Check, X, Ticket } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
 
 export default function Register() {
@@ -12,6 +12,9 @@ export default function Register() {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
+  const eventName = searchParams.get("eventName");
+  const eventBanner = searchParams.get("eventBanner");
+  const isBookingFlow = Boolean(returnUrl && returnUrl.includes("/usersbooking"));
 
   const [formData, setFormData] = useState({
     name: "",
@@ -152,8 +155,9 @@ export default function Register() {
         })
       );
 
-      setMessage("Account created successfully! Logging you in...");
-      setTimeout(() => navigate(returnUrl || "/", { replace: true }), 1000);
+      setMessage(isBookingFlow ? "Account created! Resuming your ticket booking..." : "Account created successfully! Logging you in...");
+      const targetUrl = returnUrl || "/";
+      setTimeout(() => navigate(targetUrl, { replace: true }), 300);
     } catch (err) {
       console.error("Registration error:", err);
       setError(err?.response?.data?.message || err?.response?.data?.detail || err?.message || "Registration failed. Please try again.");
@@ -239,14 +243,44 @@ export default function Register() {
                 className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-500 hover:text-orange-600 transition-colors cursor-pointer bg-transparent border-none"
               >
                 <ArrowLeft size={14} />
-                <span>Back</span>
+                <span>{isBookingFlow ? "Back to Event" : "Back"}</span>
               </button>
             </div>
 
+            {/* Contextual Booking Hold Alert */}
+            {isBookingFlow && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/90 rounded-2xl p-4 mb-5 flex items-center gap-3.5 shadow-xs">
+                {eventBanner ? (
+                  <img
+                    src={eventBanner}
+                    alt={eventName || "Event"}
+                    className="w-12 h-12 rounded-xl object-cover shrink-0 border border-amber-200 shadow-xs"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0">
+                    <Ticket className="w-6 h-6" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider text-orange-700 bg-orange-100/90 px-2 py-0.5 rounded-md">
+                    Ticket Reservation in Progress
+                  </span>
+                  <h4 className="text-xs font-black text-slate-900 truncate mt-1">
+                    {eventName || "Your Selected Event Pass"}
+                  </h4>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    Create your account below to immediately proceed and complete your booking.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="mb-6">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Create Account</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {isBookingFlow ? "Create Account to Book" : "Create Account"}
+              </h2>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                Join to explore live events or manage your partner business
+                {isBookingFlow ? "Set up your free account to receive and access your tickets" : "Join to explore live events or manage your partner business"}
               </p>
             </div>
 
@@ -436,7 +470,11 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => {
-                  const query = returnUrl ? `?returnUrl=${returnUrl}` : "";
+                  const params = new URLSearchParams();
+                  if (returnUrl) params.set("returnUrl", returnUrl);
+                  if (eventName) params.set("eventName", eventName);
+                  if (eventBanner) params.set("eventBanner", eventBanner);
+                  const query = params.toString() ? `?${params.toString()}` : "";
                   navigate(`/login${query}`);
                 }}
                 className="font-extrabold text-orange-600 hover:underline cursor-pointer bg-transparent border-none"

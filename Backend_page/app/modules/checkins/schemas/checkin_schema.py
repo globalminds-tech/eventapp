@@ -4,6 +4,9 @@ from typing import Optional
 class CheckinRequestSchema(BaseModel):
     ticket_code: Optional[str] = None
     booking_id: Optional[str] = None
-    action: Optional[str] = "CHECK_IN" # "CHECK_IN" or "CHECK_OUT"
-    gate_name: Optional[str] = None
+    action: Optional[str] = "CHECK_IN"  # "CHECK_IN" or "CHECK_OUT"
+    event_id: Optional[str] = None
+    gate_name: Optional[str] = "MAIN_GATE"
     scanner_id: Optional[str] = None
+    override_duplicate: Optional[bool] = False
+

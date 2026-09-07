@@ -42,7 +42,9 @@ export const UpcomingEventsPage = () => {
         banner_type: e.banner_type,
         category: e.category || "Trade Fair",
         stallsAvailable: 15,
-        totalStalls: 60
+        totalStalls: 60,
+        status: (e.status || "APPROVED").toUpperCase(),
+        is_suspended: (e.status || "").toUpperCase() === "SUSPENDED"
       }));
 
       setEvents(formatted);
@@ -155,9 +157,15 @@ export const UpcomingEventsPage = () => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute top-3 right-3">
-                  <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2.5 py-1 shadow-md">
-                    Booths Open
-                  </Badge>
+                  {event.is_suspended || event.status === "SUSPENDED" ? (
+                    <Badge className="bg-amber-500 text-white font-extrabold text-[10px] px-2.5 py-1 shadow-md border border-amber-400">
+                      Stall Bookings Paused
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2.5 py-1 shadow-md">
+                      Booths Open
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -189,13 +197,22 @@ export const UpcomingEventsPage = () => {
                     <p className="text-xs font-extrabold text-emerald-700">{event.stallsAvailable} / {event.totalStalls} Open</p>
                   </div>
 
-                  <Button
-                    onClick={() => handleBookStall(event)}
-                    className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs border-none cursor-pointer gap-1.5"
-                  >
-                    <span>Reserve Booth</span>
-                    <ArrowRight size={14} />
-                  </Button>
+                  {event.is_suspended || event.status === "SUSPENDED" ? (
+                    <span
+                      title="Currently not accepting new stall reservations"
+                      className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[11px] px-3.5 py-2 rounded-xl uppercase tracking-wider text-center"
+                    >
+                      Bookings Paused
+                    </span>
+                  ) : (
+                    <Button
+                      onClick={() => handleBookStall(event)}
+                      className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs border-none cursor-pointer gap-1.5"
+                    >
+                      <span>Reserve Booth</span>
+                      <ArrowRight size={14} />
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

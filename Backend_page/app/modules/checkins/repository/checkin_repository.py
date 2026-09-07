@@ -62,16 +62,53 @@ class CheckinRepository:
             data.append({
                 "id": str(b.id),
                 "visitor_code": b.ticket_code or f"PAS-{str(b.id)[:6].upper()}",
+                "ticket_code": b.ticket_code or f"PAS-{str(b.id)[:6].upper()}",
                 "name": b.name or "Attendee",
                 "phone": b.phone or "N/A",
                 "email": b.email or "",
                 "food_preference": b.food_preference or "None",
                 "checkin_time": b.checkin_at.strftime("%I:%M %p") if b.checkin_at else "",
                 "checkout_time": b.checkout_at.strftime("%I:%M %p") if b.checkout_at else "",
-                "is_checked_in": bool(b.is_checked_in or b.is_scanned),
-                "is_checked_out": bool(b.is_checked_out)
+                "is_checked_in": bool(b.is_checked_in),
+                "is_checked_out": bool(b.is_checked_out),
+                "total_checkins": b.total_checkins or 0,
+                "total_checkouts": b.total_checkouts or 0,
+                "created_at": b.created_at.isoformat() if b.created_at else ""
             })
         return data
+
+    @staticmethod
+    def get_event_checkin_logs(event_id: str, limit: int = 30):
+        import uuid
+        try:
+            parsed_id = uuid.UUID(str(event_id))
+        except Exception:
+            parsed_id = event_id
+
+        stmt = (
+            select(AttendeeCheckinLog, UserBookingDetails.name, UserBookingDetails.food_preference)
+            .outerjoin(UserBookingDetails, AttendeeCheckinLog.booking_id == UserBookingDetails.id)
+            .where(AttendeeCheckinLog.event_id == parsed_id)
+            .order_by(AttendeeCheckinLog.timestamp.desc())
+            .limit(limit)
+        )
+        records = db.session.execute(stmt).all()
+        logs = []
+        for log, attendee_name, food_pref in records:
+            logs.append({
+                "id": str(log.id),
+                "booking_id": str(log.booking_id),
+                "ticket_code": log.ticket_code,
+                "attendee_name": attendee_name or "Attendee",
+                "food_preference": food_pref or "None",
+                "action": log.action,
+                "gate_name": log.gate_name or "MAIN_GATE",
+                "scanner_id": log.scanner_id or "GATE_SCANNER",
+                "timestamp": log.timestamp.strftime("%I:%M:%S %p") if log.timestamp else "",
+                "created_at": log.timestamp.isoformat() if log.timestamp else ""
+            })
+        return logs
+
 
     @staticmethod
     def get_food_checkin_summary(organizer_id: Optional[str] = None):

@@ -131,6 +131,53 @@ class EventRepository:
         banner_preview = banner_file.file_path if banner_file else ""
         banner_type = banner_file.doc_type if banner_file else "image"
 
+        # Fetch detailed organizer profile info
+        organizer_info = None
+        target_uid = event.user_id
+        if not target_uid and event.created_by:
+            try:
+                target_uid = uuid.UUID(str(event.created_by))
+            except Exception:
+                pass
+
+        if target_uid:
+            try:
+                from app.models.user import User
+                from app.models.organizer_profile import OrganizerProfile
+                org_user = db.session.get(User, target_uid) if isinstance(target_uid, uuid.UUID) else None
+                if not org_user:
+                    try:
+                        org_user = db.session.get(User, uuid.UUID(str(target_uid)))
+                    except Exception:
+                        pass
+                
+                org_profile = None
+                if org_user:
+                    org_profile = db.session.scalar(select(OrganizerProfile).where(OrganizerProfile.user_id == org_user.id))
+
+                if org_user or org_profile:
+                    organizer_info = {
+                        "id": str(org_user.id) if org_user else str(target_uid),
+                        "name": getattr(org_user, "name", None) or "Event Organizer",
+                        "email": getattr(org_user, "email", None) or "",
+                        "mobile": getattr(org_user, "mobile", None) or (getattr(org_profile, "mobile", "") if org_profile else ""),
+                        "company_name": (getattr(org_profile, "company_name", None) if org_profile else None) or getattr(org_user, "organization_name", None) or "Registered Organizer",
+                        "organization_name": getattr(org_user, "organization_name", None) or (getattr(org_profile, "company_name", "") if org_profile else ""),
+                        "address": (getattr(org_profile, "business_address", None) if org_profile else None) or getattr(org_user, "address", "") or "",
+                        "city": (getattr(org_profile, "city", None) if org_profile else None) or getattr(org_user, "city", "") or "",
+                        "state": (getattr(org_profile, "state", None) if org_profile else None) or getattr(org_user, "state", "") or "",
+                        "country": getattr(org_user, "country", "India") or "India",
+                        "kyc_status": (getattr(org_profile, "kyc_status", None) if org_profile else None) or "VERIFIED",
+                        "gstin": (getattr(org_profile, "gstin", "") if org_profile else "") or "",
+                        "pan_number": (getattr(org_profile, "pan_number", "") if org_profile else "") or "",
+                        "bank_name": (getattr(org_profile, "bank_name", "") if org_profile else "") or "",
+                        "account_number": (getattr(org_profile, "account_number", "") if org_profile else "") or "",
+                        "ifsc_code": (getattr(org_profile, "ifsc_code", "") if org_profile else "") or "",
+                        "status": getattr(org_user, "status", "ACTIVE")
+                    }
+            except Exception as e:
+                print(f"[get_full_event_by_id Organizer fetch error]: {e}")
+
         booking_taxes = []
         if booking and booking.taxes:
             try:
@@ -276,6 +323,7 @@ class EventRepository:
             "banner_url": banner_preview,
             "banner": banner_preview,
             "image": banner_preview,
+            "organizer": organizer_info,
 
             "eventDetails": {
                 "eventName": event.event_name or "",
