@@ -250,7 +250,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
         priceINR: "",
         primeSeat: false,
         primePriceINR: "",
-        personPass: "",
+        personPass: "2",
         length: "",
         width: "",
       },

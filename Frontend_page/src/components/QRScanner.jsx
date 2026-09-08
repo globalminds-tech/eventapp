@@ -298,27 +298,29 @@ export default function QRScanner({
     <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 border border-slate-800 shadow-2xl space-y-4 max-w-lg mx-auto select-none">
       
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl shadow-md shadow-cyan-500/20">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-800 pb-3">
+        <div className="flex items-start gap-3">
+          <div className="p-2 mt-0.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl shadow-md shadow-cyan-500/20 shrink-0">
             <QrCode size={18} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-black text-sm text-white tracking-tight">{title}</h3>
-              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+          <div className="flex flex-col gap-1">
+            <h3 className="font-black text-sm sm:text-base text-white tracking-tight leading-snug break-words">
+              {title}
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
                 scanMode === "CHECK_OUT"
                   ? "bg-slate-800 text-slate-300 border border-slate-700"
                   : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
               }`}>
                 {scanMode === "CHECK_OUT" ? "Exit Gate Mode" : "Entry Gate Mode"}
               </span>
+              <p className="text-[11px] text-slate-400 font-medium shrink-0">Auto-Focus Scanner</p>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">Auto-Focus High Velocity Scanner</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-start">
           {/* Audio Sound Toggle */}
           {onToggleSound && (
             <button
@@ -369,7 +371,8 @@ export default function QRScanner({
             className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 cursor-pointer"
           >
             {mode === "camera" ? <Keyboard size={13} /> : <Camera size={13} />}
-            <span>{mode === "camera" ? "Manual / Gun" : "Camera Feed"}</span>
+            <span className="hidden sm:inline">{mode === "camera" ? "Manual / Gun" : "Camera Feed"}</span>
+            <span className="sm:hidden">{mode === "camera" ? "Manual" : "Camera"}</span>
           </button>
 
           {onClose && (

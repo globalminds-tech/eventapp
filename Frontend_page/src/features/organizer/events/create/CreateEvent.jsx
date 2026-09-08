@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "axios";
@@ -51,6 +51,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
   const [step, setStep] = useState(1);
   const [showErrors, setShowErrors] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const [isReadOnlyMode, setIsReadOnlyMode] = useState(initialReadOnly);
   const [isEditingAllowed, setIsEditingAllowed] = useState(initialEditAllowed);
@@ -294,6 +295,8 @@ const CreateEvent = ({ onBack, editData, isView }) => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmittingRef.current) return;
+    
     if (!isFormValid()) {
       setShowErrors(true);
       setStep(1); // Go to step 1 to show errors
@@ -301,6 +304,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       const details = formData.eventDetails || {};
@@ -435,6 +439,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         type: "error",
       });
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };

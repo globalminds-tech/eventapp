@@ -45,7 +45,7 @@ export default function OrganizerDashboardPage() {
   const selectedEventObj = events.find(e => String(e.id) === String(selectedEventId));
 
   // --- Dynamic KPI Calculations ---
-  const totalCapacitySum = scopedEvents.reduce((acc, e) => acc + Number(e?.totalCapacity || e?.capacity || e?.total_capacity || 500), 0);
+  const totalCapacitySum = scopedEvents.reduce((acc, e) => acc + Number(e?.totalCapacity || e?.capacity || e?.total_capacity || 0), 0);
   const totalPassesSold = scopedEvents.reduce((acc, e) => acc + Number(e?.passesSold || e?.passes_sold || e?.booking?.capacity || 0), 0);
   const ticketsPercentage = totalCapacitySum > 0 ? Math.min(100, Math.round((totalPassesSold / totalCapacitySum) * 100)) : 0;
 
@@ -55,7 +55,7 @@ export default function OrganizerDashboardPage() {
     return acc + (price * sold);
   }, 0);
 
-  const stallsCapacitySum = scopedEvents.reduce((acc, e) => acc + Number(e?.total_stalls || e?.stalls_capacity || 50), 0);
+  const stallsCapacitySum = scopedEvents.reduce((acc, e) => acc + Number(e?.total_stalls || e?.stalls_capacity || 0), 0);
   const stallsBookedCount = scopedEvents.reduce((acc, e) => acc + Number(e?.stalls_booked || e?.stallsBooked || e?.reserved_stalls || (e?.stalls ? e.stalls.length : 0)), 0);
   const stallsAvailable = Math.max(0, stallsCapacitySum - stallsBookedCount);
   const stallsPercentage = stallsCapacitySum > 0 ? Math.min(100, Math.round((stallsBookedCount / stallsCapacitySum) * 100)) : 0;
@@ -67,7 +67,7 @@ export default function OrganizerDashboardPage() {
   const checkInPercentage = totalPassesSold > 0 ? Math.min(100, Math.round((totalGateScans / totalPassesSold) * 100)) : 0;
 
   const mealsGivenCount = scopedEvents.reduce((acc, e) => acc + Number(e?.food_passes || e?.foodPasses || e?.food_issued || (e?.food ? totalPassesSold : 0)), 0);
-  const totalMealPassesSum = totalPassesSold > 0 ? totalPassesSold : 1500;
+  const totalMealPassesSum = totalPassesSold > 0 ? totalPassesSold : 0;
   const mealsPercentage = totalMealPassesSum > 0 ? Math.min(100, Math.round((mealsGivenCount / totalMealPassesSum) * 100)) : 0;
 
   const upcomingEventsList = events.filter((e) => {

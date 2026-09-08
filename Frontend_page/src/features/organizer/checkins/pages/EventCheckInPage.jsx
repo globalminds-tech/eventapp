@@ -80,9 +80,7 @@ export default function EventCheckIn() {
       const res = await getEventscheckin();
       const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
       setEvents(list);
-      if (list.length > 0 && !selectedEventId) {
-        setSelectedEventId(list[0].id);
-      }
+      setEvents(list);
     } catch (err) {
       console.error("Failed to load events:", err);
       setEvents([]);
@@ -267,6 +265,101 @@ export default function EventCheckIn() {
   const insideCount = attendees.filter((a) => a.is_checked_in).length;
   const departedCount = attendees.filter((a) => a.is_checked_out).length;
 
+  if (!selectedEventId) {
+    return (
+      <div className="space-y-6 pb-12 select-none font-sans text-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+                Gate Access Control & Live Turnstile Hub
+              </h1>
+              <Badge className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black text-[11px] border-none px-2.5 py-0.5 shadow-sm">
+                EVENTS
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm font-medium text-slate-500">
+              Select an event to manage gate scanners and check-ins.
+            </p>
+          </div>
+          <Button
+            onClick={fetchEvents}
+            variant="outline"
+            className="h-10 px-3.5 border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer gap-2 rounded-xl"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+            <span className="text-xs font-bold">Refresh</span>
+          </Button>
+        </div>
+
+        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Active Events</h2>
+          </div>
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Event Name</th>
+                  <th className="py-3.5 px-4">Start & End Date</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="py-4 px-4"><Skeleton className="h-4 w-40 rounded" /></td>
+                      <td className="py-4 px-4"><Skeleton className="h-4 w-32 rounded" /></td>
+                      <td className="py-4 px-4 text-right"><Skeleton className="h-7 w-7 rounded-lg ml-auto" /></td>
+                    </tr>
+                  ))
+                ) : events.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="py-14 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
+                          <Calendar size={24} />
+                        </div>
+                        <p className="font-extrabold text-slate-800 text-sm">No Events Found</p>
+                        <p className="text-xs text-slate-400 text-center font-medium">
+                          You haven't created any events yet.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  events.map((ev) => {
+                    const startDate = ev.start_date || ev.event_date;
+                    const endDate = ev.end_date || ev.start_date || ev.event_date;
+                    const formattedStart = startDate ? new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
+                    const formattedEnd = endDate ? new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
+
+                    return (
+                      <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-extrabold text-slate-900">{ev.event_code ? `[${ev.event_code}] ` : ""}{ev.event_name || ev.name || "Event"}</td>
+                        <td className="py-3.5 px-4 text-slate-600 font-medium">{formattedStart} - {formattedEnd}</td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => setSelectedEventId(ev.id)}
+                            className="px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200 text-xs font-bold inline-flex items-center gap-1.5"
+                          >
+                            <ArrowRight size={14} />
+                            Manage
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-16 select-none font-sans">
       
@@ -286,23 +379,15 @@ export default function EventCheckIn() {
           </p>
         </div>
 
-        {/* Event Selector & Actions */}
+        {/* Event Actions & Back Button */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-slate-200 shadow-xs">
-            <Calendar size={15} className="text-cyan-600 shrink-0" />
-            <span className="text-xs font-bold text-slate-500">Active Event:</span>
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="bg-transparent text-xs font-extrabold text-slate-900 outline-none cursor-pointer max-w-[200px] truncate"
-            >
-              {events.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.event_code ? `[${e.event_code}] ` : ""}{e.event_name || "Event"}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Button
+            onClick={() => setSelectedEventId("")}
+            variant="outline"
+            className="h-10 px-3.5 border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer gap-2 rounded-xl"
+          >
+            <span className="text-xs font-bold">Back to Events</span>
+          </Button>
 
           <Button
             onClick={() => {
