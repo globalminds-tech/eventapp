@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from app.extensions.database import db
-from app.models.exhibitor import ExhibitorStallBooking
+from app.models.exhibitor import ExhibitorStallBooking, ExhibitorLead
 from app.models.event import EventDetails
 
 class ExhibitorRepository:
@@ -53,3 +53,18 @@ class ExhibitorRepository:
             db.session.commit()
             return booking
         return None
+
+    @staticmethod
+    def create_lead(data_dict: dict) -> ExhibitorLead:
+        lead = ExhibitorLead(**data_dict)
+        db.session.add(lead)
+        db.session.commit()
+        return lead
+
+    @staticmethod
+    def get_leads_by_event(event_id, user_id):
+        stmt = select(ExhibitorLead).where(
+            ExhibitorLead.event_id == event_id,
+            ExhibitorLead.user_id == user_id
+        ).order_by(ExhibitorLead.created_at.desc())
+        return db.session.scalars(stmt).all()

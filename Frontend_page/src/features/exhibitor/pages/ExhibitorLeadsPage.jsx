@@ -1,41 +1,141 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSelector } from "react-redux";
 import {
   Users, QrCode, Search, Filter, Download, PlusCircle, CheckCircle2, Clock, Mail, Phone,
-  Building, ShieldCheck, Sparkles, Send, Eye, XCircle
+  Building, ShieldCheck, Sparkles, Send, Eye, XCircle, ArrowLeft, ArrowRight, Store
 } from 'lucide-react';
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { getMyBookings } from "@/Services/api";
+import { getExhibitorLeads, addExhibitorLead } from "@/shared/services/bookingService";
 
 export const ExhibitorLeadsPage = () => {
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [activeTab, setActiveTab] = useState('leads'); // 'leads' | 'staff'
   const [searchTerm, setSearchTerm] = useState('');
   const [toastMessage, setToastMessage] = useState('');
   const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
   const [newLead, setNewLead] = useState({ name: '', company: '', email: '', mobile: '', interest: 'High Intent' });
+  
+  // Event state
+  const [events, setEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
 
-  // Sample Leads dataset
-  const [leads, setLeads] = useState([
-    { id: 1, name: "Vikram Sethi", company: "Metro Logistics Pvt Ltd", email: "vikram@metrologistics.com", mobile: "9876543210", interest: "High Intent", notes: "Requested price quote for 5 warehouse robots.", date: "Today, 11:20 AM" },
-    { id: 2, name: "Kavitha R", company: "South Craft Retails", email: "kavitha@southcraft.in", mobile: "9841098765", interest: "Medium Intent", notes: "Collected catalog and visiting card.", date: "Today, 10:15 AM" },
-    { id: 3, name: "Deepak Sharma", company: "Apex Audio & Sound", email: "deepak@apexaudio.com", mobile: "9790011223", interest: "High Intent", notes: "Interested in exclusive distributor partnership.", date: "Yesterday, 04:45 PM" }
-  ]);
+  // Leads state
+  const [leads, setLeads] = useState([]);
+  const [loadingLeads, setLoadingLeads] = useState(false);
+
+  const reduxUser = useSelector((state) => state.user);
+  const storedUser = {
+    id: sessionStorage.getItem("userId"),
+    name: sessionStorage.getItem("userName"),
+  };
+  const user = reduxUser?.id ? reduxUser : storedUser;
+
+  useEffect(() => {
+    fetchBookings();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (selectedEvent && selectedEvent.id) {
+      fetchLeads(selectedEvent.id);
+    }
+  }, [selectedEvent]);
+
+  const fetchBookings = async () => {
+    setLoadingEvents(true);
+    try {
+      if (user?.id) {
+        const res = await getMyBookings(user.id);
+        if (res.success && Array.isArray(res.data)) {
+          // Show all non-rejected bookings
+          const validBookings = res.data.filter(b => (b.status || "").toLowerCase() !== "rejected");
+          setEvents(validBookings);
+        } else {
+          setEvents([]);
+        }
+      } else {
+        setEvents([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch stall bookings:", err);
+      setEvents([]);
+    } finally {
+      setLoadingEvents(false);
+    }
+  };
+
+  const fetchLeads = async (eventId) => {
+    setLoadingLeads(true);
+    try {
+      const actualEventId = selectedEvent.event_id || eventId;
+      const res = await getExhibitorLeads(actualEventId);
+      if (res.success && Array.isArray(res.data)) {
+        setLeads(res.data);
+      } else {
+        setLeads([]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch leads:", err);
+      setLeads([]);
+    } finally {
+      setLoadingLeads(false);
+    }
+  };
 
   // Sample Booth Staff Passes dataset
-  const [staffPasses, setStaffPasses] = useState([
-    { id: 101, name: "Siddharth Verma", role: "Booth Manager", mobile: "9812345678", pass_code: "STF-9901", status: "Active", checkins: 4 },
-    { id: 102, name: "Meera Nair", role: "Product Specialist", mobile: "9823456789", pass_code: "STF-9902", status: "Active", checkins: 2 }
-  ]);
+  const [staffPasses, setStaffPasses] = useState([]);
 
-  const handleAddLeadSubmit = (e) => {
+  const [formError, setFormError] = useState('');
+
+  const handleAddLeadSubmit = async (e) => {
     e.preventDefault();
-    if (!newLead.name || !newLead.email) return;
-    const added = { ...newLead, id: Date.now(), date: "Just now", notes: "Spot registration lead" };
-    setLeads([added, ...leads]);
-    setIsAddLeadModalOpen(false);
-    setNewLead({ name: '', company: '', email: '', mobile: '', interest: 'High Intent' });
-    setToastMessage("✓ New visitor lead logged successfully!");
-    setTimeout(() => setToastMessage(''), 3000);
+    setFormError('');
+    if (!newLead.name || !newLead.email || !selectedEvent) return;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newLead.email)) {
+      setFormError('Please enter a valid email address.');
+      return;
+    }
+
+    if (newLead.mobile) {
+      const mobileRegex = /^[0-9]{10}$/;
+      if (!mobileRegex.test(newLead.mobile)) {
+        setFormError('Mobile number must be exactly 10 digits.');
+        return;
+      }
+    }
+
+    try {
+      const payload = {
+        event_id: selectedEvent.event_id || selectedEvent.id,
+        user_id: String(user?.id),
+        visitor_name: newLead.name,
+        company_name: newLead.company,
+        email: newLead.email,
+        mobile: newLead.mobile,
+        buying_intent: newLead.interest,
+        notes: "Spot registration lead"
+      };
+      
+      const res = await addExhibitorLead(payload);
+      if (res.success) {
+        setToastMessage("✓ New visitor lead logged successfully!");
+        setTimeout(() => setToastMessage(''), 3000);
+        setIsAddLeadModalOpen(false);
+        setNewLead({ name: '', company: '', email: '', mobile: '', interest: 'High Intent' });
+        setFormError('');
+        fetchLeads(selectedEvent.id);
+      } else {
+        setFormError('Failed to add lead. Please try again.');
+      }
+    } catch (error) {
+      console.error("Failed to add lead:", error);
+      setFormError('An error occurred. Please try again.');
+    }
   };
 
   const handleResendStaffPass = (staff) => {
@@ -43,6 +143,117 @@ export const ExhibitorLeadsPage = () => {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  const filteredEvents = events.filter((b) => {
+    return searchTerm === "" ||
+      (b.event_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (b.company_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (b.stall_area || "").toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  if (!selectedEvent) {
+    return (
+      <div className="space-y-6 pb-12 select-none font-sans text-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+                Visitor Leads & Staff
+              </h1>
+              <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[11px]">
+                Event Selection
+              </Badge>
+            </div>
+            <p className="text-xs sm:text-sm font-medium text-slate-500">
+              Select an active stall booking to view its visitor leads and manage booth staff.
+            </p>
+          </div>
+        </div>
+
+        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Event Details</th>
+                  <th className="py-3.5 px-4">Stall & Location</th>
+                  <th className="py-3.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                {loadingEvents ? (
+                  Array.from({ length: 3 }).map((_, idx) => (
+                    <tr key={idx} className="animate-pulse">
+                      <td className="py-3.5 px-4 space-y-2">
+                        <Skeleton className="h-4 w-20 rounded" />
+                        <Skeleton className="h-4 w-36 rounded" />
+                      </td>
+                      <td className="py-3.5 px-4 space-y-1.5">
+                        <Skeleton className="h-4 w-24 rounded" />
+                        <Skeleton className="h-3 w-16 rounded" />
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Skeleton className="h-8 w-24 rounded-xl ml-auto" />
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan="3" className="p-12 text-center text-slate-400 font-semibold text-xs bg-slate-50/50">
+                      No confirmed stall bookings found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEvents.map((b) => (
+                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div>
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
+                            {b.company_name || 'Exhibitor Firm'}
+                          </Badge>
+                          <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm mt-1">{b.event_name}</h4>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="text-slate-600 space-y-0.5">
+                          <p className="font-bold text-slate-800 text-xs">{b.stall_area || 'Standard Booth'}</p>
+                          <p className="text-[11px] text-slate-500 font-medium">{b.city || 'Chennai'}, {b.state || 'TN'}</p>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => { setSelectedEvent(b); setSearchTerm(''); }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1.5 ml-auto border border-slate-200"
+                        >
+                          <Users size={14} className="text-emerald-600" />
+                          <span>View Portal</span>
+                          <ArrowRight size={14} className="text-slate-400" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // --- Visitor Leads & Staff Portal View (When selectedEvent is true) ---
   return (
     <div className="space-y-6 pb-12 select-none font-sans text-slate-800">
       {/* Toast Notification */}
@@ -53,19 +264,29 @@ export const ExhibitorLeadsPage = () => {
         </div>
       )}
 
+      {/* Back Button */}
+      <div>
+        <button
+          onClick={() => { setSelectedEvent(null); setSearchTerm(''); }}
+          className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition mb-2 cursor-pointer"
+        >
+          <ArrowLeft size={14} /> Back to Events List
+        </button>
+      </div>
+
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Visitor Leads & Booth Staff Portal
+              {selectedEvent.event_name} Portal
             </h1>
             <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[11px]">
-              Exhibitor Lead Intelligence
+              {selectedEvent.stall_area || 'Booth'}
             </Badge>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Track on-site visitor leads, export buyer inquiries, and manage booth staff QR gate passes.
+            Track on-site visitor leads, export buyer inquiries, and manage booth staff QR gate passes for this event.
           </p>
         </div>
 
@@ -97,7 +318,7 @@ export const ExhibitorLeadsPage = () => {
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hot Intent Leads</p>
             <h3 className="text-2xl font-extrabold text-orange-600 mt-1">
-              {leads.filter(l => l.interest === "High Intent").length} High Intent
+              {leads.filter(l => (l.buying_intent || l.interest) === "High Intent").length} High Intent
             </h3>
             <p className="text-[11px] font-medium text-orange-600 mt-0.5">Ready for quote follow-up</p>
           </div>
@@ -170,8 +391,8 @@ export const ExhibitorLeadsPage = () => {
                   <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="py-3.5 px-4">
                       <div>
-                        <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{l.name}</h4>
-                        <p className="text-[11px] font-semibold text-slate-500">{l.company}</p>
+                        <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{l.visitor_name || l.name}</h4>
+                        <p className="text-[11px] font-semibold text-slate-500">{l.company_name || l.company}</p>
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
@@ -182,18 +403,18 @@ export const ExhibitorLeadsPage = () => {
                     </td>
                     <td className="py-3.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border inline-flex items-center gap-1 ${
-                        l.interest === "High Intent"
+                        (l.buying_intent || l.interest) === "High Intent"
                           ? "bg-orange-100 text-orange-800 border-orange-200"
                           : "bg-blue-100 text-blue-800 border-blue-200"
                       }`}>
-                        <Sparkles size={11} /> {l.interest}
+                        <Sparkles size={11} /> {l.buying_intent || l.interest}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-slate-600 font-medium max-w-xs truncate">
                       {l.notes}
                     </td>
                     <td className="py-3.5 px-4 text-right font-medium text-slate-400 text-[11px]">
-                      {l.date}
+                      {l.created_at ? new Date(l.created_at).toLocaleString() : l.date}
                     </td>
                   </tr>
                 ))}
@@ -264,6 +485,12 @@ export const ExhibitorLeadsPage = () => {
             </div>
 
             <div className="space-y-3 text-xs">
+              {formError && (
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 font-bold flex items-center gap-1.5">
+                  <XCircle size={14} />
+                  <span>{formError}</span>
+                </div>
+              )}
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Visitor Name *</label>
                 <input
@@ -303,8 +530,12 @@ export const ExhibitorLeadsPage = () => {
                   <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
                   <input
                     type="text"
+                    maxLength="10"
                     value={newLead.mobile}
-                    onChange={(e) => setNewLead({ ...newLead, mobile: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setNewLead({ ...newLead, mobile: val });
+                    }}
                     placeholder="9876543210"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
                   />
