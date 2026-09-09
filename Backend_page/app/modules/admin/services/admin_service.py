@@ -11,8 +11,11 @@ from sqlalchemy import select, desc
 from app.extensions.database import db
 from app.models.event import EventDetails, EventBookingDetails, EventFile
 from app.models.user import User
+from app.models.organizer_profile import OrganizerProfile
+from app.models.exhibitor_profile import ExhibitorProfile
 
 class AdminService:
+
     @staticmethod
     def get_dashboard_stats(period: str = "30d") -> dict:
         try:
@@ -284,16 +287,17 @@ class AdminService:
         users = AdminRepository.get_pending_organizers()
         organizers_list = []
         for u in users:
+            org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == u.id)).first()
             organizers_list.append({
                 "id": str(u.id),
                 "name": u.name,
                 "email": u.email,
-                "mobile": getattr(u, "mobile", ""),
-                "company_name": getattr(u, "company_name", "DIY Event Corp"),
-                "gst_pan": getattr(u, "gst_pan", "33ABCDE1234F1Z5"),
-                "bank_account": getattr(u, "bank_account", "XXXX-XXXX-9876"),
-                "ifsc": getattr(u, "ifsc", "HDFC0001234"),
-                "kyc_status": getattr(u, "kyc_status", "VERIFIED"),
+                "mobile": getattr(u, "mobile", "") or "N/A",
+                "company_name": (org_p.company_name if org_p else None) or getattr(u, "organization_name", None) or getattr(u, "company_name", None) or "DIY Event Corp",
+                "gst_pan": (f"{org_p.gstin or ''} / {org_p.pan_number or ''}".strip(" /") if org_p else None) or getattr(u, "gst_pan", "33ABCDE1234F1Z5"),
+                "bank_account": (org_p.account_number if org_p else None) or getattr(u, "bank_account", "XXXX-XXXX-9876"),
+                "ifsc": (org_p.ifsc_code if org_p else None) or getattr(u, "ifsc", "HDFC0001234"),
+                "kyc_status": (org_p.kyc_status if org_p else None) or getattr(u, "kyc_status", "VERIFIED") or "VERIFIED",
             })
         return organizers_list
 
@@ -303,28 +307,132 @@ class AdminService:
         user = AdminRepository.update_organizer_kyc_status(user_id, data.status)
         if not user:
             raise ApiError("User not found", 404)
+        
+        # Also sync to OrganizerProfile and ExhibitorProfile if they exist, or create them
+        user_roles = [str(r).lower() for r in (user.roles or [])]
+        org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == user.id)).first()
+        if org_p:
+            org_p.kyc_status = data.status
+        elif "organizer" in user_roles or user.active_role == "organizer":
+            org_p = OrganizerProfile(
+                user_id=user.id,
+                company_name=user.organization_name or f"{user.name or 'Organizer'} Productions",
+                kyc_status=data.status
+            )
+            db.session.add(org_p)
+
+        exh_p = db.session.scalars(select(ExhibitorProfile).where(ExhibitorProfile.user_id == user.id)).first()
+        if exh_p:
+            exh_p.kyc_status = data.status
+        elif "exhibitor" in user_roles or user.active_role == "exhibitor":
+            exh_p = ExhibitorProfile(
+                user_id=user.id,
+                company_name=user.organization_name or f"{user.name or 'Exhibitor'} Stalls",
+                kyc_status=data.status
+            )
+            db.session.add(exh_p)
+
+        db.session.commit()
         return {"message": f"Organizer KYC status updated to {data.status}"}
 
     @staticmethod
     def get_all_users() -> list[dict]:
+        from app.models.organizer_profile import OrganizerProfile
+        from app.models.exhibitor_profile import ExhibitorProfile
+
         stmt = select(User).order_by(desc(User.created_at))
         users = db.session.scalars(stmt).all()
         user_list = []
         for u in users:
+            org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == u.id)).first()
+            exh_p = db.session.scalars(select(ExhibitorProfile).where(ExhibitorProfile.user_id == u.id)).first()
+
+            roles_list = list(u.roles) if u.roles else [getattr(u, "role", "user") or "user"]
+            roles_lower = [str(r).lower() for r in roles_list]
+
+            company = None
+            gst_pan = None
+            bank_acc = None
+            ifsc = None
+            kyc_st = None
+
+            if org_p:
+                company = org_p.company_name
+                gst_pan = f"{org_p.gstin or ''} / {org_p.pan_number or ''}".strip(" /")
+                bank_acc = org_p.account_number
+                ifsc = org_p.ifsc_code
+                kyc_st = org_p.kyc_status
+            elif "organizer" in roles_lower:
+                # Seed default organizer profile if none exists
+                company = u.organization_name or f"{u.name} Events"
+                gst_pan = "33ABCDE1234F1Z5 / ABCDE1234F"
+                bank_acc = "987654321098"
+                ifsc = "HDFC0001234"
+                kyc_st = "PENDING"
+                try:
+                    new_org = OrganizerProfile(
+                        user_id=u.id,
+                        company_name=company,
+                        gstin="33ABCDE1234F1Z5",
+                        pan_number="ABCDE1234F",
+                        account_number=bank_acc,
+                        ifsc_code=ifsc,
+                        kyc_status=kyc_st
+                    )
+                    db.session.add(new_org)
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+            if exh_p:
+                company = company or exh_p.company_name
+                gst_pan = gst_pan or f"{exh_p.gstin or ''} / {exh_p.pan_number or ''}".strip(" /")
+                bank_acc = bank_acc or exh_p.account_number
+                ifsc = ifsc or exh_p.ifsc_code
+                kyc_st = kyc_st or exh_p.kyc_status
+            elif "exhibitor" in roles_lower and not org_p:
+                company = u.organization_name or f"{u.name} Expo Ltd"
+                gst_pan = "29ABCDE5678F1Z9 / ABCDE5678F"
+                bank_acc = "567812349012"
+                ifsc = "ICIC0002345"
+                kyc_st = kyc_st or "PENDING"
+                try:
+                    new_exh = ExhibitorProfile(
+                        user_id=u.id,
+                        company_name=company,
+                        gstin="29ABCDE5678F1Z9",
+                        pan_number="ABCDE5678F",
+                        account_number=bank_acc,
+                        ifsc_code=ifsc,
+                        kyc_status=kyc_st
+                    )
+                    db.session.add(new_exh)
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+            company = company or getattr(u, "organization_name", None) or getattr(u, "company_name", None) or "Individual Account"
+            bank_acc = bank_acc or getattr(u, "bank_account", None) or "N/A"
+            ifsc = ifsc or getattr(u, "ifsc", None) or "N/A"
+            gst_pan = gst_pan or getattr(u, "gst_pan", None) or "N/A"
+            kyc_st = kyc_st or "VERIFIED"
+
             user_list.append({
                 "id": str(u.id),
                 "name": u.name or "Unnamed User",
                 "email": u.email,
-                "role": getattr(u, "role", "user") or "user",
+                "role": u.active_role or (roles_list[0] if roles_list else "user"),
+                "roles": roles_list,
                 "mobile": getattr(u, "mobile", "") or "N/A",
-                "company_name": getattr(u, "company_name", "N/A") or "N/A",
-                "gst_pan": getattr(u, "gst_pan", "N/A") or "N/A",
-                "bank_account": getattr(u, "bank_account", "N/A") or "N/A",
-                "ifsc": getattr(u, "ifsc", "N/A") or "N/A",
-                "kyc_status": getattr(u, "kyc_status", "VERIFIED") or "VERIFIED",
+                "company_name": company,
+                "gst_pan": gst_pan,
+                "bank_account": bank_acc,
+                "ifsc": ifsc,
+                "kyc_status": kyc_st,
                 "created_at": str(getattr(u, "created_at", "")) if getattr(u, "created_at", None) else None
             })
         return user_list
+
 
     @staticmethod
     def get_category_requests() -> list[dict]:
