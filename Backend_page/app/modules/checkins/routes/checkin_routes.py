@@ -48,7 +48,8 @@ def get_food_checkin_summary(current_user: dict = Depends(get_current_user)):
 @checkin_router.post("/food/redeem")
 def redeem_food_token(payload: dict, current_user: dict = Depends(get_current_user)):
     token = payload.get("token") or payload.get("code") or payload.get("ticket_code") or ""
-    return CheckinController.redeem_food_token(token)
+    event_id = payload.get("event_id")
+    return CheckinController.redeem_food_token(token, event_id=event_id)
 
 @checkin_router.get("/addons")
 def get_addons_checkin(current_user: dict = Depends(get_current_user)):
