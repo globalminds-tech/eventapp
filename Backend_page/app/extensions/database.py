@@ -15,12 +15,17 @@ def create_supabase_engine():
     if not db_url or "sqlite" in db_url:
         raise RuntimeError("DATABASE_URL must be configured with a valid Supabase PostgreSQL connection string.")
 
+    if "sslmode" not in db_url and "supabase" in db_url:
+        separator = "&" if "?" in db_url else "?"
+        db_url = f"{db_url}{separator}sslmode=require"
+
     engine = create_engine(
         db_url,
         pool_pre_ping=True,
         pool_recycle=300,
-        pool_size=25,
-        max_overflow=35
+        pool_size=10,
+        max_overflow=20,
+        connect_args={"connect_timeout": 10}
     )
     return engine
 
