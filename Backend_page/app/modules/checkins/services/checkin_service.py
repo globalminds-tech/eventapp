@@ -103,30 +103,60 @@ class CheckinService:
 
     @staticmethod
     def redeem_food_token(code_or_id: str, event_id: Optional[str] = None):
+        from app.extensions.database import db
+        from app.models.booking import AttendeeCheckinLog
+        from datetime import datetime
+        
         result = UserRepository.get_booking_with_event(code_or_id)
         if not result:
             raise ApiError("Invalid Food Pass: Ticket code not found in registry", 404)
         booking, event = result
 
-        # Food redemption
-        success, booking, message, status_code = UserRepository.mark_booking_checkin(
-            code_or_id,
-            scanner_id="FOOD_STAFF",
-            gate_name="FOOD_COUNTER",
-            expected_event_id=event_id,
-            override_duplicate=False
-        )
-        
-        if not success:
-            raise ApiError(message, 400)
+        if event_id:
+            try:
+                import uuid
+                expected_uuid = uuid.UUID(str(event_id))
+                if booking.event_id != expected_uuid:
+                    raise ApiError("Wrong Event: Ticket belongs to a different event.", 400)
+            except Exception:
+                if str(booking.event_id) != str(event_id):
+                    raise ApiError("Wrong Event: Ticket belongs to a different event.", 400)
 
+        # Check if already redeemed
+        existing_log = db.session.query(AttendeeCheckinLog).filter_by(
+            booking_id=booking.id,
+            action="FOOD_REDEEM"
+        ).first()
+
+        if existing_log:
+            time_str = existing_log.timestamp.strftime("%I:%M %p") if existing_log.timestamp else "earlier"
+            raise ApiError(f"Meal already redeemed at {time_str}!", 400)
+
+        # Log food redemption
+        try:
+            log_entry = AttendeeCheckinLog(
+                booking_id=booking.id,
+                ticket_code=booking.ticket_code,
+                event_id=booking.event_id,
+                action="FOOD_REDEEM",
+                gate_name="FOOD_COUNTER",
+                scanner_id="FOOD_STAFF",
+                timestamp=datetime.utcnow()
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            print(f"[WARN] Failed to write food redeem log: {e}")
+
+        # The food scanner is designed to scan and view the food preference alone
         return {
             "success": True,
             "status": "FOOD_VERIFIED",
-            "message": f"Meal token verified for {booking.name} ({booking.food_preference or 'Meal'})",
+            "message": f"Food Preference: {booking.food_preference or 'None'} (Attendee: {booking.name})",
             "booking_id": str(booking.id),
             "ticket_code": booking.ticket_code or str(booking.id),
-            "food_preference": booking.food_preference or "Standard",
+            "food_preference": booking.food_preference or "None",
             "name": booking.name
         }
 
