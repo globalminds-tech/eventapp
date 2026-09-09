@@ -58,6 +58,7 @@ class EventDetails(db.Model):
 
     # Multi-currency support
     currency_code: Mapped[Optional[str]] = mapped_column(String(3), default='INR')
+    venue_total_area_sqft: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
 
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     rejected_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -116,6 +117,7 @@ class EventLayout(db.Model):
     person_pass: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     include_tax: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     taxes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    overall_space_sqft: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
 

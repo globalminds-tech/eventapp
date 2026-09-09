@@ -55,10 +55,11 @@ def send_email(to_email, subject, message, is_html=False, qr_base64=None, sync=F
         part = MIMEText(message, 'html')
         msg_alternative.attach(part)
 
-        # Attach signature 3-pill brand mark as inline CID resource (no filename to prevent Gmail treating it as a downloadable file)
+        # Attach signature 3-pill brand mark as inline CID resource
         try:
-            logo_img = MIMEImage(_BRAND_LOGO_PNG_BYTES)
+            logo_img = MIMEImage(_BRAND_LOGO_PNG_BYTES, 'png')
             logo_img.add_header('Content-ID', '<bme_logo_mark>')
+            logo_img.add_header('Content-Disposition', 'inline', filename='bme_logo_mark.png')
             msg.attach(logo_img)
         except Exception as err:
             print(f"[WARN] Brand logo image attachment failed: {err}")
@@ -67,8 +68,9 @@ def send_email(to_email, subject, message, is_html=False, qr_base64=None, sync=F
         if qr_base64:
             try:
                 qr_data = base64.b64decode(qr_base64)
-                img = MIMEImage(qr_data)
+                img = MIMEImage(qr_data, 'png')
                 img.add_header('Content-ID', '<qrcode>')
+                img.add_header('Content-Disposition', 'inline', filename='qrcode.png')
                 msg.attach(img)
             except Exception as err:
                 print(f"[WARN] QR image attachment failed: {err}")

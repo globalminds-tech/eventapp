@@ -114,6 +114,8 @@ class AdminService:
 
             if only_approved:
                 stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "SUSPENDED"]))
+                # Hide concluded events whose date is over from the public user & exhibitor catalog
+                stmt = stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date) >= func.current_date())
 
             if organizer_id:
                 org_str = str(organizer_id).strip()

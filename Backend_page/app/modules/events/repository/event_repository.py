@@ -194,9 +194,7 @@ class EventRepository:
 
         guest_dicts = [
             {
-                "name": g.guest_name,
                 "guest_name": g.guest_name,
-                "guestName": g.guest_name,
                 "designation": g.designation,
                 "contact": g.contact,
                 "image": g.image
@@ -207,13 +205,9 @@ class EventRepository:
         term_dicts = [
             {
                 "policy_group": t.policy_group,
-                "policyGroup": t.policy_group,
                 "policy_type": t.policy_type,
-                "policyType": t.policy_type,
                 "policy_name": t.policy_name,
-                "policyName": t.policy_name,
-                "is_default": bool(t.is_default),
-                "isDefault": bool(t.is_default)
+                "is_default": bool(t.is_default)
             }
             for t in terms
         ]
@@ -225,7 +219,6 @@ class EventRepository:
             layout_amenities = [
                 {
                     "id": a.id,
-                    "stallName": a.stall_name,
                     "stall_name": a.stall_name,
                     "amenity": a.amenity,
                     "qty": a.qty or 1
@@ -243,20 +236,13 @@ class EventRepository:
         stall_dicts = [
             {
                 "stall_name": s.stall_name,
-                "stallName": s.stall_name,
                 "stall_size": s.stall_size,
-                "size": s.stall_size,
                 "size_range": s.size_range,
-                "sizeRange": s.size_range,
                 "price_inr": s.price_inr,
-                "priceINR": s.price_inr,
                 "visibility": s.visibility or "Public",
                 "stall_type": s.stall_type or "",
-                "type": s.stall_type or "",
                 "prime_seat": bool(s.prime_seat),
-                "primeSeat": bool(s.prime_seat),
-                "prime_price_inr": s.prime_price_inr or "",
-                "primePriceINR": s.prime_price_inr or ""
+                "prime_price_inr": s.prime_price_inr or ""
             }
             for s in stalls
         ]
@@ -264,15 +250,10 @@ class EventRepository:
         food_dicts = [
             {
                 "caterer_name": f.caterer_name,
-                "catererName": f.caterer_name,
                 "meal_type": f.meal_type,
-                "mealType": f.meal_type,
                 "food_type": f.food_type,
-                "foodType": f.food_type,
                 "price_inr": float(f.price_inr) if f.price_inr is not None else 0,
-                "priceINR": float(f.price_inr) if f.price_inr is not None else 0,
-                "menu_details": f.menu_details,
-                "menuDetails": f.menu_details
+                "menu_details": f.menu_details
             }
             for f in food_items
         ]
@@ -280,26 +261,21 @@ class EventRepository:
         vehicle_dicts = [
             {
                 "vehicle_type": v.vehicle_type,
-                "vehicleType": v.vehicle_type,
-                "price_inr": float(v.price_inr) if v.price_inr is not None else 0,
-                "priceINR": float(v.price_inr) if v.price_inr is not None else 0
+                "price_inr": float(v.price_inr) if v.price_inr is not None else 0
             }
             for v in vehicles
         ]
 
         addon_dicts = [
             {
-                "isParent": bool(a.is_parent),
                 "is_parent": bool(a.is_parent),
-                "addOnName": a.addon_name,
                 "addon_name": a.addon_name,
-                "name": a.addon_name,
                 "price": float(a.price) if a.price is not None else 0
             }
             for a in vehicle_addons
         ]
 
-        return {
+        event_dict = {
             "id": event.id,
             "uuid": getattr(event, "uuid", None) or "",
             "event_code": event.event_code or f"EVT-{event.id}",
@@ -321,29 +297,20 @@ class EventRepository:
             "user_id": event.user_id,
             "created_by": event.created_by,
             "banner_url": banner_preview,
-            "banner": banner_preview,
-            "image": banner_preview,
+            "banner_type": banner_type,
             "organizer": organizer_info,
 
-            "eventDetails": {
-                "eventName": event.event_name or "",
+            "event_details": {
                 "event_name": event.event_name or "",
-                "eventCode": event.event_code or "",
                 "event_code": event.event_code or "",
                 "slug": event.slug or "",
                 "category": event.category or "",
-                "subCategory": getattr(event, "sub_category", "") or "",
                 "sub_category": getattr(event, "sub_category", "") or "",
-                "eventType": event.event_type or "OneTime",
                 "event_type": event.event_type or "OneTime",
                 "occurrence": event.occurrence or "",
-                "startDate": str(event.start_date) if event.start_date else "",
                 "start_date": str(event.start_date) if event.start_date else "",
-                "endDate": str(event.end_date) if event.end_date else "",
                 "end_date": str(event.end_date) if event.end_date else "",
-                "startTime": str(event.start_time) if event.start_time else "",
                 "start_time": str(event.start_time) if event.start_time else "",
-                "endTime": str(event.end_time) if event.end_time else "",
                 "end_time": str(event.end_time) if event.end_time else "",
                 "venue": event.venue or "",
                 "address": event.address or "",
@@ -352,146 +319,113 @@ class EventRepository:
                 "mail": bool(event.mail),
                 "whatsapp": bool(event.whatsapp),
                 "print": bool(event.print),
-                "visitorMail": bool(event.visitor_mail),
                 "visitor_mail": bool(event.visitor_mail),
-                "visitorName": bool(event.visitor_name),
                 "visitor_name": bool(event.visitor_name),
-                "visitorPhoto": bool(event.visitor_photo),
                 "visitor_photo": bool(event.visitor_photo),
-                "visitorMobile": bool(event.visitor_mobile),
                 "visitor_mobile": bool(event.visitor_mobile),
-                "documentProof": bool(event.document_proof),
                 "document_proof": bool(event.document_proof),
-                "dayPass": bool(event.day_pass),
                 "day_pass": bool(event.day_pass),
-                "isInternationalInclude": bool(event.is_international_include),
                 "is_international_include": bool(event.is_international_include),
                 "aadhar": bool(event.aadhar),
                 "passport": bool(event.passport),
-                "welcomeKit": bool(event.welcome_kit),
                 "welcome_kit": bool(event.welcome_kit),
                 "food": bool(event.food),
-                "vehiclePass": bool(event.vehicle_pass),
                 "vehicle_pass": bool(event.vehicle_pass),
-                "vehicleNumber": bool(event.vehicle_number),
                 "vehicle_number": bool(event.vehicle_number),
-                "includeProgram": event.include_program or "No",
                 "include_program": event.include_program or "No",
                 "amenities": event.amenities or "",
                 "tags": event.tags or "",
                 "banner_url": banner_preview,
                 "banner_type": banner_type,
+                "venue_total_area_sqft": float(event.venue_total_area_sqft) if getattr(event, "venue_total_area_sqft", None) is not None else None,
                 "status": event.status or "Active"
             },
             "booking": {
-                "priceINR": float(booking.price_inr) if booking and booking.price_inr is not None else 0,
                 "price_inr": float(booking.price_inr) if booking and booking.price_inr is not None else 0,
                 "capacity": booking.capacity if booking and booking.capacity is not None else 500,
-                "totalCapacity": booking.capacity if booking and booking.capacity is not None else 500,
-                "maxPass": booking.max_pass if booking and booking.max_pass is not None else 4,
                 "max_pass": booking.max_pass if booking and booking.max_pass is not None else 4,
-                "maxPerUser": booking.max_pass if booking and booking.max_pass is not None else 4,
-                "entryType": booking.entry_type if booking else "Paid",
                 "entry_type": booking.entry_type if booking else "Paid",
-                "chargeType": booking.charge_type if booking else "Paid",
                 "charge_type": booking.charge_type if booking else "Paid",
-                "passType": booking.pass_type if booking else "Single Pass",
                 "pass_type": booking.pass_type if booking else "Single Pass",
+                "group_member_limit": booking.group_member_limit if booking and booking.group_member_limit is not None else 5,
+                "groupMemberLimit": booking.group_member_limit if booking and booking.group_member_limit is not None else 5,
+                "max_reentries": booking.max_reentries if booking and booking.max_reentries else "Unlimited",
                 "title": booking.title if booking else "",
-                "titleType": booking.title_type if booking else "Editable",
                 "title_type": booking.title_type if booking else "Editable",
-                "titleSelection": booking.title_selection if booking else "",
                 "title_selection": booking.title_selection if booking else "",
                 "designation": booking.designation if booking else "",
-                "designationType": booking.designation_type if booking else "Editable",
                 "designation_type": booking.designation_type if booking else "Editable",
-                "designationSelection": booking.designation_selection if booking else "",
                 "designation_selection": booking.designation_selection if booking else "",
                 "company": booking.company if booking else "",
-                "companyType": booking.company_type if booking else "Editable",
                 "company_type": booking.company_type if booking else "Editable",
-                "companySelection": booking.company_selection if booking else "",
                 "company_selection": booking.company_selection if booking else "",
-                "currency": booking.currency if booking else "",
-                "priceType": booking.price_type if booking else "National",
+                "currency": booking.currency if booking else "INR",
                 "price_type": booking.price_type if booking else "National",
-                "includeTax": bool(booking.include_tax) if booking else False,
                 "include_tax": bool(booking.include_tax) if booking else False,
                 "taxes": booking_taxes,
-                "earlyBirdExpire": str(booking.early_bird_expire) if booking and booking.early_bird_expire else "",
                 "early_bird_expire": str(booking.early_bird_expire) if booking and booking.early_bird_expire else "",
-                "bookingStartDate": str(booking.booking_start_date) if booking and booking.booking_start_date else "",
                 "booking_start_date": str(booking.booking_start_date) if booking and booking.booking_start_date else "",
-                "bookingEndDate": str(booking.booking_end_date) if booking and booking.booking_end_date else "",
                 "booking_end_date": str(booking.booking_end_date) if booking and booking.booking_end_date else ""
             } if booking else {},
             "layout": {
-                "floorType": layout.floor_type if layout else "",
                 "floor_type": layout.floor_type if layout else "",
-                "dayBased": layout.day_based if layout else False,
                 "day_based": layout.day_based if layout else False,
-                "personPass": layout.person_pass if layout else 1,
                 "person_pass": layout.person_pass if layout else 1,
-                "includeTax": bool(layout.include_tax) if layout else False,
                 "include_tax": bool(layout.include_tax) if layout else False,
                 "taxes": layout_taxes,
+                "overall_space_sqft": float(layout.overall_space_sqft) if layout and getattr(layout, "overall_space_sqft", None) is not None else None,
+                "overallSpaceSqFt": float(layout.overall_space_sqft) if layout and getattr(layout, "overall_space_sqft", None) is not None else None,
                 "stalls": stall_dicts,
-                "stallList": stall_dicts,
-                "amenities": layout_amenities,
-                "layout": {
-                    "floor_type": layout.floor_type if layout else "",
-                    "floorType": layout.floor_type if layout else "",
-                    "day_based": layout.day_based if layout else False,
-                    "dayBased": layout.day_based if layout else False,
-                    "include_tax": bool(layout.include_tax) if layout else False,
-                    "includeTax": bool(layout.include_tax) if layout else False,
-                }
+                "amenities": layout_amenities
             } if layout else { "amenities": layout_amenities, "stalls": stall_dicts },
             "amenities": layout_amenities,
-            "foodProvision": {
-                "catererName": food_items[0].caterer_name if food_items else "",
-                "mealType": food_items[0].meal_type if food_items else "",
-                "foodType": food_items[0].food_type if food_items else "",
-                "priceINR": float(food_items[0].price_inr) if food_items and food_items[0].price_inr is not None else 0,
-                "menuDetails": food_items[0].menu_details if food_items else "",
-                "foodItems": food_dicts,
-                "items": food_dicts
+            "food_provision": {
+                "caterer_name": food_items[0].caterer_name if food_items else "",
+                "meal_type": food_items[0].meal_type if food_items else "",
+                "food_type": food_items[0].food_type if food_items else "",
+                "price_inr": float(food_items[0].price_inr) if food_items and food_items[0].price_inr is not None else 0,
+                "menu_details": food_items[0].menu_details if food_items else "",
+                "food_items": food_dicts
             },
-            "vehicleProvision": {
-                "vehicleType": vehicles[0].vehicle_type if vehicles else "",
-                "priceINR": float(vehicles[0].price_inr) if vehicles and vehicles[0].price_inr is not None else 0,
+            "vehicle_provision": {
+                "vehicle_type": vehicles[0].vehicle_type if vehicles else "",
+                "price_inr": float(vehicles[0].price_inr) if vehicles and vehicles[0].price_inr is not None else 0,
                 "vehicles": vehicle_dicts,
-                "details": vehicle_dicts,
-                "addons": addon_dicts,
-                "vehicle_addons": addon_dicts
+                "addons": addon_dicts
             },
             "documents": {
-                "bannerPreview": banner_preview,
-                "bannerType": banner_type,
-                "existingFiles": [{"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type} for f in files],
-                "additionalDocs": [{"file_name": f.file_name, "name": f.file_name, "file_path": f.file_path, "preview": f.file_path, "type": f.doc_type} for f in files if f.file_type == "document"],
-                "docs": [{"file_name": f.file_name, "name": f.file_name, "file_path": f.file_path, "file_url": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type, "type": f.doc_type} for f in files if f.file_type == "document"]
+                "banner_url": banner_preview,
+                "banner_type": banner_type,
+                "existing_files": [{"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type} for f in files],
+                "additional_docs": [{"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type} for f in files if f.file_type == "document"]
             },
-            "termsDetails": {
+            "terms_details": {
                 "policies": term_dicts
             },
-            "vendorSponsor": {
-                "vendors": [{"vendor_name": v.vendor_name, "vendorName": v.vendor_name, "vendor_type": v.vendor_type, "vendorType": v.vendor_type, "pass_count": v.pass_count, "passCount": v.pass_count} for v in vendors],
-                "sponsors": [{"sponsor_name": sp.sponsor_name, "sponsorName": sp.sponsor_name, "sponsorship_type": sp.sponsorship_type, "sponsorshipType": sp.sponsorship_type, "sponsorship": sp.sponsorship_type} for sp in sponsors],
+            "vendor_sponsor": {
+                "vendors": [{"vendor_name": v.vendor_name, "vendor_type": v.vendor_type, "pass_count": v.pass_count} for v in vendors],
+                "sponsors": [{"sponsor_name": sp.sponsor_name, "sponsorship_type": sp.sponsorship_type} for sp in sponsors],
                 "guests": guest_dicts
             },
             "stalls": stall_dicts,
-            "vendors": [{"vendor_name": v.vendor_name, "vendorName": v.vendor_name, "vendor_type": v.vendor_type, "vendorType": v.vendor_type, "pass_count": v.pass_count} for v in vendors],
-            "sponsors": [{"sponsor_name": sp.sponsor_name, "sponsorName": sp.sponsor_name, "sponsorship_type": sp.sponsorship_type, "sponsorshipType": sp.sponsorship_type, "sponsorship": sp.sponsorship_type} for sp in sponsors],
+            "vendors": [{"vendor_name": v.vendor_name, "vendor_type": v.vendor_type, "pass_count": v.pass_count} for v in vendors],
+            "sponsors": [{"sponsor_name": sp.sponsor_name, "sponsorship_type": sp.sponsorship_type} for sp in sponsors],
             "guests": guest_dicts,
             "terms": term_dicts,
             "files": [{"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type} for f in files],
-            "food": food_dicts,
             "food_items": food_dicts,
             "vehicles": vehicle_dicts,
-            "vehicle_details": vehicle_dicts,
             "vehicle_addons": addon_dicts
         }
+
+        # Top-level section aliases for backward compatibility across modules
+        event_dict["eventDetails"] = event_dict["event_details"]
+        event_dict["foodProvision"] = event_dict["food_provision"]
+        event_dict["vehicleProvision"] = event_dict["vehicle_provision"]
+        event_dict["termsDetails"] = event_dict["terms_details"]
+        event_dict["vendorSponsor"] = event_dict["vendor_sponsor"]
+
+        return event_dict
 
     @staticmethod
     def save_full_event(raw_data: dict, user_id: int = None, event_id: int = None) -> dict:
@@ -596,6 +530,13 @@ class EventRepository:
         event.start_time = parse_time(start_time_val)
         event.end_time = parse_time(end_time_val)
 
+        v_area = event_details.get("venue_total_area_sqft") or event_details.get("venueTotalAreaSqFt") or raw_data.get("venue_total_area_sqft")
+        if v_area is not None and v_area != "":
+            try:
+                event.venue_total_area_sqft = float(v_area)
+            except Exception:
+                pass
+
         db.session.flush() # Generate event.id if new
 
         # 2. Clear old child entities on edit to prevent duplicates
@@ -618,9 +559,9 @@ class EventRepository:
                 booking = EventBookingDetails(event_id=event.id)
                 db.session.add(booking)
 
-            price_inr_val = booking_data.get("priceINR") or booking_data.get("price_inr") or 0
-            capacity_val = booking_data.get("capacity") or booking_data.get("totalCapacity") or 500
-            max_pass_val = booking_data.get("maxPass") or booking_data.get("maxPerUser") or booking_data.get("max_pass") or 4
+            price_inr_val = booking_data.get("price_inr") or booking_data.get("priceINR") or booking_data.get("price") or 0
+            capacity_val = booking_data.get("capacity") or booking_data.get("totalCapacity") or booking_data.get("total_capacity") or 500
+            max_pass_val = booking_data.get("max_pass") or booking_data.get("maxPass") or booking_data.get("maxPerUser") or booking_data.get("max_per_user") or 4
             
             try:
                 booking.price_inr = float(price_inr_val) if price_inr_val else 0.0
@@ -637,21 +578,29 @@ class EventRepository:
             except Exception:
                 booking.max_pass = 4
 
-            booking.entry_type = booking_data.get("entryType") or booking_data.get("entry_type") or "Paid"
-            booking.charge_type = booking_data.get("chargeType") or booking_data.get("charge_type") or "Paid"
-            booking.pass_type = booking_data.get("passType") or "Single Pass"
+            booking.entry_type = booking_data.get("entry_type") or booking_data.get("entryType") or "Paid"
+            booking.charge_type = booking_data.get("charge_type") or booking_data.get("chargeType") or "Paid"
+            booking.pass_type = booking_data.get("pass_type") or booking_data.get("passType") or "Single Pass"
+            
+            group_limit = booking_data.get("group_member_limit") if booking_data.get("group_member_limit") is not None else booking_data.get("groupMemberLimit")
+            try:
+                booking.group_member_limit = int(group_limit) if group_limit is not None and str(group_limit).strip() != "" else 5
+            except Exception:
+                booking.group_member_limit = 5
+
+            booking.max_reentries = booking_data.get("max_reentries") or booking_data.get("maxReentries") or "Unlimited"
             booking.title = booking_data.get("title") or ""
-            booking.title_type = booking_data.get("titleType") or "Editable"
-            booking.title_selection = booking_data.get("titleSelection") or ""
+            booking.title_type = booking_data.get("title_type") or booking_data.get("titleType") or "Editable"
+            booking.title_selection = booking_data.get("title_selection") or booking_data.get("titleSelection") or ""
             booking.designation = booking_data.get("designation") or ""
-            booking.designation_type = booking_data.get("designationType") or "Editable"
-            booking.designation_selection = booking_data.get("designationSelection") or ""
+            booking.designation_type = booking_data.get("designation_type") or booking_data.get("designationType") or "Editable"
+            booking.designation_selection = booking_data.get("designation_selection") or booking_data.get("designationSelection") or ""
             booking.company = booking_data.get("company") or ""
-            booking.company_type = booking_data.get("companyType") or "Editable"
-            booking.company_selection = booking_data.get("companySelection") or ""
-            booking.currency = booking_data.get("currency") or ""
-            booking.price_type = booking_data.get("priceType") or "National"
-            booking.include_tax = bool(booking_data.get("includeTax"))
+            booking.company_type = booking_data.get("company_type") or booking_data.get("companyType") or "Editable"
+            booking.company_selection = booking_data.get("company_selection") or booking_data.get("companySelection") or ""
+            booking.currency = booking_data.get("currency") or "INR"
+            booking.price_type = booking_data.get("price_type") or booking_data.get("priceType") or "National"
+            booking.include_tax = bool(booking_data.get("include_tax") if booking_data.get("include_tax") is not None else booking_data.get("includeTax"))
 
             taxes_val = booking_data.get("taxes")
             if isinstance(taxes_val, list):
@@ -659,12 +608,19 @@ class EventRepository:
             elif isinstance(taxes_val, str):
                 booking.taxes = taxes_val
 
-            b_start = booking_data.get("bookingStartDate")
-            b_end = booking_data.get("bookingEndDate")
+            b_start = booking_data.get("booking_start_date") or booking_data.get("bookingStartDate")
+            b_end = booking_data.get("booking_end_date") or booking_data.get("bookingEndDate")
             if b_start:
                 booking.booking_start_date = parse_date(str(b_start).replace("/", "-"))
             if b_end:
                 booking.booking_end_date = parse_date(str(b_end).replace("/", "-"))
+
+            eb_expire = booking_data.get("early_bird_expire") or booking_data.get("earlyBirdExpire")
+            if eb_expire:
+                try:
+                    booking.early_bird_expire = datetime.fromisoformat(str(eb_expire))
+                except Exception:
+                    pass
 
         # 4. Save EventLayout & Stalls
         if layout_data:
@@ -688,6 +644,13 @@ class EventRepository:
                 layout.taxes = json.dumps(l_taxes)
             elif isinstance(l_taxes, str):
                 layout.taxes = l_taxes
+
+            o_space = layout_data.get("overall_space_sqft") or layout_data.get("overallSpaceSqFt") or v_area
+            if o_space is not None and str(o_space).strip() != "":
+                try:
+                    layout.overall_space_sqft = float(o_space)
+                except Exception:
+                    pass
 
             stalls_list = layout_data.get("stalls") or layout_data.get("stallList") or []
             if isinstance(stalls_list, list) and stalls_list:

@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getPolicies, createPolicy } from "@/Services/api";
 import { useSelector } from "react-redux";
-import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit } from "lucide-react";
+import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit, FileText } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
 import AddPolicyModal from "../../../master-data/components/AddPolicyModal";
+import Step4Documents from "./Step4Documents";
 
-const Step5Terms = ({ formData, setFormData }) => {
+const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
   const [policyData, setPolicyData] = useState({});
   const [policyGroup, setPolicyGroup] = useState("");
   const [policyType, setPolicyType] = useState("");
@@ -234,7 +235,7 @@ const Step5Terms = ({ formData, setFormData }) => {
   const selectClasses = "w-full h-9 px-3 py-1 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed";
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden space-y-4 animate-in fade-in duration-300">
+    <div className="w-full max-w-full space-y-4 animate-in fade-in duration-300">
       {/* TOAST NOTIFICATION */}
       {toast.show && (
         <div className={`fixed top-10 right-10 z-[3000] px-8 py-5 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 flex items-center gap-4 border-l-8 ${toast.type === "success" ? "bg-white text-emerald-600 border-emerald-500 shadow-emerald-100" : "bg-white text-rose-600 border-rose-500 shadow-rose-100"
@@ -246,7 +247,29 @@ const Step5Terms = ({ formData, setFormData }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* ── 1. ADDITIONAL DOCUMENTS & PERMITS SECTION (AT TOP) ── */}
+      <div className="bg-white p-4 rounded-xl shadow-xs border border-slate-200/80 space-y-3 relative z-30 overflow-visible">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-rose-50 rounded-lg text-rose-600">
+              <FileText size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">Additional Documents & Permits</h3>
+              <p className="text-[10px] font-medium text-slate-500">Attach official compliance permits, licenses, and event layout documents</p>
+            </div>
+          </div>
+          {formData.documents?.additionalDocs?.length > 0 && (
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200/60">
+              {formData.documents.additionalDocs.length} uploaded
+            </span>
+          )}
+        </div>
+        <Step4Documents formData={formData} setFormData={setFormData} isReadOnly={isReadOnly} />
+      </div>
+
+      {/* ── 2. TERMS & CONDITIONS (BELOW DOCUMENTS) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-10">
         {/* LEFT SECTION: SELECTION FORM */}
         <div className={`${cardClasses} flex flex-col h-auto`}>
           <div className="flex justify-between items-center mb-3 border-l-4 border-cyan-500 pl-2.5">

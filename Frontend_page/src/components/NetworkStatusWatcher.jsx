@@ -19,6 +19,8 @@ export default function NetworkStatusWatcher() {
   const [visible, setVisible] = useState(!navigator.onLine);
   const [toastType, setToastType] = useState(!navigator.onLine ? "offline" : null); // "offline" | "online" | "slow" | "ratelimit"
   const timerRef = useRef(null);
+  const dismissedSlowUntilRef = useRef(0);
+  const lastSlowToastShownRef = useRef(0);
 
   // Monitor Offline & Online events
   useEffect(() => {
@@ -45,31 +47,51 @@ export default function NetworkStatusWatcher() {
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
-    // Network Information API for 2G / high RTT
+    // Network Information API: Only trigger if connection is severely impaired (slow-2g or RTT > 4000ms)
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const checkConnectionQuality = () => {
       if (!conn) return;
-      const isSlow =
+      const now = Date.now();
+      const isSeverelySlow =
         conn.effectiveType === "slow-2g" ||
-        conn.effectiveType === "2g" ||
-        (conn.rtt && conn.rtt > 1500);
+        (conn.rtt && conn.rtt > 4000);
 
-      setStatus((prev) => ({ ...prev, isSlow }));
-      if (isSlow && navigator.onLine) {
+      setStatus((prev) => ({ ...prev, isSlow: isSeverelySlow }));
+
+      // Only show warning if online, severely slow, not dismissed, and at least 3 minutes since last warning
+      if (
+        isSeverelySlow &&
+        navigator.onLine &&
+        now > dismissedSlowUntilRef.current &&
+        now - lastSlowToastShownRef.current > 180000
+      ) {
+        lastSlowToastShownRef.current = now;
         setToastType("slow");
         setVisible(true);
+
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          setVisible(false);
+          setToastType(null);
+        }, 4000);
       }
     };
 
+    // Only listen to connection changes (do not trigger on page load)
     if (conn) {
-      checkConnectionQuality();
       conn.addEventListener("change", checkConnectionQuality);
     }
 
-    // Custom API Interceptor Events
+    // Custom API Interceptor Events: Only warn if connection is truly dragging and cooldown passed
     const handleSlowRequest = (e) => {
       if (!navigator.onLine) return;
-      const msg = e.detail?.message || "Server response is taking longer than usual...";
+      const now = Date.now();
+      if (now < dismissedSlowUntilRef.current || now - lastSlowToastShownRef.current < 180000) {
+        return;
+      }
+      lastSlowToastShownRef.current = now;
+
+      const msg = e.detail?.message || "Server connection is unusually slow. Still waiting for response...";
       setStatus((prev) => ({ ...prev, slowRequestMsg: msg }));
       setToastType("slow");
       setVisible(true);
@@ -77,7 +99,8 @@ export default function NetworkStatusWatcher() {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setVisible(false);
-      }, 5000);
+        setToastType(null);
+      }, 4000);
     };
 
     const handleRateLimit = (e) => {
@@ -169,7 +192,11 @@ export default function NetworkStatusWatcher() {
             </p>
           </div>
           <button
-            onClick={() => setVisible(false)}
+            onClick={() => {
+              dismissedSlowUntilRef.current = Date.now() + 15 * 60 * 1000;
+              setVisible(false);
+              setToastType(null);
+            }}
             aria-label="Dismiss slow network alert"
             className="p-1 text-amber-300/70 hover:text-white rounded-md transition-colors"
           >

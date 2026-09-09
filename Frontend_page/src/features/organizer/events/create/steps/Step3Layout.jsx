@@ -187,11 +187,12 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
     const lengthFt = parseFloat(parts[0]) || 10;
     const widthFt = parseFloat(parts[1]) || 10;
-    const singleStallAreaSqFt = lengthFt * widthFt;
+    const isInch = layout.stallSize === "Inches";
+    const singleStallAreaSqFt = isInch ? (lengthFt * widthFt) / 144 : (lengthFt * widthFt);
     const totalNewStallAreaSqFt = singleStallAreaSqFt * stallQty;
 
     // Overall venue space calculation & hard restriction
-    const overallSpaceLimit = parseFloat(formData.eventDetails?.venue_total_area_sqft || formData.layout?.overallSpaceSqFt || "50000") || 50000;
+    const overallSpaceLimit = parseFloat(formData.layout?.overallSpaceSqFt || formData.eventDetails?.venue_total_area_sqft || "50000") || 50000;
     
     // Calculate current total allocated space
     const currentAllocatedSqFt = stallList.reduce((acc, s) => {
@@ -475,26 +476,55 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                 const sParts = (s.sizeRange || "10/10").split("/");
                 const l = parseFloat(sParts[0]) || 10;
                 const w = parseFloat(sParts[1]) || 10;
-                return acc + (l * w * sQty);
+                const isInch = (s.size || "").includes("Inches") || (s.stallSize || "").includes("Inches");
+                return acc + ((isInch ? (l * w) / 144 : l * w) * sQty);
               }, 0);
-              const percent = Math.min(Math.round((allocatedSqFt / limitSqFt) * 100), 100);
-              const isOverflow = allocatedSqFt > limitSqFt;
+
+              // Live on-the-spot dimension calculation from current typing
+              const typingParts = (formData.layout?.sizeRange || "").split("/");
+              const typingL = parseFloat(typingParts[0]) || 0;
+              const typingW = parseFloat(typingParts[1]) || 0;
+              const typingUnit = formData.layout?.stallSize || "Feet";
+              const typingQty = parseInt(formData.layout?.stallQty !== undefined ? formData.layout.stallQty : 0, 10) || 0;
+              const pendingSqFt = (typingL > 0 && typingW > 0 && typingQty > 0)
+                ? (typingUnit === "Inches" ? (typingL * typingW) / 144 : typingL * typingW) * typingQty
+                : 0;
+
+              const totalProspectiveSqFt = allocatedSqFt + pendingSqFt;
+              const allocatedPercent = Math.min(Math.round((allocatedSqFt / limitSqFt) * 100), 100);
+              const pendingPercent = Math.min(Math.round((pendingSqFt / limitSqFt) * 100), 100 - allocatedPercent);
+              const totalPercent = Math.min(Math.round((totalProspectiveSqFt / limitSqFt) * 100), 100);
+              const isOverflow = totalProspectiveSqFt > limitSqFt;
 
               return (
-                <div className="space-y-1 pt-1">
+                <div className="space-y-1.5 pt-1">
                   <div className="flex justify-between text-[10px] font-bold">
                     <span className={isOverflow ? "text-red-600" : "text-slate-600"}>
-                      Allocated: {allocatedSqFt.toLocaleString()} sq.ft / {limitSqFt.toLocaleString()} sq.ft ({percent}%)
+                      Allocated: {allocatedSqFt.toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft
+                      {pendingSqFt > 0 && (
+                        <span className="text-cyan-700 font-extrabold"> + {pendingSqFt.toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft (typing)</span>
+                      )}
+                      {" "}/ {limitSqFt.toLocaleString()} sq.ft ({totalPercent}%)
                     </span>
                     <span className={isOverflow ? "text-red-600 font-extrabold" : "text-emerald-600 font-extrabold"}>
-                      {isOverflow ? `⚠️ OVERFLOW by ${(allocatedSqFt - limitSqFt).toLocaleString()} sq.ft` : `Available: ${(limitSqFt - allocatedSqFt).toLocaleString()} sq.ft`}
+                      {isOverflow
+                        ? `⚠️ OVERFLOW by ${(totalProspectiveSqFt - limitSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft`
+                        : `Available: ${(limitSqFt - totalProspectiveSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft`}
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-cyan-100 rounded-full overflow-hidden">
+                  <div className="w-full h-2.5 bg-cyan-100 rounded-full overflow-hidden flex">
                     <div
-                      className={`h-full transition-all duration-300 ${isOverflow ? "bg-red-500" : percent > 85 ? "bg-amber-500" : "bg-gradient-to-r from-cyan-500 to-blue-600"}`}
-                      style={{ width: `${percent}%` }}
+                      className={`h-full transition-all duration-300 ${isOverflow ? "bg-red-500" : totalPercent > 85 ? "bg-amber-500" : "bg-gradient-to-r from-cyan-500 to-blue-600"}`}
+                      style={{ width: `${allocatedPercent}%` }}
+                      title={`Allocated: ${allocatedSqFt.toLocaleString()} sq.ft`}
                     />
+                    {pendingSqFt > 0 && (
+                      <div
+                        className="h-full bg-amber-400 animate-pulse transition-all duration-300 border-l border-white/50"
+                        style={{ width: `${pendingPercent}%` }}
+                        title={`Tentative: ${pendingSqFt.toLocaleString()} sq.ft`}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -614,8 +644,65 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     }}
                     className={`${inputClasses} flex-1 text-center font-semibold`}
                   />
+                </div>
               </div>
-            </div>
+
+              {/* ON-THE-SPOT STALL DIMENSION & SPACE FOOTPRINT BADGE */}
+              {(() => {
+                const parts = (formData.layout?.sizeRange || "").split("/");
+                const inputLen = parseFloat(parts[0]) || 0;
+                const inputWid = parseFloat(parts[1]) || 0;
+                const inputUnit = formData.layout?.stallSize || "Feet";
+                const singleStallSqFt = (inputLen > 0 && inputWid > 0)
+                  ? (inputUnit === "Inches" ? (inputLen * inputWid) / 144 : inputLen * inputWid)
+                  : 0;
+                const inputQty = parseInt(formData.layout?.stallQty !== undefined ? formData.layout.stallQty : 0, 10) || 0;
+                const pendingStallSqFt = singleStallSqFt * inputQty;
+
+                if (inputLen <= 0 && inputQty <= 0) return null;
+
+                const limitSqFt = parseFloat(formData.layout?.overallSpaceSqFt || formData.eventDetails?.venue_total_area_sqft || 50000) || 50000;
+                const currentAllocatedSqFt = stallList.reduce((acc, s) => {
+                  const sQty = parseInt(s.quantity || s.stallQty || s.qty || 1, 10) || 1;
+                  const sParts = (s.sizeRange || "10/10").split("/");
+                  const l = parseFloat(sParts[0]) || 10;
+                  const w = parseFloat(sParts[1]) || 10;
+                  const isInch = (s.size || "").includes("Inches") || (s.stallSize || "").includes("Inches");
+                  return acc + ((isInch ? (l * w) / 144 : l * w) * sQty);
+                }, 0);
+                const totalWithPending = currentAllocatedSqFt + pendingStallSqFt;
+                const isOver = totalWithPending > limitSqFt;
+
+                return (
+                  <div className="col-span-full mt-1 p-2 rounded-xl bg-slate-50 border border-cyan-200/60 flex flex-wrap items-center justify-between text-[11px] font-bold animate-in fade-in duration-200">
+                    <div className="flex items-center gap-1.5 text-slate-700">
+                      <span className="text-cyan-700 font-extrabold">📐 Stall Footprint:</span>
+                      <span>
+                        {inputLen > 0 ? `${inputLen} × ${inputWid || "?"} ${inputUnit}` : "—"}
+                        {singleStallSqFt > 0 && ` = ${singleStallSqFt.toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft/stall`}
+                      </span>
+                      {inputQty > 0 && singleStallSqFt > 0 && (
+                        <span className="text-cyan-900 font-black">
+                          (× {inputQty} = {pendingStallSqFt.toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft total)
+                        </span>
+                      )}
+                    </div>
+                    {singleStallSqFt > 0 && (
+                      <div>
+                        {isOver ? (
+                          <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 font-black text-[10px] flex items-center gap-1">
+                            ⚠️ Exceeds limit by {(totalWithPending - limitSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-black text-[10px]">
+                            ✅ Fits in capacity ({(limitSqFt - totalWithPending).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft left)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
             {/* Stall Visibility & Type */}
             <div className="sm:col-span-2 pt-4 border-t border-gray-100 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-4">

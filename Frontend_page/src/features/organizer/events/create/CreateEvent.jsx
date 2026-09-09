@@ -33,8 +33,8 @@ const STEPS = [
   { label: "Tickets & Pricing", icon: Ticket },
   { label: "Facilities & Logistics", icon: Settings2 },
   { label: "Stall Layout", icon: Layers },
-  { label: "Partners & Documents", icon: Users },
-  { label: "Terms & Policies", icon: ScrollText },
+  { label: "Partners & Guests", icon: Users },
+  { label: "Policies & Documents", icon: ScrollText },
 ];
 
 const CreateEvent = ({ onBack, editData, isView }) => {
@@ -119,53 +119,93 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         description: details.description || "",
         visibility: details.visibility || "Public",
         occurrence: details.occurrence || "",
-        mail: details.mail ?? false,
-        whatsapp: details.whatsapp ?? false,
-        print: details.print ?? false,
-        visitorMail: details.visitorMail ?? false,
-        visitorName: details.visitorName ?? true,
-        visitorPhoto: details.visitorPhoto ?? false,
-        visitorMobile: details.visitorMobile ?? false,
-        documentProof: details.documentProof ?? false,
-        dayPass: details.dayPass ?? false,
-        isInternationalInclude: details.isInternationalInclude ?? false,
-        aadhar: details.aadhar ?? false,
-        passport: details.passport ?? false,
-        welcomeKit: details.welcomeKit ?? false,
-        food: details.food ?? false,
-        vehiclePass: details.vehiclePass ?? false,
-        vehicleNumber: details.vehicleNumber ?? false,
-        includeProgram: details.includeProgram ?? "No",
+        mail: Boolean(details.mail),
+        whatsapp: Boolean(details.whatsapp),
+        print: Boolean(details.print),
+        visitorMail: Boolean(details.visitorMail ?? details.visitor_mail ?? false),
+        visitor_mail: Boolean(details.visitorMail ?? details.visitor_mail ?? false),
+        visitorName: Boolean(details.visitorName ?? details.visitor_name ?? true),
+        visitor_name: Boolean(details.visitorName ?? details.visitor_name ?? true),
+        visitorPhoto: Boolean(details.visitorPhoto ?? details.visitor_photo ?? false),
+        visitor_photo: Boolean(details.visitorPhoto ?? details.visitor_photo ?? false),
+        visitorMobile: Boolean(details.visitorMobile ?? details.visitor_mobile ?? false),
+        visitor_mobile: Boolean(details.visitorMobile ?? details.visitor_mobile ?? false),
+        documentProof: Boolean(details.documentProof ?? details.document_proof ?? false),
+        document_proof: Boolean(details.documentProof ?? details.document_proof ?? false),
+        dayPass: Boolean(details.dayPass ?? details.day_pass ?? false),
+        day_pass: Boolean(details.dayPass ?? details.day_pass ?? false),
+        isInternationalInclude: Boolean(details.isInternationalInclude ?? details.is_international_include ?? false),
+        is_international_include: Boolean(details.isInternationalInclude ?? details.is_international_include ?? false),
+        aadhar: Boolean(details.aadhar),
+        passport: Boolean(details.passport),
+        welcomeKit: Boolean(details.welcomeKit ?? details.welcome_kit ?? false),
+        welcome_kit: Boolean(details.welcomeKit ?? details.welcome_kit ?? false),
+        food: Boolean(details.food || (raw.food_items && raw.food_items.length > 0) || (raw.foodProvision?.food_items && raw.foodProvision.food_items.length > 0) || (raw.food_provision?.food_items && raw.food_provision.food_items.length > 0)),
+        vehiclePass: Boolean(details.vehiclePass ?? details.vehicle_pass ?? (raw.vehicles && raw.vehicles.length > 0) ?? (raw.vehicleProvision?.vehicles && raw.vehicleProvision.vehicles.length > 0) ?? (raw.vehicle_provision?.vehicles && raw.vehicle_provision.vehicles.length > 0) ?? false),
+        vehicle_pass: Boolean(details.vehiclePass ?? details.vehicle_pass ?? (raw.vehicles && raw.vehicles.length > 0) ?? (raw.vehicleProvision?.vehicles && raw.vehicleProvision.vehicles.length > 0) ?? (raw.vehicle_provision?.vehicles && raw.vehicle_provision.vehicles.length > 0) ?? false),
+        vehicleNumber: Boolean(details.vehicleNumber ?? details.vehicle_number ?? false),
+        vehicle_number: Boolean(details.vehicleNumber ?? details.vehicle_number ?? false),
+        includeProgram: details.includeProgram || details.include_program || "No",
+        include_program: details.includeProgram || details.include_program || "No",
         amenities: details.amenities || "",
         tags: details.tags || "",
+        venue_total_area_sqft: details.venue_total_area_sqft ?? details.venueTotalAreaSqFt ?? raw.venue_total_area_sqft ?? "",
       },
       booking: {
-        chargeType: booking.chargeType || booking.charge_type || "Free",
-        priceINR: booking.priceINR ?? booking.price_inr ?? booking.price ?? booking.pass_fee ?? "",
-        price: booking.price ?? booking.priceINR ?? booking.price_inr ?? booking.pass_fee ?? "",
+        chargeType: booking.charge_type || booking.chargeType || "Free",
+        charge_type: booking.charge_type || booking.chargeType || "Free",
+        priceINR: booking.price_inr ?? booking.priceINR ?? booking.price ?? booking.pass_fee ?? "",
+        price_inr: booking.price_inr ?? booking.priceINR ?? booking.price ?? booking.pass_fee ?? "",
+        price: booking.price_inr ?? booking.price ?? booking.priceINR ?? booking.pass_fee ?? "",
         capacity: booking.capacity ?? booking.totalCapacity ?? booking.total_capacity ?? "",
-        totalCapacity: booking.totalCapacity ?? booking.capacity ?? booking.total_capacity ?? "",
-        maxPass: booking.maxPass ?? booking.max_pass ?? booking.maxPerUser ?? "",
-        maxPerUser: booking.maxPerUser ?? booking.max_pass ?? booking.maxPass ?? "",
-        passType: booking.passType || booking.pass_type || "Single Pass",
-        entryType: booking.entryType || booking.entry_type || "Single Entry",
-        titleType: booking.titleType || booking.title_type || "Editable",
-        designationType: booking.designationType || booking.designation_type || "Editable",
-        companyType: booking.companyType || booking.company_type || "Editable",
+        totalCapacity: booking.capacity ?? booking.totalCapacity ?? booking.total_capacity ?? "",
+        maxPass: booking.max_pass ?? booking.maxPass ?? booking.maxPerUser ?? "",
+        max_pass: booking.max_pass ?? booking.maxPass ?? booking.maxPerUser ?? "",
+        maxPerUser: booking.max_pass ?? booking.maxPerUser ?? booking.maxPass ?? "",
+        passType: booking.pass_type || booking.passType || "Single Pass",
+        pass_type: booking.pass_type || booking.passType || "Single Pass",
+        groupMemberLimit: booking.group_member_limit ?? booking.groupMemberLimit ?? "5",
+        group_member_limit: booking.group_member_limit ?? booking.groupMemberLimit ?? 5,
+        entryType: booking.entry_type || booking.entryType || "Single Entry",
+        entry_type: booking.entry_type || booking.entryType || "Single Entry",
+        titleType: booking.title_type || booking.titleType || "Editable",
+        title_type: booking.title_type || booking.titleType || "Editable",
+        designationType: booking.designation_type || booking.designationType || "Editable",
+        designation_type: booking.designation_type || booking.designationType || "Editable",
+        companyType: booking.company_type || booking.companyType || "Editable",
+        company_type: booking.company_type || booking.companyType || "Editable",
         currency: booking.currency || "",
         taxType: booking.taxType || "",
-        bookingStartDate: booking.bookingStartDate || booking.booking_start_date || details.startDate || details.start_date || "",
-        bookingEndDate: booking.bookingEndDate || booking.booking_end_date || details.endDate || details.end_date || "",
+        bookingStartDate: booking.booking_start_date || booking.bookingStartDate || details.startDate || details.start_date || "",
+        booking_start_date: booking.booking_start_date || booking.bookingStartDate || details.startDate || details.start_date || "",
+        bookingEndDate: booking.booking_end_date || booking.bookingEndDate || details.endDate || details.end_date || "",
+        booking_end_date: booking.booking_end_date || booking.bookingEndDate || details.endDate || details.end_date || "",
         bookingStartTime: booking.bookingStartTime || booking.booking_start_time || details.startTime || details.start_time || "",
         bookingEndTime: booking.bookingEndTime || booking.booking_end_time || details.endTime || details.end_time || "",
       },
       layout: {
         floorType: raw.layout?.floorType || raw.layout?.floor_type || raw.floor_type || "Stall",
+        overallSpaceSqFt: raw.layout?.overall_space_sqft ?? raw.layout?.overallSpaceSqFt ?? details.venue_total_area_sqft ?? raw.venue_total_area_sqft ?? "",
+        overall_space_sqft: raw.layout?.overall_space_sqft ?? raw.layout?.overallSpaceSqFt ?? details.venue_total_area_sqft ?? raw.venue_total_area_sqft ?? "",
         dayBased: Boolean(raw.layout?.dayBased || raw.layout?.day_based),
         personPass: raw.layout?.personPass || raw.layout?.person_pass || 1,
         includeTax: Boolean(raw.layout?.includeTax || raw.layout?.include_tax),
         taxes: raw.layout?.taxes || [],
-        stalls: raw.layout?.stalls || raw.layout?.stallList || raw.stalls || [],
+        stalls: (raw.layout?.stalls || raw.layout?.stallList || raw.stalls || []).map((s) => ({
+          ...s,
+          stallName: s.stallName || s.stall_name || "",
+          stall_name: s.stallName || s.stall_name || "",
+          stallSize: s.stallSize || s.stall_size || s.size || "",
+          stall_size: s.stallSize || s.stall_size || s.size || "",
+          priceINR: s.priceINR ?? s.price_inr ?? s.price ?? "0",
+          price_inr: s.price_inr ?? s.priceINR ?? s.price ?? "0",
+          stallType: s.stallType || s.stall_type || "Paid",
+          stall_type: s.stallType || s.stall_type || "Paid",
+          primeSeat: Boolean(s.primeSeat ?? s.prime_seat),
+          prime_seat: Boolean(s.primeSeat ?? s.prime_seat),
+          primePriceINR: s.primePriceINR ?? s.prime_price_inr ?? "",
+          prime_price_inr: s.prime_price_inr ?? s.primePriceINR ?? "",
+        })),
         amenities: Array.isArray(raw.layout?.amenities)
           ? raw.layout.amenities
           : Array.isArray(raw.amenities)
@@ -174,23 +214,61 @@ const CreateEvent = ({ onBack, editData, isView }) => {
           ? JSON.parse(raw.amenities)
           : [],
       },
-      foodProvision: {
-        catererName: raw.foodProvision?.catererName || raw.food_items?.[0]?.caterer_name || "",
-        mealType: raw.foodProvision?.mealType || raw.food_items?.[0]?.meal_type || "",
-        foodType: raw.foodProvision?.foodType || raw.food_items?.[0]?.food_type || "",
-        priceINR: raw.foodProvision?.priceINR || raw.food_items?.[0]?.price_inr || 0,
-        menuDetails: raw.foodProvision?.menuDetails || raw.food_items?.[0]?.menu_details || "",
-        items: raw.foodProvision?.items || raw.foodProvision?.foodItems || raw.food_items || raw.food || [],
-        foodItems: raw.foodProvision?.foodItems || raw.foodProvision?.items || raw.food_items || raw.food || [],
-        coupons: raw.foodProvision?.items || raw.food_items || raw.food || [],
-      },
-      vehicleProvision: {
-        vehicleType: raw.vehicleProvision?.vehicleType || raw.vehicles?.[0]?.vehicle_type || "",
-        priceINR: raw.vehicleProvision?.priceINR || raw.vehicles?.[0]?.price_inr || 0,
-        details: raw.vehicleProvision?.details || raw.vehicleProvision?.vehicles || raw.vehicle_details || raw.vehicles || [],
-        vehicles: raw.vehicleProvision?.vehicles || raw.vehicleProvision?.details || raw.vehicle_details || raw.vehicles || [],
-        addons: raw.vehicleProvision?.addons || raw.vehicleProvision?.vehicle_addons || raw.vehicle_addons || raw.addons || [],
-      },
+      foodProvision: (() => {
+        const rawFoodList = raw.foodProvision?.items || raw.foodProvision?.foodItems || raw.foodProvision?.food_items || raw.food_provision?.food_items || raw.food_items || raw.food || [];
+        const normalizedFoodItems = (Array.isArray(rawFoodList) ? rawFoodList : []).map((fi) => ({
+          catererName: fi.catererName || fi.caterer_name || "",
+          caterer_name: fi.catererName || fi.caterer_name || "",
+          mealType: fi.mealType || fi.meal_type || "Breakfast",
+          meal_type: fi.mealType || fi.meal_type || "Breakfast",
+          foodType: fi.foodType || fi.food_type || "Veg",
+          food_type: fi.foodType || fi.food_type || "Veg",
+          priceINR: fi.priceINR !== undefined ? String(fi.priceINR) : (fi.price_inr !== undefined ? String(fi.price_inr) : (fi.price !== undefined ? String(fi.price) : "0")),
+          price_inr: fi.price_inr ?? fi.priceINR ?? fi.price ?? 0,
+          menuDetails: fi.menuDetails || fi.menu_details || "",
+          menu_details: fi.menuDetails || fi.menu_details || "",
+        }));
+
+        return {
+          catererName: normalizedFoodItems[0]?.catererName || raw.foodProvision?.catererName || raw.food_provision?.caterer_name || "",
+          mealType: normalizedFoodItems[0]?.mealType || raw.foodProvision?.mealType || raw.food_provision?.meal_type || "Breakfast",
+          foodType: normalizedFoodItems[0]?.foodType || raw.foodProvision?.foodType || raw.food_provision?.food_type || "Veg",
+          priceINR: normalizedFoodItems[0]?.priceINR || raw.foodProvision?.priceINR || raw.food_provision?.price_inr || 0,
+          menuDetails: normalizedFoodItems[0]?.menuDetails || raw.foodProvision?.menuDetails || raw.food_provision?.menu_details || "",
+          items: normalizedFoodItems,
+          foodItems: normalizedFoodItems,
+          coupons: normalizedFoodItems,
+        };
+      })(),
+      vehicleProvision: (() => {
+        const rawVehicles = raw.vehicleProvision?.details || raw.vehicleProvision?.vehicles || raw.vehicle_provision?.vehicles || raw.vehicle_details || raw.vehicles || [];
+        const normalizedVehicles = (Array.isArray(rawVehicles) ? rawVehicles : []).map((v) => ({
+          vehicleType: v.vehicleType || v.vehicle_type || "",
+          vehicle_type: v.vehicleType || v.vehicle_type || "",
+          priceINR: v.priceINR !== undefined ? String(v.priceINR) : (v.price_inr !== undefined ? String(v.price_inr) : (v.price !== undefined ? String(v.price) : "0")),
+          price_inr: v.price_inr ?? v.priceINR ?? v.price ?? 0,
+        }));
+
+        const rawAddons = raw.vehicleProvision?.addons || raw.vehicleProvision?.vehicle_addons || raw.vehicle_provision?.addons || raw.vehicle_addons || raw.addons || [];
+        const normalizedAddons = (Array.isArray(rawAddons) ? rawAddons : []).map((ad) => ({
+          isParent: Boolean(ad.isParent ?? ad.is_parent ?? false),
+          is_parent: Boolean(ad.isParent ?? ad.is_parent ?? false),
+          addOnName: ad.addOnName || ad.addon_name || ad.name || "",
+          addon_name: ad.addOnName || ad.addon_name || ad.name || "",
+          name: ad.addOnName || ad.addon_name || ad.name || "",
+          price: ad.price ?? ad.price_inr ?? ad.priceINR ?? 0,
+          price_inr: ad.price ?? ad.price_inr ?? ad.priceINR ?? 0,
+        }));
+
+        return {
+          vehicleType: normalizedVehicles[0]?.vehicleType || "",
+          priceINR: normalizedVehicles[0]?.priceINR || 0,
+          details: normalizedVehicles,
+          vehicles: normalizedVehicles,
+          addons: normalizedAddons,
+          vehicle_addons: normalizedAddons,
+        };
+      })(),
       documents: {
         bannerPreview: raw.documents?.bannerPreview || raw.documents?.banner_url || raw.banner_url || raw.banner || raw.image || raw.files?.find((f) => f.file_type === "banner")?.file_path || "",
         bannerType: raw.documents?.bannerType || raw.documents?.banner_type || raw.files?.find((f) => f.file_type === "banner")?.doc_type || "image",
@@ -225,11 +303,15 @@ const CreateEvent = ({ onBack, editData, isView }) => {
       booking: {
         chargeType: "Free", priceINR: "", capacity: "", totalCapacity: "", maxPass: "", maxPerUser: "",
         passType: "Single Pass", entryType: "Single Entry",
+        groupMemberLimit: "5", group_member_limit: 5,
         titleType: "Editable", designationType: "Editable", companyType: "Editable",
         currency: "", taxType: "", bookingStartDate: "", bookingEndDate: "",
         bookingStartTime: "", bookingEndTime: "",
       },
-      layout: {},
+      layout: {
+        overallSpaceSqFt: "",
+        overall_space_sqft: "",
+      },
       foodProvision: {},
       vehicleProvision: {},
       documents: { banner: null, bannerPreview: null, bannerType: null },
@@ -241,8 +323,13 @@ const CreateEvent = ({ onBack, editData, isView }) => {
   useEffect(() => {
     if (targetEventId) {
       fetchEventDetails(targetEventId);
+    } else if (editData || location.state?.eventData) {
+      const normalized = normalizeInitialFormData(editData || location.state?.eventData);
+      if (normalized) {
+        setFormData(normalized);
+      }
     }
-  }, [targetEventId]);
+  }, [targetEventId, editData, location.state?.eventData]);
 
   const fetchEventDetails = async (id) => {
     try {
@@ -332,17 +419,40 @@ const CreateEvent = ({ onBack, editData, isView }) => {
       }
 
       const payload = {
+        event_name: details.eventName || details.event_name || "",
+        event_code: details.eventCode || details.event_code || "",
+        category: details.category || "",
+        sub_category: details.subCategory || details.sub_category || "",
+        event_type: details.eventType || details.event_type || "OneTime",
+        start_date: details.startDate || details.start_date || "",
+        end_date: details.endDate || details.end_date || "",
+        start_time: details.startTime || details.start_time || "",
+        end_time: details.endTime || details.end_time || "",
+        venue: details.venue || "",
+        address: details.address || "",
+        description: details.description || "",
+        visibility: details.visibility || "Public",
+        banner_url: finalBannerUrl,
+
         eventDetails: {
           eventName: details.eventName || details.event_name || "",
+          event_name: details.eventName || details.event_name || "",
           eventCode: details.eventCode || details.event_code || "",
+          event_code: details.eventCode || details.event_code || "",
           category: details.category || "",
           subCategory: details.subCategory || details.sub_category || "",
+          sub_category: details.subCategory || details.sub_category || "",
           eventType: details.eventType || details.event_type || "OneTime",
+          event_type: details.eventType || details.event_type || "OneTime",
           occurrence: details.occurrence || "",
           startDate: details.startDate || details.start_date || "",
+          start_date: details.startDate || details.start_date || "",
           endDate: details.endDate || details.end_date || "",
+          end_date: details.endDate || details.end_date || "",
           startTime: details.startTime || details.start_time || "",
+          start_time: details.startTime || details.start_time || "",
           endTime: details.endTime || details.end_time || "",
+          end_time: details.endTime || details.end_time || "",
           venue: details.venue || "",
           address: details.address || "",
           description: details.description || "",
@@ -350,61 +460,156 @@ const CreateEvent = ({ onBack, editData, isView }) => {
           mail: Boolean(details.mail),
           whatsapp: Boolean(details.whatsapp),
           print: Boolean(details.print),
-          visitorMail: Boolean(details.visitorMail),
-          visitorName: Boolean(details.visitorName),
-          visitorPhoto: Boolean(details.visitorPhoto),
-          visitorMobile: Boolean(details.visitorMobile),
-          documentProof: Boolean(details.documentProof),
-          dayPass: Boolean(details.dayPass),
-          isInternationalInclude: Boolean(details.isInternationalInclude),
+          visitorMail: Boolean(details.visitorMail ?? details.visitor_mail),
+          visitor_mail: Boolean(details.visitorMail ?? details.visitor_mail),
+          visitorName: Boolean(details.visitorName ?? details.visitor_name),
+          visitor_name: Boolean(details.visitorName ?? details.visitor_name),
+          visitorPhoto: Boolean(details.visitorPhoto ?? details.visitor_photo),
+          visitor_photo: Boolean(details.visitorPhoto ?? details.visitor_photo),
+          visitorMobile: Boolean(details.visitorMobile ?? details.visitor_mobile),
+          visitor_mobile: Boolean(details.visitorMobile ?? details.visitor_mobile),
+          documentProof: Boolean(details.documentProof ?? details.document_proof),
+          document_proof: Boolean(details.documentProof ?? details.document_proof),
+          dayPass: Boolean(details.dayPass ?? details.day_pass),
+          day_pass: Boolean(details.dayPass ?? details.day_pass),
+          isInternationalInclude: Boolean(details.isInternationalInclude ?? details.is_international_include),
+          is_international_include: Boolean(details.isInternationalInclude ?? details.is_international_include),
           aadhar: Boolean(details.aadhar),
           passport: Boolean(details.passport),
-          welcomeKit: Boolean(details.welcomeKit),
+          welcomeKit: Boolean(details.welcomeKit ?? details.welcome_kit),
+          welcome_kit: Boolean(details.welcomeKit ?? details.welcome_kit),
           food: Boolean(details.food || (food.items && food.items.length > 0) || (food.foodItems && food.foodItems.length > 0) || food.catererName),
-          vehiclePass: Boolean(details.vehiclePass || (vehicle.details && vehicle.details.length > 0) || (vehicle.vehicles && vehicle.vehicles.length > 0) || (vehicle.addons && vehicle.addons.length > 0)),
-          vehicleNumber: Boolean(details.vehicleNumber),
-          includeProgram: details.includeProgram || "No",
+          vehiclePass: Boolean(details.vehiclePass || details.vehicle_pass || (vehicle.details && vehicle.details.length > 0) || (vehicle.vehicles && vehicle.vehicles.length > 0) || (vehicle.addons && vehicle.addons.length > 0)),
+          vehicle_pass: Boolean(details.vehiclePass || details.vehicle_pass || (vehicle.details && vehicle.details.length > 0) || (vehicle.vehicles && vehicle.vehicles.length > 0) || (vehicle.addons && vehicle.addons.length > 0)),
+          vehicleNumber: Boolean(details.vehicleNumber ?? details.vehicle_number),
+          vehicle_number: Boolean(details.vehicleNumber ?? details.vehicle_number),
+          includeProgram: details.includeProgram || details.include_program || "No",
+          include_program: details.includeProgram || details.include_program || "No",
           amenities: details.amenities || "",
           tags: details.tags || "",
+          venue_total_area_sqft: details.venue_total_area_sqft || layout.overallSpaceSqFt || null,
         },
         booking: {
-          chargeType: booking.chargeType || booking.charge_type || "Free",
-          priceINR: booking.priceINR ?? booking.price ?? booking.price_inr ?? "",
-          price_inr: booking.priceINR ?? booking.price ?? booking.price_inr ?? "",
+          chargeType: booking.charge_type || booking.chargeType || "Free",
+          charge_type: booking.charge_type || booking.chargeType || "Free",
+          priceINR: booking.price_inr ?? booking.priceINR ?? booking.price ?? "",
+          price_inr: booking.price_inr ?? booking.priceINR ?? booking.price ?? "",
           capacity: booking.capacity ?? booking.totalCapacity ?? 500,
-          totalCapacity: booking.totalCapacity ?? booking.capacity ?? 500,
-          maxPass: booking.maxPass ?? booking.max_pass ?? 4,
-          maxPerUser: booking.maxPerUser ?? booking.max_pass ?? 4,
-          passType: booking.passType || "Single Pass",
-          entryType: booking.entryType || "Single Entry",
-          titleType: booking.titleType || "Editable",
-          designationType: booking.designationType || "Editable",
-          companyType: booking.companyType || "Editable",
-          currency: booking.currency || "",
+          totalCapacity: booking.capacity ?? booking.totalCapacity ?? 500,
+          maxPass: booking.max_pass ?? booking.maxPass ?? 4,
+          max_pass: booking.max_pass ?? booking.maxPass ?? 4,
+          maxPerUser: booking.max_pass ?? booking.maxPerUser ?? 4,
+          passType: booking.pass_type || booking.passType || "Single Pass",
+          pass_type: booking.pass_type || booking.passType || "Single Pass",
+          groupMemberLimit: booking.groupMemberLimit || booking.group_member_limit || 5,
+          group_member_limit: parseInt(booking.group_member_limit || booking.groupMemberLimit, 10) || 5,
+          entryType: booking.entry_type || booking.entryType || "Single Entry",
+          entry_type: booking.entry_type || booking.entryType || "Single Entry",
+          titleType: booking.title_type || booking.titleType || "Editable",
+          title_type: booking.title_type || booking.titleType || "Editable",
+          designationType: booking.designation_type || booking.designationType || "Editable",
+          designation_type: booking.designation_type || booking.designationType || "Editable",
+          companyType: booking.company_type || booking.companyType || "Editable",
+          company_type: booking.company_type || booking.companyType || "Editable",
+          currency: booking.currency || "INR",
           taxType: booking.taxType || "",
-          includeTax: Boolean(booking.includeTax),
+          includeTax: Boolean(booking.include_tax ?? booking.includeTax),
+          include_tax: Boolean(booking.include_tax ?? booking.includeTax),
           taxes: booking.taxes || [],
-          bookingStartDate: booking.bookingStartDate || details.startDate || "",
-          bookingEndDate: booking.bookingEndDate || details.endDate || "",
+          bookingStartDate: booking.booking_start_date || booking.bookingStartDate || details.startDate || "",
+          booking_start_date: booking.booking_start_date || booking.bookingStartDate || details.startDate || "",
+          bookingEndDate: booking.booking_end_date || booking.bookingEndDate || details.endDate || "",
+          booking_end_date: booking.booking_end_date || booking.bookingEndDate || details.endDate || "",
           bookingStartTime: booking.bookingStartTime || details.startTime || "09:00 AM",
           bookingEndTime: booking.bookingEndTime || details.endTime || "06:00 PM",
         },
         layout: {
-          floorType: layout.floorType || "Stall",
-          dayBased: Boolean(layout.dayBased),
-          personPass: layout.personPass || 1,
-          includeTax: Boolean(layout.includeTax),
+          floorType: layout.floorType || layout.floor_type || "Stall",
+          floor_type: layout.floorType || layout.floor_type || "Stall",
+          overallSpaceSqFt: layout.overallSpaceSqFt || layout.overall_space_sqft || details.venue_total_area_sqft || null,
+          overall_space_sqft: layout.overall_space_sqft || layout.overallSpaceSqFt || details.venue_total_area_sqft || null,
+          dayBased: Boolean(layout.dayBased ?? layout.day_based),
+          day_based: Boolean(layout.dayBased ?? layout.day_based),
+          personPass: layout.personPass || layout.person_pass || 1,
+          person_pass: layout.personPass || layout.person_pass || 1,
+          includeTax: Boolean(layout.includeTax ?? layout.include_tax),
+          include_tax: Boolean(layout.includeTax ?? layout.include_tax),
           taxes: layout.taxes || [],
-          stalls: layout.stalls || layout.stallList || [],
+          stalls: (layout.stalls || layout.stallList || []).map((s) => ({
+            ...s,
+            stall_name: s.stall_name || s.stallName || "",
+            stallName: s.stall_name || s.stallName || "",
+            stall_size: s.stall_size || s.size || "",
+            size: s.stall_size || s.size || "",
+            price_inr: s.price_inr || s.priceINR || s.price || "0",
+            priceINR: s.price_inr || s.priceINR || s.price || "0",
+            stall_type: s.stall_type || s.type || "",
+            type: s.stall_type || s.type || "",
+            prime_seat: Boolean(s.prime_seat ?? s.primeSeat),
+            primeSeat: Boolean(s.prime_seat ?? s.primeSeat),
+            prime_price_inr: s.prime_price_inr || s.primePriceINR || "",
+            primePriceINR: s.prime_price_inr || s.primePriceINR || "",
+          })),
           amenities: layout.amenities || [],
         },
-        foodProvision: {
-          items: food.items || food.foodItems || (food.catererName ? [food] : []),
-        },
-        vehicleProvision: {
-          details: vehicle.details || vehicle.vehicles || [],
-          addons: vehicle.addons || vehicle.vehicle_addons || [],
-        },
+        foodProvision: (() => {
+          const list = (food.items || food.foodItems || (food.catererName ? [food] : [])).map((fi) => ({
+            ...fi,
+            caterer_name: fi.caterer_name || fi.catererName || "",
+            catererName: fi.caterer_name || fi.catererName || "",
+            meal_type: fi.meal_type || fi.mealType || "",
+            mealType: fi.meal_type || fi.mealType || "",
+            food_type: fi.food_type || fi.foodType || "",
+            foodType: fi.food_type || fi.foodType || "",
+            price_inr: fi.price_inr ?? fi.priceINR ?? 0,
+            priceINR: fi.price_inr ?? fi.priceINR ?? 0,
+            menu_details: fi.menu_details || fi.menuDetails || "",
+            menuDetails: fi.menu_details || fi.menuDetails || "",
+          }));
+          return {
+            items: list,
+            foodItems: list,
+            food_items: list,
+            caterer_name: list[0]?.caterer_name || "",
+            catererName: list[0]?.catererName || "",
+            meal_type: list[0]?.meal_type || "",
+            mealType: list[0]?.mealType || "",
+            food_type: list[0]?.food_type || "",
+            foodType: list[0]?.foodType || "",
+            price_inr: list[0]?.price_inr ?? 0,
+            priceINR: list[0]?.priceINR ?? 0,
+            menu_details: list[0]?.menu_details || "",
+            menuDetails: list[0]?.menuDetails || "",
+          };
+        })(),
+        vehicleProvision: (() => {
+          const vList = (vehicle.details || vehicle.vehicles || []).map((v) => ({
+            ...v,
+            vehicle_type: v.vehicle_type || v.vehicleType || "",
+            vehicleType: v.vehicle_type || v.vehicleType || "",
+            price_inr: v.price_inr ?? v.priceINR ?? 0,
+            priceINR: v.price_inr ?? v.priceINR ?? 0,
+          }));
+          const aList = (vehicle.addons || vehicle.vehicle_addons || []).map((a) => ({
+            ...a,
+            is_parent: Boolean(a.is_parent ?? a.isParent),
+            isParent: Boolean(a.is_parent ?? a.isParent),
+            addon_name: a.addon_name || a.addOnName || a.name || "",
+            addOnName: a.addon_name || a.addOnName || a.name || "",
+            price: a.price ?? a.price_inr ?? 0,
+            price_inr: a.price ?? a.price_inr ?? 0,
+          }));
+          return {
+            details: vList,
+            vehicles: vList,
+            addons: aList,
+            vehicle_addons: aList,
+            vehicle_type: vList[0]?.vehicle_type || "",
+            vehicleType: vList[0]?.vehicleType || "",
+            price_inr: vList[0]?.price_inr ?? 0,
+            priceINR: vList[0]?.priceINR ?? 0,
+          };
+        })(),
         documents: {
           bannerPreview: finalBannerUrl,
           bannerType: docs.bannerType || "image",
@@ -414,9 +619,27 @@ const CreateEvent = ({ onBack, editData, isView }) => {
           policies: terms,
         },
         vendorSponsor: {
-          vendors: vs.vendors || (Array.isArray(formData.vendors) ? formData.vendors : []),
-          sponsors: vs.sponsors || (Array.isArray(formData.sponsors) ? formData.sponsors : []),
-          guests: vs.guests || formData.guests || [],
+          vendors: (vs.vendors || (Array.isArray(formData.vendors) ? formData.vendors : [])).map((v) => ({
+            ...v,
+            vendor_name: v.vendor_name || v.vendorName || "",
+            vendorName: v.vendor_name || v.vendorName || "",
+            vendor_type: v.vendor_type || v.vendorType || "",
+            vendorType: v.vendor_type || v.vendorType || "",
+            pass_count: v.pass_count ?? v.passCount ?? 0,
+            passCount: v.pass_count ?? v.passCount ?? 0,
+          })),
+          sponsors: (vs.sponsors || (Array.isArray(formData.sponsors) ? formData.sponsors : [])).map((s) => ({
+            ...s,
+            sponsor_name: s.sponsor_name || s.sponsorName || "",
+            sponsorName: s.sponsor_name || s.sponsorName || "",
+            sponsorship_type: s.sponsorship_type || s.sponsorshipType || s.sponsorship || "",
+            sponsorshipType: s.sponsorship_type || s.sponsorshipType || s.sponsorship || "",
+          })),
+          guests: (vs.guests || formData.guests || []).map((g) => ({
+            ...g,
+            guest_name: g.guest_name || g.guestName || g.name || "",
+            guestName: g.guest_name || g.guestName || g.name || "",
+          })),
         },
         user_id: currentOrganizerId || organizer?.id,
         created_by: currentOrganizerId || organizer?.id,
@@ -609,41 +832,46 @@ const CreateEvent = ({ onBack, editData, isView }) => {
 
         {/* ── STEPPER PROGRESS TRACKER ── */}
         <div className="mt-3 pt-2 border-t border-slate-100">
-          <div className="relative flex items-center justify-between w-full max-w-3xl mx-auto">
-            {/* Track Line */}
-            <div className="absolute top-4 left-8 right-8 h-0.5 bg-slate-200 z-0" />
-            <div
-              className="absolute top-4 left-8 h-0.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 transition-all duration-500 z-0"
-              style={{ width: `${((step - 1) / (STEPS.length - 1)) * 90}%` }}
-            />
-
+          <div className="flex items-start justify-between w-full max-w-3xl mx-auto">
             {STEPS.map((s, idx) => {
               const isActive = step === idx + 1;
               const isCompleted = step > idx + 1;
               const StepIcon = s.icon;
 
               return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setStep(idx + 1)}
-                  className="relative z-10 flex flex-col items-center gap-1 group cursor-pointer border-none bg-transparent px-1"
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                    isActive
-                      ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white ring-4 ring-cyan-100 shadow-md scale-105"
-                      : isCompleted
-                      ? "bg-emerald-500 text-white shadow-xs"
-                      : "bg-white border-2 border-slate-300 text-slate-400 hover:border-cyan-400"
-                  }`}>
-                    {isCompleted ? <Check size={14} strokeWidth={3} /> : <StepIcon size={14} strokeWidth={2.5} />}
-                  </div>
-                  <span className={`text-[10px] font-extrabold whitespace-nowrap transition-colors ${
-                    isActive ? "text-cyan-700" : isCompleted ? "text-emerald-700" : "text-slate-400"
-                  }`}>
-                    {s.label}
-                  </span>
-                </button>
+                <div key={idx} className="relative flex-1 flex flex-col items-center">
+                  {/* Connecting Track Line to next step */}
+                  {idx < STEPS.length - 1 && (
+                    <div className="absolute top-4 left-1/2 w-full h-0.5 -translate-y-1/2 z-0">
+                      <div className="w-full h-full bg-slate-200" />
+                      <div
+                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 transition-all duration-500"
+                        style={{ width: step > idx + 1 ? "100%" : "0%" }}
+                      />
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setStep(idx + 1)}
+                    className="relative z-10 flex flex-col items-center gap-1 group cursor-pointer border-none bg-transparent px-1 focus:outline-none"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                      isActive
+                        ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white ring-4 ring-cyan-100 shadow-md scale-105"
+                        : isCompleted
+                        ? "bg-emerald-500 text-white shadow-xs"
+                        : "bg-white border-2 border-slate-300 text-slate-400 hover:border-cyan-400"
+                    }`}>
+                      {isCompleted ? <Check size={14} strokeWidth={3} /> : <StepIcon size={14} strokeWidth={2.5} />}
+                    </div>
+                    <span className={`text-[10px] font-extrabold whitespace-nowrap transition-colors ${
+                      isActive ? "text-cyan-700" : isCompleted ? "text-emerald-700" : "text-slate-400"
+                    }`}>
+                      {s.label}
+                    </span>
+                  </button>
+                </div>
               );
             })}
           </div>

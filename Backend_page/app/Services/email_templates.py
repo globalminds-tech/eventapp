@@ -66,33 +66,43 @@ BRAND_LOGO_MARK_B64 = (
     "rnr8Pw9jR0QirbPpAAAAAElFTkSuQmCC"
 )
 
-def get_brand_logo_html(theme: str = "light", font_size: int = 22, align: str = "left", use_cid: bool = True) -> str:
+def get_brand_logo_html(theme: str = "light", font_size: int = 20, align: str = "left", use_cid: bool = False) -> str:
     """
     Centralized official BookMyEvent brand logo mark with signature 3-pill icon.
-    Renders with the signature tilted 3-pill dynamic alignment matching the application header:
+    Renders with the signature tilted 3-pill dynamic alignment matching BrandLogo.jsx:
     - Pill 1: Electric Blue (#3b82f6) tilted left (-12°)
     - Pill 2: Bright Orange (#f97316) tilted right (+12°)
     - Pill 3: Emerald Green (#22c55e) tilted slightly left (-6°)
     - Typography: Bold BookMyEvent brand label in dark slate or pure white.
 
     Email Client Reliability:
-    Email clients (Gmail, Outlook, Yahoo) completely strip CSS `transform: rotate(...)`.
-    Using an embedded high-resolution retina PNG ensures the tilted alignment renders identically
-    in Gmail, Outlook, Apple Mail, mobile inboxes, and web viewports without distortion or straight bars.
+    Renders with pure cross-client HTML & inline CSS table cells, ensuring 100% visibility
+    in Gmail, Outlook, Apple Mail, Yahoo, Android, and iOS inboxes without being blocked by
+    'Display external images' warnings or broken attachment proxies.
     """
     text_color = "#ffffff" if theme == "dark" else "#0f172a"
     margin_css = "0 auto" if align == "center" else "0"
     
-    # Proportional logo mark sizing matching header typography
-    img_h = max(16, int(font_size * 0.95))
-    img_w = int(img_h * 1.5)  # 36:24 aspect ratio
-    
-    img_src = "cid:bme_logo_mark" if use_cid else f"data:image/png;base64,{BRAND_LOGO_MARK_B64}"
+    pill_w = max(5, int(font_size * 0.28))
+    pill_h = max(14, int(font_size * 0.85))
 
     return f"""<table cellpadding="0" cellspacing="0" border="0" style="display: inline-table; vertical-align: middle; margin: {margin_css}; border-collapse: collapse;">
       <tr>
-        <td style="vertical-align: middle; padding-right: 9px; line-height: 0;">
-          <img src="{img_src}" width="{img_w}" height="{img_h}" alt="" style="display: block; width: {img_w}px; height: {img_h}px; border: 0; outline: none; text-decoration: none; vertical-align: middle;" />
+        <td style="vertical-align: middle; padding-right: 10px; line-height: 0;">
+          <!-- 3-Pill Dynamic Logo Mark (100% Reliable in All Email Clients) -->
+          <table cellpadding="0" cellspacing="0" border="0" style="display: inline-table; border-collapse: separate;">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 3px; line-height: 0;">
+                <div style="width: {pill_w}px; height: {pill_h}px; background-color: #3b82f6; border-radius: 9999px; transform: rotate(-12deg); -webkit-transform: rotate(-12deg); display: inline-block;"></div>
+              </td>
+              <td style="vertical-align: middle; padding-right: 3px; line-height: 0;">
+                <div style="width: {pill_w}px; height: {pill_h}px; background-color: #f97316; border-radius: 9999px; transform: rotate(12deg); -webkit-transform: rotate(12deg); display: inline-block;"></div>
+              </td>
+              <td style="vertical-align: middle; line-height: 0;">
+                <div style="width: {pill_w}px; height: {pill_h}px; background-color: #22c55e; border-radius: 9999px; transform: rotate(-6deg); -webkit-transform: rotate(-6deg); display: inline-block;"></div>
+              </td>
+            </tr>
+          </table>
         </td>
         <td style="vertical-align: middle; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: {font_size}px; font-weight: 900; letter-spacing: -0.6px; color: {text_color}; line-height: 1; text-decoration: none; white-space: nowrap;">
           BookMyEvent
@@ -492,10 +502,12 @@ def get_booking_email_template(
     food_preference: str = "Veg"
 ) -> tuple[str, str]:
     """Generates official entry pass confirmation email matching the frontend web UI pass design with 100% mobile responsiveness."""
+    import json
+    from datetime import datetime
+
     event_name = event.get('event_name') or event.get('name') or event.get('title') or 'Live Event Pass'
-    raw_code = event.get('ticket_code') or event.get('booking_id') or event.get('id') or '101'
-    digits_code = ''.join(filter(str.isalnum, str(raw_code)))
-    booking_code = f"BKG-{digits_code}" if not str(raw_code).startswith("BKG-") else str(raw_code)
+    ticket_code = event.get('ticket_code') or event.get('booking_id') or event.get('id') or 'BME-TICKET'
+    booking_code = str(ticket_code).strip()
 
     venue = event.get('venue') or 'Official Event Venue'
     address = event.get('address') or ''
@@ -504,17 +516,33 @@ def get_booking_email_template(
     event_date = str(event.get('start_date') or event.get('date') or 'Confirmed Schedule')
     event_time = str(event.get('start_time') or event.get('time') or '04:00 PM')
 
-    price_val = event.get('price') or event.get('price_inr') or event.get('pass_fee') or 0.0
-    try:
-        price_float = float(price_val)
-        price_display = f"₹ {price_float:,.2f}" if price_float > 0 else "FREE PASS"
-    except (ValueError, TypeError):
-        price_display = str(price_val) or "FREE PASS"
+    # Pass & Capacity Configuration
+    pass_type = event.get('pass_type') or 'Single Pass'
+    group_size = int(event.get('group_size') or 1)
+    ticket_count = int(event.get('ticket_count') or 1)
+    is_group = "group" in str(pass_type).lower()
 
-    from datetime import datetime
+    if is_group:
+        requested_seats = int(event.get('requested_seats') or (ticket_count * group_size))
+        pass_badge_label = f"Group Pass ({group_size} Members)"
+        pass_summary_text = f"{ticket_count} Group Pass ({requested_seats} Total Reserved Seats)"
+    else:
+        requested_seats = int(event.get('requested_seats') or ticket_count)
+        pass_badge_label = "Single Entry Pass"
+        pass_summary_text = f"{ticket_count} Pass ({requested_seats} Seat{'s' if requested_seats > 1 else ''})"
+
+    phone_display = event.get('phone') or ""
+
+    # Pricing & Financial Breakdown
+    subtotal_amount = float(event.get('subtotal_amount') or 0)
+    tax_amount = float(event.get('tax_amount') or 0)
+    amount_paid = float(event.get('amount_paid') or event.get('price') or event.get('price_inr') or 0)
+    is_paid = amount_paid > 0
+    total_display = f"₹ {amount_paid:,.2f}" if is_paid else "FREE PASS"
+
     now = datetime.now()
     now_str = now.strftime("%d %b, %I:%M %p")
-    subject = f"🎟️ Entry Pass Confirmed: {event_name} • Ref #{booking_code} • {now_str}"
+    subject = f"🎟️ Entry Pass Confirmed: {event_name} • Ref #{booking_code}"
 
     qr_html = (
         '<img src="cid:qrcode" width="136" height="136" style="width: 136px; height: 136px; display: block; margin: 0 auto; border-radius: 8px; object-fit: contain;" alt="Digital QR Pass"/>'
@@ -522,16 +550,111 @@ def get_booking_email_template(
         '<div style="width: 136px; height: 136px; margin: 0 auto; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; display: table-cell; vertical-align: middle; text-align: center; color: #94a3b8; font-size: 11px; font-weight: 700;">QR Pass Issued</div>'
     )
 
-    food_clean = (food_preference or "").strip()
+    # Food & Catering Parsing
     food_html = ""
-    if food_clean and food_clean.lower() != "none":
-        food_icon = "🥗" if "veg" in food_clean.lower() and "non" not in food_clean.lower() else "🍗"
-        food_html = f"""
-        <div style="margin-top: 10px;">
-          <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 3px;">MEAL PASS</div>
-          <span style="display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800;">
-            {food_icon} {food_clean} Included
-          </span>
+    food_details_raw = event.get('food_details')
+    parsed_foods = []
+    if food_details_raw:
+        if isinstance(food_details_raw, list):
+            parsed_foods = food_details_raw
+        elif isinstance(food_details_raw, str):
+            trimmed = food_details_raw.strip()
+            if trimmed.startswith("[") and trimmed.endswith("]"):
+                try:
+                    parsed_foods = json.loads(trimmed)
+                except Exception:
+                    pass
+
+    if parsed_foods and isinstance(parsed_foods, list):
+        food_items_html = ""
+        for fi in parsed_foods:
+            if isinstance(fi, dict):
+                m_type = fi.get('meal_type', 'Meal')
+                f_type = fi.get('food_type', 'Veg')
+                c_name = fi.get('caterer_name', 'Catering')
+                p_inr = float(fi.get('price_inr', 0) or 0)
+                p_tag = f" (+₹{p_inr:,.0f})" if p_inr > 0 else " (Included)"
+                icon = "🥗" if "veg" in str(f_type).lower() and "non" not in str(f_type).lower() else "🍗"
+                food_items_html += f"""
+                <span style="display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; margin: 2px 4px 2px 0;">
+                    {icon} {m_type}: {c_name} ({f_type}){p_tag}
+                </span>
+                """
+        if food_items_html:
+            food_html = f"""
+            <div style="margin-bottom: 12px;">
+                <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 4px;">MEAL PASSES &amp; CATERING</div>
+                <div>{food_items_html}</div>
+            </div>
+            """
+    else:
+        food_clean = (food_preference or str(food_details_raw or "")).strip()
+        if food_clean and food_clean.lower() != "none":
+            food_icon = "🥗" if "veg" in food_clean.lower() and "non" not in food_clean.lower() else "🍗"
+            food_html = f"""
+            <div style="margin-bottom: 12px;">
+                <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 4px;">MEAL PREFERENCE</div>
+                <span style="display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800;">
+                    {food_icon} {food_clean} Included
+                </span>
+            </div>
+            """
+
+    # Vehicle Parking & Addons Parsing
+    vehicle_html = ""
+    vehicle_details_raw = event.get('vehicle_details')
+    vehicle_number = event.get('vehicle_number') or ""
+    parsed_vehicles = []
+    parsed_addons = []
+    if vehicle_details_raw:
+        if isinstance(vehicle_details_raw, dict):
+            parsed_vehicles = vehicle_details_raw.get('passes') or vehicle_details_raw.get('vehicles') or []
+            parsed_addons = vehicle_details_raw.get('addons') or []
+        elif isinstance(vehicle_details_raw, str):
+            trimmed = vehicle_details_raw.strip()
+            if trimmed.startswith("{") and trimmed.endswith("}"):
+                try:
+                    obj = json.loads(trimmed)
+                    parsed_vehicles = obj.get('passes') or obj.get('vehicles') or []
+                    parsed_addons = obj.get('addons') or []
+                except Exception:
+                    pass
+
+    vehicle_items_html = ""
+    for v in parsed_vehicles:
+        if isinstance(v, dict):
+            v_type = v.get('vehicle_type', 'Vehicle')
+            p_inr = float(v.get('price_inr', 0) or 0)
+            p_tag = f" (+₹{p_inr:,.0f})" if p_inr > 0 else " (Included)"
+            vehicle_items_html += f"""
+            <span style="display: inline-block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; margin: 2px 4px 2px 0;">
+                🚗 {v_type} Parking{p_tag}
+            </span>
+            """
+
+    for a in parsed_addons:
+        if isinstance(a, dict):
+            a_name = a.get('addon_name', 'Parking Addon')
+            p_inr = float(a.get('price', 0) or 0)
+            p_tag = f" (+₹{p_inr:,.0f})" if p_inr > 0 else ""
+            vehicle_items_html += f"""
+            <span style="display: inline-block; background: #faf5ff; color: #7e22ce; border: 1px solid #e9d5ff; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; margin: 2px 4px 2px 0;">
+                ✨ {a_name}{p_tag}
+            </span>
+            """
+
+    if vehicle_number:
+        vehicle_items_html += f"""
+        <span style="display: inline-block; background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 800; margin: 2px 4px 2px 0;">
+            🔢 Plate: {vehicle_number}
+        </span>
+        """
+
+    if vehicle_items_html:
+        vehicle_html = f"""
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 4px;">VEHICLE PARKING &amp; VALET</div>
+            <div>{vehicle_items_html}</div>
         </div>
         """
 
@@ -624,7 +747,7 @@ def get_booking_email_template(
     <div class="email-wrapper">
         <div class="email-container">
             
-            <!-- Website-Style Top Navigation Bar with Left-Aligned Brand Logo -->
+            <!-- Top Navigation Bar with Left-Aligned Brand Logo -->
             <div style="padding: 16px 24px; border-bottom: 1px solid #f1f5f9; background: #ffffff;">
                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
                     <tr>
@@ -640,9 +763,8 @@ def get_booking_email_template(
                 </table>
             </div>
 
-            <!-- Confirmation Hero Header (Starts with emerald checkmark, matching website step 3) -->
+            <!-- Confirmation Hero Header -->
             <div style="text-align: center; padding: 26px 24px 18px; background: #ffffff;">
-                <!-- Glowing Emerald Confirmation Checkmark -->
                 <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 12px;">
                     <tr>
                         <td style="width: 48px; height: 48px; background: #ecfdf5; border: 2px solid #a7f3d0; border-radius: 50%; text-align: center; vertical-align: middle; font-size: 24px; color: #059669; font-weight: 900; line-height: 48px;">
@@ -658,7 +780,7 @@ def get_booking_email_template(
                     PASS REF: #{booking_code} &bull; ISSUED {now.strftime('%d %b %Y, %I:%M %p')}
                 </p>
                 <p style="font-size: 13px; color: #64748b; margin: 0; font-weight: 500; line-height: 1.5;">
-                    Your digital QR entry pass and booking verification are ready below.
+                    Your digital turnstile QR entry pass and booking details are confirmed below.
                 </p>
             </div>
 
@@ -671,8 +793,8 @@ def get_booking_email_template(
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr>
                                 <td style="vertical-align: middle;">
-                                    <span style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: #ffffff; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 6px; display: inline-block;">
-                                        OFFICIAL ENTRY PASS
+                                    <span style="background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%); color: #ffffff; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 6px; display: inline-block;">
+                                        {pass_badge_label}
                                     </span>
                                 </td>
                                 <td style="text-align: right; vertical-align: middle;">
@@ -737,10 +859,19 @@ def get_booking_email_template(
 
                                     <div style="margin-bottom: 12px;">
                                         <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 2px;">
-                                            REGISTERED EMAIL
+                                            REGISTERED CONTACT
                                         </div>
                                         <div style="font-size: 13px; font-weight: 600; color: #475569; word-break: break-all;">
-                                            {email}
+                                            {email} {f"• {phone_display}" if phone_display else ""}
+                                        </div>
+                                    </div>
+
+                                    <div style="margin-bottom: 12px;">
+                                        <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 2px;">
+                                            RESERVED TICKETS &amp; SEATS
+                                        </div>
+                                        <div style="font-size: 13px; font-weight: 800; color: #0f172a;">
+                                            {pass_summary_text}
                                         </div>
                                     </div>
 
@@ -754,6 +885,8 @@ def get_booking_email_template(
                                     </div>
 
                                     {food_html}
+
+                                    {vehicle_html}
                                 </td>
                             </tr>
                         </table>
@@ -763,20 +896,21 @@ def get_booking_email_template(
                     <div style="background: #f8fafc; border-top: 1px dashed #e2e8f0; padding: 18px 24px;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                             <tr>
-                                <td style="padding-bottom: 6px; font-weight: 600; color: #64748b;">Pass Category</td>
-                                <td style="padding-bottom: 6px; font-weight: 800; color: #0f172a; text-align: right;">Single Entry Pass</td>
+                                <td style="padding-bottom: 6px; font-weight: 600; color: #64748b;">Pass Type</td>
+                                <td style="padding-bottom: 6px; font-weight: 800; color: #0f172a; text-align: right;">{pass_badge_label}</td>
                             </tr>
                             <tr>
-                                <td style="padding-bottom: 6px; font-weight: 600; color: #64748b;">Pass Fee</td>
-                                <td style="padding-bottom: 6px; font-weight: 800; color: #0f172a; text-align: right;">{price_display}</td>
+                                <td style="padding-bottom: 6px; font-weight: 600; color: #64748b;">Pass Subtotal</td>
+                                <td style="padding-bottom: 6px; font-weight: 800; color: #0f172a; text-align: right;">{"₹ " + f"{subtotal_amount:,.2f}" if subtotal_amount > 0 else "FREE PASS"}</td>
                             </tr>
+                            {"<tr><td style='padding-bottom: 6px; font-weight: 600; color: #64748b;'>Taxes &amp; GST</td><td style='padding-bottom: 6px; font-weight: 800; color: #0f172a; text-align: right;'>₹ " + f"{tax_amount:,.2f}" + "</td></tr>" if tax_amount > 0 else ""}
                             <tr>
                                 <td style="padding-bottom: 8px; font-weight: 600; color: #64748b;">Platform Convenience Fee</td>
                                 <td style="padding-bottom: 8px; font-weight: 800; color: #059669; text-align: right;">₹ 0 (Waived)</td>
                             </tr>
                             <tr style="border-top: 1px solid #e2e8f0;">
-                                <td style="padding-top: 10px; font-weight: 900; font-size: 14px; color: #0f172a;">TOTAL AMOUNT</td>
-                                <td style="padding-top: 10px; font-weight: 900; font-size: 16px; color: #ea580c; text-align: right;">{price_display}</td>
+                                <td style="padding-top: 10px; font-weight: 900; font-size: 14px; color: #0f172a;">TOTAL AMOUNT PAID</td>
+                                <td style="padding-top: 10px; font-weight: 900; font-size: 16px; color: #ea580c; text-align: right;">{total_display}</td>
                             </tr>
                         </table>
                     </div>
@@ -791,8 +925,8 @@ def get_booking_email_template(
                 </div>
 
                 <!-- Event Day Instructions -->
-                <div style="margin-top: 24px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 14px; padding: 16px; font-size: 12px; color: #0369a1; line-height: 1.6;">
-                    <div style="font-weight: 800; font-size: 13px; color: #0c4a6e; margin-bottom: 6px;">
+                <div style="margin-top: 24px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 14px; padding: 16px; font-size: 12px; color: #9a3412; line-height: 1.6;">
+                    <div style="font-weight: 800; font-size: 13px; color: #7c2d12; margin-bottom: 6px;">
                         🎟️ Important Gate Entry Instructions:
                     </div>
                     <ul style="margin: 0; padding-left: 18px;">

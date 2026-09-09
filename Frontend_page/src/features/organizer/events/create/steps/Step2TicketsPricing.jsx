@@ -275,16 +275,27 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                 <input
                   type="number"
                   min="2"
-                  max="50"
+                  max="100"
                   name="groupMemberLimit"
                   placeholder="e.g. 5 members"
-                  value={formData.booking?.groupMemberLimit || "5"}
-                  onChange={(e) => updateBooking("groupMemberLimit", e.target.value)}
+                  value={formData.booking?.groupMemberLimit !== undefined ? formData.booking?.groupMemberLimit : (formData.booking?.group_member_limit !== undefined ? formData.booking?.group_member_limit : "5")}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    updateBooking("groupMemberLimit", val);
+                    updateBooking("group_member_limit", val);
+                  }}
+                  onBlur={(e) => {
+                    const num = parseInt(e.target.value, 10);
+                    if (isNaN(num) || num < 2) {
+                      updateBooking("groupMemberLimit", "2");
+                      updateBooking("group_member_limit", 2);
+                    }
+                  }}
                   className="w-full h-9 bg-white border border-cyan-300 rounded-lg px-3 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
               <p className="text-[10px] text-cyan-800 font-medium leading-tight">
-                👥 <strong>Group Pass Rule:</strong> 1 purchase grants gate access for up to {formData.booking?.groupMemberLimit || 5} members under 1 master QR pass.
+                👥 <strong>Group Pass Rule:</strong> 1 purchase grants gate access for up to {formData.booking?.groupMemberLimit || formData.booking?.group_member_limit || 2} members under 1 master QR pass.
               </p>
             </div>
           )}
@@ -390,19 +401,36 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
               </div>
 
               <div>
-                <Select
-                  label="Max Passes Per Booking"
-                  name="maxPerUser"
-                  value={String(formData.booking?.maxPerUser || "5")}
-                  onValueChange={(val) => updateBooking("maxPerUser", val)}
-                  triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
-                >
-                  <SelectItem value="1">1 Pass per attendee</SelectItem>
-                  <SelectItem value="2">2 Passes per attendee</SelectItem>
-                  <SelectItem value="5">5 Passes per attendee</SelectItem>
-                  <SelectItem value="10">10 Passes per attendee</SelectItem>
-                  <SelectItem value="unlimited">Unlimited Passes</SelectItem>
-                </Select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">Max Passes Per Booking</label>
+                  <span className="text-[10px] font-bold text-slate-400">Order limit</span>
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  name="maxPass"
+                  placeholder="e.g. 5 passes"
+                  value={formData.booking?.maxPass !== undefined ? formData.booking?.maxPass : (formData.booking?.max_pass !== undefined ? formData.booking?.max_pass : (formData.booking?.maxPerUser || "5"))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    updateBooking("maxPass", val);
+                    updateBooking("max_pass", val);
+                    updateBooking("maxPerUser", val);
+                  }}
+                  onBlur={(e) => {
+                    const num = parseInt(e.target.value, 10);
+                    if (isNaN(num) || num < 1) {
+                      updateBooking("maxPass", "1");
+                      updateBooking("max_pass", 1);
+                      updateBooking("maxPerUser", "1");
+                    }
+                  }}
+                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500"
+                />
+                <p className="text-[10px] text-slate-500 font-medium mt-1">
+                  🎟️ <strong>Attendee Limit:</strong> Maximum number of passes a single attendee can reserve in one booking order.
+                </p>
               </div>
 
               <div>
@@ -464,6 +492,39 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                   onChange={(e) => updateBooking("totalCapacity", e.target.value)}
                   className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500"
                 />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">Max Passes Per Booking</label>
+                  <span className="text-[10px] font-bold text-slate-400">Order limit</span>
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  name="maxPass"
+                  placeholder="e.g. 5 passes"
+                  value={formData.booking?.maxPass !== undefined ? formData.booking?.maxPass : (formData.booking?.max_pass !== undefined ? formData.booking?.max_pass : (formData.booking?.maxPerUser || "5"))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    updateBooking("maxPass", val);
+                    updateBooking("max_pass", val);
+                    updateBooking("maxPerUser", val);
+                  }}
+                  onBlur={(e) => {
+                    const num = parseInt(e.target.value, 10);
+                    if (isNaN(num) || num < 1) {
+                      updateBooking("maxPass", "1");
+                      updateBooking("max_pass", 1);
+                      updateBooking("maxPerUser", "1");
+                    }
+                  }}
+                  className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500"
+                />
+                <p className="text-[10px] text-slate-500 font-medium mt-1">
+                  🎟️ <strong>Attendee Limit:</strong> Maximum number of passes a single attendee can purchase in one booking order.
+                </p>
               </div>
 
               {/* Price Type Tabs */}

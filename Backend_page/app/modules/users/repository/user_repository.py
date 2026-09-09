@@ -2,7 +2,7 @@ from typing import Optional
 from datetime import datetime
 from sqlalchemy import select
 from app.extensions.database import db
-from app.models.event import EventDetails
+from app.models.event import EventDetails, EventBookingDetails
 from app.models.booking import UserBookingDetails
 from app.models.user import User
 
@@ -33,6 +33,15 @@ class UserRepository:
             )).first()
 
     @staticmethod
+    def get_event_booking_details(event_id) -> Optional[EventBookingDetails]:
+        import uuid
+        try:
+            eid = uuid.UUID(str(event_id))
+        except Exception:
+            eid = event_id
+        return db.session.scalar(select(EventBookingDetails).where(EventBookingDetails.event_id == eid))
+
+    @staticmethod
     def generate_ticket_code(event_id) -> str:
         import uuid
         hex_token = uuid.uuid4().hex[:8].upper()
@@ -40,7 +49,39 @@ class UserRepository:
         return f"BME-{prefix}-{hex_token}"
 
     @staticmethod
-    def create_booking(event_id, name: str, email: str, phone: str, food_preference: str, qr_data: str = "PENDING", user_id = None) -> UserBookingDetails:
+    def get_event_total_booked_seats(event_id) -> int:
+        import uuid
+        from sqlalchemy import func
+        try:
+            eid = uuid.UUID(str(event_id))
+        except Exception:
+            eid = event_id
+        res = db.session.scalar(
+            select(func.coalesce(func.sum(func.coalesce(UserBookingDetails.group_size, UserBookingDetails.ticket_count, 1)), 0))
+            .where(UserBookingDetails.event_id == eid)
+        )
+        return int(res or 0)
+
+    @staticmethod
+    def create_booking(
+        event_id,
+        name: str,
+        email: str,
+        phone: str,
+        food_preference: str = "None",
+        qr_data: str = "PENDING",
+        user_id = None,
+        ticket_count: int = 1,
+        pass_type: str = "Single Pass",
+        group_size: int = 1,
+        food_details: Optional[str] = None,
+        vehicle_details: Optional[str] = None,
+        vehicle_number: Optional[str] = None,
+        subtotal_amount: float = 0.0,
+        tax_amount: float = 0.0,
+        amount_paid: float = 0.0,
+        currency_code: str = "INR"
+    ) -> UserBookingDetails:
         import uuid
         try:
             parsed_event_id = uuid.UUID(str(event_id))
@@ -64,7 +105,17 @@ class UserRepository:
             food_preference=food_preference,
             ticket_code=ticket_code,
             qr_data=qr_data,
-            is_scanned=False
+            is_scanned=False,
+            ticket_count=ticket_count or 1,
+            pass_type=pass_type or "Single Pass",
+            group_size=group_size or 1,
+            food_details=food_details,
+            vehicle_details=vehicle_details,
+            vehicle_number=vehicle_number,
+            subtotal_amount=subtotal_amount,
+            tax_amount=tax_amount,
+            amount_paid=amount_paid,
+            currency_code=currency_code or "INR"
         )
         db.session.add(booking)
         db.session.commit()
@@ -333,9 +384,17 @@ class UserRepository:
                 "is_checked_out": bool(booking.is_checked_out),
                 "checkin_at": booking.checkin_at.isoformat() if booking.checkin_at else None,
                 "checkout_at": booking.checkout_at.isoformat() if booking.checkout_at else None,
-                "total_checkins": booking.total_checkins or 0,
-                "total_checkouts": booking.total_checkouts or 0,
                 "created_at": str(booking.created_at or ""),
+                "ticket_count": booking.ticket_count or 1,
+                "pass_type": booking.pass_type or "Single Pass",
+                "group_size": booking.group_size or 1,
+                "food_details": booking.food_details,
+                "vehicle_details": booking.vehicle_details,
+                "vehicle_number": booking.vehicle_number,
+                "subtotal_amount": float(booking.subtotal_amount or 0),
+                "tax_amount": float(booking.tax_amount or 0),
+                "amount_paid": float(booking.amount_paid or 0),
+                "currency_code": booking.currency_code or "INR",
                 "qr_code": qr_base64,
                 "qr_data": qr_text
             })

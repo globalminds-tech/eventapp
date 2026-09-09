@@ -38,6 +38,16 @@ class UserBookingDetails(db.Model):
     # Multi-currency & payment snapshot
     currency_code: Mapped[Optional[str]] = mapped_column(String(3), default='INR')
     amount_paid: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    subtotal_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), default=0)
+    tax_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), default=0)
+
+    # Booking configuration & provisions snapshots
+    ticket_count: Mapped[Optional[int]] = mapped_column(Integer, default=1)
+    pass_type: Mapped[Optional[str]] = mapped_column(String(50), default='Single Pass')
+    group_size: Mapped[Optional[int]] = mapped_column(Integer, default=1)
+    food_details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    vehicle_details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    vehicle_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)

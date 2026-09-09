@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 export default function MyPassesPage() {
   const navigate = useNavigate();
@@ -205,10 +206,15 @@ export default function MyPassesPage() {
                       </div>
                     )}
 
-                    {/* Live Turnstile Status Badge */}
+                    {/* Live Turnstile Status Badge & Pass Type */}
                     <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
-                      <div className="flex items-center gap-2">
-                        {pass.is_checked_in ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {isEventConcluded(pass) ? (
+                          <Badge className="bg-slate-100 text-slate-600 border-slate-300 text-[10px] font-black gap-1">
+                            <Clock size={12} />
+                            <span>EVENT CONCLUDED</span>
+                          </Badge>
+                        ) : pass.is_checked_in ? (
                           <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[10px] font-black gap-1">
                             <CheckCircle2 size={12} />
                             <span>INSIDE VENUE</span>
@@ -219,9 +225,19 @@ export default function MyPassesPage() {
                             <span>CHECKED OUT</span>
                           </Badge>
                         ) : (
-                          <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 text-[10px] font-black gap-1">
+                          <Badge className="bg-orange-50 text-orange-800 border-orange-200 text-[10px] font-black gap-1">
                             <Sparkles size={12} />
                             <span>VALID ENTRY PASS</span>
+                          </Badge>
+                        )}
+
+                        {pass.pass_type === "Group Pass" ? (
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-black">
+                            Group of {pass.group_size || 2}
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] font-bold">
+                            Single Pass
                           </Badge>
                         )}
                       </div>
@@ -236,7 +252,7 @@ export default function MyPassesPage() {
                         <MapPin size={15} className="text-orange-500 shrink-0" />
                         <span className="line-clamp-1">{pass.venue || "Venue Details"}, {pass.address || ""}</span>
                       </div>
-                      <div className="flex items-center gap-4 text-slate-600">
+                      <div className="flex items-center justify-between gap-4 text-slate-600">
                         <span className="flex items-center gap-1.5">
                           <Calendar size={14} className="text-slate-400" />
                           <span>{pass.start_date || "Confirmed"}</span>
@@ -247,6 +263,9 @@ export default function MyPassesPage() {
                             <span>{pass.start_time}</span>
                           </span>
                         )}
+                        <span className="font-extrabold text-emerald-700">
+                          {Number(pass.amount_paid) > 0 ? `₹ ${Number(pass.amount_paid).toLocaleString('en-IN')}` : 'FREE PASS'}
+                        </span>
                       </div>
                     </div>
 
@@ -270,20 +289,32 @@ export default function MyPassesPage() {
                         </span>
                       </div>
 
-                      <div className="space-y-1.5 text-xs">
+                      <div className="space-y-1.5 text-xs flex-1">
                         <div>
                           <span className="text-[10px] font-extrabold text-slate-400 uppercase">Attendee Name</span>
                           <p className="font-extrabold text-slate-900">{pass.name}</p>
                         </div>
                         <div>
-                          <span className="text-[10px] font-extrabold text-slate-400 uppercase">Registered Email</span>
-                          <p className="text-slate-600 font-medium line-clamp-1">{pass.email}</p>
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase">Seats Reserved</span>
+                          <p className="font-bold text-slate-800">
+                            {pass.ticket_count || 1} Pass ({((pass.pass_type === 'Group Pass' ? (pass.group_size || 2) : 1) * (pass.ticket_count || 1))} Seats)
+                          </p>
                         </div>
-                        {pass.food_preference && pass.food_preference !== "None" && (
-                          <div>
-                            <span className="text-[10px] font-extrabold text-slate-400 uppercase">Meal Option</span>
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold px-2 py-0.5 ml-1">
-                              {pass.food_preference}
+
+                        {/* Meal Badges */}
+                        {pass.food_details && pass.food_details !== "None" && (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                              🍽️ Meal Included
+                            </Badge>
+                          </div>
+                        )}
+
+                        {/* Vehicle Badges */}
+                        {(pass.vehicle_details || pass.vehicle_number) && (
+                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                            <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-bold">
+                              🚗 Parking Pass {pass.vehicle_number ? `(${pass.vehicle_number})` : ''}
                             </Badge>
                           </div>
                         )}

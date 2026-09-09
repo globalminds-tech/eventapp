@@ -52,12 +52,47 @@ const AccordionSection = ({ icon: Icon, title, badge, children, defaultOpen = fa
 };
 
 const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors }) => {
+  const isFoodEnabled = Boolean(
+    formData.eventDetails?.food ||
+    (formData.foodProvision?.items && formData.foodProvision.items.length > 0) ||
+    (formData.foodProvision?.foodItems && formData.foodProvision.foodItems.length > 0)
+  );
+
+  const isVehicleEnabled = Boolean(
+    formData.eventDetails?.vehiclePass ||
+    formData.eventDetails?.vehicle_pass ||
+    (formData.vehicleProvision?.details && formData.vehicleProvision.details.length > 0) ||
+    (formData.vehicleProvision?.vehicles && formData.vehicleProvision.vehicles.length > 0)
+  );
+
   const handleToggle = (field) => {
+    let currentVal = false;
+    if (field === "vehiclePass") {
+      currentVal = Boolean(formData.eventDetails?.vehiclePass ?? formData.eventDetails?.vehicle_pass);
+    } else if (field === "food") {
+      currentVal = Boolean(formData.eventDetails?.food);
+    } else {
+      currentVal = Boolean(formData.eventDetails?.[field]);
+    }
+    const nextVal = !currentVal;
+    const updates = { [field]: nextVal };
+
+    if (field === "vehiclePass") {
+      updates.vehicle_pass = nextVal;
+      if (!nextVal) {
+        updates.vehicleNumber = false;
+        updates.vehicle_number = false;
+      }
+    }
+    if (field === "food") {
+      updates.food = nextVal;
+    }
+
     setFormData((prev) => ({
       ...prev,
       eventDetails: {
         ...prev.eventDetails,
-        [field]: !prev.eventDetails?.[field],
+        ...updates,
       },
     }));
   };
@@ -70,18 +105,36 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
 
     const updates = { [field]: value };
     // Cascading logic
-    if (field === "vehiclePass" && !checked) updates.vehicleNumber = false;
-    if (field === "isInternationalInclude" && !checked) {
-      updates.passport = false;
-      // Also reset booking international
-      setFormData((prev) => ({
-        ...prev,
-        eventDetails: { ...prev.eventDetails, ...updates },
-        booking: { ...(prev.booking || {}), priceType: "National" },
-      }));
-      return;
+    if (field === "vehiclePass") {
+      updates.vehicle_pass = checked;
+      if (!checked) {
+        updates.vehicleNumber = false;
+        updates.vehicle_number = false;
+      }
     }
-    if (field === "mail") updates.visitorMail = checked;
+    if (field === "isInternationalInclude") {
+      updates.is_international_include = checked;
+      if (!checked) {
+        updates.passport = false;
+        setFormData((prev) => ({
+          ...prev,
+          eventDetails: { ...prev.eventDetails, ...updates },
+          booking: { ...(prev.booking || {}), priceType: "National" },
+        }));
+        return;
+      }
+    }
+    if (field === "mail") {
+      updates.visitorMail = checked;
+      updates.visitor_mail = checked;
+    }
+    if (field === "visitorMail") updates.visitor_mail = checked;
+    if (field === "visitorPhoto") updates.visitor_photo = checked;
+    if (field === "visitorMobile") updates.visitor_mobile = checked;
+    if (field === "documentProof") updates.document_proof = checked;
+    if (field === "dayPass") updates.day_pass = checked;
+    if (field === "welcomeKit") updates.welcome_kit = checked;
+    if (field === "vehicleNumber") updates.vehicle_number = checked;
 
     setFormData((prev) => ({
       ...prev,
@@ -95,9 +148,10 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
     if (field === "visitorName") {
       checked = true;
     } else if (field === "includeProgram") {
-      checked = formData.eventDetails?.includeProgram === "Yes" || formData.eventDetails?.includeProgram === true;
+      checked = formData.eventDetails?.includeProgram === "Yes" || formData.eventDetails?.include_program === "Yes" || formData.eventDetails?.includeProgram === true || formData.eventDetails?.include_program === true;
     } else {
-      checked = Boolean(formData.eventDetails?.[field]);
+      const fieldSnake = field.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+      checked = Boolean(formData.eventDetails?.[field] ?? formData.eventDetails?.[fieldSnake]);
     }
 
     return (
@@ -161,19 +215,30 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
             <div className="flex flex-wrap gap-2">
               <ToggleChip label="Aadhar" field="aadhar" />
               <ToggleChip label="Vehicle Pass" field="vehiclePass" />
-              {formData.eventDetails?.isInternationalInclude && <ToggleChip label="Passport" field="passport" />}
-              {formData.eventDetails?.vehiclePass && <ToggleChip label="Vehicle Number" field="vehicleNumber" />}
+              {(formData.eventDetails?.isInternationalInclude || formData.eventDetails?.is_international_include) && (
+                <ToggleChip label="Passport" field="passport" />
+              )}
+              {(formData.eventDetails?.vehiclePass || formData.eventDetails?.vehicle_pass) && (
+                <ToggleChip label="Vehicle Number" field="vehicleNumber" />
+              )}
             </div>
           </div>
         </div>
       </AccordionSection>
 
       {/* ── Food Provision ── */}
-      <AccordionSection icon={Utensils} title="Food Provision"
-        badge={formData.eventDetails?.food ? "Enabled" : undefined} accentColor="amber" defaultOpen={false}>
+      <AccordionSection
+        icon={Utensils}
+        title="Food Provision"
+        badge={isFoodEnabled ? "Enabled" : undefined}
+        accentColor="amber"
+        defaultOpen={isFoodEnabled}
+      >
         <div className="space-y-3 pt-1">
           <label className="flex items-center gap-2.5 cursor-pointer group">
-            <input type="checkbox" checked={Boolean(formData.eventDetails?.food)}
+            <input
+              type="checkbox"
+              checked={Boolean(formData.eventDetails?.food)}
               onChange={() => handleToggle("food")}
               className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
             />
@@ -189,21 +254,21 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
       <AccordionSection
         icon={Car}
         title="Vehicle & Parking Pass Allotment"
-        badge={formData.eventDetails?.vehiclePass ? "Enabled" : undefined}
+        badge={isVehicleEnabled ? "Enabled" : undefined}
         accentColor="indigo"
-        defaultOpen={false}
+        defaultOpen={isVehicleEnabled}
       >
         <div className="space-y-3 pt-1">
           <label className="flex items-center gap-2.5 cursor-pointer group">
             <input
               type="checkbox"
-              checked={Boolean(formData.eventDetails?.vehiclePass)}
+              checked={Boolean(formData.eventDetails?.vehiclePass || formData.eventDetails?.vehicle_pass)}
               onChange={() => handleToggle("vehiclePass")}
               className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
             />
             <span className="text-xs font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">Enable Vehicle Parking Passes for this event</span>
           </label>
-          {Boolean(formData.eventDetails?.vehiclePass) && (
+          {Boolean(formData.eventDetails?.vehiclePass || formData.eventDetails?.vehicle_pass) && (
             <StepVehicleProvision formData={formData} setFormData={setFormData} />
           )}
         </div>

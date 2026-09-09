@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 export default function AllEvents() {
   const navigate = useNavigate();
@@ -54,7 +55,10 @@ export default function AllEvents() {
         return;
       }
 
-      const formatted = rawList.map((e, index) => {
+      // Hide concluded events whose date has passed from the user explore catalog
+      const activeList = rawList.filter((e) => !isEventConcluded(e));
+
+      const formatted = activeList.map((e, index) => {
         const isDonation = e.entry_type === "Donation" || String(e.pass_fee).toLowerCase() === "donation";
         const isFree = e.entry_type === "Free" || (!isDonation && (!e.pass_fee || Number(e.pass_fee) === 0));
         return {

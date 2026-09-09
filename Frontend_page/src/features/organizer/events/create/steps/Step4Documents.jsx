@@ -101,20 +101,21 @@ const Step4Documents = ({ formData, setFormData }) => {
   };
 
   return (
-    <div className="space-y-4 pt-1">
+    <div className="space-y-4 pt-1 relative z-20 overflow-visible">
       <p className="text-[11px] text-slate-500 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
         📌 <strong>Organizer Compliance Upload:</strong> Attach official permits, NOC clearances, and legal licenses required for hosting this event (e.g. Police Permission, Sound License, Safety Clearance, GST/PAN).
       </p>
 
       {/* Input Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 relative z-30 overflow-visible">
+        <div className="relative z-50">
           <Select
             label="Document / Permit Type"
             value={docType}
             onValueChange={(val) => { setDocType(val); setDocNumber(""); }}
             placeholder="Select Document / Permit"
             triggerClassName="bg-slate-50 border-slate-200 rounded-xl h-9 text-xs focus:ring-cyan-500"
+            contentClassName="z-[9999] shadow-2xl bg-white border border-slate-200"
           >
             <SelectItem value="Police Permission NOC">Police Permission NOC</SelectItem>
             <SelectItem value="Sound License">Sound & Loudspeaker License</SelectItem>

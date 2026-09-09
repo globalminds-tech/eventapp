@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 /* ── Searchable Dropdown ─────────────────────────────────────────── */
 const SearchableDropdown = ({ label, placeholder, value, options, displayKey, onSelect, onClear, error, disabled, emptyMessage }) => {
@@ -105,11 +106,13 @@ const Stall = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user);
 
+  const [eventData, setEventData] = useState(location.state?.event || null);
   const [eventName, setEventName] = useState("");
   const [eventStatus, setEventStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
+  const isConcluded = isEventConcluded(eventData || location.state?.event);
   const isSuspended = eventStatus.toUpperCase() === "SUSPENDED" || (location.state?.event?.status || "").toUpperCase() === "SUSPENDED";
 
   const initial = {
@@ -142,8 +145,10 @@ const Stall = () => {
     try {
       const r = await getEventById(id);
       if (r) {
-        setEventName(r.event_name || r.name || "");
-        setEventStatus(r.status || "");
+        const payload = r?.data || r;
+        setEventData(payload);
+        setEventName(payload.event_name || payload.name || "");
+        setEventStatus(payload.status || "");
       }
     } catch (e) {
       console.error(e);
@@ -174,6 +179,10 @@ const Stall = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isConcluded) {
+      setToast({ message: "This exhibition event has already concluded. Stall reservations are closed.", type: "error" });
+      return;
+    }
     if (isSuspended) {
       setToast({ message: "Stall reservations are currently paused for this event.", type: "error" });
       return;
@@ -232,8 +241,22 @@ const Stall = () => {
         </div>
       </div>
 
+      {/* ── Concluded Notice Banner ── */}
+      {isConcluded && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 text-amber-900 shrink-0 animate-fadeIn">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex-1 text-xs">
+            <span className="font-extrabold text-amber-950">Exhibition Event Concluded: </span>
+            <span className="text-amber-800 font-medium">The schedule for this exhibition has passed. Stall reservations and booth applications are permanently closed.</span>
+          </div>
+          <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-extrabold text-[10px] shrink-0">
+            Event Concluded
+          </Badge>
+        </div>
+      )}
+
       {/* ── Suspended Notice Banner ── */}
-      {isSuspended && (
+      {isSuspended && !isConcluded && (
         <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 text-amber-900 shrink-0 animate-fadeIn">
           <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
           <div className="flex-1 text-xs">
@@ -471,8 +494,16 @@ const Stall = () => {
                   <Button type="button" variant="outline" size="default" onClick={() => navigate(-1)} className="gap-1.5 flex-1">
                     <ArrowLeft className="w-3.5 h-3.5" /> Cancel
                   </Button>
-                  <Button type="submit" variant="gradient" size="default" disabled={loading || isSuspended} className="gap-1.5 flex-[2]">
-                    {loading ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</> : isSuspended ? <><AlertCircle className="w-3.5 h-3.5" /> Bookings Paused</> : <><Send className="w-3.5 h-3.5" /> Reserve Stall</>}
+                  <Button type="submit" variant="gradient" size="default" disabled={loading || isSuspended || isConcluded} className="gap-1.5 flex-[2]">
+                    {loading ? (
+                      <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
+                    ) : isConcluded ? (
+                      <><AlertCircle className="w-3.5 h-3.5" /> Event Concluded</>
+                    ) : isSuspended ? (
+                      <><AlertCircle className="w-3.5 h-3.5" /> Bookings Paused</>
+                    ) : (
+                      <><Send className="w-3.5 h-3.5" /> Reserve Stall</>
+                    )}
                   </Button>
                 </div>
                 <p className="text-[10px] text-slate-400 text-center">By submitting, you agree to our terms</p>
