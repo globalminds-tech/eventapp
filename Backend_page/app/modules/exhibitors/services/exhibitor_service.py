@@ -23,6 +23,10 @@ class ExhibitorService:
         if event_status not in ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"]:
             raise ApiError(f"This event is currently in '{event_status}' status and not open for stall reservations.", 400)
 
+        from app.modules.users.services.user_service import check_event_concluded
+        if check_event_concluded(event):
+            raise ApiError("This event has already concluded. Stall reservations are closed.", 400)
+
         if ExhibitorRepository.get_existing_booking(email, event_id):
             raise ApiError("You have already booked a stall for this event", 400)
 

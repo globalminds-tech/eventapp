@@ -17,6 +17,8 @@ const axiosClient = axios.create({
   timeout: 15000,
 });
 
+let lastSlowDispatchTime = 0;
+
 // Request Interceptor: Attach Bearer token & track request start for slow-network detection
 axiosClient.interceptors.request.use(
   (config) => {
@@ -31,15 +33,19 @@ axiosClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Set slow request timer (warn if an active request takes > 4000ms)
+    // Set slow request timer (only warn if an active request takes > 12000ms and throttled)
     if (typeof window !== "undefined") {
       const slowTimer = setTimeout(() => {
-        window.dispatchEvent(
-          new CustomEvent("network:slow-request", {
-            detail: { message: "Server request is taking longer than expected. Retrying in background..." },
-          })
-        );
-      }, 4000);
+        const now = Date.now();
+        if (now - lastSlowDispatchTime > 60000) {
+          lastSlowDispatchTime = now;
+          window.dispatchEvent(
+            new CustomEvent("network:slow-request", {
+              detail: { message: "Server connection is unusually slow. Still waiting for response..." },
+            })
+          );
+        }
+      }, 12000);
       config._slowTimer = slowTimer;
     }
 

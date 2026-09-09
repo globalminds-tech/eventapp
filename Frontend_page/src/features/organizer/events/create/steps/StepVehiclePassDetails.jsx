@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Trash2, Plus, AlertCircle, Car, Tag, X } from "lucide-react";
 
 const StepVehiclePassDetails = ({ formData, setFormData }) => {
-  const vehicleDetails = formData.vehicleProvision?.details || [];
-  const addOnDetails = formData.vehicleProvision?.addons || [];
+  const vehicleDetails = formData.vehicleProvision?.details || formData.vehicleProvision?.vehicles || [];
+  const addOnDetails = formData.vehicleProvision?.addons || formData.vehicleProvision?.vehicle_addons || [];
 
   // Add-On Details State
   const [isParent, setIsParent] = useState(false);
@@ -13,15 +13,20 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
   const [warning, setWarning] = useState({ show: false, message: "" });
 
   useEffect(() => {
-    if (!formData.vehicleProvision?.details || formData.vehicleProvision.details.length === 0) {
+    if (!formData.vehicleProvision?.details && !formData.vehicleProvision?.vehicles) {
       setFormData((prev) => ({
         ...prev,
         vehicleProvision: {
           ...(prev?.vehicleProvision || {}),
           details: [
-            { vehicleType: "Two Wheeler Pass", priceINR: "50" },
-            { vehicleType: "Four Wheeler Pass", priceINR: "150" },
-            { vehicleType: "Heavy Vehicle / Truck", priceINR: "300" },
+            { vehicleType: "Two Wheeler Pass", vehicle_type: "Two Wheeler Pass", priceINR: "50", price_inr: 50 },
+            { vehicleType: "Four Wheeler Pass", vehicle_type: "Four Wheeler Pass", priceINR: "150", price_inr: 150 },
+            { vehicleType: "Heavy Vehicle / Truck", vehicle_type: "Heavy Vehicle / Truck", priceINR: "300", price_inr: 300 },
+          ],
+          vehicles: [
+            { vehicleType: "Two Wheeler Pass", vehicle_type: "Two Wheeler Pass", priceINR: "50", price_inr: 50 },
+            { vehicleType: "Four Wheeler Pass", vehicle_type: "Four Wheeler Pass", priceINR: "150", price_inr: 150 },
+            { vehicleType: "Heavy Vehicle / Truck", vehicle_type: "Heavy Vehicle / Truck", priceINR: "300", price_inr: 300 },
           ],
         },
       }));
@@ -36,7 +41,9 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
   const addVehicleDetail = () => {
     const newItem = {
       vehicleType: "",
+      vehicle_type: "",
       priceINR: "0",
+      price_inr: 0,
     };
 
     setFormData({
@@ -44,10 +51,12 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
       eventDetails: {
         ...formData.eventDetails,
         vehiclePass: true,
+        vehicle_pass: true,
       },
       vehicleProvision: {
         ...formData.vehicleProvision,
         details: [...vehicleDetails, newItem],
+        vehicles: [...vehicleDetails, newItem],
       },
     });
   };
@@ -57,12 +66,15 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
     updated[index] = {
       ...updated[index],
       [field]: value,
+      ...(field === "vehicleType" ? { vehicle_type: value } : {}),
+      ...(field === "priceINR" ? { price_inr: value ? Number(value) : 0 } : {}),
     };
     setFormData({
       ...formData,
       vehicleProvision: {
         ...formData.vehicleProvision,
         details: updated,
+        vehicles: updated,
       },
     });
   };
@@ -73,8 +85,12 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
 
     const newItem = {
       isParent,
+      is_parent: isParent,
       addOnName,
+      addon_name: addOnName,
+      name: addOnName,
       price: addOnPrice,
+      price_inr: Number(addOnPrice) || 0,
     };
 
     setFormData({
@@ -82,6 +98,7 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
       vehicleProvision: {
         ...formData.vehicleProvision,
         addons: [...addOnDetails, newItem],
+        vehicle_addons: [...addOnDetails, newItem],
       },
     });
 
@@ -94,7 +111,11 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
     const updated = vehicleDetails.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      vehicleProvision: { ...formData.vehicleProvision, details: updated },
+      vehicleProvision: {
+        ...formData.vehicleProvision,
+        details: updated,
+        vehicles: updated,
+      },
     });
   };
 
@@ -102,7 +123,11 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
     const updated = addOnDetails.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      vehicleProvision: { ...formData.vehicleProvision, addons: updated },
+      vehicleProvision: {
+        ...formData.vehicleProvision,
+        addons: updated,
+        vehicle_addons: updated,
+      },
     });
   };
 
@@ -159,7 +184,7 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
                         <td className="p-2.5">
                           <input
                             placeholder="e.g. 2-Wheeler Parking Pass"
-                            value={item.vehicleType}
+                            value={item.vehicleType || item.vehicle_type || ""}
                             onChange={(e) => updateVehicleDetail(index, "vehicleType", e.target.value)}
                             className={inputClasses}
                           />
@@ -169,7 +194,7 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
                             <span className="absolute left-2.5 text-xs font-black text-slate-400">₹</span>
                             <input
                               placeholder="100"
-                              value={item.priceINR}
+                              value={item.priceINR !== undefined && item.priceINR !== "" ? String(item.priceINR) : (item.price_inr !== undefined ? String(item.price_inr) : "")}
                               onChange={(e) =>
                                 updateVehicleDetail(index, "priceINR", e.target.value.replace(/[^0-9.]/g, ""))
                               }
@@ -277,14 +302,14 @@ const StepVehiclePassDetails = ({ formData, setFormData }) => {
                         <td className="p-2 text-center">
                           <span
                             className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${
-                              item.isParent ? "bg-cyan-100 text-cyan-800" : "bg-slate-100 text-slate-500"
+                              (item.isParent || item.is_parent) ? "bg-cyan-100 text-cyan-800" : "bg-slate-100 text-slate-500"
                             }`}
                           >
-                            {item.isParent ? "Yes" : "No"}
+                            {(item.isParent || item.is_parent) ? "Yes" : "No"}
                           </span>
                         </td>
-                        <td className="p-2 text-xs font-semibold text-slate-800">{item.addOnName}</td>
-                        <td className="p-2 text-xs font-extrabold text-slate-900">₹{item.price}</td>
+                        <td className="p-2 text-xs font-semibold text-slate-800">{item.addOnName || item.addon_name || item.name || "Add-on"}</td>
+                        <td className="p-2 text-xs font-extrabold text-slate-900">₹{item.price !== undefined ? item.price : (item.price_inr !== undefined ? item.price_inr : 0)}</td>
                         <td className="p-2 text-right">
                           <button
                             type="button"

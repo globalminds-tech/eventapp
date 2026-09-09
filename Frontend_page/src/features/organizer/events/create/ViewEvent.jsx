@@ -23,11 +23,11 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
   const layout = formData?.layout || {};
   const stalls = layout?.stalls || layout?.stallList || formData?.stalls || [];
   const amenities = layout?.amenities || formData?.amenities || [];
-  const food = formData?.foodProvision || {};
-  const foodItems = food?.foodItems || food?.items || formData?.food || [];
-  const vehicle = formData?.vehicleProvision || {};
-  const vehicleDetails = vehicle?.vehicles || vehicle?.details || formData?.vehicles || [];
-  const vehicleAddons = vehicle?.addons || vehicle?.vehicle_addons || formData?.vehicle_addons || [];
+  const food = formData?.foodProvision || formData?.food_provision || {};
+  const foodItems = food?.food_items || food?.foodItems || food?.items || formData?.food_items || formData?.food || [];
+  const vehicle = formData?.vehicleProvision || formData?.vehicle_provision || {};
+  const vehicleDetails = vehicle?.vehicles || vehicle?.details || formData?.vehicles || formData?.vehicle_details || [];
+  const vehicleAddons = vehicle?.addons || vehicle?.vehicle_addons || formData?.vehicle_addons || formData?.addons || [];
   const documents = formData?.documents || {};
   const docList = documents?.additionalDocs || documents?.docs || documents?.existingFiles || formData?.files || [];
   const terms = formData?.termsDetails?.policies || formData?.termsDetails?.terms || formData?.terms || [];
@@ -45,20 +45,20 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
     { label: "Mail Notifications", active: details.mail, icon: "✉️" },
     { label: "WhatsApp Alerts", active: details.whatsapp, icon: "📱" },
     { label: "Print Pass", active: details.print, icon: "🖨️" },
-    { label: "Visitor Name Mandatory", active: details.visitorName ?? true, icon: "👤" },
-    { label: "Visitor Mail Mandatory", active: details.visitorMail, icon: "📧" },
-    { label: "Visitor Mobile Mandatory", active: details.visitorMobile, icon: "📞" },
-    { label: "Visitor Photo Mandatory", active: details.visitorPhoto, icon: "📷" },
-    { label: "Document Proof Required", active: details.documentProof, icon: "🪪" },
-    { label: "Day Pass Enabled", active: details.dayPass, icon: "🎫" },
-    { label: "International Attendees", active: details.isInternationalInclude, icon: "🌐" },
-    { label: "Program Schedule Included", active: details.includeProgram === "Yes" || details.includeProgram === true, icon: "📋" },
-    { label: "Welcome Kit Included", active: details.welcomeKit, icon: "🎁" },
+    { label: "Visitor Name Mandatory", active: details.visitorName ?? details.visitor_name ?? true, icon: "👤" },
+    { label: "Visitor Mail Mandatory", active: details.visitorMail ?? details.visitor_mail, icon: "📧" },
+    { label: "Visitor Mobile Mandatory", active: details.visitorMobile ?? details.visitor_mobile, icon: "📞" },
+    { label: "Visitor Photo Mandatory", active: details.visitorPhoto ?? details.visitor_photo, icon: "📷" },
+    { label: "Document Proof Required", active: details.documentProof ?? details.document_proof, icon: "🪪" },
+    { label: "Day Pass Enabled", active: details.dayPass ?? details.day_pass, icon: "🎫" },
+    { label: "International Attendees", active: details.isInternationalInclude ?? details.is_international_include, icon: "🌐" },
+    { label: "Program Schedule Included", active: details.includeProgram === "Yes" || details.include_program === "Yes" || details.includeProgram === true || details.include_program === true, icon: "📋" },
+    { label: "Welcome Kit Included", active: details.welcomeKit ?? details.welcome_kit, icon: "🎁" },
     { label: "Aadhar Required", active: details.aadhar, icon: "💳" },
     { label: "Passport Required", active: details.passport, icon: "🛂" },
-    { label: "Vehicle Parking Pass", active: details.vehiclePass, icon: "🚗" },
-    { label: "Vehicle Number Mandatory", active: details.vehicleNumber, icon: "🔢" },
-    { label: "Food Provisioning", active: details.food, icon: "🍱" },
+    { label: "Vehicle Parking Pass", active: details.vehiclePass ?? details.vehicle_pass ?? vehicleDetails.length > 0, icon: "🚗" },
+    { label: "Vehicle Number Mandatory", active: details.vehicleNumber ?? details.vehicle_number, icon: "🔢" },
+    { label: "Food Provisioning", active: details.food ?? (foodItems.length > 0), icon: "🍱" },
   ];
 
   const activeFeatures = features.filter((f) => Boolean(f.active));
@@ -253,6 +253,35 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
               </div>
             </div>
 
+            {/* Overall Space Capacity */}
+            {(() => {
+              const overallSpace = layout.overallSpaceSqFt || layout.overall_space_sqft || details.venue_total_area_sqft;
+              const allocatedSqFt = stalls.reduce((acc, s) => {
+                const sQty = parseInt(s.quantity || s.stallQty || s.qty || 1, 10) || 1;
+                const sParts = (s.size_range || s.sizeRange || "10/10").split("/");
+                const l = parseFloat(sParts[0]) || 10;
+                const w = parseFloat(sParts[1]) || 10;
+                const isInch = (s.stall_size || s.size || "").includes("Inches");
+                return acc + ((isInch ? (l * w) / 144 : l * w) * sQty);
+              }, 0);
+              return (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Overall Exhibition Venue Space</span>
+                    <span className="font-extrabold text-slate-900">
+                      {overallSpace ? `${Number(overallSpace).toLocaleString()} sq.ft` : "50,000 sq.ft (Default)"}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Allocated Stall Area</span>
+                    <span className="font-extrabold text-cyan-700">
+                      {allocatedSqFt.toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Stalls List */}
             {stalls.length > 0 && (
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
@@ -305,18 +334,43 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
                   <Utensils size={12} className="text-amber-500" /> Food Provision
                 </span>
                 {foodItems.length > 0 ? (
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {foodItems.map((fi, idx) => (
-                      <div key={idx} className="font-bold text-slate-800 text-[11px] bg-white p-2 rounded-lg border border-slate-200/80">
-                        <div>{fi.catererName || fi.caterer_name} ({fi.mealType || fi.meal_type} - {fi.foodType || fi.food_type})</div>
-                        <div className="text-[10px] text-emerald-700 font-extrabold">Price: ₹{fi.priceINR || fi.price_inr || 0}</div>
-                        {fi.menuDetails && <div className="text-[10px] text-slate-500 font-normal mt-0.5">{fi.menuDetails}</div>}
+                      <div key={idx} className="font-bold text-slate-800 text-[11px] bg-white p-2.5 rounded-lg border border-slate-200/80 space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-slate-900">{fi.catererName || fi.caterer_name || "Caterer"}</span>
+                          <span className="text-[10px] text-emerald-700 font-extrabold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            Price: ₹{fi.priceINR !== undefined && fi.priceINR !== "" ? fi.priceINR : (fi.price_inr !== undefined ? fi.price_inr : 0)}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-600 font-semibold flex items-center gap-1.5">
+                          <span>{fi.mealType || fi.meal_type || "Meal"}</span>
+                          <span>•</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                            (fi.foodType || fi.food_type) === 'Veg' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {fi.foodType || fi.food_type || "Veg"}
+                          </span>
+                        </div>
+                        {(fi.menuDetails || fi.menu_details) && (
+                          <div className="text-[10px] text-slate-500 font-normal pt-0.5">
+                            <span className="font-semibold text-slate-600">Menu: </span>
+                            {fi.menuDetails || fi.menu_details}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
-                ) : food.catererName ? (
-                  <div className="font-bold text-slate-800 text-[11px]">
-                    {food.catererName} ({food.mealType}) — ₹{food.priceINR || 0}
+                ) : (food.catererName || food.caterer_name) ? (
+                  <div className="font-bold text-slate-800 text-[11px] bg-white p-2 rounded-lg border border-slate-200/80">
+                    <div>{food.catererName || food.caterer_name} ({food.mealType || food.meal_type || "Meal"})</div>
+                    <div className="text-[10px] text-emerald-700 font-extrabold">Price: ₹{food.priceINR ?? food.price_inr ?? 0}</div>
+                    {(food.menuDetails || food.menu_details) && (
+                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">
+                        <span className="font-semibold text-slate-600">Menu: </span>
+                        {food.menuDetails || food.menu_details}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <span className="text-slate-400 italic">No food provision</span>
@@ -332,7 +386,7 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
                     {vehicleDetails.map((v, idx) => (
                       <div key={idx} className="font-bold text-slate-800 text-[11px] bg-white p-2 rounded-lg border border-slate-200/80 flex justify-between">
                         <span>{v.vehicleType || v.vehicle_type}</span>
-                        <span className="text-indigo-700 font-extrabold">₹{v.priceINR || v.price_inr || 0}</span>
+                        <span className="text-indigo-700 font-extrabold">₹{v.priceINR !== undefined && v.priceINR !== "" ? v.priceINR : (v.price_inr !== undefined ? v.price_inr : 0)}</span>
                       </div>
                     ))}
                   </div>
@@ -340,11 +394,19 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
                   <span className="text-slate-400 italic block">No vehicle passes</span>
                 )}
                 {vehicleAddons.length > 0 && (
-                  <div className="mt-1 pt-1 border-t border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Add-ons</span>
+                  <div className="mt-2 pt-2 border-t border-slate-200/80 space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Add-ons & Valet</span>
                     {vehicleAddons.map((ad, idx) => (
-                      <div key={idx} className="text-[11px] font-bold text-slate-700">
-                        {ad.addOnName || ad.name} (+₹{ad.price})
+                      <div key={idx} className="text-[11px] font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200/80 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span>{ad.addOnName || ad.addon_name || ad.name || "Add-on"}</span>
+                          {(ad.isParent || ad.is_parent) && (
+                            <span className="text-[9px] bg-cyan-50 text-cyan-700 px-1.5 py-0.2 rounded font-bold border border-cyan-200">
+                              Requires Ticket
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-cyan-700 font-extrabold">+₹{ad.price ?? ad.price_inr ?? ad.priceINR ?? 0}</span>
                       </div>
                     ))}
                   </div>
@@ -372,14 +434,14 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Entry Type</span>
-                <span className={`font-extrabold ${booking.chargeType === "Paid" ? "text-emerald-700" : "text-cyan-700"}`}>
-                  {booking.chargeType || "Free"}
+                <span className={`font-extrabold ${(booking.charge_type || booking.chargeType) === "Paid" ? "text-emerald-700" : "text-cyan-700"}`}>
+                  {booking.charge_type || booking.chargeType || "Free"}
                 </span>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Ticket Price</span>
                 <span className="font-extrabold text-slate-900">
-                  {booking.chargeType === "Paid" ? `₹${booking.priceINR || booking.price_inr || "0"}` : "Free Pass"}
+                  {(booking.charge_type || booking.chargeType) === "Paid" ? `₹${booking.price_inr || booking.priceINR || "0"}` : "Free Pass"}
                 </span>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
@@ -388,16 +450,21 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Max Per User</span>
-                <span className="font-extrabold text-slate-800">{booking.maxPass || booking.maxPerUser || "1"} Pass</span>
+                <span className="font-extrabold text-slate-800">{booking.max_pass || booking.maxPass || booking.maxPerUser || "1"} Pass</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className={`grid ${(booking.pass_type || booking.passType) === "Group Pass" ? "grid-cols-4" : "grid-cols-3"} gap-2 text-[11px]`}>
               <div className="bg-slate-50 p-2 rounded-lg text-center font-bold text-slate-700 border border-slate-100">
-                {booking.passType || "Single Pass"}
+                {booking.pass_type || booking.passType || "Single Pass"}
               </div>
+              {(booking.pass_type || booking.passType) === "Group Pass" && (
+                <div className="bg-cyan-50 p-2 rounded-lg text-center font-extrabold text-cyan-800 border border-cyan-100">
+                  👥 {booking.group_member_limit || booking.groupMemberLimit || 5} Members/Pass
+                </div>
+              )}
               <div className="bg-slate-50 p-2 rounded-lg text-center font-bold text-slate-700 border border-slate-100">
-                {booking.entryType || "Single Entry"}
+                {booking.entry_type || booking.entryType || "Single Entry"}
               </div>
               <div className="bg-slate-50 p-2 rounded-lg text-center font-bold text-slate-700 border border-slate-100">
                 {booking.currency ? `${booking.currency}` : "INR (₹)"}
@@ -418,26 +485,26 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
               </div>
             )}
 
-            {(booking.bookingStartDate || booking.bookingStartTime) && (
+            {(booking.booking_start_date || booking.bookingStartDate || booking.bookingStartTime) && (
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs flex justify-between items-center font-semibold text-slate-700">
                 <span>Booking Window:</span>
                 <span className="font-bold text-slate-900">
-                  {booking.bookingStartDate} {booking.bookingStartTime} → {booking.bookingEndDate} {booking.bookingEndTime}
+                  {booking.booking_start_date || booking.bookingStartDate} {booking.bookingStartTime || ""} → {booking.booking_end_date || booking.bookingEndDate} {booking.bookingEndTime || ""}
                 </span>
               </div>
             )}
           </div>
 
-          {/* CARD 4: Partners, Vendors & Guests */}
+          {/* CARD 4: Partners & Guests */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 bg-purple-50 rounded-lg text-purple-600">
                   <Users size={16} />
                 </div>
-                <h3 className="text-sm font-extrabold text-slate-900">Partners, Vendors & Guests</h3>
+                <h3 className="text-sm font-extrabold text-slate-900">Partners & Guests</h3>
               </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Step 4</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Step 5</span>
             </div>
 
             <div className="space-y-3 text-xs">
@@ -497,7 +564,7 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
             </div>
           </div>
 
-          {/* CARD 5: Attached Documents (NOW ON THE RIGHT SIDE FOR BALANCED EQUALIZATION) */}
+          {/* CARD 5: Attached Documents & Policies */}
           {docList.length > 0 && (
             <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -505,9 +572,9 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
                   <div className="p-1.5 bg-rose-50 rounded-lg text-rose-600">
                     <FileText size={16} />
                   </div>
-                  <h3 className="text-sm font-extrabold text-slate-900">Event Documents & Attachments ({docList.length})</h3>
+                  <h3 className="text-sm font-extrabold text-slate-900">Event Documents & Permits ({docList.length})</h3>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ATTACHMENTS</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Step 6: Documents</span>
               </div>
 
               <div className="grid grid-cols-1 gap-2.5">
@@ -548,7 +615,7 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
             </div>
           )}
 
-          {/* CARD 6: Terms & Policies (NOW ON THE RIGHT SIDE FOR BALANCED EQUALIZATION) */}
+          {/* CARD 6: Terms & Policies */}
           {terms.length > 0 && (
             <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -558,7 +625,7 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
                   </div>
                   <h3 className="text-sm font-extrabold text-slate-900">Event Terms & Policies ({terms.length})</h3>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">POLICIES</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Step 6: Policies</span>
               </div>
 
               <div className="grid grid-cols-1 gap-2.5 text-xs">

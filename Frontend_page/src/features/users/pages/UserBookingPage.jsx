@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
-  MapPin, CheckCircle2, XCircle, Info, AlertTriangle,
+  MapPin, CheckCircle2, XCircle, Info, AlertTriangle, AlertCircle,
   Loader2, ChevronRight, ArrowLeft, ShieldCheck, CreditCard, UserCheck, QrCode,
-  Calendar, Printer, Ticket, Check
+  Calendar, Printer, Ticket, Check, Users, Utensils, Car, Plus, Minus,
+  FileText, ExternalLink, Sparkles, Clock
 } from "lucide-react";
 import {
   getEventById, bookEvent, createRazorpayOrder, getUserProfile,
@@ -14,6 +15,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/Input";
+import { Dialog, DialogHeader, DialogTitle, DialogContent } from "@/components/ui/Dialog";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 const Toast = ({ show, message, type, onClose }) => {
   if (!show) return null;
@@ -21,8 +24,8 @@ const Toast = ({ show, message, type, onClose }) => {
     success: { bg: "bg-emerald-50 text-emerald-800 border-emerald-200" },
     error: { bg: "bg-rose-50 text-rose-800 border-rose-200" },
     warning: { bg: "bg-amber-50 text-amber-800 border-amber-200" },
-    info: { bg: "bg-cyan-50 text-cyan-800 border-cyan-200" },
-  }[type] || { bg: "bg-cyan-50 text-cyan-800 border-cyan-200" };
+    info: { bg: "bg-orange-50 text-orange-800 border-orange-200" },
+  }[type] || { bg: "bg-orange-50 text-orange-800 border-orange-200" };
 
   const Icon = { success: CheckCircle2, error: XCircle, warning: AlertTriangle, info: Info }[type] || Info;
 
@@ -67,20 +70,29 @@ export function Userbooking() {
     phone: auth?.user?.mobile || storedUser?.mobile || storedUser?.phone || "",
     food_preference: "Veg"
   });
-  const [loading, setLoading]   = useState(false);
+
+  // Ticket & Provision State
+  const [quantity, setQuantity]           = useState(1);
+  const [groupSize, setGroupSize]         = useState(2);
+  const [selectedFoods, setSelectedFoods] = useState([]); // [{ caterer_name, meal_type, food_type, price_inr, count }]
+  const [selectedVehicles, setSelectedVehicles] = useState([]); // [{ vehicle_type, price_inr, count }]
+  const [selectedAddons, setSelectedAddons]     = useState([]); // [{ addon_name, price }]
+  const [vehicleNumber, setVehicleNumber]       = useState("");
+
+  const [loading, setLoading]         = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
-  const [step, setStep]         = useState(1);
-  const [agreed, setAgreed]     = useState(false);
+  const [step, setStep]               = useState(1);
+  const [agreed, setAgreed]           = useState(false);
+  const [policyModalOpen, setPolicyModalOpen] = useState(false);
   const [successData, setSuccessData] = useState(null);
-  const [toast, setToast]       = useState({ show: false, message: "", type: "info" });
-  const [redirectTimer, setRedirectTimer] = useState(8);
+  const [toast, setToast]             = useState({ show: false, message: "", type: "info" });
+  const [redirectTimer, setRedirectTimer] = useState(10);
+  const [userId, setUserId]           = useState(initialUserId);
 
   const showToast = (message, type = "info") => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: "", type: "info" }), 3500);
   };
-
-  const [userId, setUserId] = useState(initialUserId);
 
   // 1. Profile Pre-fill for Logged In User
   useEffect(() => {
@@ -110,6 +122,14 @@ export function Userbooking() {
       .then((res) => {
         const payload = res?.data || res;
         setEventData(payload);
+
+        // Pre-set default group size if Group Pass
+        const b = payload?.booking || {};
+        const pType = b?.pass_type || b?.passType || "";
+        const limit = Number(b?.group_member_limit || b?.groupMemberLimit || 5);
+        if (pType.toLowerCase().includes("group")) {
+          setGroupSize(Math.min(limit, 3));
+        }
       })
       .catch(console.error)
       .finally(() => setDataLoading(false));
@@ -132,39 +152,108 @@ export function Userbooking() {
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   // Safe DB Property Extraction
-  const ev = eventData?.eventDetails || eventData || {};
+  const ev = eventData?.eventDetails || eventData?.event_details || eventData || {};
   const booking = eventData?.booking || {};
+  const foodProvision = eventData?.food_provision || eventData?.foodProvision || {};
+  const vehicleProvision = eventData?.vehicle_provision || eventData?.vehicleProvision || {};
+  const availableFoods = foodProvision?.food_items || foodProvision?.foodItems || eventData?.food_items || [];
+  const availableVehicles = vehicleProvision?.vehicles || eventData?.vehicles || [];
+  const availableAddons = vehicleProvision?.addons || eventData?.addons || [];
+  const termsList = eventData?.terms || eventData?.terms_details?.policies || [];
+
   const eventStatus = (ev.status || eventData?.status || "Active").toUpperCase();
   const isSuspended = eventStatus === "SUSPENDED";
 
-  const rawPrice = 
-    booking?.priceINR ?? 
-    booking?.price_inr ?? 
-    booking?.price ?? 
-    ev?.pass_fee ?? 
-    ev?.price ?? 
-    ev?.price_inr ?? 
-    eventData?.pass_fee ?? 
-    eventData?.price ?? 
-    eventData?.price_inr ?? 
+  // Booking Window Check
+  const isConcluded = isEventConcluded(ev || eventData);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const bStartDate = booking?.booking_start_date || "";
+  const bEndDate = booking?.booking_end_date || "";
+  const isBookingNotStarted = Boolean(bStartDate && todayStr < bStartDate);
+  const isBookingEnded = Boolean(bEndDate && todayStr > bEndDate);
+  const isBookingClosed = isConcluded || isBookingNotStarted || isBookingEnded;
+
+  // Pass configuration
+  const rawPassType = booking?.pass_type || booking?.passType || "Single Pass";
+  const isGroupPass = rawPassType.toLowerCase().includes("group");
+  const groupMemberLimit = Math.max(2, Number(booking?.group_member_limit || booking?.groupMemberLimit || 5));
+  const maxPass = Math.max(1, Number(booking?.max_pass || booking?.maxPass || 4));
+  const totalCapacity = Number(booking?.capacity || 0);
+
+  // Pricing calculations
+  const rawPrice =
+    booking?.priceINR ??
+    booking?.price_inr ??
+    booking?.price ??
+    ev?.pass_fee ??
+    ev?.price ??
+    ev?.price_inr ??
+    eventData?.pass_fee ??
+    eventData?.price ??
+    eventData?.price_inr ??
     0;
 
-  const passFeeNum = Number(rawPrice);
-  const chargeType = String(
-    booking?.chargeType || 
-    booking?.charge_type || 
-    ev?.charge_type || 
-    ev?.chargeType || 
-    ev?.entry_type || 
-    ""
-  ).toLowerCase();
+  const unitPassPrice = Number(rawPrice) || 0;
+  const chargeType = String(booking?.charge_type || booking?.chargeType || ev?.charge_type || ev?.entry_type || "").toLowerCase();
+  const isBasePaid = (chargeType === "paid") || (unitPassPrice > 0);
 
-  const isPaidEvent = (chargeType === "paid") || (passFeeNum > 0);
-  const priceDisplay = isPaidEvent ? `₹ ${passFeeNum.toLocaleString('en-IN')}` : "FREE PASS";
+  // Subtotals
+  const passSubtotal = isBasePaid ? (unitPassPrice * quantity) : 0;
+  const foodSubtotal = selectedFoods.reduce((sum, item) => sum + (Number(item.price_inr || 0) * (item.count || 1)), 0);
+  const vehicleSubtotal = selectedVehicles.reduce((sum, item) => sum + (Number(item.price_inr || 0) * (item.count || 1)), 0) +
+    selectedAddons.reduce((sum, item) => sum + Number(item.price || 0), 0);
+
+  const netSubtotal = passSubtotal + foodSubtotal + vehicleSubtotal;
+
+  // Tax computation
+  const includeTax = Boolean(booking?.include_tax);
+  const taxAmount = includeTax ? Math.round(netSubtotal * 0.18) : 0;
+  const grandTotal = netSubtotal + taxAmount;
+  const isPaidEvent = grandTotal > 0;
+
+  const totalReservedSeats = isGroupPass ? (quantity * groupSize) : quantity;
+
   const bannerUrl = ev?.banner_url || ev?.banner || ev?.image || eventData?.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800";
   const eventName = ev?.event_name || ev?.eventName || "Event Pass";
   const eventVenue = ev?.venue || "Exhibition Venue";
   const eventDate = ev?.start_date || ev?.startDate || "Upcoming Date";
+  const eventTime = ev?.start_time || ev?.startTime || "";
+
+  // Food selection helper
+  const handleFoodToggle = (item) => {
+    setSelectedFoods((prev) => {
+      const idx = prev.findIndex((f) => f.meal_type === item.meal_type && f.caterer_name === item.caterer_name);
+      if (idx >= 0) {
+        return prev.filter((_, i) => i !== idx);
+      } else {
+        return [...prev, { ...item, count: quantity }];
+      }
+    });
+  };
+
+  // Vehicle selection helper
+  const handleVehicleToggle = (item) => {
+    setSelectedVehicles((prev) => {
+      const idx = prev.findIndex((v) => v.vehicle_type === item.vehicle_type);
+      if (idx >= 0) {
+        return prev.filter((_, i) => i !== idx);
+      } else {
+        return [...prev, { ...item, count: 1 }];
+      }
+    });
+  };
+
+  // Vehicle Add-on toggle
+  const handleAddonToggle = (item) => {
+    setSelectedAddons((prev) => {
+      const idx = prev.findIndex((a) => a.addon_name === item.addon_name);
+      if (idx >= 0) {
+        return prev.filter((_, i) => i !== idx);
+      } else {
+        return [...prev, item];
+      }
+    });
+  };
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -194,8 +283,27 @@ export function Userbooking() {
       return;
     }
 
+    if (isConcluded) {
+      showToast("This event has already concluded. Ticket bookings are closed.", "error");
+      return;
+    }
+
     if (!form.name.trim()) return showToast("Enter your full name", "warning");
     if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
+
+    // Require vehicle number if vehicle pass selected and organizer enabled vehicle_number
+    if (ev?.vehicle_number && (selectedVehicles.length > 0 || selectedAddons.length > 0) && !vehicleNumber.trim()) {
+      return showToast("Vehicle number / license plate is required for parking passes.", "warning");
+    }
+
+    // Build rich details JSON snapshots
+    const foodDetailsStr = selectedFoods.length > 0
+      ? JSON.stringify(selectedFoods)
+      : (ev?.food == 1 ? form.food_preference : null);
+
+    const vehicleDetailsStr = (selectedVehicles.length > 0 || selectedAddons.length > 0)
+      ? JSON.stringify({ passes: selectedVehicles, addons: selectedAddons })
+      : null;
 
     if (isPaidEvent) {
       try {
@@ -210,7 +318,7 @@ export function Userbooking() {
         let orderRes = null;
         try {
           orderRes = await createRazorpayOrder({
-            amount: passFeeNum,
+            amount: grandTotal,
             currency: "INR",
             receipt: `rcpt_${Date.now()}`
           });
@@ -222,22 +330,12 @@ export function Userbooking() {
         const razorpayOrder = razorpayData?.order || {};
         const keyId = razorpayData?.key_id || razorpayOrder?.key_id || "rzp_test_1DP5mmOlF5G5ag";
 
-        const effectiveUserId =
-          userId ||
-          auth?.user?.id ||
-          auth?.user?.user_id ||
-          storedUser?.id ||
-          storedUser?.user_id ||
-          localStorage.getItem("userId") ||
-          sessionStorage.getItem("userId") ||
-          null;
-
         const options = {
           key: keyId,
-          amount: passFeeNum * 100,
+          amount: grandTotal * 100,
           currency: "INR",
           name: "BookMyEvent",
-          description: `Entry Ticket: ${eventName}`,
+          description: `${isGroupPass ? 'Group Pass' : 'Entry Ticket'}: ${eventName}`,
           image: bannerUrl,
           order_id: razorpayOrder?.id,
           prefill: {
@@ -252,8 +350,20 @@ export function Userbooking() {
               const res = await bookEvent({
                 event_id: id,
                 user_id: effectiveUserId,
-                ...form,
-                food_preference: ev?.food == 1 ? form.food_preference : "None",
+                name: form.name,
+                email: form.email,
+                phone: form.phone,
+                food_preference: form.food_preference,
+                quantity: quantity,
+                pass_type: isGroupPass ? "Group Pass" : "Single Pass",
+                group_size: isGroupPass ? groupSize : 1,
+                food_details: foodDetailsStr,
+                vehicle_details: vehicleDetailsStr,
+                vehicle_number: vehicleNumber || null,
+                subtotal_amount: netSubtotal,
+                tax_amount: taxAmount,
+                amount_paid: grandTotal,
+                currency_code: "INR",
                 payment_id: response.razorpay_payment_id || `pay_rzp_${Date.now()}`,
                 razorpay_order_id: response.razorpay_order_id || "",
                 razorpay_signature: response.razorpay_signature || "",
@@ -261,8 +371,8 @@ export function Userbooking() {
               setSuccessData(res);
               setStep(3);
               showToast("✓ Payment & Pass Confirmed!", "success");
-            } catch {
-              showToast("Booking verification failed. Try again.", "error");
+            } catch (err) {
+              showToast(err?.response?.data?.detail || "Booking verification failed. Try again.", "error");
             } finally {
               setLoading(false);
             }
@@ -283,33 +393,35 @@ export function Userbooking() {
         razorpayInstance.open();
 
       } catch (err) {
-        showToast(`Razorpay launch error: ${err.message || "Failed to initialize payment"}`, "error");
+        showToast(`Payment error: ${err.message || "Failed to initialize payment"}`, "error");
         setLoading(false);
       }
     } else {
       try {
         setLoading(true);
-        const effectiveUserId =
-          userId ||
-          auth?.user?.id ||
-          auth?.user?.user_id ||
-          storedUser?.id ||
-          storedUser?.user_id ||
-          localStorage.getItem("userId") ||
-          sessionStorage.getItem("userId") ||
-          null;
-
         const res = await bookEvent({
           event_id: id,
           user_id: effectiveUserId,
-          ...form,
-          food_preference: ev?.food == 1 ? form.food_preference : "None",
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          food_preference: form.food_preference,
+          quantity: quantity,
+          pass_type: isGroupPass ? "Group Pass" : "Single Pass",
+          group_size: isGroupPass ? groupSize : 1,
+          food_details: foodDetailsStr,
+          vehicle_details: vehicleDetailsStr,
+          vehicle_number: vehicleNumber || null,
+          subtotal_amount: 0,
+          tax_amount: 0,
+          amount_paid: 0,
+          currency_code: "INR"
         });
         setSuccessData(res);
         setStep(3);
-        showToast("✓ Ticket Pass Confirmed!", "success");
-      } catch {
-        showToast("Booking failed. Try again.", "error");
+        showToast("✓ Free Pass Confirmed!", "success");
+      } catch (err) {
+        showToast(err?.response?.data?.detail || "Booking failed. Try again.", "error");
       } finally {
         setLoading(false);
       }
@@ -346,7 +458,7 @@ export function Userbooking() {
             </h1>
           </div>
 
-          <Badge className="bg-orange-50 text-orange-600 border-orange-200 font-extrabold text-xs px-3 py-1 truncate max-w-[200px] sm:max-w-none">
+          <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-xs px-3 py-1 truncate max-w-[200px] sm:max-w-none">
             {dataLoading ? <Skeleton className="h-4 w-28" /> : eventName}
           </Badge>
         </div>
@@ -361,6 +473,49 @@ export function Userbooking() {
               <h4 className="font-extrabold text-sm">Event Booking Temporarily Suspended</h4>
               <p className="text-xs text-amber-800 leading-relaxed font-medium">
                 This event has been temporarily paused by platform administration. Pass registration and ticket purchases are currently unavailable. Please check back later or contact the event host.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Date Window Alerts */}
+      {isConcluded && (
+        <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-5">
+          <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 shadow-sm">
+            <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-extrabold text-sm">This Event Has Concluded</h4>
+              <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                The scheduled date and time for this event have passed. Ticket sales and pass reservations are closed.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBookingNotStarted && (
+        <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-5">
+          <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-3 text-amber-900 shadow-sm">
+            <Clock size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-extrabold text-sm">Ticket Sales Have Not Started</h4>
+              <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                Pass booking for this event will open on <strong>{bStartDate}</strong>. Please check back then to reserve your seats.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isBookingEnded && (
+        <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 pt-5">
+          <div className="p-4 bg-rose-50 border border-rose-300 rounded-2xl flex items-start gap-3 text-rose-900 shadow-sm">
+            <AlertTriangle size={20} className="text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="font-extrabold text-sm">Ticket Booking Window Closed</h4>
+              <p className="text-xs text-rose-800 leading-relaxed font-medium">
+                Pass booking for this event concluded on <strong>{bEndDate}</strong>. Online registrations are no longer accepted.
               </p>
             </div>
           </div>
@@ -383,7 +538,7 @@ export function Userbooking() {
               }`}>
                 {step > 1 ? <Check size={16} /> : "1"}
               </div>
-              <span className="text-[11px] font-extrabold mt-1.5 uppercase text-orange-600">Visitor Details</span>
+              <span className="text-[11px] font-extrabold mt-1.5 uppercase text-orange-700">Pass &amp; Contact</span>
             </div>
 
             <div className="relative z-10 flex flex-col items-center">
@@ -392,7 +547,7 @@ export function Userbooking() {
               }`}>
                 2
               </div>
-              <span className={`text-[11px] font-extrabold mt-1.5 uppercase ${step === 2 ? "text-orange-600" : "text-slate-400"}`}>Review &amp; Pay</span>
+              <span className={`text-[11px] font-extrabold mt-1.5 uppercase ${step === 2 ? "text-orange-700" : "text-slate-400"}`}>Review &amp; Pay</span>
             </div>
           </div>
         </div>
@@ -401,34 +556,34 @@ export function Userbooking() {
       {/* STEP 3: SUCCESS TICKET PASS VIEW */}
       {step === 3 && successData && (
         <div className="max-w-2xl mx-auto w-full px-4 sm:px-6 pt-6 sm:pt-8 flex flex-col items-center">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 shadow-md">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3 shadow-md animate-bounce">
             <CheckCircle2 size={32} />
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 text-center">Ticket Pass Confirmed!</h2>
           <p className="text-xs sm:text-sm text-slate-500 font-semibold text-center mt-1 mb-6">
-            Your official entry ticket pass and digital QR code are confirmed and linked to your account.
+            Your official digital pass has been issued and linked to your account.
           </p>
 
           {/* Ticket Pass Card */}
           <Card className="w-full bg-white border-slate-200/90 shadow-xl rounded-3xl overflow-hidden mb-6">
             <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white p-6 space-y-2">
               <div className="flex justify-between items-center">
-                <Badge className="bg-orange-500 text-white font-extrabold text-[10px] border-none px-2.5 py-0.5">
-                  Official Entry Pass
+                <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-extrabold text-[10px] border-none px-2.5 py-0.5">
+                  {isGroupPass ? `Group Entry Pass (${groupSize} Members)` : 'Single Entry Pass'}
                 </Badge>
-                <span className="text-[11px] font-mono text-amber-300">
+                <span className="text-[11px] font-mono text-amber-300 font-bold">
                   REF: {successData.booking_id || successData.data?.booking_id || `BKG-${Date.now().toString().slice(-6)}`}
                 </span>
               </div>
               <h3 className="text-lg sm:text-xl font-black text-white">{successData.event_details?.name || eventName}</h3>
               <p className="text-xs text-slate-300 flex items-center gap-1.5">
-                <MapPin size={13} className="text-orange-400" />
+                <MapPin size={13} className="text-amber-400" />
                 <span>{successData.event_details?.venue || eventVenue}</span>
               </p>
             </div>
 
             <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-6">
-              <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm shrink-0 flex items-center justify-center">
+              <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm shrink-0 flex flex-col items-center justify-center">
                 {qrImageSrc ? (
                   <img
                     src={qrImageSrc}
@@ -441,36 +596,62 @@ export function Userbooking() {
                     <span className="text-[10px] font-bold">QR Pass Issued</span>
                   </div>
                 )}
+                <span className="text-[10px] font-mono text-slate-500 mt-2 font-bold">Scan at Entrance</span>
               </div>
 
-              <div className="space-y-3 text-xs text-slate-600 font-semibold text-center sm:text-left flex-1">
+              <div className="space-y-2.5 text-xs text-slate-600 font-semibold text-center sm:text-left flex-1">
                 <div>
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Attendee Name</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Primary Booker</span>
                   <p className="text-sm font-extrabold text-slate-900">{form.name}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Email Address</span>
-                  <p className="text-slate-700">{form.email}</p>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Contact &amp; Email</span>
+                  <p className="text-slate-700">{form.email} {form.phone && `• ${form.phone}`}</p>
                 </div>
-                {form.phone && (
+                <div className="flex gap-4">
                   <div>
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Contact Phone</span>
-                    <p className="text-slate-700">{form.phone}</p>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Pass Count</span>
+                    <p className="text-slate-900 font-extrabold">{quantity} Pass ({totalReservedSeats} Seats)</p>
                   </div>
-                )}
-                {ev?.food == 1 && (
                   <div>
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Meal Pass Preference</span>
-                    <p className="text-emerald-700 font-extrabold">{form.food_preference}</p>
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Amount</span>
+                    <p className="text-emerald-600 font-extrabold">{isPaidEvent ? `₹ ${grandTotal.toLocaleString('en-IN')}` : 'FREE PASS'}</p>
                   </div>
-                )}
+                </div>
+
+                {/* Provision Badges */}
+                <div className="pt-1 flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                  {selectedFoods.length > 0 ? (
+                    selectedFoods.map((f, i) => (
+                      <Badge key={i} className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                        🍽️ {f.meal_type} ({f.food_type})
+                      </Badge>
+                    ))
+                  ) : (ev?.food == 1 && (
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                      🍽️ Meal: {form.food_preference}
+                    </Badge>
+                  ))}
+
+                  {selectedVehicles.map((v, i) => (
+                    <Badge key={i} className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-bold">
+                      🚗 Parking: {v.vehicle_type} {vehicleNumber ? `(${vehicleNumber})` : ''}
+                    </Badge>
+                  ))}
+
+                  {selectedAddons.map((a, i) => (
+                    <Badge key={i} className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] font-bold">
+                      ✨ {a.addon_name}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </CardContent>
 
             <div className="bg-slate-50 border-t border-slate-100 p-4 px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
                 <ShieldCheck size={15} className="text-emerald-600" />
-                <span>Present this QR code at the entrance turnstile or scanner</span>
+                <span>Present this QR code at the turnstile or gate scanner</span>
               </div>
               <Button
                 variant="outline"
@@ -487,7 +668,7 @@ export function Userbooking() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
             <Button
               onClick={() => navigate("/my-passes")}
-              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md border-none cursor-pointer"
+              className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md border-none cursor-pointer"
             >
               View in My Passes ({redirectTimer}s)
             </Button>
@@ -534,16 +715,137 @@ export function Userbooking() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
             {/* LEFT COLUMN: FORM / REVIEW (2 COLS WIDE) */}
-            <div className="lg:col-span-2">
-              <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-6">
-                
-                {/* STEP 1: VISITOR DETAILS */}
-                {step === 1 && (
-                  <div className="space-y-6">
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* STEP 1: PASS SELECTION & CONTACT DETAILS */}
+              {step === 1 && (
+                <>
+                  {/* Pass Type & Quantity Card */}
+                  <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-6">
                     <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
                       <div>
-                        <h2 className="text-xl font-black text-slate-900">Guest Information</h2>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">Attendee contact details automatically linked to your account.</p>
+                        <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+                          <Ticket className="text-orange-600" size={20} />
+                          <span>Pass Selection &amp; Capacity</span>
+                        </h2>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Configure your event entry pass and attendee group size.
+                        </p>
+                      </div>
+
+                      {isGroupPass ? (
+                        <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-extrabold text-xs px-3 py-1 gap-1">
+                          <Users size={14} />
+                          <span>Group Pass</span>
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-xs px-3 py-1 gap-1">
+                          <Ticket size={14} />
+                          <span>Single Pass</span>
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Group Pass Notice & Stepper (Option 2 Implementation) */}
+                    {isGroupPass ? (
+                      <div className="p-4 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200 rounded-2xl space-y-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <h4 className="font-extrabold text-sm text-orange-950 flex items-center gap-1.5">
+                              <Users size={16} className="text-orange-600" />
+                              <span>Group Entry Configuration</span>
+                            </h4>
+                            <p className="text-xs text-orange-800 font-medium leading-relaxed">
+                              This event accepts Group Passes. Select how many attendees will be in your group (between 2 and {groupMemberLimit} members per pass).
+                            </p>
+                          </div>
+                          <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-extrabold text-xs shrink-0">
+                            Max {groupMemberLimit} / Pass
+                          </Badge>
+                        </div>
+
+                        {/* Attendees per group pass stepper */}
+                        <div className="flex items-center justify-between bg-white p-3.5 rounded-xl border border-orange-200 shadow-xs">
+                          <div>
+                            <span className="text-xs font-black text-slate-900 block">Attendees in Your Group</span>
+                            <span className="text-[11px] text-slate-500 font-medium">All members enter on this pass</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => setGroupSize((prev) => Math.max(2, prev - 1))}
+                              disabled={groupSize <= 2}
+                              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center text-slate-700 font-bold border-none cursor-pointer transition"
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="w-8 text-center font-black text-sm text-slate-900">{groupSize}</span>
+                            <button
+                              type="button"
+                              onClick={() => setGroupSize((prev) => Math.min(groupMemberLimit, prev + 1))}
+                              disabled={groupSize >= groupMemberLimit}
+                              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 flex items-center justify-center text-slate-700 font-bold border-none cursor-pointer transition"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Quantity Stepper */}
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
+                      <div>
+                        <span className="text-xs font-black text-slate-900 block">
+                          Number of {isGroupPass ? 'Group Passes' : 'Tickets'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          Limit up to {maxPass} pass{maxPass > 1 ? 'es' : ''} per order
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                          disabled={quantity <= 1}
+                          className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center text-slate-700 font-black border border-slate-200 cursor-pointer shadow-xs transition"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="w-8 text-center font-black text-base text-slate-900">{quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => setQuantity((prev) => Math.min(maxPass, prev + 1))}
+                          disabled={quantity >= maxPass}
+                          className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center text-slate-700 font-black border border-slate-200 cursor-pointer shadow-xs transition"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Seat Reservation summary & capacity display */}
+                    <div className="flex items-center justify-between px-3 text-xs font-semibold text-slate-600">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 size={15} className="text-emerald-600" />
+                        <span>Reserves <strong>{totalReservedSeats} Total Seat{totalReservedSeats > 1 ? 's' : ''}</strong></span>
+                      </span>
+                      {totalCapacity > 0 && (
+                        <span className="text-slate-500 font-medium">
+                          Venue Capacity: <strong className="text-slate-800">{totalCapacity}</strong>
+                        </span>
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* Primary Contact Details Card (Primary booker only) */}
+                  <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-6">
+                    <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-black text-slate-900">Primary Booker Contact</h2>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Digital pass and gate scan confirmation will be delivered to this contact.
+                        </p>
                       </div>
                       <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-xs px-3 py-1 gap-1">
                         <UserCheck size={14} />
@@ -582,11 +884,69 @@ export function Userbooking() {
                           if (val.length <= 10) setForm({ ...form, phone: val });
                         }}
                       />
+                    </div>
+                  </Card>
 
-                      {ev?.food == 1 && (
-                        <div className="space-y-1.5">
+                  {/* Optional Food Provisions Add-on (If enabled for event) */}
+                  {(ev?.food == 1 || availableFoods.length > 0) && (
+                    <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-5">
+                      <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
+                        <div className="space-y-0.5">
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                            <Utensils size={18} className="text-emerald-600" />
+                            <span>Event Catering &amp; Meal Vouchers</span>
+                          </h3>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Add refreshments or caterer meal passes to your entry ticket.
+                          </p>
+                        </div>
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-xs">
+                          Optional Add-on
+                        </Badge>
+                      </div>
+
+                      {availableFoods.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          {availableFoods.map((item, idx) => {
+                            const isSelected = selectedFoods.some((f) => f.meal_type === item.meal_type && f.caterer_name === item.caterer_name);
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => handleFoodToggle(item)}
+                                className={`p-4 rounded-2xl border cursor-pointer transition flex items-start justify-between gap-3 ${
+                                  isSelected
+                                    ? "bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-200 shadow-xs"
+                                    : "bg-slate-50 hover:bg-slate-100/80 border-slate-200/80"
+                                }`}
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <Badge className="bg-white text-emerald-800 border-emerald-200 text-[10px] font-extrabold">
+                                      {item.meal_type || 'Meal'}
+                                    </Badge>
+                                    <span className="text-[10px] font-bold text-slate-500">{item.food_type}</span>
+                                  </div>
+                                  <h4 className="text-xs font-black text-slate-900">{item.caterer_name || 'Caterer Meal'}</h4>
+                                  {item.menu_details && (
+                                    <p className="text-[11px] text-slate-500 line-clamp-1">{item.menu_details}</p>
+                                  )}
+                                  <p className="text-xs font-black text-emerald-700 pt-1">
+                                    {Number(item.price_inr) > 0 ? `+ ₹ ${Number(item.price_inr).toLocaleString('en-IN')}` : 'Complimentary'}
+                                  </p>
+                                </div>
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-1 transition ${
+                                  isSelected ? "bg-emerald-600 text-white" : "border border-slate-300 bg-white"
+                                }`}>
+                                  {isSelected && <Check size={12} />}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
                           <label className="text-xs font-semibold text-slate-700 tracking-tight block">
-                            Meal Preference
+                            Complimentary Meal Preference
                           </label>
                           <div className="flex gap-3">
                             {["Veg", "Non-Veg"].map((opt) => (
@@ -596,7 +956,7 @@ export function Userbooking() {
                                 onClick={() => setForm({ ...form, food_preference: opt })}
                                 className={`flex-1 py-3 rounded-xl font-extrabold text-xs border cursor-pointer transition ${
                                   form.food_preference === opt
-                                    ? "bg-orange-50 text-orange-700 border-orange-300 shadow-xs"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-300 shadow-xs"
                                     : "bg-slate-50 text-slate-600 border-slate-200"
                                 }`}
                               >
@@ -606,74 +966,203 @@ export function Userbooking() {
                           </div>
                         </div>
                       )}
-                    </div>
+                    </Card>
+                  )}
 
-                    <Button
-                      onClick={() => {
-                        if (isSuspended) return showToast("This event is currently suspended and cannot accept bookings", "error");
-                        if (!form.name.trim()) return showToast("Enter your full name", "warning");
-                        if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
-                        setStep(2);
-                      }}
-                      disabled={isSuspended}
-                      className={`w-full font-extrabold text-xs py-3.5 rounded-xl shadow-md border-none gap-1 mt-2 transition ${
-                        isSuspended
-                          ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                          : "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white cursor-pointer"
-                      }`}
-                    >
-                      <span>{isSuspended ? "Pass Registration Suspended" : "Continue to Review & Pay"}</span>
-                      {!isSuspended && <ChevronRight size={16} />}
-                    </Button>
-                  </div>
-                )}
+                  {/* Optional Vehicle Passes & Parking Add-on (If enabled for event) */}
+                  {(ev?.vehicle_pass == 1 || availableVehicles.length > 0) && (
+                    <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-5">
+                      <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
+                        <div className="space-y-0.5">
+                          <h3 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2">
+                            <Car size={18} className="text-blue-600" />
+                            <span>Vehicle Parking Passes &amp; Valet</span>
+                          </h3>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Reserved venue parking access linked to your entry QR code.
+                          </p>
+                        </div>
+                        <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-extrabold text-xs">
+                          Optional Add-on
+                        </Badge>
+                      </div>
 
-                {/* STEP 2: REVIEW SUMMARY */}
-                {step === 2 && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                      <div>
-                        <h2 className="text-xl font-black text-slate-900">Review Ticket Summary</h2>
-                        <p className="text-xs text-slate-500 font-medium mt-0.5">Confirm attendee details before issuing your entry pass.</p>
-                      </div>
-                      <button 
-                        onClick={() => setStep(1)} 
-                        className="text-xs font-extrabold text-orange-600 hover:underline bg-transparent border-none cursor-pointer"
-                      >
-                        Edit Details
-                      </button>
-                    </div>
-
-                    <div className="bg-slate-50/80 rounded-2xl p-5 space-y-3 border border-slate-200/80 text-xs font-semibold">
-                      <div className="flex justify-between py-1.5 border-b border-slate-200/60">
-                        <span className="text-slate-500">Visitor Full Name</span>
-                        <span className="font-extrabold text-slate-900">{form.name}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-slate-200/60">
-                        <span className="text-slate-500">Email Address</span>
-                        <span className="font-extrabold text-slate-900">{form.email}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-slate-200/60">
-                        <span className="text-slate-500">Phone Number</span>
-                        <span className="font-extrabold text-slate-900">{form.phone || '—'}</span>
-                      </div>
-                      {ev?.food == 1 && (
-                        <div className="flex justify-between py-1.5">
-                          <span className="text-slate-500">Catering Preference</span>
-                          <span className="font-extrabold text-emerald-700">{form.food_preference}</span>
+                      {availableVehicles.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                          {availableVehicles.map((item, idx) => {
+                            const isSelected = selectedVehicles.some((v) => v.vehicle_type === item.vehicle_type);
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => handleVehicleToggle(item)}
+                                className={`p-4 rounded-2xl border cursor-pointer transition flex items-start justify-between gap-3 ${
+                                  isSelected
+                                    ? "bg-blue-50/80 border-blue-300 ring-2 ring-blue-200 shadow-xs"
+                                    : "bg-slate-50 hover:bg-slate-100/80 border-slate-200/80"
+                                }`}
+                              >
+                                <div className="space-y-1">
+                                  <Badge className="bg-white text-blue-800 border-blue-200 text-[10px] font-extrabold">
+                                    {item.vehicle_type}
+                                  </Badge>
+                                  <h4 className="text-xs font-black text-slate-900">Reserved Parking Pass</h4>
+                                  <p className="text-xs font-black text-blue-700 pt-1">
+                                    {Number(item.price_inr) > 0 ? `+ ₹ ${Number(item.price_inr).toLocaleString('en-IN')}` : 'Free Parking'}
+                                  </p>
+                                </div>
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-1 transition ${
+                                  isSelected ? "bg-blue-600 text-white" : "border border-slate-300 bg-white"
+                                }`}>
+                                  {isSelected && <Check size={12} />}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
-                    </div>
-                  </div>
-                )}
 
-              </Card>
+                      {/* Vehicle Add-ons (Valet, etc.) */}
+                      {availableAddons.length > 0 && (
+                        <div className="space-y-2 pt-1">
+                          <label className="text-xs font-bold text-slate-700 block">Premium Parking Services</label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {availableAddons.map((item, idx) => {
+                              const isSelected = selectedAddons.some((a) => a.addon_name === item.addon_name);
+                              return (
+                                <div
+                                  key={idx}
+                                  onClick={() => handleAddonToggle(item)}
+                                  className={`p-3.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                                    isSelected
+                                      ? "bg-purple-50 border-purple-300 text-purple-900"
+                                      : "bg-slate-50 border-slate-200 text-slate-700"
+                                  }`}
+                                >
+                                  <span className="text-xs font-extrabold">{item.addon_name}</span>
+                                  <span className="text-xs font-black text-purple-700">
+                                    + ₹ {Number(item.price).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Vehicle License Plate (If parking selected or required) */}
+                      {(ev?.vehicle_number || selectedVehicles.length > 0 || selectedAddons.length > 0) && (
+                        <div className="pt-2">
+                          <Input
+                            label={`Vehicle License Plate Number ${ev?.vehicle_number ? '*' : '(Optional)'}`}
+                            placeholder="e.g. TN 09 AB 1234"
+                            value={vehicleNumber}
+                            onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                            required={Boolean(ev?.vehicle_number)}
+                          />
+                        </div>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Continue Button */}
+                  <Button
+                    onClick={() => {
+                      if (isSuspended) return showToast("This event is suspended and cannot accept bookings", "error");
+                      if (isBookingClosed) return showToast("Booking window is currently closed for this event", "error");
+                      if (!form.name.trim()) return showToast("Enter your full name", "warning");
+                      if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
+                      if (ev?.vehicle_number && (selectedVehicles.length > 0 || selectedAddons.length > 0) && !vehicleNumber.trim()) {
+                        return showToast("Please provide vehicle number for the parking pass", "warning");
+                      }
+                      setStep(2);
+                    }}
+                    disabled={isSuspended || isBookingClosed}
+                    className={`w-full font-extrabold text-xs py-4 rounded-2xl shadow-md border-none gap-2 cursor-pointer transition ${
+                      isSuspended || isBookingClosed
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white"
+                    }`}
+                  >
+                    <span>Continue to Order Review</span>
+                    <ChevronRight size={16} />
+                  </Button>
+                </>
+              )}
+
+              {/* STEP 2: REVIEW SUMMARY */}
+              {step === 2 && (
+                <Card className="bg-white border-slate-200/80 shadow-xs rounded-3xl p-6 md:p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                    <div>
+                      <h2 className="text-xl font-black text-slate-900">Review Booking Summary</h2>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
+                        Verify attendee contact details and selected add-ons before issuance.
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setStep(1)} 
+                      className="text-xs font-extrabold text-orange-600 hover:underline bg-transparent border-none cursor-pointer"
+                    >
+                      Edit Options
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-50/80 rounded-2xl p-5 space-y-3 border border-slate-200/80 text-xs font-semibold">
+                    <div className="flex justify-between py-1.5 border-b border-slate-200/60">
+                      <span className="text-slate-500">Full Name</span>
+                      <span className="font-extrabold text-slate-900">{form.name}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-200/60">
+                      <span className="text-slate-500">Email Address</span>
+                      <span className="font-extrabold text-slate-900">{form.email}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-200/60">
+                      <span className="text-slate-500">Contact Phone</span>
+                      <span className="font-extrabold text-slate-900">{form.phone || '—'}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-200/60">
+                      <span className="text-slate-500">Pass Type</span>
+                      <span className="font-extrabold text-orange-700">
+                        {isGroupPass ? `Group Pass (${groupSize} Members)` : 'Single Pass'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-slate-200/60">
+                      <span className="text-slate-500">Pass Quantity</span>
+                      <span className="font-extrabold text-slate-900">{quantity} Pass ({totalReservedSeats} Seats)</span>
+                    </div>
+
+                    {selectedFoods.length > 0 && (
+                      <div className="flex justify-between py-1.5 border-b border-slate-200/60">
+                        <span className="text-slate-500">Meal Provisions</span>
+                        <span className="font-extrabold text-emerald-700">
+                          {selectedFoods.map((f) => `${f.meal_type} (${f.food_type})`).join(", ")}
+                        </span>
+                      </div>
+                    )}
+
+                    {(selectedVehicles.length > 0 || selectedAddons.length > 0) && (
+                      <div className="flex justify-between py-1.5">
+                        <span className="text-slate-500">Vehicle Passes</span>
+                        <span className="font-extrabold text-blue-700">
+                          {[
+                            ...selectedVehicles.map((v) => v.vehicle_type),
+                            ...selectedAddons.map((a) => a.addon_name)
+                          ].join(", ")}
+                          {vehicleNumber ? ` [${vehicleNumber}]` : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
             </div>
 
-            {/* RIGHT COLUMN: ORDER & PASS SUMMARY */}
+            {/* RIGHT COLUMN: ORDER & PASS SUMMARY (STICKY) */}
             <div className="sticky top-20 space-y-6">
               <Card className="bg-white border border-slate-200/90 shadow-lg rounded-3xl p-6 space-y-6">
                 
+                {/* Event Header Banner */}
                 <div className="flex gap-4 items-center border-b border-slate-100 pb-4">
                   {dataLoading ? (
                     <Skeleton className="w-16 h-16 rounded-2xl shrink-0" />
@@ -702,57 +1191,97 @@ export function Userbooking() {
                   </div>
                 </div>
 
+                {/* Line Item Breakdown */}
                 <div className="space-y-3 text-xs">
                   <div className="flex justify-between items-center font-semibold">
                     <span className="text-slate-500">Pass Type</span>
-                    <span className="font-extrabold text-slate-900">{booking?.passType || booking?.pass_type || 'Single Entry Pass'}</span>
+                    <span className="font-extrabold text-slate-900">
+                      {isGroupPass ? `Group Pass (${groupSize} Pers.)` : 'Single Pass'}
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center font-semibold">
-                    <span className="text-slate-500">Base Registration Fee</span>
-                    <span className="font-extrabold text-slate-900">{priceDisplay}</span>
+                    <span className="text-slate-500">Pass Subtotal ({quantity}x)</span>
+                    <span className="font-extrabold text-slate-900">
+                      {passSubtotal > 0 ? `₹ ${passSubtotal.toLocaleString('en-IN')}` : 'FREE PASS'}
+                    </span>
                   </div>
+
+                  {foodSubtotal > 0 && (
+                    <div className="flex justify-between items-center font-semibold">
+                      <span className="text-slate-500">Catering Add-ons</span>
+                      <span className="font-extrabold text-emerald-700">₹ {foodSubtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+
+                  {vehicleSubtotal > 0 && (
+                    <div className="flex justify-between items-center font-semibold">
+                      <span className="text-slate-500">Parking &amp; Valet</span>
+                      <span className="font-extrabold text-blue-700">₹ {vehicleSubtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+
+                  {includeTax && (
+                    <div className="flex justify-between items-center font-semibold">
+                      <span className="text-slate-500">Taxes &amp; GST (18%)</span>
+                      <span className="font-extrabold text-slate-700">₹ {taxAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center font-semibold">
                     <span className="text-slate-500">Convenience &amp; Platform Fee</span>
                     <span className="font-extrabold text-emerald-600">₹ 0 (Waived)</span>
                   </div>
 
-                  <div className="p-4 bg-orange-50/80 border border-orange-200 rounded-2xl flex items-center justify-between mt-2">
-                    <span className="text-xs font-extrabold text-orange-900 uppercase">Total Payable</span>
+                  <div className="p-4 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200 rounded-2xl flex items-center justify-between mt-2">
+                    <span className="text-xs font-extrabold text-orange-950 uppercase">Total Payable</span>
                     {dataLoading ? (
                       <Skeleton className="h-7 w-24 rounded-lg" />
                     ) : (
-                      <span className="text-xl font-black text-orange-700">{priceDisplay}</span>
+                      <span className="text-xl font-black text-orange-700">
+                        {isPaidEvent ? `₹ ${grandTotal.toLocaleString('en-IN')}` : 'FREE PASS'}
+                      </span>
                     )}
                   </div>
                 </div>
 
+                {/* Terms Modal Trigger & Agreement */}
                 {step === 2 && (
                   <div className="space-y-4 pt-2">
+                    {termsList.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setPolicyModalOpen(true)}
+                        className="text-[11px] font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1.5 bg-transparent border-none cursor-pointer"
+                      >
+                        <FileText size={14} />
+                        <span>Read Event Policies &amp; Gate Guidelines ({termsList.length})</span>
+                      </button>
+                    )}
+
                     <label className="flex gap-2.5 items-start p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={agreed}
                         onChange={(e) => setAgreed(e.target.checked)}
-                        className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-0 mt-0.5"
+                        className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500 mt-0.5"
                       />
                       <span className="text-[11px] text-slate-600 font-medium">
-                        I agree to the event guidelines, gate security policies, and terms of service.
+                        I agree to the organizer guidelines, gate turnstile policies, and terms of service.
                       </span>
                     </label>
 
                     <Button
                       onClick={handleBook}
-                      disabled={loading || !agreed || dataLoading || isSuspended}
-                      className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs py-4 rounded-2xl shadow-md border-none cursor-pointer gap-2 disabled:opacity-50"
+                      disabled={loading || !agreed || dataLoading || isSuspended || isBookingClosed}
+                      className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white font-extrabold text-xs py-4 rounded-2xl shadow-md border-none cursor-pointer gap-2 disabled:opacity-50"
                     >
                       {loading ? (
                         <Loader2 size={16} className="animate-spin" />
                       ) : isPaidEvent ? (
                         <>
                           <CreditCard size={16} />
-                          <span>Confirm &amp; Pay Ticket</span>
+                          <span>Confirm &amp; Pay ₹ {grandTotal.toLocaleString('en-IN')}</span>
                         </>
                       ) : (
                         <>
@@ -767,7 +1296,7 @@ export function Userbooking() {
                 <div className="pt-1 text-center">
                   <span className="text-[11px] text-slate-400 font-semibold flex items-center justify-center gap-1">
                     <ShieldCheck size={14} className="text-emerald-600" />
-                    <span>Instant Digital QR Pass • Official Confirmation</span>
+                    <span>Instant Digital QR Pass • Turnstile Ready</span>
                   </span>
                 </div>
 
@@ -777,7 +1306,43 @@ export function Userbooking() {
           </div>
         </div>
       )}
+
+      {/* Event Policies & Terms Modal */}
+      <Dialog open={policyModalOpen} onClose={() => setPolicyModalOpen(false)} maxWidth="max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="text-orange-600" size={20} />
+            <span>Event Policies &amp; Entry Guidelines</span>
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContent className="space-y-4 max-h-[70vh] overflow-y-auto">
+          {termsList.length > 0 ? (
+            <div className="space-y-3">
+              {termsList.map((p, i) => (
+                <div key={i} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] font-bold">
+                      {p.policy_group || 'General Policy'}
+                    </Badge>
+                    <span className="text-[10px] font-bold text-slate-400">{p.policy_type}</span>
+                  </div>
+                  <h4 className="text-xs font-black text-slate-900">{p.policy_name}</h4>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500 font-medium">Standard event gate entry guidelines apply.</p>
+          )}
+          <Button
+            onClick={() => setPolicyModalOpen(false)}
+            className="w-full bg-slate-900 text-white font-bold text-xs py-2.5 rounded-xl border-none cursor-pointer"
+          >
+            I Understand
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 export default Userbooking;

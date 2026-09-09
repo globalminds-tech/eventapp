@@ -38,6 +38,7 @@ import { setUser } from "@/app/store/userSlice";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { categoryApi } from "@/features/catalog/api/category.api";
 import TextType from "@/components/ui/TextType";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 /* ─────────────── Brand Logo ─────────────── */
 const BrandLogo = ({ textColor = "#0f172a" }) => (
@@ -162,7 +163,9 @@ const getCityFromLocation = (loc) => {
 
 const formatEventsList = (list) => {
   if (!Array.isArray(list) || list.length === 0) return [];
-  return list.map((e, index) => {
+  // Hide concluded events whose date has passed from the user-side catalog
+  const activeList = list.filter((e) => !isEventConcluded(e));
+  return activeList.map((e, index) => {
     const passFee = e.pass_fee ?? e.price ?? e.price_inr ?? (e.booking?.priceINR || e.booking?.price_inr || 0);
     const chargeType = String(e.charge_type || e.booking?.chargeType || e.booking?.charge_type || "").toLowerCase();
     const isPaid = (chargeType === "paid") || (Number(passFee) > 0);

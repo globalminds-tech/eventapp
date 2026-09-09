@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import AuthBookingModal from "@/features/events/components/AuthBookingModal";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -175,7 +176,10 @@ export default function EventDetail() {
   const eventDate = ev?.start_date || ev?.startDate || payload?.start_date || "Upcoming Date";
   const eventTime = ev?.start_time || payload?.start_time;
 
+  const isConcluded = isEventConcluded(ev || payload);
+
   const handleProceedToBooking = () => {
+    if (isConcluded) return;
     if (!isAuthenticated) {
       setIsAuthModalOpen(true);
       return;
@@ -185,6 +189,7 @@ export default function EventDetail() {
 
   const handleLoginSuccess = () => {
     setIsAuthModalOpen(false);
+    if (isConcluded) return;
     navigate(`/usersbooking/${id}`);
   };
 
@@ -264,6 +269,22 @@ export default function EventDetail() {
 
       {/* ── MAIN CANVAS VIEWPORT ── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full pt-6 sm:pt-8">
+        {isConcluded && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/90 flex items-center justify-between gap-4 text-amber-900 shadow-xs animate-in fade-in duration-300">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 text-amber-700">
+                <AlertCircle size={22} />
+              </div>
+              <div>
+                <p className="font-extrabold text-sm leading-tight text-amber-950">This Event Has Concluded</p>
+                <p className="text-xs text-amber-800 font-medium mt-0.5">The event schedule has passed. Ticket bookings and pass reservations are closed.</p>
+              </div>
+            </div>
+            <Badge className="bg-amber-200/80 text-amber-900 border border-amber-300 font-black text-[11px] px-3 py-1 shrink-0 uppercase tracking-wider">
+              Archived
+            </Badge>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
 
           {/* ── LEFT MAIN SHOWCASE COLUMN (2 COLS) ── */}
@@ -549,15 +570,64 @@ export default function EventDetail() {
               <div className="space-y-2 border-b border-slate-100 pb-5">
                 <div className="flex justify-between items-center">
                   <span className="text-xs font-black uppercase text-slate-400 tracking-wider">Registration Pass</span>
-                  <Badge className={isPaid ? "bg-orange-50 text-orange-700 border-orange-200 font-extrabold" : "bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold"}>
-                    {isPaid ? "Paid Pass" : "Free Pass"}
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    {String(booking?.pass_type || booking?.passType || "").toLowerCase().includes("group") ? (
+                      <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-extrabold text-[10px]">
+                        Group Pass (2-{booking?.group_member_limit || booking?.groupMemberLimit || 5})
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-[10px]">
+                        Single Pass
+                      </Badge>
+                    )}
+                    <Badge className={isPaid ? "bg-orange-50 text-orange-700 border-orange-200 font-extrabold text-[10px]" : "bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-[10px]"}>
+                      {isPaid ? "Paid Pass" : "Free Pass"}
+                    </Badge>
+                  </div>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <h2 className="text-3xl font-black text-slate-900 tracking-tight">{priceDisplay}</h2>
-                  <span className="text-[11px] text-slate-400 font-semibold">/ attendee</span>
+                  <span className="text-[11px] text-slate-400 font-semibold">
+                    {String(booking?.pass_type || "").toLowerCase().includes("group") ? "/ group pass" : "/ attendee"}
+                  </span>
                 </div>
               </div>
+
+              {/* Booking Window & Capacity Badges */}
+              {(() => {
+                if (isConcluded) {
+                  return (
+                    <div className="p-3.5 bg-amber-50 border border-amber-200/90 rounded-2xl flex items-center gap-2.5 text-amber-900 text-xs font-bold shadow-xs">
+                      <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                      <span>Event Concluded • Ticket bookings are closed</span>
+                    </div>
+                  );
+                }
+
+                const today = new Date().toISOString().split("T")[0];
+                const bStart = booking?.booking_start_date;
+                const bEnd = booking?.booking_end_date;
+                const notStarted = bStart && today < bStart;
+                const ended = bEnd && today > bEnd;
+
+                if (notStarted) {
+                  return (
+                    <div className="p-3 bg-sky-50 border border-sky-200 rounded-2xl flex items-center gap-2 text-sky-800 text-xs font-bold">
+                      <Clock size={16} className="text-sky-600 shrink-0" />
+                      <span>Sales start on {bStart}</span>
+                    </div>
+                  );
+                }
+                if (ended) {
+                  return (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-2 text-rose-800 text-xs font-bold">
+                      <AlertCircle size={16} className="text-rose-600 shrink-0" />
+                      <span>Ticket booking closed</span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Event Location & Date Quick Info */}
               <div className="space-y-3 text-xs font-medium text-slate-600">
@@ -590,22 +660,56 @@ export default function EventDetail() {
                 </div>
                 <div className="flex items-center gap-2 text-slate-700">
                   <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                  <span>Instant email &amp; WhatsApp ticket delivery</span>
+                  <span>Turnstile scanner gate check-in</span>
                 </div>
-                <div className="flex items-center gap-2 text-slate-700">
-                  <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                  <span>100% verified gate scanner access</span>
-                </div>
+                {ev?.food == 1 && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>Food catering &amp; meal vouchers available</span>
+                  </div>
+                )}
+                {ev?.vehicle_pass == 1 && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>Reserved vehicle parking passes</span>
+                  </div>
+                )}
               </div>
 
               {/* CTA Action Button */}
-              <Button
-                onClick={handleProceedToBooking}
-                className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white font-extrabold text-sm py-4 rounded-2xl shadow-md border-none cursor-pointer flex items-center justify-center gap-2"
-              >
-                <span>{isPaid ? "Proceed to Book Ticket" : "Get Free Entry Pass"}</span>
-                <ArrowRight size={18} />
-              </Button>
+              {(() => {
+                const today = new Date().toISOString().split("T")[0];
+                const bStart = booking?.booking_start_date;
+                const bEnd = booking?.booking_end_date;
+                const notStarted = bStart && today < bStart;
+                const ended = bEnd && today > bEnd;
+                const isClosed = isConcluded || notStarted || ended;
+
+                return (
+                  <Button
+                    onClick={handleProceedToBooking}
+                    disabled={isClosed}
+                    className={`w-full font-extrabold text-sm py-4 rounded-2xl shadow-md border-none flex items-center justify-center gap-2 transition ${
+                      isClosed
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white cursor-pointer"
+                    }`}
+                  >
+                    <span>
+                      {isConcluded
+                        ? "Event Concluded"
+                        : notStarted
+                        ? `Booking Opens ${bStart}`
+                        : ended
+                        ? "Booking Closed"
+                        : isPaid
+                        ? "Proceed to Book Ticket"
+                        : "Get Free Entry Pass"}
+                    </span>
+                    {!isClosed && <ArrowRight size={18} />}
+                  </Button>
+                );
+              })()}
 
               <div className="pt-1 text-center">
                 <span className="text-[11px] text-slate-400 font-semibold flex items-center justify-center gap-1.5">
@@ -627,10 +731,15 @@ export default function EventDetail() {
         </div>
         <Button
           onClick={handleProceedToBooking}
-          className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-extrabold text-xs px-5 py-3 rounded-xl shadow-md border-none cursor-pointer flex items-center gap-1.5 shrink-0"
+          disabled={isConcluded}
+          className={`${
+            isConcluded
+              ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+              : "bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white cursor-pointer"
+          } font-extrabold text-xs px-5 py-3 rounded-xl shadow-md border-none flex items-center gap-1.5 shrink-0`}
         >
-          <span>{isPaid ? "Book Ticket" : "Get Pass"}</span>
-          <ArrowRight size={15} />
+          <span>{isConcluded ? "Event Concluded" : isPaid ? "Book Ticket" : "Get Pass"}</span>
+          {!isConcluded && <ArrowRight size={15} />}
         </Button>
       </div>
 

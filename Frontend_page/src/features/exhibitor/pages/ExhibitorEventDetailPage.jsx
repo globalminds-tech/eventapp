@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import apiClient from "@/shared/api/axiosClient";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 /* ── Helpers ────────────────────────────────────────────── */
 const fmt = (d) => {
@@ -67,6 +68,8 @@ const ExhibitorEventDetailPage = () => {
   };
 
   const handleReserveBooth = () => {
+    const ed = event?.eventDetails || {};
+    if (isEventConcluded(ed?.id ? ed : event)) return;
     navigate(`/book-stall/${id}`, { state: { event: { id, title: event?.event_name || event?.eventDetails?.event_name } } });
   };
 
@@ -118,6 +121,7 @@ const ExhibitorEventDetailPage = () => {
 
   const d = event;
   const ed = d?.eventDetails || {};
+  const isConcluded = isEventConcluded(ed?.id ? ed : d);
   const isSuspended = (ed?.status || d?.status || "").toUpperCase() === "SUSPENDED";
   const layout = d?.layout || {};
   const stalls = d?.stalls || layout?.stalls || [];
@@ -145,8 +149,28 @@ const ExhibitorEventDetailPage = () => {
         <span className="text-xs font-bold text-slate-700 truncate max-w-[260px]">{d?.event_name || ed?.event_name}</span>
       </div>
 
+      {/* ── Concluded Notice Banner ── */}
+      {isConcluded && (
+        <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3.5 text-amber-900 shadow-xs animate-fadeIn">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <div className="space-y-1 text-xs flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-extrabold text-amber-950 text-sm">Exhibition Event Has Concluded</span>
+              <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-extrabold text-[10px]">
+                Reservations Closed
+              </Badge>
+            </div>
+            <p className="text-amber-800 font-medium leading-relaxed text-xs">
+              The dates for this exhibition have passed. Stall reservations and booth applications are permanently closed.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Suspended Notice Banner ── */}
-      {isSuspended && (
+      {isSuspended && !isConcluded && (
         <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-4 flex items-start gap-3.5 text-amber-900 shadow-xs animate-fadeIn">
           <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
             <AlertCircle className="w-5 h-5" />
@@ -414,7 +438,15 @@ const ExhibitorEventDetailPage = () => {
             Secure your booth at <span className="text-emerald-600">{d?.event_name || ed?.event_name}</span>
           </p>
         </div>
-        {isSuspended ? (
+        {isConcluded ? (
+          <Button
+            disabled
+            className="bg-slate-200 text-slate-500 font-extrabold text-sm px-6 py-2.5 rounded-xl border-none cursor-not-allowed gap-2 shrink-0"
+          >
+            <Store className="w-4 h-4" />
+            Event Concluded
+          </Button>
+        ) : isSuspended ? (
           <Button
             disabled
             className="bg-slate-200 text-slate-500 font-extrabold text-sm px-6 py-2.5 rounded-xl border-none cursor-not-allowed gap-2 shrink-0"

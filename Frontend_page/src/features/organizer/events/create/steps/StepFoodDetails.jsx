@@ -5,6 +5,12 @@ import { Select, SelectItem } from "@/components/ui/Select";
 const Step7FoodProvision = ({ formData, setFormData }) => {
   const foodItems = (formData.foodProvision?.items && formData.foodProvision.items.length > 0)
     ? formData.foodProvision.items
+    : (formData.foodProvision?.foodItems && formData.foodProvision.foodItems.length > 0)
+    ? formData.foodProvision.foodItems
+    : (formData.foodProvision?.food_items && formData.foodProvision.food_items.length > 0)
+    ? formData.foodProvision.food_items
+    : (formData.food_items && formData.food_items.length > 0)
+    ? formData.food_items
     : (formData.foodProvision?.coupons || []);
 
   const [tempInput, setTempInput] = useState({
@@ -36,10 +42,15 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
 
     const newItem = {
       catererName: tempInput.catererName,
+      caterer_name: tempInput.catererName,
       mealType: tempInput.mealType,
+      meal_type: tempInput.mealType,
       foodType: tempInput.foodType,
+      food_type: tempInput.foodType,
       priceINR: tempInput.priceINR,
+      price_inr: Number(tempInput.priceINR) || 0,
       menuDetails: tempInput.menuDetails,
+      menu_details: tempInput.menuDetails,
     };
 
     const updatedItems = [...foodItems, newItem];
@@ -53,6 +64,8 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
       foodProvision: {
         ...formData.foodProvision,
         items: updatedItems,
+        foodItems: updatedItems,
+        food_items: updatedItems,
       },
     });
 
@@ -70,23 +83,51 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
     setEditModal({
       isOpen: true,
       index,
-      data: { ...item },
+      data: {
+        ...item,
+        catererName: item.catererName || item.caterer_name || "",
+        caterer_name: item.catererName || item.caterer_name || "",
+        mealType: item.mealType || item.meal_type || "Breakfast",
+        meal_type: item.mealType || item.meal_type || "Breakfast",
+        foodType: item.foodType || item.food_type || "Veg",
+        food_type: item.foodType || item.food_type || "Veg",
+        priceINR: item.priceINR !== undefined && item.priceINR !== "" ? String(item.priceINR) : (item.price_inr !== undefined ? String(item.price_inr) : ""),
+        price_inr: item.price_inr ?? Number(item.priceINR) ?? 0,
+        menuDetails: item.menuDetails || item.menu_details || "",
+        menu_details: item.menuDetails || item.menu_details || "",
+      },
     });
   };
 
   const handleUpdate = () => {
     const { data, index } = editModal;
-    if (!data.catererName?.trim()) return showModal("Caterer Name is required");
-    if (!data.priceINR || data.priceINR === "0") return showModal("Price in INR is required");
+    const catName = data.catererName || data.caterer_name || "";
+    const pInr = data.priceINR !== undefined && data.priceINR !== "" ? data.priceINR : data.price_inr;
+    if (!catName.trim()) return showModal("Caterer Name is required");
+    if (!pInr || pInr === "0") return showModal("Price in INR is required");
 
     const updatedItems = [...foodItems];
-    updatedItems[index] = data;
+    updatedItems[index] = {
+      ...data,
+      catererName: catName,
+      caterer_name: catName,
+      mealType: data.mealType || data.meal_type || "Breakfast",
+      meal_type: data.mealType || data.meal_type || "Breakfast",
+      foodType: data.foodType || data.food_type || "Veg",
+      food_type: data.foodType || data.food_type || "Veg",
+      priceINR: String(pInr),
+      price_inr: Number(pInr) || 0,
+      menuDetails: data.menuDetails || data.menu_details || "",
+      menu_details: data.menuDetails || data.menu_details || "",
+    };
 
     setFormData({
       ...formData,
       foodProvision: {
         ...formData.foodProvision,
         items: updatedItems,
+        foodItems: updatedItems,
+        food_items: updatedItems,
       },
     });
     setEditModal({ isOpen: false, index: null, data: {} });
@@ -103,6 +144,8 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
       foodProvision: {
         ...formData.foodProvision,
         items: updatedItems,
+        foodItems: updatedItems,
+        food_items: updatedItems,
       },
     });
     setDeleteModal({ isOpen: false, index: null });
@@ -247,14 +290,27 @@ const Step7FoodProvision = ({ formData, setFormData }) => {
                               <Trash2 size={16} />
                             </button>
                           </td>
-                          <td className={`${tableCellClasses} font-semibold text-purple-700`}>{item.catererName}</td>
-                          <td className={tableCellClasses}>
-                            <span className="font-bold block text-gray-800">{item.mealType}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.foodType === 'Veg' ? 'bg-green-100 text-green-700' : item.foodType === 'Non-Veg' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                              {item.foodType}
-                            </span>
+                          <td className={`${tableCellClasses} font-semibold text-purple-700`}>
+                            {item.catererName || item.caterer_name || "—"}
                           </td>
-                          <td className={`${tableCellClasses} font-bold`}>{item.priceINR}</td>
+                          <td className={tableCellClasses}>
+                            <span className="font-bold block text-gray-800">{item.mealType || item.meal_type || "Standard"}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              (item.foodType || item.food_type) === 'Veg' ? 'bg-green-100 text-green-700' :
+                              (item.foodType || item.food_type) === 'Non-Veg' ? 'bg-red-100 text-red-700' :
+                              'bg-orange-100 text-orange-700'
+                            }`}>
+                              {item.foodType || item.food_type || "Veg"}
+                            </span>
+                            {(item.menuDetails || item.menu_details) && (
+                              <span className="text-[10px] text-slate-500 font-normal block mt-0.5 truncate max-w-xs">
+                                {item.menuDetails || item.menu_details}
+                              </span>
+                            )}
+                          </td>
+                          <td className={`${tableCellClasses} font-bold`}>
+                            ₹{item.priceINR !== undefined && item.priceINR !== "" ? item.priceINR : (item.price_inr !== undefined ? item.price_inr : 0)}
+                          </td>
                         </tr>
                       ))
                     )}

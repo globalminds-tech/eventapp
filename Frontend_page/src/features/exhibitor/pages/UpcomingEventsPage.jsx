@@ -10,6 +10,7 @@ import { useSelector } from "react-redux";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 
 export const UpcomingEventsPage = () => {
   const [events, setEvents] = useState([]);
@@ -31,8 +32,9 @@ export const UpcomingEventsPage = () => {
     try {
       const data = await getHomeEventshow();
       const rawList = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.events) ? data.events : []));
+      const activeList = rawList.filter((e) => !isEventConcluded(e));
 
-      const formatted = rawList.map((e) => ({
+      const formatted = activeList.map((e) => ({
         id: e.id,
         title: e.event_name || e.name || "Exhibition Show",
         location: `${e.venue || 'Exhibition Center'}, ${e.address || e.city || 'Chennai'}`,

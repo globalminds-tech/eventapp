@@ -3,10 +3,15 @@ import uuid
 import base64
 import urllib.request
 import urllib.error
+from dotenv import load_dotenv
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://oebnblvwjvtsngubzcic.supabase.co").rstrip("/")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-BUCKET_NAME = os.getenv("STORAGE_BUCKET", "event-assets")
+load_dotenv()
+
+def get_supabase_config():
+    url = os.getenv("SUPABASE_URL", "https://oebnblvwjvtsngubzcic.supabase.co").rstrip("/")
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    bucket = os.getenv("STORAGE_BUCKET", "event-assets")
+    return url, key, bucket
 
 class StorageService:
     @staticmethod
@@ -16,22 +21,23 @@ class StorageService:
         Falls back to local /uploads/ static folder if Supabase upload fails.
         Returns the public CDN / asset URL.
         """
+        sb_url, sb_key, bucket_name = get_supabase_config()
         ext = os.path.splitext(filename)[1] or ".jpg"
         unique_path = f"{folder}/{uuid.uuid4().hex}{ext}"
 
-        if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+        if sb_url and sb_key:
             try:
-                url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET_NAME}/{unique_path}"
+                url = f"{sb_url}/storage/v1/object/{bucket_name}/{unique_path}"
                 headers = {
-                    "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-                    "apiKey": SUPABASE_SERVICE_ROLE_KEY,
+                    "Authorization": f"Bearer {sb_key}",
+                    "apiKey": sb_key,
                     "Content-Type": mime_type,
                     "x-upsert": "true"
                 }
                 req = urllib.request.Request(url=url, data=file_bytes, headers=headers, method="POST")
                 with urllib.request.urlopen(req) as resp:
                     if resp.status in (200, 201):
-                        public_url = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET_NAME}/{unique_path}"
+                        public_url = f"{sb_url}/storage/v1/object/public/{bucket_name}/{unique_path}"
                         print(f"[StorageService] Successfully uploaded to Supabase Storage: {public_url}")
                         return public_url
             except Exception as e:
