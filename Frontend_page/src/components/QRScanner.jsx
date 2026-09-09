@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Camera, QrCode, AlertCircle, RefreshCw, X, Keyboard, Flashlight, Volume2, VolumeX, SwitchCamera } from "lucide-react";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 const SCAN_COOLDOWN_MS = 2500;
 
@@ -170,13 +171,11 @@ export default function QRScanner({
     let activeControls = null;
 
     const startScanner = async () => {
+      if (cancelled) return;
       setIsStarting(true);
       setError(null);
 
       try {
-        const { BrowserMultiFormatReader } = await import("@zxing/browser");
-        if (cancelled) return;
-
         activeReader = new BrowserMultiFormatReader();
         activeReader.timeBetweenDecodingAttempts = 250;
 
@@ -195,7 +194,7 @@ export default function QRScanner({
           activeControls = await activeReader.decodeFromConstraints(
             constraints,
             videoRef.current,
-            (result) => {
+            (result, err) => {
               if (result && !cancelled) {
                 const code = result.getText();
                 const now = Date.now();
@@ -210,6 +209,10 @@ export default function QRScanner({
                   onScanRef.current(code);
                 }
               }
+              // Catching err suppresses the unhandled exception console logs from ZXing
+              if (err && !cancelled) {
+                 // ignore NotFoundExceptions internally
+              }
             }
           );
         } catch (firstErr) {
@@ -219,7 +222,7 @@ export default function QRScanner({
           activeControls = await activeReader.decodeFromConstraints(
             { video: true, audio: false },
             videoRef.current,
-            (result) => {
+            (result, err) => {
               if (result && !cancelled) {
                 const code = result.getText();
                 const now = Date.now();
@@ -273,9 +276,12 @@ export default function QRScanner({
       }
     };
 
-    startScanner();
+    const initTimer = setTimeout(() => {
+      startScanner();
+    }, 150);
 
     return () => {
+      clearTimeout(initTimer);
       cancelled = true;
       if (activeControls) {
         try { activeControls.stop(); } catch (e) {}

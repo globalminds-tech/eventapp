@@ -113,7 +113,7 @@ export default function FoodCheckIn() {
       setScanResultAlert({
         type: "success",
         status: "ACCESS_GRANTED",
-        message: `Meal Token Redeemed Successfully`,
+        message: data.message || `Meal Token Redeemed Successfully`,
         attendee: {
           name: attendeeName,
           ticket_code: cleanCode,
