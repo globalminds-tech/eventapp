@@ -143,7 +143,14 @@ class AdminRepository:
 
     @staticmethod
     def update_organizer_kyc_status(user_id, kyc_status: str):
-        user = db.session.get(User, user_id)
+        import uuid as uuid_pkg
+        uid = user_id
+        if isinstance(user_id, str):
+            try:
+                uid = uuid_pkg.UUID(user_id)
+            except Exception:
+                uid = user_id
+        user = db.session.get(User, uid)
         if user:
             user.kyc_status = kyc_status
             db.session.commit()

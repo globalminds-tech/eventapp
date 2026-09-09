@@ -60,8 +60,10 @@ const MASTER_NAVIGATION_ITEMS = {
     { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store, permission: "exhibitor.stalls.view" },
     { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
     { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users, permission: "exhibitor.leads.view" },
+    { label: "Billings & Invoices", path: "/exhibitor/billing", icon: Receipt, permission: "exhibitor.billing.view" },
     { label: "Team & Roles", path: "/exhibitor/team", icon: Shield, permission: "exhibitor.team.view" },
   ],
+
   organizer: [
     { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: "dashboard.view" },
     { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode, permission: ["checkin.scan", "checkin.view"] },
