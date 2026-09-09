@@ -58,8 +58,8 @@ class CheckinController:
         }
 
     @staticmethod
-    def redeem_food_token(code_or_id: str):
-        result = CheckinService.redeem_food_token(code_or_id)
+    def redeem_food_token(code_or_id: str, event_id: Optional[str] = None):
+        result = CheckinService.redeem_food_token(code_or_id, event_id=event_id)
         return {
             "success": True,
             "data": result
