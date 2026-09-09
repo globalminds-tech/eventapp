@@ -102,7 +102,7 @@ class CheckinService:
         return CheckinRepository.get_food_checkin_summary(organizer_id)
 
     @staticmethod
-    def redeem_food_token(code_or_id: str):
+    def redeem_food_token(code_or_id: str, event_id: Optional[str] = None):
         result = UserRepository.get_booking_with_event(code_or_id)
         if not result:
             raise ApiError("Invalid Food Pass: Ticket code not found in registry", 404)
@@ -113,8 +113,12 @@ class CheckinService:
             code_or_id,
             scanner_id="FOOD_STAFF",
             gate_name="FOOD_COUNTER",
-            override_duplicate=True
+            expected_event_id=event_id,
+            override_duplicate=False
         )
+        
+        if not success:
+            raise ApiError(message, 400)
 
         return {
             "success": True,

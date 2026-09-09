@@ -71,8 +71,9 @@ export const getFoodCheckinSummary = async () => {
   return res.data;
 };
 
-export const redeemFoodTokenApi = async (token) => {
-  const res = await apiClient.post("/api/v1/checkins/food/redeem", { token });
+export const redeemFoodTokenApi = async (payload) => {
+  const data = typeof payload === 'string' ? { token: payload } : payload;
+  const res = await apiClient.post("/api/v1/checkins/food/redeem", data);
   return res.data;
 };
 
