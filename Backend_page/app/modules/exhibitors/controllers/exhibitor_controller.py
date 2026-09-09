@@ -24,3 +24,19 @@ class ExhibitorController:
             "success": True,
             "data": booking
         }
+
+    @staticmethod
+    def add_visitor_lead(data: dict):
+        result = ExhibitorService.add_visitor_lead(data)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def get_visitor_leads(event_id: str, user_id: str):
+        leads = ExhibitorService.get_visitor_leads(event_id, user_id)
+        return {
+            "success": True,
+            "data": leads
+        }
