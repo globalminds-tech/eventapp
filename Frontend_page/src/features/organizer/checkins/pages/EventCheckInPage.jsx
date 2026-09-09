@@ -360,6 +360,118 @@ export default function EventCheckIn() {
     );
   }
 
+  const verificationCardJSX = verificationResult ? (
+    <div className="select-none flex flex-col h-full bg-white">
+      {/* Modal Header Banner */}
+      <div className={`p-6 text-white text-center space-y-1 relative shrink-0 ${
+        verificationResult.status === "ACCESS_GRANTED"
+          ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600"
+          : verificationResult.status === "ALREADY_CHECKED_IN"
+          ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600"
+          : verificationResult.status === "CHECKED_OUT"
+          ? "bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800"
+          : "bg-gradient-to-r from-rose-600 via-red-600 to-rose-600"
+      }`}>
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center mb-2 shadow-inner">
+          {verificationResult.status === "ACCESS_GRANTED" && <CheckCircle2 size={32} className="text-white" />}
+          {verificationResult.status === "ALREADY_CHECKED_IN" && <AlertTriangle size={32} className="text-white animate-bounce" />}
+          {verificationResult.status === "CHECKED_OUT" && <LogOutIcon size={32} className="text-white" />}
+          {(verificationResult.status === "WRONG_EVENT" || verificationResult.status === "ERROR" || !verificationResult.success) && (
+            <ShieldAlert size={32} className="text-white" />
+          )}
+        </div>
+
+        <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight">
+          {verificationResult.status === "ACCESS_GRANTED" && "ACCESS GRANTED"}
+          {verificationResult.status === "ALREADY_CHECKED_IN" && "ALREADY CHECKED IN (DUPLICATE)"}
+          {verificationResult.status === "CHECKED_OUT" && "CHECK-OUT RECORDED"}
+          {verificationResult.status === "WRONG_EVENT" && "WRONG EVENT PASS"}
+          {verificationResult.status === "ERROR" && "ACCESS DENIED"}
+        </h2>
+
+        <p className="text-xs font-semibold text-white/90 max-w-sm mx-auto">
+          {verificationResult.message}
+        </p>
+      </div>
+
+      {/* Attendee Details Card */}
+      <div className="p-6 bg-white space-y-4 flex-1 flex flex-col">
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3 flex-1">
+          <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+            <div>
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Attendee Name</span>
+              <h3 className="text-base font-black text-slate-900">{verificationResult.attendee?.name || "Unknown Attendee"}</h3>
+            </div>
+            <span className="font-mono text-xs font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-indigo-600">
+              {verificationResult.attendee?.ticket_code || "PASS"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+            <div>
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase block">Registered Contact</span>
+              <p className="text-slate-700 truncate">{verificationResult.attendee?.email || "N/A"}</p>
+              <p className="text-slate-500 text-[11px]">{verificationResult.attendee?.phone || ""}</p>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-extrabold text-slate-400 uppercase block">Meal Entitlement</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Utensils size={13} className="text-emerald-600" />
+                <span className="font-extrabold text-emerald-700">
+                  {verificationResult.attendee?.food_preference && verificationResult.attendee?.food_preference !== "None"
+                    ? `${verificationResult.attendee.food_preference} Included`
+                    : "No Meal Pass"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-200/60 mt-auto">
+            <span>Gate: {verificationResult.gateName}</span>
+            <span>Scanned: {verificationResult.timestamp}</span>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 shrink-0">
+          {verificationResult.status === "ALREADY_CHECKED_IN" && (
+            <Button
+              onClick={() => {
+                const code = verificationResult.attendee?.ticket_code || verificationResult.attendee?.id;
+                handleVerify(code, "CHECK_IN", true);
+              }}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl py-2.5 border-none cursor-pointer gap-2"
+            >
+              <RotateCcw size={14} />
+              <span>Allow Re-Entry (Override)</span>
+            </Button>
+          )}
+
+          {verificationResult.status === "ACCESS_GRANTED" && (
+            <Button
+              onClick={() => {
+                const code = verificationResult.attendee?.ticket_code || verificationResult.attendee?.id;
+                handleVerify(code, "CHECK_OUT");
+              }}
+              variant="outline"
+              className="w-full sm:w-auto border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 rounded-xl cursor-pointer"
+            >
+              Check Out Attendee
+            </Button>
+          )}
+
+          <Button
+            onClick={() => setVerificationResult(null)}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl py-2.5 border-none cursor-pointer ml-auto"
+          >
+            Done / Next Scan
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-6 pb-16 select-none font-sans">
       
@@ -406,101 +518,120 @@ export default function EventCheckIn() {
       </div>
 
       {/* ── TURNSTILE STATION CONTROL BAR ── */}
-      <Card className="border-slate-200/90 shadow-sm bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 text-white rounded-3xl overflow-hidden p-5 sm:p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl overflow-hidden p-5 sm:p-6 relative">
+        {/* Background glow effect */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
+        
+        <div className="relative flex flex-col xl:flex-row xl:items-end justify-between gap-6">
           
-          {/* Mode Switch & Gate Selector */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Turnstile Station Mode:</span>
-              <div className="bg-slate-800 p-1 rounded-xl flex items-center gap-1 border border-slate-700">
+          {/* Left Side: Settings */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 flex-1">
+            
+            {/* Mode Switch */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Operation Mode</span>
+              <div className="bg-slate-950/50 p-1 rounded-xl flex items-center gap-1 border border-slate-800 backdrop-blur-md">
                 <button
                   type="button"
                   onClick={() => setScanMode("CHECK_IN")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                     scanMode === "CHECK_IN"
-                      ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"
-                      : "text-slate-400 hover:text-white"
+                      ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-400/20"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent"
                   }`}
                 >
-                  <LogIn size={13} />
-                  <span>Entry Gate (Check-In)</span>
+                  <LogIn size={15} />
+                  <span>Entry Check-In</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setScanMode("CHECK_OUT")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
                     scanMode === "CHECK_OUT"
-                      ? "bg-slate-700 text-amber-300 shadow-md"
-                      : "text-slate-400 hover:text-white"
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400/20"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent"
                   }`}
                 >
-                  <LogOutIcon size={13} />
-                  <span>Exit Gate (Check-Out)</span>
+                  <LogOutIcon size={15} />
+                  <span>Exit Check-Out</span>
                 </button>
               </div>
             </div>
 
             {/* Gate Point Selector */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold text-slate-400">Gate Point:</span>
-              <select
-                value={gateName}
-                onChange={(e) => setGateName(e.target.value)}
-                className="bg-slate-800 border border-slate-700 text-white text-xs font-bold px-2.5 py-1 rounded-lg outline-none cursor-pointer"
-              >
-                {GATE_PRESETS.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="Or custom gate..."
-                value={customGate}
-                onChange={(e) => setCustomGate(e.target.value)}
-                className="bg-slate-800/80 border border-slate-700 text-white text-xs font-medium px-2.5 py-1 rounded-lg outline-none placeholder:text-slate-500 w-32 focus:w-44 transition-all"
-              />
+            <div className="space-y-2 flex-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Gate / Checkpoint Assignment</span>
+              <div className="flex flex-wrap sm:flex-nowrap items-stretch gap-2 h-10.5">
+                <div className="relative flex-1 min-w-[150px]">
+                  <DoorOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={gateName}
+                    onChange={(e) => setGateName(e.target.value)}
+                    className="w-full h-full bg-slate-950/50 border border-slate-800 text-white text-xs font-bold pl-9 pr-8 rounded-xl outline-none cursor-pointer appearance-none focus:border-cyan-500 transition-colors"
+                  >
+                    {GATE_PRESETS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative flex-1 min-w-[150px]">
+                  <Sparkles size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Custom gate name..."
+                    value={customGate}
+                    onChange={(e) => setCustomGate(e.target.value)}
+                    className="w-full h-full bg-slate-950/50 border border-slate-800 text-white text-xs font-medium pl-9 pr-3 rounded-xl outline-none placeholder:text-slate-600 focus:border-cyan-500 transition-colors"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Rapid Barcode Gun Input & Scanner Launcher */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* Right Side: Actions */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 flex-1 xl:max-w-md">
             {/* Barcode Gun / Manual Quick Input */}
-            <form onSubmit={handleRapidGunSubmit} className="relative flex-1 sm:w-80">
-              <input
-                type="text"
-                placeholder="Scan / Type Pass Code (Enter ↵)..."
-                value={rapidCodeInput}
-                onChange={(e) => setRapidCodeInput(e.target.value)}
-                className="w-full pl-3 pr-20 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs font-mono font-bold text-white outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-500 placeholder:font-sans"
-              />
-              <button
-                type="submit"
-                disabled={isVerifying || !rapidCodeInput.trim()}
-                className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs rounded-lg border-none cursor-pointer disabled:opacity-50 transition"
+            <div className="space-y-2 flex-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Quick Verification</span>
+              <form onSubmit={handleRapidGunSubmit} className="relative h-10.5">
+                <input
+                  type="text"
+                  placeholder="Scan pass code..."
+                  value={rapidCodeInput}
+                  onChange={(e) => setRapidCodeInput(e.target.value)}
+                  className="w-full h-full pl-4 pr-24 bg-slate-950/80 border border-slate-800 rounded-xl text-sm font-mono font-bold text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600 placeholder:font-sans transition-all"
+                />
+                <button
+                  type="submit"
+                  disabled={isVerifying || !rapidCodeInput.trim()}
+                  className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-white text-slate-900 hover:bg-slate-200 font-black text-xs rounded-lg border-none cursor-pointer disabled:opacity-50 transition-colors"
+                >
+                  Verify
+                </button>
+              </form>
+            </div>
+
+            <div className="flex items-center gap-2 h-10.5">
+              {/* Camera Scanner Button */}
+              <Button
+                onClick={() => setShowCameraScanner(true)}
+                className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs px-4 rounded-xl border-none cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 whitespace-nowrap transition-all"
               >
-                Verify
+                <QrCode size={16} />
+                <span className="hidden sm:inline">Camera</span>
+              </Button>
+
+              {/* Sound Toggle */}
+              <button
+                type="button"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                title={soundEnabled ? "Mute Turnstile Audio" : "Enable Turnstile Audio"}
+                className="h-full px-3.5 bg-slate-950/50 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800 cursor-pointer flex items-center justify-center"
+              >
+                {soundEnabled ? <Volume2 size={16} className="text-cyan-400" /> : <VolumeX size={16} className="text-slate-500" />}
               </button>
-            </form>
-
-            {/* Camera Scanner Button */}
-            <Button
-              onClick={() => setShowCameraScanner(true)}
-              className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:opacity-95 text-white font-black text-xs px-4 py-2.5 rounded-xl border-none cursor-pointer shadow-md shadow-cyan-500/25 flex items-center justify-center gap-2 h-10"
-            >
-              <QrCode size={16} />
-              <span>Launch Camera Scanner</span>
-            </Button>
-
-            {/* Sound Toggle */}
-            <button
-              type="button"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? "Mute Turnstile Audio" : "Enable Turnstile Audio"}
-              className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition border border-slate-700 cursor-pointer self-center"
-            >
-              {soundEnabled ? <Volume2 size={16} className="text-cyan-400" /> : <VolumeX size={16} className="text-slate-500" />}
-            </button>
+            </div>
           </div>
         </div>
       </Card>
@@ -612,138 +743,41 @@ export default function EventCheckIn() {
         </Card>
       )}
 
-      {/* ── HIGH-IMPACT VERIFICATION RESULT POPUP MODAL ── */}
+      {/* ── HIGH-IMPACT VERIFICATION RESULT POPUP MODAL (For manual / barcode gun entries) ── */}
       <Dialog
-        open={Boolean(verificationResult)}
+        open={Boolean(verificationResult) && !showCameraScanner}
         onClose={() => setVerificationResult(null)}
         maxWidth="max-w-lg"
         className="p-0 overflow-hidden rounded-3xl"
       >
-        {verificationResult && (
-          <div className="select-none">
-            {/* Modal Header Banner */}
-            <div className={`p-6 text-white text-center space-y-1 relative ${
-              verificationResult.status === "ACCESS_GRANTED"
-                ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600"
-                : verificationResult.status === "ALREADY_CHECKED_IN"
-                ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600"
-                : verificationResult.status === "CHECKED_OUT"
-                ? "bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800"
-                : "bg-gradient-to-r from-rose-600 via-red-600 to-rose-600"
-            }`}>
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center mb-2 shadow-inner">
-                {verificationResult.status === "ACCESS_GRANTED" && <CheckCircle2 size={32} className="text-white" />}
-                {verificationResult.status === "ALREADY_CHECKED_IN" && <AlertTriangle size={32} className="text-white animate-bounce" />}
-                {verificationResult.status === "CHECKED_OUT" && <LogOutIcon size={32} className="text-white" />}
-                {(verificationResult.status === "WRONG_EVENT" || verificationResult.status === "ERROR" || !verificationResult.success) && (
-                  <ShieldAlert size={32} className="text-white" />
-                )}
-              </div>
-
-              <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight">
-                {verificationResult.status === "ACCESS_GRANTED" && "ACCESS GRANTED"}
-                {verificationResult.status === "ALREADY_CHECKED_IN" && "ALREADY CHECKED IN (DUPLICATE)"}
-                {verificationResult.status === "CHECKED_OUT" && "CHECK-OUT RECORDED"}
-                {verificationResult.status === "WRONG_EVENT" && "WRONG EVENT PASS"}
-                {verificationResult.status === "ERROR" && "ACCESS DENIED"}
-              </h2>
-
-              <p className="text-xs font-semibold text-white/90 max-w-sm mx-auto">
-                {verificationResult.message}
-              </p>
-            </div>
-
-            {/* Attendee Details Card */}
-            <div className="p-6 bg-white space-y-4">
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
-                  <div>
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Attendee Name</span>
-                    <h3 className="text-base font-black text-slate-900">{verificationResult.attendee?.name || "Unknown Attendee"}</h3>
-                  </div>
-                  <span className="font-mono text-xs font-extrabold bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-indigo-600">
-                    {verificationResult.attendee?.ticket_code || "PASS"}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
-                  <div>
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase block">Registered Contact</span>
-                    <p className="text-slate-700 truncate">{verificationResult.attendee?.email || "N/A"}</p>
-                    <p className="text-slate-500 text-[11px]">{verificationResult.attendee?.phone || ""}</p>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase block">Meal Entitlement</span>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <Utensils size={13} className="text-emerald-600" />
-                      <span className="font-extrabold text-emerald-700">
-                        {verificationResult.attendee?.food_preference && verificationResult.attendee?.food_preference !== "None"
-                          ? `${verificationResult.attendee.food_preference} Included`
-                          : "No Meal Pass"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-200/60">
-                  <span>Gate: {verificationResult.gateName}</span>
-                  <span>Scanned: {verificationResult.timestamp}</span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-                {verificationResult.status === "ALREADY_CHECKED_IN" && (
-                  <Button
-                    onClick={() => {
-                      const code = verificationResult.attendee?.ticket_code || verificationResult.attendee?.id;
-                      handleVerify(code, "CHECK_IN", true);
-                    }}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl py-2.5 border-none cursor-pointer gap-2"
-                  >
-                    <RotateCcw size={14} />
-                    <span>Allow Re-Entry (Override)</span>
-                  </Button>
-                )}
-
-                {verificationResult.status === "ACCESS_GRANTED" && (
-                  <Button
-                    onClick={() => {
-                      const code = verificationResult.attendee?.ticket_code || verificationResult.attendee?.id;
-                      handleVerify(code, "CHECK_OUT");
-                    }}
-                    variant="outline"
-                    className="w-full sm:w-auto border-slate-200 text-xs font-bold text-slate-700 hover:text-slate-900 rounded-xl cursor-pointer"
-                  >
-                    Check Out Attendee
-                  </Button>
-                )}
-
-                <Button
-                  onClick={() => setVerificationResult(null)}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl py-2.5 border-none cursor-pointer ml-auto"
-                >
-                  Done / Next Scan
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {verificationResult && !showCameraScanner && verificationCardJSX}
       </Dialog>
 
       {/* ── CAMERA SCANNER MODAL ── */}
       {showCameraScanner && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg">
-            <QRScanner
-              title={`Gate Scanner: ${selectedEvent?.event_name || "Event"}`}
-              scanMode={scanMode}
-              soundEnabled={soundEnabled}
-              onToggleSound={() => setSoundEnabled(!soundEnabled)}
-              onScan={(code) => handleVerify(code, scanMode)}
-              onClose={() => setShowCameraScanner(false)}
-            />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className={`w-full transition-all duration-300 ease-in-out ${verificationResult ? 'max-w-5xl flex flex-col md:flex-row items-stretch gap-4' : 'max-w-lg'}`}>
+            
+            <div className={`w-full transition-all duration-300 ease-in-out flex flex-col justify-center ${verificationResult ? 'md:w-1/2' : ''}`}>
+              <QRScanner
+                title={`Gate Scanner: ${selectedEvent?.event_name || "Event"}`}
+                scanMode={scanMode}
+                soundEnabled={soundEnabled}
+                onToggleSound={() => setSoundEnabled(!soundEnabled)}
+                onScan={(code) => handleVerify(code, scanMode)}
+                onClose={() => {
+                  setShowCameraScanner(false);
+                  setVerificationResult(null);
+                }}
+              />
+            </div>
+
+            {/* Verification Result Section (Shows up side-by-side on desktop, stacked on mobile) */}
+            {verificationResult && (
+              <div className="w-full md:w-1/2 bg-white rounded-3xl overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 md:slide-in-from-right-4 border border-slate-200 shrink-0">
+                {verificationCardJSX}
+              </div>
+            )}
           </div>
         </div>
       )}

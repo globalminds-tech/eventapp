@@ -94,6 +94,7 @@ export default function QRScanner({
 
   const lastScanTimeRef = useRef(0);
   const onScanRef = useRef(onScan);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     onScanRef.current = onScan;
@@ -149,6 +150,14 @@ export default function QRScanner({
       }
       videoRef.current.srcObject = null;
     }
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      } catch (e) {
+        console.warn("MediaStream ref stop exception:", e);
+      }
+      streamRef.current = null;
+    }
     setTorchOn(false);
     setTorchSupported(false);
   }, []);
@@ -157,6 +166,8 @@ export default function QRScanner({
   useEffect(() => {
     if (mode !== "camera") return;
     let cancelled = false;
+    let activeReader = null;
+    let activeControls = null;
 
     const startScanner = async () => {
       setIsStarting(true);
@@ -166,10 +177,9 @@ export default function QRScanner({
         const { BrowserMultiFormatReader } = await import("@zxing/browser");
         if (cancelled) return;
 
-        const reader = new BrowserMultiFormatReader();
-        reader.timeBetweenDecodingAttempts = 250;
+        activeReader = new BrowserMultiFormatReader();
+        activeReader.timeBetweenDecodingAttempts = 250;
 
-        // Smart constraints with fallback
         const constraints = {
           audio: false,
           video: selectedCameraId
@@ -181,9 +191,8 @@ export default function QRScanner({
               },
         };
 
-        let controls;
         try {
-          controls = await reader.decodeFromConstraints(
+          activeControls = await activeReader.decodeFromConstraints(
             constraints,
             videoRef.current,
             (result) => {
@@ -204,9 +213,10 @@ export default function QRScanner({
             }
           );
         } catch (firstErr) {
-          // Fallback to basic video constraint if environment/resolution failed
           console.warn("Retrying with fallback video constraints:", firstErr);
-          controls = await reader.decodeFromConstraints(
+          if (cancelled) return;
+          
+          activeControls = await activeReader.decodeFromConstraints(
             { video: true, audio: false },
             videoRef.current,
             (result) => {
@@ -228,9 +238,24 @@ export default function QRScanner({
           );
         }
 
-        controlsRef.current = controls;
+        // RACE CONDITION FIX: If component unmounted while awaiting user permissions
+        if (cancelled) {
+          if (activeControls) {
+            activeControls.stop();
+          }
+          if (videoRef.current?.srcObject) {
+            videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+            videoRef.current.srcObject = null;
+          }
+          return;
+        }
 
-        // Check torch support
+        controlsRef.current = activeControls;
+
+        if (videoRef.current?.srcObject) {
+          streamRef.current = videoRef.current.srcObject;
+        }
+
         if (videoRef.current?.srcObject) {
           const track = videoRef.current.srcObject.getVideoTracks()[0];
           if (track?.getCapabilities?.()?.torch) {
@@ -252,6 +277,9 @@ export default function QRScanner({
 
     return () => {
       cancelled = true;
+      if (activeControls) {
+        try { activeControls.stop(); } catch (e) {}
+      }
       stopScanner();
     };
   }, [mode, selectedCameraId, stopScanner]);
