@@ -46,7 +46,7 @@ class ExhibitorService:
         data_dict = {
             "user_id": form_data.get("user_id"),
             "event_id": event_id,
-            "eventName": form_data.get("eventName"),
+            "event_name": form_data.get("eventName"),
             "title": form_data.get("title"),
             "first_name": form_data.get("firstName") or form_data.get("first_name"),
             "last_name": form_data.get("lastName") or form_data.get("last_name"),
@@ -106,6 +106,7 @@ class ExhibitorService:
                 "messages": booking.messages,
                 "status": booking.status,
                 "visiting_card": booking.visiting_card,
+                "price_paid": getattr(booking, "price_paid", 45000),
                 "created_at": str(booking.created_at) if booking.created_at else None
             }
 
@@ -177,3 +178,30 @@ class ExhibitorService:
             b_dict["visiting_card_url"] = None
 
         return b_dict
+
+    @staticmethod
+    def add_visitor_lead(data: dict) -> dict:
+        lead = ExhibitorRepository.create_lead(data)
+        return {
+            "message": "Visitor lead added successfully!",
+            "lead_id": str(lead.id)
+        }
+
+    @staticmethod
+    def get_visitor_leads(event_id: str, user_id: str) -> list[dict]:
+        leads = ExhibitorRepository.get_leads_by_event(event_id, user_id)
+        data = []
+        for lead in leads:
+            data.append({
+                "id": str(lead.id),
+                "event_id": str(lead.event_id) if lead.event_id else None,
+                "user_id": str(lead.user_id) if lead.user_id else None,
+                "visitor_name": lead.visitor_name,
+                "company_name": lead.company_name,
+                "email": lead.email,
+                "mobile": lead.mobile,
+                "buying_intent": lead.buying_intent,
+                "notes": lead.notes,
+                "created_at": str(lead.created_at) if lead.created_at else None
+            })
+        return data

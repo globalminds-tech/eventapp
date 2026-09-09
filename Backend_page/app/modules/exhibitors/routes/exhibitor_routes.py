@@ -2,8 +2,23 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
 from app.modules.exhibitors.controllers.exhibitor_controller import ExhibitorController
 from app.middleware.auth import get_current_user
+from app.modules.exhibitors.schemas.exhibitor_schema import CreateLeadSchema
 
 exhibitor_router = APIRouter(prefix="/api/v1/exhibitors", tags=["Exhibitors"])
+
+@exhibitor_router.post("/leads", status_code=201)
+async def add_visitor_lead(
+    payload: CreateLeadSchema,
+    current_user: dict = Depends(get_current_user)
+):
+    data = payload.dict()
+    data["user_id"] = str(current_user.get("user_id") or current_user.get("id"))
+    return ExhibitorController.add_visitor_lead(data)
+
+@exhibitor_router.get("/leads/{event_id}")
+def get_visitor_leads(event_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("user_id") or current_user.get("id"))
+    return ExhibitorController.get_visitor_leads(event_id, user_id)
 
 @exhibitor_router.post("/book-stall", status_code=201)
 async def book_stall(

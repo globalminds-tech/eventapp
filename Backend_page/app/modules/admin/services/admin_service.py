@@ -52,13 +52,13 @@ class AdminService:
             gross_gmv = 0.0
             for e in events:
                 b = next((bk for bk in bookings if bk.event_id == e.id), None)
-                price = float(getattr(b, "price_inr", 0) or getattr(b, "price", 0) or getattr(e, "pass_fee", 0) or 500)
-                sold = int(getattr(e, "passes_sold", 0) or getattr(b, "passes_sold", 0) or getattr(b, "capacity", 0) or 10)
+                price = float(getattr(b, "price_inr", 0) or getattr(b, "price", 0) or getattr(e, "pass_fee", 0) or 0)
+                sold = int(getattr(e, "passes_sold", 0) or getattr(b, "passes_sold", 0) or 0)
                 gross_gmv += (price * sold)
 
             platform_revenue = round(gross_gmv * 0.065, 2)
             organizer_payable = round(gross_gmv - platform_revenue, 2)
-            pending_payouts = round(organizer_payable * 0.22, 2) if organizer_payable > 0 else 0.0
+            pending_payouts = 0.0  # Reset to 0 until actual payout tracking is implemented
 
             return {
                 "period": period,

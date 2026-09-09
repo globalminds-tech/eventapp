@@ -56,3 +56,13 @@ export const createRazorpayOrder = async (data) => {
   const res = await apiClient.post("/api/v1/payments/create-order", data);
   return res.data;
 };
+
+export const addExhibitorLead = async (data) => {
+  const res = await apiClient.post("/api/v1/exhibitors/leads", data);
+  return res.data;
+};
+
+export const getExhibitorLeads = async (eventId) => {
+  const res = await apiClient.get(`/api/v1/exhibitors/leads/${eventId}`);
+  return res.data;
+};

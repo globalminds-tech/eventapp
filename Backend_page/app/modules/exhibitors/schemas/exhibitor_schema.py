@@ -27,3 +27,13 @@ class RegisterStaffPassSchema(BaseModel):
     staff_email: str
     staff_phone: str
     role: Optional[str] = "Booth Staff"
+
+class CreateLeadSchema(BaseModel):
+    event_id: str
+    user_id: str
+    visitor_name: str
+    company_name: Optional[str] = None
+    email: str
+    mobile: Optional[str] = None
+    buying_intent: Optional[str] = 'High Intent'
+    notes: Optional[str] = None

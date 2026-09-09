@@ -3,16 +3,28 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
   Users, TrendingUp, CheckCircle, QrCode, Store, ArrowRight,
-  RotateCw, Clock, IndianRupee, Sparkles, Building, Calendar, FileText
+  RotateCw, Clock, IndianRupee, Sparkles, Building, Calendar, FileText, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { exhibitorApi } from "@/features/exhibitor/api/exhibitor.api";
+import { eventApi } from "@/features/events/api/event.api";
 
 export const ExhibitorHome = () => {
   const navigate = useNavigate();
   const user = useSelector((state) => state.user);
   const [loading, setLoading] = useState(false);
+  const [metrics, setMetrics] = useState({
+    activeBooths: 0,
+    totalLeads: 0,
+    hotLeads: 0,
+    qualifiedInquiries: 0,
+    staffPasses: 0,
+    paymentLockInvoices: 0,
+    stallSpend: 0,
+    upcomingExpos: 0
+  });
 
   const storedUser = {
     id: sessionStorage.getItem("userId"),
@@ -21,9 +33,66 @@ export const ExhibitorHome = () => {
 
   const displayUser = user?.id ? user : storedUser;
 
-  const handleRefresh = () => {
+  const fetchData = async () => {
+    if (!displayUser.id) return;
     setLoading(true);
-    setTimeout(() => setLoading(false), 600);
+    try {
+      // Fetch bookings and events concurrently
+      const [bookingsRes, eventsRes] = await Promise.all([
+        exhibitorApi.getExhibitorBookings(displayUser.id).catch(() => ({ data: [] })),
+        eventApi.getEvents().catch(() => ({ data: [] }))
+      ]);
+
+      const bookings = bookingsRes?.data || [];
+      const events = eventsRes?.data || [];
+
+      // Calculate Active Booths
+      const activeBooths = bookings.length;
+
+      // Calculate Stall Spend
+      const stallSpend = bookings.reduce((sum, b) => {
+        return sum + (Number(b.price_paid) || 45000);
+      }, 0);
+
+      // Calculate Payment Lock Invoices (Assuming 'Pending' status)
+      const paymentLockInvoices = bookings.filter(b => b.status === "Pending Payment").length;
+
+      // Calculate Upcoming Expos (Events with start date in future)
+      const upcomingExpos = events.filter(e => {
+        if (!e.start_date) return false;
+        return new Date(e.start_date) > new Date();
+      }).length;
+
+      setMetrics({
+        activeBooths,
+        stallSpend,
+        paymentLockInvoices,
+        upcomingExpos,
+        totalLeads: 0, // No backend for leads yet
+        hotLeads: 0,
+        qualifiedInquiries: 0,
+        staffPasses: 0 // No backend for staff passes yet
+      });
+    } catch (error) {
+      console.error("Failed to fetch exhibitor dashboard data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [displayUser.id]);
+
+  const handleRefresh = () => {
+    fetchData();
+  };
+
+  const formatCurrency = (amount) => {
+    if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(2)} L`;
+    }
+    return `₹${amount.toLocaleString('en-IN')}`;
   };
 
   return (
@@ -80,8 +149,8 @@ export const ExhibitorHome = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  4 Stalls
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : metrics.activeBooths} <span className="text-sm font-bold text-slate-400">Stalls</span>
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400 mt-0.5">Booked exhibition spaces</p>
               </div>
@@ -110,9 +179,9 @@ export const ExhibitorHome = () => {
 
               <div>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  428
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : metrics.totalLeads}
                 </h3>
-                <p className="text-[11px] font-medium text-emerald-600 mt-0.5">↑ 34.6% lead conversion</p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">{metrics.totalLeads > 0 ? "↑ 34.6% lead conversion" : "No active leads yet"}</p>
               </div>
 
               <div className="flex items-center justify-end text-[11px] pt-2 border-t border-slate-100">
@@ -139,7 +208,7 @@ export const ExhibitorHome = () => {
 
               <div>
                 <h3 className="text-2xl sm:text-3xl font-black text-orange-900 tracking-tight">
-                  86
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : metrics.hotLeads}
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400 mt-0.5">High intent buyers</p>
               </div>
@@ -168,7 +237,7 @@ export const ExhibitorHome = () => {
 
               <div>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  186
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : metrics.qualifiedInquiries}
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400 mt-0.5">Verified booth inquiries</p>
               </div>
@@ -208,8 +277,8 @@ export const ExhibitorHome = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  8 Active
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : metrics.staffPasses} <span className="text-sm font-bold text-slate-400">Active</span>
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400 mt-0.5">QR passes issued</p>
               </div>
@@ -237,8 +306,8 @@ export const ExhibitorHome = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-3xl font-black text-amber-900 tracking-tight">
-                  1 Active
+                <h3 className="text-2xl sm:text-3xl font-black text-amber-900 tracking-tight flex items-center gap-2">
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : metrics.paymentLockInvoices} <span className="text-sm font-bold text-amber-600">Active</span>
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400 mt-0.5">24h payment lock</p>
               </div>
@@ -267,7 +336,7 @@ export const ExhibitorHome = () => {
 
               <div>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  ₹2.80 L
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : formatCurrency(metrics.stallSpend)}
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400 mt-0.5">Total layout investment</p>
               </div>
@@ -295,8 +364,8 @@ export const ExhibitorHome = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  3 Expos Open
+                <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  {loading ? <Loader2 size={24} className="animate-spin text-slate-300" /> : metrics.upcomingExpos} <span className="text-sm font-bold text-slate-400">Expos Open</span>
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400 mt-0.5">Booths open for reservation</p>
               </div>
