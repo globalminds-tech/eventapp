@@ -88,11 +88,19 @@ def get_all_exhibitor_applications():
     from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
     rows = ExhibitorRepository.get_all_applications()
     res = []
-    for b, evt_name in rows:
+    for row in rows:
+        # get_all_applications returns (ExhibitorStallBooking, event_name, event_status)
+        b = row[0]
+        evt_name = row[1] if len(row) > 1 else None
         d = b.to_dict() if hasattr(b, "to_dict") else {
-            "id": str(b.id), "event_id": str(b.event_id) if b.event_id else None, "company_name": getattr(b, "company_name", ""),
-            "email": b.email, "mobile": getattr(b, "mobile", ""), "stall_area": getattr(b, "stall_area", ""),
-            "status": getattr(b, "status", "Pending")
+            "id": str(b.id), "event_id": str(b.event_id) if b.event_id else None,
+            "company_name": getattr(b, "company_name", ""),
+            "first_name": getattr(b, "first_name", ""),
+            "last_name": getattr(b, "last_name", ""),
+            "email": b.email, "mobile": getattr(b, "mobile", ""),
+            "stall_area": getattr(b, "stall_area", ""),
+            "status": getattr(b, "status", "Pending"),
+            "created_at": str(b.created_at) if getattr(b, "created_at", None) else None,
         }
         d["event_name"] = evt_name or "Exhibition Show"
         res.append(d)
@@ -104,5 +112,9 @@ async def update_exhibitor_application_status(application_id: str, request: Requ
     from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
     body = await request.json()
     status_val = body.get("status", "Approved")
-    booking = ExhibitorRepository.update_application_status(application_id, status_val)
-    return {"success": True, "message": f"Stall application {status_val.lower()} successfully", "data": booking.to_dict() if booking else None}
+    rejection_reason = body.get("rejection_reason", "")
+    booking = ExhibitorRepository.update_application_status(application_id, status_val, rejection_reason)
+    if not booking:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
+    return {"success": True, "message": f"Stall application {status_val.lower()} successfully", "data": booking.to_dict() if hasattr(booking, 'to_dict') else None}

@@ -164,4 +164,50 @@ class CheckinService:
     def get_addons(organizer_id: Optional[str] = None):
         return CheckinRepository.get_addon_checkins(organizer_id)
 
+    @staticmethod
+    def get_gate_presets(organizer_id: str):
+        from app.models.gate import GatePreset
+        from app.extensions.database import db
+        presets = db.session.query(GatePreset).filter_by(organizer_id=organizer_id).order_by(GatePreset.created_at.asc()).all()
+        return [p.to_dict() for p in presets]
 
+    @staticmethod
+    def add_gate_preset(name: str, organizer_id: str):
+        from app.models.gate import GatePreset
+        from app.extensions.database import db
+        from app.exceptions.api_error import ApiError
+
+        if not name or not name.strip():
+            raise ApiError("Gate name cannot be empty", 400)
+
+        # Check if exists
+        existing = db.session.query(GatePreset).filter_by(organizer_id=organizer_id, name=name.strip()).first()
+        if existing:
+            return existing.to_dict()
+
+        try:
+            preset = GatePreset(name=name.strip(), organizer_id=organizer_id)
+            db.session.add(preset)
+            db.session.commit()
+            return preset.to_dict()
+        except Exception as e:
+            db.session.rollback()
+            raise ApiError(f"Failed to add gate: {str(e)}", 500)
+
+    @staticmethod
+    def delete_gate_preset(gate_id: str, organizer_id: str):
+        from app.models.gate import GatePreset
+        from app.extensions.database import db
+        from app.exceptions.api_error import ApiError
+
+        preset = db.session.query(GatePreset).filter_by(id=gate_id, organizer_id=organizer_id).first()
+        if not preset:
+            raise ApiError("Gate preset not found", 404)
+
+        try:
+            db.session.delete(preset)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            raise ApiError(f"Failed to delete gate: {str(e)}", 500)

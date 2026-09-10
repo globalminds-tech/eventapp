@@ -46,10 +46,12 @@ class ExhibitorRepository:
         return db.session.execute(stmt).all()
 
     @staticmethod
-    def update_application_status(booking_id, status: str):
+    def update_application_status(booking_id, status: str, rejection_reason: str = ""):
         booking = db.session.get(ExhibitorStallBooking, booking_id)
         if booking:
             booking.status = status
+            if rejection_reason and hasattr(booking, "rejection_reason"):
+                booking.rejection_reason = rejection_reason
             db.session.commit()
             return booking
         return None
