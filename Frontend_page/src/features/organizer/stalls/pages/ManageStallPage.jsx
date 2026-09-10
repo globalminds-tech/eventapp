@@ -310,8 +310,8 @@ export const ManageStall = () => {
         </div>
 
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5">
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
+            <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Exhibitor Company & Contact</th>
@@ -461,8 +461,8 @@ export const ManageStall = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Event Stall Overview</h2>
         </div>
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
+        <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
+          <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
                 <th className="py-3.5 px-4">Event Name</th>

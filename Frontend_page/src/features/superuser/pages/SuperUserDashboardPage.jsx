@@ -64,7 +64,7 @@ export default function SuperUserDashboard() {
   ];
 
   return (
-    <div className="h-full flex-1 flex flex-col justify-between select-none text-slate-800 font-sans max-w-full gap-3">
+    <div className="min-h-full flex-1 flex flex-col justify-between select-none text-slate-800 font-sans max-w-full gap-4 pb-6">
       
       {/* ── CLEAN ELEGANT HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 pb-2.5 shrink-0">
@@ -378,16 +378,15 @@ export default function SuperUserDashboard() {
         </div>
       </div>
 
-      {/* ── FINANCIAL OVERVIEW (ROW 3 - STRETCHES VERTICALLY) ── */}
       <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
-        <div className="flex items-center justify-between px-0.5 mb-1.5 shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-0.5 mb-1.5 shrink-0">
           <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-600" />
             Financial Overview
           </h2>
 
           {/* Date Filter specifically for Financial metrics */}
-          <div className="flex items-center gap-1 bg-slate-100/80 p-0.5 rounded-lg border border-slate-200/80">
+          <div className="flex items-center overflow-x-auto touch-scroll gap-1 bg-slate-100/80 p-0.5 rounded-lg border border-slate-200/80 max-w-full">
             {periodOptions.map((opt) => (
               <button
                 key={opt.key}

@@ -52,8 +52,8 @@ export default function RoleSelectionModal({ isOpen, onClose, roles = [], user }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white border border-slate-200/80 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white border border-slate-200/80 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-7 shadow-2xl relative">
         {/* Glow effect background */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-sky-200/30 rounded-full blur-3xl pointer-events-none" />
 

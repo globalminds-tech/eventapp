@@ -431,10 +431,10 @@ const ExhibitorEventDetailPage = () => {
       </div>
 
       {/* ── Sticky Reserve Booth CTA ── */}
-      <div className="sticky bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-slate-200 shadow-xl rounded-t-2xl px-5 py-4 flex items-center justify-between gap-4 mt-6 -mx-2">
+      <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 shadow-xl rounded-t-2xl px-4 sm:px-5 py-3.5 sm:py-4 pb-safe flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-6 -mx-2 z-30">
         <div>
           <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Ready to Exhibit?</p>
-          <p className="text-sm font-extrabold text-slate-900 leading-tight mt-0.5">
+          <p className="text-xs sm:text-sm font-extrabold text-slate-900 leading-tight mt-0.5">
             Secure your booth at <span className="text-emerald-600">{d?.event_name || ed?.event_name}</span>
           </p>
         </div>

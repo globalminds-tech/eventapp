@@ -244,7 +244,7 @@ export default function MasterDataPage() {
       {/* ── CARD CONTAINER (Matching Create Event Cards) ── */}
       <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
         {/* ── TABS BAR (Clean Pill Style matching Create Event) ── */}
-        <div className="flex flex-wrap items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/80 w-fit gap-1">
+        <div className="flex items-center overflow-x-auto touch-scroll bg-slate-100/80 p-1 rounded-xl border border-slate-200/80 max-w-full gap-1">
           {tabs.map((t) => {
             const TabIcon = t.icon;
             const isActive = selectedTab === t.value;
@@ -323,8 +323,8 @@ export default function MasterDataPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
-                      <table className="w-full text-left border-collapse">
+                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                      <table className="w-full min-w-[620px] text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
                             <th className="py-3 px-4">Vendor Name</th>
@@ -407,8 +407,8 @@ export default function MasterDataPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
-                      <table className="w-full text-left border-collapse">
+                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                      <table className="w-full min-w-[620px] text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
                             <th className="py-3 px-4">Venue Name</th>
@@ -492,8 +492,8 @@ export default function MasterDataPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
-                      <table className="w-full text-left border-collapse">
+                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                      <table className="w-full min-w-[620px] text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
                             <th className="py-3 px-4">Policy Name</th>
@@ -575,8 +575,8 @@ export default function MasterDataPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-slate-200/80 overflow-hidden bg-white shadow-2xs">
-                      <table className="w-full text-left border-collapse">
+                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                      <table className="w-full min-w-[620px] text-left border-collapse">
                         <thead>
                           <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
                             <th className="py-3 px-4">Sponsor Name</th>

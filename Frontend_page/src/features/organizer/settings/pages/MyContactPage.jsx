@@ -202,7 +202,7 @@ export const Contacts = () => {
           </div>
         </div>
 
-        <div className="p-8">
+        <div className="p-3.5 sm:p-6 lg:p-8">
           {contacts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[calc(100vh-180px)]">
               <div className="bg-white p-12 rounded-3xl shadow-xl border border-slate-100 flex flex-col items-center max-w-md text-center">
@@ -270,9 +270,9 @@ export const Contacts = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 p-6 max-w-[1920px] mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 p-3.5 sm:p-6 max-w-[1920px] mx-auto">
         {/* LEFT PANEL */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
           <h2 className="text-lg font-bold text-[#4461f2] mb-6 tracking-tight">Contact Details</h2>
 
           <div className="flex items-center justify-center gap-4 mb-8 bg-slate-50 p-2 rounded-xl border border-slate-100">
@@ -333,7 +333,7 @@ export const Contacts = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="relative">
                   <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">
                     User Type <span className="text-red-500">*</span>
@@ -485,8 +485,8 @@ export const Contacts = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-auto rounded-xl border border-slate-100">
-            <table className="w-full">
+          <div className="flex-1 overflow-x-auto responsive-table-wrap touch-scroll rounded-xl border border-slate-100">
+            <table className="w-full min-w-[650px]">
               <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">Action</th>

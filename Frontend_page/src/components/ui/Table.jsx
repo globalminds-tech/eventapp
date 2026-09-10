@@ -1,11 +1,11 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-const Table = React.forwardRef(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+const Table = React.forwardRef(({ className, wrapperClassName, ...props }, ref) => (
+  <div className={cn("relative w-full overflow-x-auto responsive-table-wrap touch-scroll", wrapperClassName)}>
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-xs text-left border-collapse", className)}
+      className={cn("w-full min-w-[620px] caption-bottom text-xs text-left border-collapse", className)}
       {...props}
     />
   </div>

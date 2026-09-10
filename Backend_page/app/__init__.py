@@ -23,6 +23,7 @@ from app.modules.checkins import checkin_router
 from app.modules.admin import admin_router, root_admin_router
 from app.modules.chatbot import chatbot_router
 from app.modules.rbac import rbac_router
+from app.modules.finance.routes.finance_routes import finance_router, root_finance_router
 from app.config import Config
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -55,7 +56,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
-        allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+        allow_origin_regex=r"^(http://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app|https://.*\.onrender\.com)$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -101,5 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(root_admin_router)
     app.include_router(chatbot_router)
     app.include_router(rbac_router)
+    app.include_router(finance_router)
+    app.include_router(root_finance_router)
 
     return app

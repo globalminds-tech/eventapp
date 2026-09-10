@@ -229,18 +229,18 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex items-center justify-center p-3 sm:p-5 md:p-8 font-sans select-none">
-      <div className="w-full max-w-5xl bg-white rounded-2xl sm:rounded-3xl lg:rounded-[2.5rem] border border-slate-200/80 shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-0 lg:min-h-[580px]">
+      <div className="w-full max-w-md lg:max-w-5xl bg-white rounded-3xl lg:rounded-[2.5rem] border border-slate-200/80 shadow-xl lg:shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-0 lg:min-h-[580px]">
 
-        {/* LEFT COLUMN: Experience Banner Matching Login Theme */}
-        <div className="lg:col-span-5 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/40 text-white p-6 sm:p-8 md:p-10 flex flex-col justify-between relative overflow-hidden">
+        {/* LEFT COLUMN: Experience Banner Matching Login Theme (Desktop Only) */}
+        <div className="hidden lg:flex lg:col-span-5 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/40 text-white p-8 lg:p-10 flex-col justify-between relative overflow-hidden">
           <div className="absolute -top-20 -left-20 w-48 sm:w-60 h-48 sm:h-60 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-20 -right-20 w-48 sm:w-60 h-48 sm:h-60 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 cursor-pointer mb-4 lg:mb-0" onClick={() => navigate("/")}>
+          <div className="relative z-10 cursor-pointer" onClick={() => navigate("/")}>
             <BrandLogo textColor="text-white text-lg sm:text-xl font-[900]" />
           </div>
 
-          <div className="relative z-10 my-4 sm:my-6 lg:my-8 space-y-4 sm:space-y-6">
+          <div className="relative z-10 my-6 lg:my-8 space-y-6">
             <div>
               <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
                 Security &amp; Recovery
@@ -296,10 +296,42 @@ export default function ForgotPassword() {
         </div>
 
         {/* RIGHT COLUMN: Interactive Password Reset Flow */}
-        <div className="lg:col-span-7 p-6 sm:p-8 md:p-10 flex flex-col justify-between">
+        <div className="w-full lg:col-span-7 p-5 sm:p-8 md:p-10 flex flex-col justify-between">
           <div>
-            {/* Top Navigation */}
-            <div className="flex items-center justify-between mb-4">
+            {/* Mobile Header (Mobile Only) */}
+            <div className="flex items-center justify-between mb-5 lg:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  if (step > 1 && step < 4) {
+                    setStep(step - 1);
+                    setError("");
+                    setMessage("");
+                  } else {
+                    navigate("/login");
+                  }
+                }}
+                className="p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition flex items-center gap-1 text-xs font-bold bg-transparent border-none cursor-pointer"
+              >
+                <ArrowLeft size={16} />
+                <span>{step > 1 && step < 4 ? "Back" : "Sign In"}</span>
+              </button>
+
+              <div className="cursor-pointer" onClick={() => navigate("/")}>
+                <BrandLogo textColor="text-slate-900 text-lg font-black" />
+              </div>
+
+              {step < 4 ? (
+                <span className="text-[10px] font-black text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                  Step {step}/3
+                </span>
+              ) : (
+                <div className="w-10" />
+              )}
+            </div>
+
+            {/* Desktop Top Navigation (Desktop Only) */}
+            <div className="hidden lg:flex items-center justify-between mb-4">
               <button
                 type="button"
                 onClick={() => {
@@ -324,7 +356,7 @@ export default function ForgotPassword() {
               )}
             </div>
 
-            {/* Stepper Progress Bar (Login Orange Theme) */}
+            {/* Stepper Progress Bar */}
             {step < 4 && (
               <div className="flex items-center gap-2 mb-6">
                 {[1, 2, 3].map((s) => (
@@ -360,8 +392,8 @@ export default function ForgotPassword() {
             {/* ── STEP 1: REQUEST OTP ── */}
             {step === 1 && (
               <div>
-                <div className="mb-6">
-                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Forgot Password?</h2>
+                <div className="mb-5 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Forgot Password? 🔑</h2>
                   <p className="text-xs text-slate-500 font-semibold mt-1">
                     Enter your registered email address and we will dispatch a 6-digit verification code.
                   </p>
@@ -373,13 +405,14 @@ export default function ForgotPassword() {
                       Email Address <span className="text-orange-500">*</span>
                     </label>
                     <div className="relative">
+                      <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <input
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@example.com"
-                        className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-xl text-xs font-medium focus:bg-white focus:outline-none transition-all duration-200"
+                        className="w-full pl-10 pr-3.5 py-3 h-12 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all duration-200"
                       />
                     </div>
                   </div>
@@ -387,7 +420,7 @@ export default function ForgotPassword() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full mt-2 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs py-3.5 rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-50"
+                    className="w-full mt-2 h-12 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-50"
                   >
                     <span>{loading ? "Sending Code..." : "SEND VERIFICATION CODE"}</span>
                     <ArrowRight size={16} />
@@ -400,13 +433,13 @@ export default function ForgotPassword() {
             {step === 2 && (
               <div>
                 <div className="mb-4">
-                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Verify Your Email</h2>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Verify Your Email 📩</h2>
                   <p className="text-xs text-slate-500 font-semibold mt-1">
                     Enter the 6-digit code sent to <strong className="text-slate-800">{email}</strong>
                   </p>
                 </div>
 
-                {/* 5-Minute OTP Validity Banner matching email */}
+                {/* 5-Minute OTP Validity Banner */}
                 <div className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 mb-4 text-xs border transition-all ${
                   expirySeconds === 0
                     ? "bg-red-50 border-red-200 text-red-700"
@@ -433,8 +466,8 @@ export default function ForgotPassword() {
                 )}
 
                 <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
-                  {/* 6 Individual Code Inputs */}
-                  <div className="flex items-center justify-between gap-2 sm:gap-3" onPaste={handleOtpPaste}>
+                  {/* 6 Individual Code Inputs with comfortable mobile spacing */}
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-3" onPaste={handleOtpPaste}>
                     {otpDigits.map((digit, idx) => (
                       <input
                         key={idx}
@@ -446,7 +479,7 @@ export default function ForgotPassword() {
                         disabled={expirySeconds === 0}
                         onChange={(e) => handleOtpChange(idx, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                        className="h-12 w-11 sm:w-12 text-center text-lg font-black rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-100 transition shadow-2xs disabled:opacity-50"
+                        className="h-12 w-10 sm:w-12 text-center text-lg font-black rounded-xl border border-slate-200 bg-slate-50 text-slate-900 focus:border-orange-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-200 transition shadow-2xs disabled:opacity-50"
                       />
                     ))}
                   </div>
@@ -459,14 +492,14 @@ export default function ForgotPassword() {
                         type="button"
                         onClick={handleResendOtp}
                         disabled={loading}
-                        className="font-extrabold text-orange-600 hover:underline cursor-pointer bg-transparent border-none flex items-center gap-1"
+                        className="font-extrabold text-orange-600 hover:underline cursor-pointer bg-transparent border-none flex items-center gap-1 py-1"
                       >
                         <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                         Resend Code
                       </button>
                     ) : (
                       <span className="font-bold text-slate-400">
-                        Resend available in <span className="text-orange-600 font-extrabold">{resendTimer}s</span>
+                        Resend in <span className="text-orange-600 font-extrabold">{resendTimer}s</span>
                       </span>
                     )}
                   </div>
@@ -474,7 +507,7 @@ export default function ForgotPassword() {
                   <button
                     type="submit"
                     disabled={loading || otpDigits.join("").length < 6 || expirySeconds === 0}
-                    className="w-full mt-2 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs py-3.5 rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-50"
+                    className="w-full mt-2 h-12 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-50"
                   >
                     <span>{loading ? "Verifying..." : "VERIFY CODE"}</span>
                     <ArrowRight size={16} />
@@ -487,7 +520,7 @@ export default function ForgotPassword() {
             {step === 3 && (
               <div>
                 <div className="mb-5">
-                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Create New Password</h2>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Create New Password 🔒</h2>
                   <p className="text-xs text-slate-500 font-semibold mt-1">
                     Set a secure, high-entropy password for your account.
                   </p>
@@ -500,18 +533,19 @@ export default function ForgotPassword() {
                       New Password <span className="text-orange-500">*</span>
                     </label>
                     <div className="relative">
+                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <input
                         type={showPassword ? "text" : "password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Min. 8 characters"
-                        className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-xl text-xs font-medium focus:bg-white focus:outline-none transition-all"
+                        className="w-full pl-10 pr-11 py-2.5 h-11 sm:h-12 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer"
                       >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -570,18 +604,19 @@ export default function ForgotPassword() {
                       Confirm Password <span className="text-orange-500">*</span>
                     </label>
                     <div className="relative">
+                      <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         required
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Re-enter new password"
-                        className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-xl text-xs font-medium focus:bg-white focus:outline-none transition-all"
+                        className="w-full pl-10 pr-11 py-2.5 h-11 sm:h-12 bg-slate-50 border border-slate-200 focus:border-orange-500 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer"
                       >
                         {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -605,7 +640,7 @@ export default function ForgotPassword() {
                   <button
                     type="submit"
                     disabled={loading || !passwordsMatch || passwordStrength.score < 2}
-                    className="w-full mt-2 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs py-3.5 rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-50"
+                    className="w-full mt-2 h-12 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-50"
                   >
                     <span>{loading ? "Updating Password..." : "RESET PASSWORD & SIGN IN"}</span>
                     <ArrowRight size={16} />
@@ -622,7 +657,7 @@ export default function ForgotPassword() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">Password Reset Complete!</h2>
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Password Reset Complete! 🎉</h2>
                   <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-sm mx-auto">
                     Your account password has been updated securely. You can now proceed to log in with your new credentials.
                   </p>
@@ -631,7 +666,7 @@ export default function ForgotPassword() {
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
-                  className="w-full mt-4 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs py-3.5 rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-95 transition-all flex items-center justify-center gap-2 uppercase tracking-wider"
+                  className="w-full mt-4 h-12 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl border-none cursor-pointer shadow-md shadow-orange-500/25 hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider"
                 >
                   <span>SIGN IN NOW</span>
                   <ArrowRight size={16} />
@@ -640,19 +675,18 @@ export default function ForgotPassword() {
             )}
 
             {/* Bottom Footer */}
-            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
+            <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
               <span>Remember your password?</span>
               <button
                 type="button"
                 onClick={() => navigate("/login")}
-                className="font-extrabold text-orange-600 hover:underline cursor-pointer bg-transparent border-none"
+                className="font-extrabold text-orange-600 hover:underline cursor-pointer bg-transparent border-none py-1"
               >
                 Sign In →
               </button>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

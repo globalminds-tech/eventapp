@@ -152,7 +152,7 @@ export const EventCard = ({ event, isFeatured = false, isLiked, onToggleLike, on
       className="group relative bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600 transition-all duration-500 hover:shadow-2xl hover:shadow-orange-500/10 cursor-pointer h-full flex flex-col"
     >
       {/* Image Container */}
-      <div className="relative h-40 overflow-hidden bg-slate-900 shrink-0">
+      <div className="relative h-32 sm:h-40 overflow-hidden bg-slate-900 shrink-0">
         <MediaRenderer
           src={event.image}
           type={event.banner_type}
@@ -162,8 +162,8 @@ export const EventCard = ({ event, isFeatured = false, isLiked, onToggleLike, on
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
 
         {/* Category Badge */}
-        <div className="absolute top-3 left-3">
-          <span className="px-2.5 py-1 bg-slate-900/60 backdrop-blur-md rounded-lg text-xs font-bold text-slate-200 border border-slate-700/50">
+        <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+          <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 bg-slate-900/60 backdrop-blur-md rounded-lg text-[10px] sm:text-xs font-bold text-slate-200 border border-slate-700/50">
             {event.category}
           </span>
         </div>
@@ -174,36 +174,36 @@ export const EventCard = ({ event, isFeatured = false, isLiked, onToggleLike, on
             e.stopPropagation();
             onToggleLike(event.id);
           }}
-          className="absolute top-3 right-3 p-2 bg-slate-900/60 backdrop-blur-md rounded-full hover:bg-slate-800 transition-colors z-10"
+          className="absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 bg-slate-900/60 backdrop-blur-md rounded-full hover:bg-slate-800 transition-colors z-10 cursor-pointer"
         >
           <Heart
-            className={`w-4 h-4 transition-all ${isLiked ? "fill-red-500 text-red-500" : "text-white"}`}
+            className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition-all ${isLiked ? "fill-red-500 text-red-500" : "text-white"}`}
           />
         </button>
 
         {/* Price */}
-        <div className="absolute bottom-3 left-3">
-          <span className="text-lg font-bold text-orange-400">
+        <div className="absolute bottom-2 left-2 sm:bottom-3 sm:left-3">
+          <span className="text-sm sm:text-lg font-bold text-orange-400">
             {priceDisplay}
           </span>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4 flex flex-col flex-grow">
-        <div className="flex-grow space-y-3">
+      <div className="p-3 sm:p-4 flex flex-col flex-grow">
+        <div className="flex-grow space-y-2.5 sm:space-y-3">
           <div>
-            <h3 className="text-sm font-bold text-white line-clamp-2 hover:text-orange-400 transition-colors min-h-[40px]">
+            <h3 className="text-xs sm:text-sm font-bold text-white line-clamp-2 hover:text-orange-400 transition-colors min-h-[32px] sm:min-h-[40px]">
               {event.title}
             </h3>
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center justify-between mt-1.5 sm:mt-2">
               <div className="flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                <span className="text-xs font-semibold text-slate-300">
+                <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-yellow-400 text-yellow-400" />
+                <span className="text-[11px] sm:text-xs font-semibold text-slate-300">
                   {event.rating}
                 </span>
               </div>
-              <span className="text-xs text-slate-500">({event.reviews})</span>
+              <span className="text-[10px] sm:text-xs text-slate-500">({event.reviews})</span>
             </div>
           </div>
 

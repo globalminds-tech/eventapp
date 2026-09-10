@@ -65,7 +65,7 @@ export default function MyPassesPage() {
       
       {/* Top Navbar */}
       <div className="bg-white border-b border-slate-200/80 sticky top-0 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/profile")}
@@ -91,10 +91,10 @@ export default function MyPassesPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto w-full px-6 pt-8 space-y-6">
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pt-5 sm:pt-8 space-y-6">
         
         {/* Header Banner & Search */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl shadow-xl">
           <div className="space-y-1">
             <Badge className="bg-orange-500 text-white font-extrabold text-[10px] border-none">
               Verified Digital Passes

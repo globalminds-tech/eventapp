@@ -38,7 +38,14 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import QRScanner, { playScanSound } from "@/components/QRScanner";
-import { Check, Trash2 } from "lucide-react";
+
+const GATE_PRESETS = [
+  "Main Turnstile 1",
+  "VIP Gate A",
+  "North Entrance",
+  "East Gate",
+  "Exit Turnstile 1"
+];
 
 export default function EventCheckIn() {
   const [events, setEvents] = useState([]);
@@ -336,68 +343,77 @@ export default function EventCheckIn() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Active Events</h2>
           </div>
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Event Name</th>
-                  <th className="py-3.5 px-4">Start & End Date</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white text-xs">
-                {loading ? (
-                  Array.from({ length: 3 }).map((_, idx) => (
-                    <tr key={idx} className="animate-pulse">
-                      <td className="py-4 px-4"><Skeleton className="h-4 w-40 rounded" /></td>
-                      <td className="py-4 px-4"><Skeleton className="h-4 w-32 rounded" /></td>
-                      <td className="py-4 px-4 text-right"><Skeleton className="h-7 w-7 rounded-lg ml-auto" /></td>
+          <ResponsiveTableView
+            data={events}
+            keyField="id"
+            loading={loading}
+            emptyMessage="You haven't created any events yet."
+            renderDesktopTable={() => (
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Event Name</th>
+                      <th className="py-3.5 px-4">Start &amp; End Date</th>
+                      <th className="py-3.5 px-4 text-right">Action</th>
                     </tr>
-                  ))
-                ) : events.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="py-14 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
-                          <Calendar size={24} />
-                        </div>
-                        <p className="font-extrabold text-slate-800 text-sm">No Events Found</p>
-                        <p className="text-xs text-slate-400 text-center font-medium">
-                          You haven't created any events yet.
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  events.map((ev) => {
-                    const startDate = ev.start_date || ev.event_date;
-                    const endDate = ev.end_date || ev.start_date || ev.event_date;
-                    const formattedStart = startDate ? new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
-                    const formattedEnd = endDate ? new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                    {events.map((ev) => {
+                      const startDate = ev.start_date || ev.event_date;
+                      const endDate = ev.end_date || ev.start_date || ev.event_date;
+                      const formattedStart = startDate ? new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
+                      const formattedEnd = endDate ? new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
 
-                    return (
-                      <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-4 font-extrabold text-slate-900">{ev.event_code ? `[${ev.event_code}] ` : ""}{ev.event_name || ev.name || "Event"}</td>
-                        <td className="py-3.5 px-4 text-slate-600 font-medium">{formattedStart} - {formattedEnd}</td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => setSelectedEventId(ev.id)}
-                            className="px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200 text-xs font-bold inline-flex items-center gap-1.5"
-                          >
-                            <ArrowRight size={14} />
-                            Manage
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                      return (
+                        <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4 font-extrabold text-slate-900">{ev.event_code ? `[${ev.event_code}] ` : ""}{ev.event_name || ev.name || "Event"}</td>
+                          <td className="py-3.5 px-4 text-slate-600 font-medium">{formattedStart} - {formattedEnd}</td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => setSelectedEventId(ev.id)}
+                              className="px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200 text-xs font-bold inline-flex items-center gap-1.5"
+                            >
+                              <ArrowRight size={14} />
+                              Manage
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(ev) => {
+              const startDate = ev.start_date || ev.event_date;
+              const endDate = ev.end_date || ev.start_date || ev.event_date;
+              const formattedStart = startDate ? new Date(startDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
+              const formattedEnd = endDate ? new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
+
+              return (
+                <MobileDataCard key={ev.id} onClick={() => setSelectedEventId(ev.id)}>
+                  <MobileDataCard.Header
+                    title={`${ev.event_code ? `[${ev.event_code}] ` : ""}${ev.event_name || ev.name || "Event"}`}
+                    subtitle={`${formattedStart} - ${formattedEnd}`}
+                    statusBadge={
+                      <button
+                        onClick={() => setSelectedEventId(ev.id)}
+                        className="px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-extrabold inline-flex items-center gap-1 border border-cyan-200 cursor-pointer"
+                      >
+                        <span>Manage</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    }
+                  />
+                </MobileDataCard>
+              );
+            }}
+          />
         </Card>
       </div>
     );
+
   }
 
   const verificationCardJSX = verificationResult ? (
@@ -699,7 +715,7 @@ export default function EventCheckIn() {
 
       {/* ── LIVE TURNSTILE OCCUPANCY KPI STRIP ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-
+        
         {/* Total Registered */}
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
@@ -904,119 +920,163 @@ export default function EventCheckIn() {
           ))}
         </div>
 
-        {/* Attendees Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Pass Code</th>
-                <th className="py-3.5 px-4">Attendee Name & Contact</th>
-                <th className="py-3.5 px-4">Meal Option</th>
-                <th className="py-3.5 px-4">Status & Times</th>
-                <th className="py-3.5 px-4 text-right">Desk Action</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
-              {entriesLoading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-36 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-28 rounded" /></td>
-                    <td className="py-4 px-4 text-right"><Skeleton className="h-8 w-24 rounded-lg ml-auto" /></td>
+        {/* Attendees Data Table / Mobile Cards */}
+        <ResponsiveTableView
+          data={filteredAttendees}
+          keyField="id"
+          loading={entriesLoading}
+          emptyMessage="No attendee passes found matching your filter criteria."
+          renderDesktopTable={() => (
+            <div className="overflow-x-auto responsive-table-wrap">
+              <table className="w-full text-left border-collapse min-w-[650px]">
+                <thead>
+                  <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Pass Code</th>
+                    <th className="py-3.5 px-4">Attendee Name &amp; Contact</th>
+                    <th className="py-3.5 px-4">Meal Option</th>
+                    <th className="py-3.5 px-4">Status &amp; Times</th>
+                    <th className="py-3.5 px-4 text-right">Desk Action</th>
                   </tr>
-                ))
-              ) : filteredAttendees.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                    No attendee passes found matching your filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredAttendees.map((v) => (
-                  <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
-                    {/* Pass Code */}
-                    <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
-                      {v.visitor_code || v.ticket_code}
-                    </td>
+                </thead>
 
-                    {/* Attendee Name & Contact */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-extrabold text-slate-900">{v.name}</div>
-                      <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
-                        {v.email || v.phone || "No contact info"}
-                      </div>
-                    </td>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
+                  {filteredAttendees.map((v) => (
+                    <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
+                        {v.visitor_code || v.ticket_code}
+                      </td>
 
-                    {/* Meal Option */}
-                    <td className="py-3.5 px-4">
-                      {v.food_preference && v.food_preference !== "None" ? (
-                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold px-2 py-0.5">
-                          {v.food_preference}
-                        </Badge>
-                      ) : (
-                        <span className="text-slate-400 text-xs font-medium">None</span>
-                      )}
-                    </td>
-
-                    {/* Status & Times */}
-                    <td className="py-3.5 px-4">
-                      {v.is_checked_in ? (
-                        <div>
-                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-black px-2 py-0.5">
-                            ● Inside Venue
-                          </Badge>
-                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                            In: {v.checkin_time || "Earlier"}
-                          </p>
+                      <td className="py-3.5 px-4">
+                        <div className="font-extrabold text-slate-900">{v.name}</div>
+                        <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
+                          {v.email || v.phone || "No contact info"}
                         </div>
-                      ) : v.is_checked_out ? (
-                        <div>
-                          <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] font-bold px-2 py-0.5">
-                            Checked Out
-                          </Badge>
-                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                            Out: {v.checkout_time || "Earlier"}
-                          </p>
-                        </div>
-                      ) : (
-                        <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold px-2 py-0.5">
-                          Not Arrived
-                        </Badge>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* Desk Action Button */}
-                    <td className="py-3.5 px-4 text-right">
-                      {!v.is_checked_in ? (
-                        <Button
-                          size="sm"
-                          onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_IN")}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
-                        >
-                          <LogIn size={13} />
-                          <span>Check In</span>
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_OUT")}
-                          className="bg-slate-800 hover:bg-slate-700 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
-                        >
-                          <LogOutIcon size={13} />
-                          <span>Check Out</span>
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      <td className="py-3.5 px-4">
+                        {v.food_preference && v.food_preference !== "None" ? (
+                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold px-2 py-0.5">
+                            {v.food_preference}
+                          </Badge>
+                        ) : (
+                          <span className="text-slate-400 text-xs font-medium">None</span>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        {v.is_checked_in ? (
+                          <div>
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-black px-2 py-0.5">
+                              ● Inside Venue
+                            </Badge>
+                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              In: {v.checkin_time || "Earlier"}
+                            </p>
+                          </div>
+                        ) : v.is_checked_out ? (
+                          <div>
+                            <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] font-bold px-2 py-0.5">
+                              Checked Out
+                            </Badge>
+                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                              Out: {v.checkout_time || "Earlier"}
+                            </p>
+                          </div>
+                        ) : (
+                          <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold px-2 py-0.5">
+                            Not Arrived
+                          </Badge>
+                        )}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        {!v.is_checked_in ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_IN")}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
+                          >
+                            <LogIn size={13} />
+                            <span>Check In</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_OUT")}
+                            className="bg-slate-800 hover:bg-slate-700 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
+                          >
+                            <LogOutIcon size={13} />
+                            <span>Check Out</span>
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(v) => (
+            <MobileDataCard key={v.id} highlightBorder={v.is_checked_in}>
+              <MobileDataCard.Header
+                badge={
+                  <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                    {v.visitor_code || v.ticket_code}
+                  </span>
+                }
+                title={v.name}
+                subtitle={v.email || v.phone || "No contact info"}
+                statusBadge={
+                  v.is_checked_in ? (
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] font-black px-2 py-0.5">
+                      ● Inside
+                    </Badge>
+                  ) : v.is_checked_out ? (
+                    <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[9px] font-bold px-2 py-0.5">
+                      Checked Out
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[9px] font-bold px-2 py-0.5">
+                      Not Arrived
+                    </Badge>
+                  )
+                }
+              />
+
+              <MobileDataCard.Grid
+                columns={2}
+                items={[
+                  { label: "Meal Option", value: v.food_preference && v.food_preference !== "None" ? v.food_preference : "None" },
+                  { label: "Entry Time", value: v.checkin_time || v.checkout_time || "Pending" },
+                ]}
+              />
+
+              <MobileDataCard.Actions>
+                {!v.is_checked_in ? (
+                  <Button
+                    size="sm"
+                    onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_IN")}
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                  >
+                    <LogIn size={14} />
+                    <span>Confirm Gate Check-In</span>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_OUT")}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                  >
+                    <LogOutIcon size={14} />
+                    <span>Record Gate Check-Out</span>
+                  </Button>
+                )}
+              </MobileDataCard.Actions>
+            </MobileDataCard>
+          )}
+        />
       </Card>
+
     </div>
   );
 }

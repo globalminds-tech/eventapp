@@ -6,9 +6,9 @@ export default function EventVerification() {
   const [viewBy, setViewBy] = useState("All");
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 font-sans">
+    <div className="min-h-screen bg-gray-50 p-3.5 sm:p-6 lg:p-8 font-sans">
       {/* Page Title */}
-      <h1 className="text-3xl font-bold mb-8">Event Verification</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Event Verification</h1>
 
       {/* Top Controls */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -19,7 +19,7 @@ export default function EventVerification() {
             placeholder="Search by Event Names"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 rounded px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
           />
         </div>
 
@@ -41,7 +41,7 @@ export default function EventVerification() {
       </div>
 
       {/* Empty State */}
-      <div className="border border-gray-300 rounded-lg bg-white shadow p-12 text-center text-gray-500">
+      <div className="border border-gray-300 rounded-lg bg-white shadow p-8 sm:p-12 text-center text-gray-500">
         No events to display
       </div>
     </div>

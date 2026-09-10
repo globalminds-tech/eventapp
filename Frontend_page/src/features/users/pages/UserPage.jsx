@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export default function User() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -164,7 +165,7 @@ export default function User() {
       <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Status Tabs */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0 overflow-x-auto touch-scroll no-scrollbar max-w-full whitespace-nowrap">
             {[
               { label: "All Attendees", value: "all" },
               { label: "Checked-In", value: "checkedin" },
@@ -174,7 +175,7 @@ export default function User() {
               <button
                 key={t.value}
                 onClick={() => setSelectedStatusTab(t.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                   selectedStatusTab === t.value
                     ? "bg-white text-slate-900 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -200,96 +201,149 @@ export default function User() {
           </div>
         </div>
 
-        {/* Table Container */}
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3.5 px-4">Attendee Profile</th>
-                <th className="py-3.5 px-4">Event & Ticket Pass</th>
-                <th className="py-3.5 px-4">Booking Code</th>
-                <th className="py-3.5 px-4">Gate Scanner Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white text-xs">
-              {filteredAttendees.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="p-12 text-center text-slate-400 font-semibold text-xs bg-slate-50/50">
-                    No attendee records found matching the filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredAttendees.map((att) => (
-                  <tr key={att.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={att.avatar}
-                          alt={att.name}
-                          className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                        />
-                        <div>
-                          <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{att.name}</h4>
-                          <p className="text-[11px] text-slate-500 font-semibold">{att.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 font-bold text-[10px]">
-                          {att.event_name}
-                        </Badge>
-                        <p className="text-[11px] font-semibold text-slate-700 mt-1 flex items-center gap-1">
-                          <Ticket size={12} className="text-blue-600" />
-                          {att.ticket_type}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-mono font-extrabold text-xs text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                        {att.booking_code}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {att.checkin_status === "Checked In" ? (
-                        <div>
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
-                            <CheckCircle2 size={12} /> Checked In
-                          </span>
-                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{att.checkin_time}</p>
-                        </div>
-                      ) : (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
-                          <Clock size={12} /> Not Arrived Yet
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => setSelectedAttendee(att)}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
-                          title="View Digital Pass QR"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleResendPass(att)}
-                          className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition cursor-pointer border border-blue-200"
-                          title="Resend Digital Pass SMS/Email"
-                        >
-                          <Send size={14} />
-                        </button>
-                      </div>
-                    </td>
+        {/* Responsive Table / Mobile Cards */}
+        <ResponsiveTableView
+          data={filteredAttendees}
+          keyField="id"
+          emptyMessage="No attendee records found matching the filter."
+          renderDesktopTable={() => (
+            <div className="rounded-xl border border-slate-200 overflow-x-auto responsive-table-wrap touch-scroll">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Attendee Profile</th>
+                    <th className="py-3.5 px-4">Event &amp; Ticket Pass</th>
+                    <th className="py-3.5 px-4">Booking Code</th>
+                    <th className="py-3.5 px-4">Gate Scanner Status</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                  {filteredAttendees.map((att) => (
+                    <tr key={att.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={att.avatar}
+                            alt={att.name}
+                            className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                          />
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{att.name}</h4>
+                            <p className="text-[11px] text-slate-500 font-semibold">{att.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 font-bold text-[10px]">
+                            {att.event_name}
+                          </Badge>
+                          <p className="text-[11px] font-semibold text-slate-700 mt-1 flex items-center gap-1">
+                            <Ticket size={12} className="text-blue-600" />
+                            {att.ticket_type}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono font-extrabold text-xs text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {att.booking_code}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {att.checkin_status === "Checked In" ? (
+                          <div>
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                              <CheckCircle2 size={12} /> Checked In
+                            </span>
+                            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{att.checkin_time}</p>
+                          </div>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                            <Clock size={12} /> Not Arrived Yet
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setSelectedAttendee(att)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
+                            title="View Digital Pass QR"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleResendPass(att)}
+                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition cursor-pointer border border-blue-200"
+                            title="Resend Digital Pass SMS/Email"
+                          >
+                            <Send size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(att) => (
+            <MobileDataCard key={att.id} highlightBorder={att.checkin_status === "Checked In"}>
+              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <img
+                    src={att.avatar}
+                    alt={att.name}
+                    className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <h4 className="font-extrabold text-slate-900 text-sm truncate">{att.name}</h4>
+                    <p className="text-[11px] text-slate-500 font-medium truncate">{att.email}</p>
+                  </div>
+                </div>
+                {att.checkin_status === "Checked In" ? (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1 shrink-0">
+                    <CheckCircle2 size={11} /> Checked In
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1 shrink-0">
+                    <Clock size={11} /> Not Arrived
+                  </span>
+                )}
+              </div>
+
+              <MobileDataCard.Grid
+                columns={2}
+                items={[
+                  { label: "Event", value: att.event_name },
+                  { label: "Ticket Pass", value: att.ticket_type },
+                  { label: "Booking Code", value: att.booking_code },
+                  { label: "Mobile", value: att.mobile || "N/A" },
+                ]}
+              />
+
+              <MobileDataCard.Actions>
+                <button
+                  onClick={() => setSelectedAttendee(att)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
+                >
+                  <Eye size={13} />
+                  <span>View Pass</span>
+                </button>
+                <button
+                  onClick={() => handleResendPass(att)}
+                  className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-extrabold inline-flex items-center gap-1 border border-blue-200 cursor-pointer"
+                >
+                  <Send size={13} />
+                  <span>Resend</span>
+                </button>
+              </MobileDataCard.Actions>
+            </MobileDataCard>
+          )}
+        />
       </Card>
+
 
       {/* ── DIGITAL PASS INSPECTION MODAL ── */}
       {selectedAttendee && (

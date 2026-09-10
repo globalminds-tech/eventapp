@@ -150,8 +150,8 @@ export default function ExhibitorTable() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="responsive-table-wrap">
+          <table className="w-full min-w-[760px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 {COLUMNS.map(col => (

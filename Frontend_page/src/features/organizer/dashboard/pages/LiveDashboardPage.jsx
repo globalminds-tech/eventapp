@@ -96,9 +96,9 @@ export const LiveDashboard = () => {
 
       {/* ── LIVE EVENTS DATA TABLE ── */}
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-4">
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="text-sm font-bold text-slate-900">Live Active Event Operations</h3>
-          <div className="relative w-64">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3.5 top-2.5 text-slate-400 w-4 h-4" />
             <input
               type="text"
@@ -110,8 +110,8 @@ export const LiveDashboard = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto responsive-table-wrap touch-scroll">
+          <table className="w-full text-left border-collapse min-w-[550px]">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-5">Action</th>

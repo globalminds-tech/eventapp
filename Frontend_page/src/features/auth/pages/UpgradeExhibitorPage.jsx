@@ -65,15 +65,18 @@ export default function UpgradeExhibitorPage() {
     upi_id: "",
   });
 
+  const isRedirectingRef = React.useRef(false);
+
   // On mount: check if user is already an exhibitor or has saved partial KYC step
   useEffect(() => {
+    if (isRedirectingRef.current) return;
     const exhProfile = user?.profiles?.exhibitor || user?.exhibitor_profile;
     const sharedKyc = user?.shared_kyc || {};
 
     if (exhProfile?.kyc_status === "VERIFIED") {
+      isRedirectingRef.current = true;
       sessionStorage.setItem("role", "exhibitor");
       localStorage.setItem("role", "exhibitor");
-      dispatch(setCredentials({ ...reduxAuth, role: "exhibitor" }));
       navigate("/exhibitor/dashboard", { replace: true });
       return;
     }
@@ -103,7 +106,7 @@ export default function UpgradeExhibitorPage() {
     if (exhProfile?.kyc_step >= 1) {
       setStep(2);
     }
-  }, [user, navigate]);
+  }, [user?.id, user?.profiles?.exhibitor?.kyc_status, navigate]);
 
   const [isPincodeLoading, setIsPincodeLoading] = useState(false);
   const [pincodeSuccess, setPincodeSuccess] = useState(false);
@@ -285,6 +288,8 @@ export default function UpgradeExhibitorPage() {
       sessionStorage.setItem("active_role", "exhibitor");
       localStorage.setItem("roles", JSON.stringify(fullRoles));
       sessionStorage.setItem("roles", JSON.stringify(fullRoles));
+
+      isRedirectingRef.current = true;
 
       if (newToken) {
         dispatch(setCredentials({ user: userToStore, token: newToken, role: "exhibitor" }));

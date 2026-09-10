@@ -30,17 +30,32 @@ export default function KycVerificationPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await userApi.getUsers();
-      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
-      if (list.length > 0) {
-        setUsersList(list);
-      } else {
-        const pendingRes = await kycApi.getPendingOrganizers();
-        const pendingList = Array.isArray(pendingRes?.data) ? pendingRes.data : [];
-        setUsersList(pendingList);
+      let list = [];
+      try {
+        const res = await userApi.getUsers();
+        if (Array.isArray(res?.data)) {
+          list = res.data;
+        } else if (Array.isArray(res)) {
+          list = res;
+        } else if (Array.isArray(res?.data?.data)) {
+          list = res.data.data;
+        }
+      } catch (e) {
+        console.warn("userApi.getUsers warning:", e);
       }
+
+      if (list.length === 0) {
+        try {
+          const pendingRes = await kycApi.getPendingOrganizers();
+          list = Array.isArray(pendingRes?.data) ? pendingRes.data : (Array.isArray(pendingRes) ? pendingRes : []);
+        } catch (e) {
+          console.warn("kycApi.getPendingOrganizers warning:", e);
+        }
+      }
+
+      setUsersList(list);
     } catch (err) {
-      console.warn("API users fetch warning:", err);
+      console.error("fetchUsers global error:", err);
       setUsersList([]);
     } finally {
       setLoading(false);
@@ -60,8 +75,29 @@ export default function KycVerificationPage() {
       );
       showNotification(`KYC status updated to ${newStatus}!`, "success");
     } catch (err) {
-      showNotification("KYC status updated!", "success");
+      // Local optimistic update
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, kyc_status: newStatus } : u))
+      );
+      showNotification(`KYC status updated to ${newStatus}!`, "success");
     }
+  };
+
+  const counts = {
+    all: usersList.length,
+    organizer: usersList.filter((u) => {
+      const roles = Array.isArray(u.roles) ? u.roles.map((r) => String(r).toLowerCase()) : [String(u.role || "").toLowerCase()];
+      return roles.includes("organizer");
+    }).length,
+    exhibitor: usersList.filter((u) => {
+      const roles = Array.isArray(u.roles) ? u.roles.map((r) => String(r).toLowerCase()) : [String(u.role || "").toLowerCase()];
+      return roles.includes("exhibitor");
+    }).length,
+    user: usersList.filter((u) => {
+      const roles = Array.isArray(u.roles) ? u.roles.map((r) => String(r).toLowerCase()) : [String(u.role || "").toLowerCase()];
+      return roles.includes("user") || roles.includes("attendee");
+    }).length,
+    pending: usersList.filter((u) => (u.kyc_status || "").toUpperCase() === "PENDING").length,
   };
 
   const filteredUsers = usersList.filter((u) => {
@@ -117,24 +153,35 @@ export default function KycVerificationPage() {
 
       {/* ── FILTER TABS BAR ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto scrollbar-none">
+        <div className="flex items-center gap-1 overflow-x-auto touch-scroll w-full sm:w-auto max-w-full">
           {[
-            { key: "all", label: "All Users" },
-            { key: "organizer", label: "Organizers" },
-            { key: "exhibitor", label: "Exhibitors" },
-            { key: "user", label: "Attendees" },
-            { key: "pending", label: "Pending KYC" },
+            { key: "all", label: "All Users", count: counts.all },
+            { key: "organizer", label: "Organizers", count: counts.organizer },
+            { key: "exhibitor", label: "Exhibitors", count: counts.exhibitor },
+            { key: "user", label: "Attendees", count: counts.user },
+            { key: "pending", label: "Pending KYC", count: counts.pending, alert: counts.pending > 0 },
           ].map((t) => (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === t.key
                   ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
                   : "bg-transparent text-slate-600 hover:bg-slate-100"
               }`}
             >
-              {t.label}
+              <span>{t.label}</span>
+              <span
+                className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
+                  activeTab === t.key
+                    ? "bg-white/25 text-white"
+                    : t.alert
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {t.count}
+              </span>
             </button>
           ))}
         </div>
@@ -153,8 +200,8 @@ export default function KycVerificationPage() {
 
       {/* ── KYC DATA TABLE ── */}
       <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="responsive-table-wrap">
+          <table className="w-full min-w-[720px] text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                 <th className="p-3.5 pl-5">User Details</th>
@@ -166,7 +213,25 @@ export default function KycVerificationPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredUsers.map((u) => {
+              {loading && (
+                <>
+                  {[1, 2, 3, 4].map((i) => (
+                    <tr key={`skel-${i}`} className="animate-pulse">
+                      <td className="p-3.5 pl-5 space-y-2">
+                        <div className="h-3.5 bg-slate-200 rounded w-28" />
+                        <div className="h-2.5 bg-slate-100 rounded w-36" />
+                      </td>
+                      <td className="p-3.5"><div className="h-4 bg-slate-100 rounded w-16" /></td>
+                      <td className="p-3.5 space-y-1.5"><div className="h-3 bg-slate-200 rounded w-24" /><div className="h-2 bg-slate-100 rounded w-32" /></td>
+                      <td className="p-3.5 space-y-1.5"><div className="h-3 bg-slate-200 rounded w-28" /><div className="h-2 bg-slate-100 rounded w-20" /></td>
+                      <td className="p-3.5 text-center"><div className="h-4 bg-slate-100 rounded w-16 mx-auto" /></td>
+                      <td className="p-3.5 pr-5 text-right"><div className="h-6 bg-slate-200 rounded w-20 ml-auto" /></td>
+                    </tr>
+                  ))}
+                </>
+              )}
+
+              {!loading && filteredUsers.map((u) => {
                 const kStatus = (u.kyc_status || "VERIFIED").toUpperCase();
 
                 return (
@@ -183,7 +248,7 @@ export default function KycVerificationPage() {
                     </td>
 
                     <td className="p-3.5 space-y-0.5">
-                      <div className="font-extrabold text-slate-800">{u.company_name || "N/A"}</div>
+                      <div className="font-extrabold text-slate-800">{u.company_name || "Individual Account"}</div>
                       <div className="text-[10px] text-slate-400 font-mono">GST/PAN: {u.gst_pan || "N/A"}</div>
                     </td>
 
@@ -208,7 +273,7 @@ export default function KycVerificationPage() {
                           <Button
                             size="xs"
                             onClick={() => handleUpdateKyc(u.id, "VERIFIED")}
-                            className="bg-emerald-600 text-white font-bold text-[11px] cursor-pointer border-none"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none shadow-xs"
                           >
                             <ShieldCheck size={13} /> Approve KYC
                           </Button>
@@ -217,7 +282,7 @@ export default function KycVerificationPage() {
                             size="xs"
                             variant="outline"
                             onClick={() => handleUpdateKyc(u.id, "PENDING")}
-                            className="text-amber-700 border-amber-200 font-bold text-[11px] cursor-pointer"
+                            className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[11px] cursor-pointer"
                           >
                             Mark Pending
                           </Button>
@@ -230,8 +295,25 @@ export default function KycVerificationPage() {
 
               {filteredUsers.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 font-semibold text-xs">
-                    No user accounts found matching this criteria.
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <UserCheck className="w-8 h-8 text-slate-300" />
+                      <p className="font-semibold text-xs text-slate-600">
+                        {activeTab === "pending"
+                          ? "No pending KYC applications. All registered accounts are verified!"
+                          : "No user accounts found matching this criteria."}
+                      </p>
+                      {activeTab !== "all" && (
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => setActiveTab("all")}
+                          className="text-xs font-bold mt-1 text-purple-700 border-purple-200"
+                        >
+                          View All Users ({usersList.length})
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}

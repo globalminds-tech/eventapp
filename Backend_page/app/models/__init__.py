@@ -24,6 +24,7 @@ from .organization import Organization, OrganizationMember, OrganizationInvitati
 from .rbac import Role, Permission, RolePermission
 from .audit_log import AuditLog
 from .gate import GatePreset
+from .financial import EventTransaction, OrganizerPayout, FinancialInvoice
 
 __all__ = [
     'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster', 'CategoryRequest',
@@ -42,5 +43,7 @@ __all__ = [
     'FeedbackEvent', 'Complaint', 'ChatHistory', 'FAQ',
     'TodoTask', 'MessageGreeting', 'Contact',
     'Organization', 'OrganizationMember', 'OrganizationInvitation',
-    'Role', 'Permission', 'RolePermission', 'AuditLog', 'GatePreset'
+    'Role', 'Permission', 'RolePermission', 'AuditLog', 'GatePreset',
+    'EventTransaction', 'OrganizerPayout', 'FinancialInvoice'
 ]
+

@@ -205,12 +205,15 @@ async def update_category_request_status(request_id: str, request: Request):
 def get_pending_organizers():
     return AdminController.get_pending_organizers()
 
+@root_admin_router.get("/admin/users")
 @root_admin_router.get("/superuser/users")
 @root_admin_router.get("/superadmin/api/users")
 @admin_router.get("/users")
 def get_all_users_alias():
     return AdminController.get_all_users()
 
+@root_admin_router.put("/admin/users/{user_id}/kyc-status")
+@root_admin_router.put("/admin/organizers/{user_id}/kyc-status")
 @root_admin_router.put("/superuser/organizers/{user_id}/kyc-status")
 @root_admin_router.put("/superadmin/api/organizers/{user_id}/kyc-status")
 async def update_organizer_kyc_status_alias(user_id: str, request: Request):

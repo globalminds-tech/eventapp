@@ -751,8 +751,8 @@ export default function FoodCheckIn() {
         </div>
 
         {/* Attendees Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto responsive-table-wrap">
+          <table className="w-full text-left border-collapse min-w-[650px]">
             <thead>
               <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4">Pass Code</th>

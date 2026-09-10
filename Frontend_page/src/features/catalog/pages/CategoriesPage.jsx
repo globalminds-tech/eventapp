@@ -167,21 +167,21 @@ export default function CategoriesPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
             <input
               type="text"
               placeholder="Search category or subcategory..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 pr-8 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 pr-8 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
             />
             <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
           </div>
 
           <Button
             onClick={() => { resetForm(); setShowAddModal(true); }}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-xl border-none cursor-pointer gap-1.5 shadow-md hover:opacity-95 transition-all"
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-xl border-none cursor-pointer gap-1.5 shadow-md hover:opacity-95 transition-all shrink-0"
           >
             <Plus size={16} />
             <span>Add Category</span>
@@ -197,9 +197,9 @@ export default function CategoriesPage() {
       )}
 
       {/* ── TABLE CONTAINER ── */}
-      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-x-auto responsive-table-wrap touch-scroll">
+        <div>
+          <table className="w-full text-left border-collapse text-xs min-w-[650px]">
             <thead>
               <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                 <th className="p-3.5 pl-5">Category Image</th>

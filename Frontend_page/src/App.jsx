@@ -49,8 +49,11 @@ import EventInspectionDetail from "./features/superuser/pages/EventInspectionDet
 import CategoryMaster from "./features/catalog/pages/CategoryMasterPage";
 import KycVerification from "./features/admin/kyc/pages/KycVerificationPage";
 import PayoutsQueue from "./features/superuser/pages/PayoutsQueuePage";
+import { ExhibitorBillingPage } from "./features/exhibitor/pages/ExhibitorBillingPage";
+import { AdminPayoutsPage } from "./features/admin/pages/AdminPayoutsPage";
 
 import ForgotPassword from "./features/auth/pages/ForgotPasswordPage";
+
 
 
 import Coupon from "./features/organizer/events/pages/CouponPage";
@@ -287,6 +290,7 @@ export default function App() {
               <Route path="upcoming-events" element={<PermissionRoute required="exhibitor.events.browse"><ExhibitorUpcomingEvent /></PermissionRoute>} />
               <Route path="event/:id" element={<PermissionRoute required="exhibitor.events.browse"><ExhibitorEventDetail /></PermissionRoute>} />
               <Route path="leads" element={<PermissionRoute required="exhibitor.leads.view"><ExhibitorLeadsPage /></PermissionRoute>} />
+              <Route path="billing" element={<PermissionRoute required="exhibitor.billing.view"><ExhibitorBillingPage /></PermissionRoute>} />
               <Route path="team" element={<PermissionRoute required="exhibitor.team.view"><TeamManagementPage userScope="exhibitor" /></PermissionRoute>} />
             </Route>
             <Route
@@ -315,9 +319,10 @@ export default function App() {
               <Route path="inspection/:eventId" element={<EventInspectionDetail />} />
               <Route path="categories" element={<CategoryMaster />} />
               <Route path="kyc" element={<KycVerification />} />
-              <Route path="payouts" element={<PayoutsQueue />} />
+              <Route path="payouts" element={<AdminPayoutsPage />} />
             </Route>
             <Route path="/superadmin/*" element={<Navigate to="/superuser/dashboard" replace />} />
+
             <Route path="/superadmin" element={<Navigate to="/superuser/dashboard" replace />} />
 
             {/* ── CATCH-ALL 404 ROUTE ── */}
