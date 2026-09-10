@@ -49,10 +49,10 @@ export default function EventApprovalQueuePage() {
 
   // Initial load using Redux thunk (uses cache if available)
   useEffect(() => {
-    if (!approvalLoaded || !approvalQueue || approvalQueue.length === 0) {
+    if (!approvalLoaded) {
       dispatch(fetchApprovalQueueThunk(false));
     }
-  }, [dispatch, approvalLoaded, approvalQueue]);
+  }, [dispatch, approvalLoaded]);
 
   const handleRefresh = () => {
     dispatch(fetchApprovalQueueThunk(true));

@@ -101,6 +101,21 @@ axiosClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Intercept Database Connectivity Loss (HTTP 503 DB_CONNECTION_LOST)
+    if (error.response?.status === 503 || error.response?.data?.error_code === "DB_CONNECTION_LOST") {
+      if (typeof window !== "undefined") {
+        const msg =
+          error.response.data?.message ||
+          "Database is temporarily unreachable. Please check your internet connection.";
+        window.dispatchEvent(
+          new CustomEvent("network:db-offline", {
+            detail: { message: msg },
+          })
+        );
+      }
+      return Promise.reject(error);
+    }
+
     // Auto-retry once for idempotent GET requests on network failure or timeout
     if (
       originalRequest &&
@@ -112,6 +127,15 @@ axiosClient.interceptors.response.use(
       originalRequest._networkRetry = true;
       await new Promise((res) => setTimeout(res, 1200));
       return axiosClient(originalRequest);
+    }
+
+    // Catch Network Error when Wi-Fi is connected but internet is missing
+    if (!error.response && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("network:no-internet", {
+          detail: { message: "No internet access detected. Please check your network connection." },
+        })
+      );
     }
 
     // Check if error is 401 and request hasn't been retried yet

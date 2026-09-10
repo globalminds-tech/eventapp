@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { WifiOff, Wifi, AlertTriangle, ShieldAlert, X } from "lucide-react";
+import { WifiOff, Wifi, AlertTriangle, ShieldAlert, X, Database } from "lucide-react";
 
 /**
  * Global Network Status & Latency Watcher Component
@@ -8,6 +8,7 @@ import { WifiOff, Wifi, AlertTriangle, ShieldAlert, X } from "lucide-react";
  * 2. W3C Network Information API (2G / high RTT slow connection)
  * 3. Prolonged API request delays (> 4000ms)
  * 4. HTTP 429 Rate Limiting cooldown alerts
+ * 5. Database disconnection & Wi-Fi without internet access (HTTP 503)
  */
 export default function NetworkStatusWatcher() {
   const [status, setStatus] = useState({
@@ -15,9 +16,11 @@ export default function NetworkStatusWatcher() {
     isSlow: false,
     rateLimitMsg: null,
     slowRequestMsg: null,
+    dbOfflineMsg: null,
+    noInternetMsg: null,
   });
   const [visible, setVisible] = useState(!navigator.onLine);
-  const [toastType, setToastType] = useState(!navigator.onLine ? "offline" : null); // "offline" | "online" | "slow" | "ratelimit"
+  const [toastType, setToastType] = useState(!navigator.onLine ? "offline" : null); // "offline" | "online" | "slow" | "ratelimit" | "db-offline" | "no-internet"
   const timerRef = useRef(null);
   const dismissedSlowUntilRef = useRef(0);
   const lastSlowToastShownRef = useRef(0);
@@ -116,8 +119,34 @@ export default function NetworkStatusWatcher() {
       }, Math.min(retryAfter * 1000, 8000));
     };
 
+    const handleDbOffline = (e) => {
+      const msg = e.detail?.message || "Database is temporarily unreachable. Please check your internet connection.";
+      setStatus((prev) => ({ ...prev, dbOfflineMsg: msg }));
+      setToastType("db-offline");
+      setVisible(true);
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setVisible(false);
+      }, 7000);
+    };
+
+    const handleNoInternet = (e) => {
+      const msg = e.detail?.message || "No internet access detected. Please check your connection.";
+      setStatus((prev) => ({ ...prev, noInternetMsg: msg }));
+      setToastType("no-internet");
+      setVisible(true);
+
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setVisible(false);
+      }, 7000);
+    };
+
     window.addEventListener("network:slow-request", handleSlowRequest);
     window.addEventListener("network:rate-limited", handleRateLimit);
+    window.addEventListener("network:db-offline", handleDbOffline);
+    window.addEventListener("network:no-internet", handleNoInternet);
 
     return () => {
       window.removeEventListener("online", handleOnline);
@@ -125,6 +154,8 @@ export default function NetworkStatusWatcher() {
       if (conn) conn.removeEventListener("change", checkConnectionQuality);
       window.removeEventListener("network:slow-request", handleSlowRequest);
       window.removeEventListener("network:rate-limited", handleRateLimit);
+      window.removeEventListener("network:db-offline", handleDbOffline);
+      window.removeEventListener("network:no-internet", handleNoInternet);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
@@ -220,6 +251,48 @@ export default function NetworkStatusWatcher() {
             onClick={() => setVisible(false)}
             aria-label="Dismiss rate limit alert"
             className="p-1 text-cyan-300/70 hover:text-white rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {toastType === "db-offline" && (
+        <div className="flex items-start gap-3.5 p-4 rounded-xl bg-slate-900/95 border border-amber-500/40 text-amber-100 shadow-2xl shadow-amber-950/50 backdrop-blur-md">
+          <div className="p-2 rounded-lg bg-amber-500/15 text-amber-400 shrink-0">
+            <Database className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="flex-1 text-sm">
+            <h4 className="font-semibold text-white">Database Unreachable</h4>
+            <p className="mt-0.5 text-xs text-amber-200/80 leading-relaxed">
+              {status.dbOfflineMsg || "Connected to Wi-Fi, but internet is unavailable to communicate with the database."}
+            </p>
+          </div>
+          <button
+            onClick={() => setVisible(false)}
+            aria-label="Dismiss database alert"
+            className="p-1 text-amber-300/70 hover:text-white rounded-md transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {toastType === "no-internet" && (
+        <div className="flex items-start gap-3.5 p-4 rounded-xl bg-slate-900/95 border border-rose-500/40 text-rose-100 shadow-2xl shadow-rose-950/50 backdrop-blur-md">
+          <div className="p-2 rounded-lg bg-rose-500/15 text-rose-400 shrink-0">
+            <WifiOff className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="flex-1 text-sm">
+            <h4 className="font-semibold text-white">No Internet Access</h4>
+            <p className="mt-0.5 text-xs text-rose-200/80 leading-relaxed">
+              {status.noInternetMsg || "Your device is connected to Wi-Fi, but there is no internet access."}
+            </p>
+          </div>
+          <button
+            onClick={() => setVisible(false)}
+            aria-label="Dismiss network alert"
+            className="p-1 text-rose-300/70 hover:text-white rounded-md transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
