@@ -92,12 +92,12 @@ export const UpcomingEventsPage = () => {
       {/* Filter & Search Toolbar */}
       <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto">
+          <div className="flex items-center overflow-x-auto touch-scroll gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto shrink-0 max-w-full">
             {["all", "Tech", "Business", "Fashion", "Food"].map((cat) => (
               <button
                 key={cat}
                 onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer capitalize ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer capitalize whitespace-nowrap ${
                   selectedCategory === cat ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
                 }`}
               >

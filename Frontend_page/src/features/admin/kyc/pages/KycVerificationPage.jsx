@@ -153,7 +153,7 @@ export default function KycVerificationPage() {
 
       {/* ── FILTER TABS BAR ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto scrollbar-none">
+        <div className="flex items-center gap-1 overflow-x-auto touch-scroll w-full sm:w-auto max-w-full">
           {[
             { key: "all", label: "All Users", count: counts.all },
             { key: "organizer", label: "Organizers", count: counts.organizer },
@@ -200,8 +200,8 @@ export default function KycVerificationPage() {
 
       {/* ── KYC DATA TABLE ── */}
       <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="responsive-table-wrap">
+          <table className="w-full min-w-[720px] text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                 <th className="p-3.5 pl-5">User Details</th>

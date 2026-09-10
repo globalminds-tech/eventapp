@@ -142,8 +142,8 @@ export default function FirstLoginPasswordModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="bg-white border border-slate-200/90 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white border border-slate-200/90 rounded-3xl max-w-md w-full max-h-[92vh] overflow-y-auto p-4 sm:p-7 shadow-2xl relative">
         {/* Glow Accent */}
         <div className="absolute -top-16 -right-16 w-36 h-36 bg-cyan-200/40 rounded-full blur-2xl pointer-events-none" />
 

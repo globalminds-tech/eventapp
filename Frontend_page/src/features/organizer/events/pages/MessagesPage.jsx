@@ -156,9 +156,9 @@ function Page1() {
   const paginated = filtered.slice((page - 1) * perPage, page * perPage);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3.5 sm:p-6 font-sans">
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <h1 className="text-2xl font-semibold text-gray-800 mb-6">Messages &amp; Greetings</h1>
 
           {/* Search */}
@@ -168,7 +168,7 @@ function Page1() {
               placeholder="Search Keyword"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="border border-blue-400 rounded-md px-3 py-2 w-64 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="border border-blue-400 rounded-md px-3 py-2 w-full sm:w-64 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
             />
           </div>
 
@@ -180,8 +180,8 @@ function Page1() {
           ) : error ? (
             <div className="text-center py-12 text-red-500 text-sm">{error}</div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
-              <table className="w-full">
+            <div className="overflow-x-auto responsive-table-wrap touch-scroll rounded-lg border border-gray-200">
+              <table className="w-full min-w-[620px]">
                 <thead>
             <tr className="bg-sky-600 text-white">
                     {["Action", "Event Code ↑↓", "Event Name ↑↓", "Event StartDate ↑↓", "Event EndDate ↑↓"].map((h) => (
@@ -412,11 +412,9 @@ function Page2() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3.5 sm:p-6 font-sans">
       <div className="max-w-7xl mx-auto">
-
-        {/* ── Top bar ─────────────────────────────────────── */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <h1 className="text-2xl font-semibold text-gray-800">Messages &amp; Greetings</h1>
           <div className="flex items-center gap-3">
             {eventInfo && (
@@ -564,8 +562,8 @@ function Page2() {
             </div>
 
             {/* ✅ Messages table — data fetched fresh from DB each time */}
-            <div className="mt-5 overflow-x-auto rounded-lg border border-gray-200">
-              <table className="w-full">
+            <div className="mt-5 overflow-x-auto responsive-table-wrap touch-scroll rounded-lg border border-gray-200">
+              <table className="w-full min-w-[550px]">
                 <thead>
             <tr className="bg-sky-600 text-white">
                     {["Action", "Message Group ↑↓", "Topics ↑↓", "Sub-Topics ↑↓", "Description"].map((h) => (

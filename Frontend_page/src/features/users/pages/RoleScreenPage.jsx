@@ -52,19 +52,19 @@ const RoleWiseScreenMapping = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] px-6 py-4">
+    <div className="min-h-screen bg-[#f5f7fb] p-3.5 sm:p-6 font-sans">
       <div className="w-full rounded-md border border-[#d9e0ea] bg-white shadow-sm">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#e3e8ef] px-4 py-3">
-          <h1 className="text-[24px] font-semibold tracking-tight text-[#4d6483]">
+          <h1 className="text-xl sm:text-[24px] font-semibold tracking-tight text-[#4d6483]">
             Role Wise Screen Mapping
           </h1>
           <div className="flex items-center gap-3">
-            <button className="flex h-11 w-11 items-center justify-center rounded-md border border-[#d9e0ea] bg-white text-[#5b6f8e] transition hover:bg-[#f8fafc]">
+            <button className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-md border border-[#d9e0ea] bg-white text-[#5b6f8e] transition hover:bg-[#f8fafc]">
               <Save size={20} strokeWidth={1.8} />
             </button>
-            <button className="flex h-11 w-11 items-center justify-center rounded-md border border-[#d9e0ea] bg-white text-[#5b6f8e] transition hover:bg-[#f8fafc]">
+            <button className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-md border border-[#d9e0ea] bg-white text-[#5b6f8e] transition hover:bg-[#f8fafc]">
               <Trash2 size={20} strokeWidth={1.8} />
             </button>
           </div>
@@ -74,7 +74,7 @@ const RoleWiseScreenMapping = () => {
         <div className="grid grid-cols-12 gap-4 p-3">
 
           {/* Left Panel */}
-          <div className="col-span-12 rounded-md border border-[#d9e0ea] bg-white px-6 py-4 lg:col-span-4">
+          <div className="col-span-12 rounded-md border border-[#d9e0ea] bg-white px-4 sm:px-6 py-4 lg:col-span-4">
             <h2 className="mb-5 text-[21px] font-medium text-[#3b5cff]">
               Role Details
             </h2>
@@ -115,23 +115,23 @@ const RoleWiseScreenMapping = () => {
           </div>
 
           {/* Right Panel */}
-          <div className="col-span-12 rounded-md border border-[#d9e0ea] bg-white px-6 py-4 lg:col-span-8">
+          <div className="col-span-12 rounded-md border border-[#d9e0ea] bg-white px-4 sm:px-6 py-4 lg:col-span-8">
             <div className="rounded-sm border border-[#dfe5ee]">
 
               {/* Search */}
-              <div className="border-b border-[#dfe5ee] px-6 py-4">
+              <div className="border-b border-[#dfe5ee] px-4 sm:px-6 py-4">
                 <input
                   type="text"
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   placeholder="Search Keyword"
-                  className="h-[48px] w-full max-w-[312px] rounded-md border border-[#cfd7e3] px-4 text-[16px] text-[#6b7280] outline-none placeholder:text-[#7b8595] focus:border-[#8aa4d6]"
+                  className="h-[48px] w-full sm:max-w-[312px] rounded-md border border-[#cfd7e3] px-4 text-[16px] text-[#6b7280] outline-none placeholder:text-[#7b8595] focus:border-[#8aa4d6]"
                 />
               </div>
 
               {/* Table */}
-              <div className="w-full overflow-x-auto">
-                <table className="w-full">
+              <div className="w-full overflow-x-auto responsive-table-wrap touch-scroll">
+                <table className="w-full min-w-[500px]">
                   <thead>
                     <tr className="bg-sky-600 text-white">
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">

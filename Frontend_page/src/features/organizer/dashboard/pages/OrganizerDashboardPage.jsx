@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Select, SelectItem } from "@/components/ui/Select";
 import Can from "@/components/Can";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export default function OrganizerDashboardPage() {
   const navigate = useNavigate();
@@ -400,175 +401,270 @@ export default function OrganizerDashboardPage() {
           </div>
         </div>
 
-        {/* Dynamic Events Table / Mobile Cards */}
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3 px-4">Event Details</th>
-                <th className="py-3 px-4">Date &amp; Time</th>
-                <th className="py-3 px-4">Tickets Sold</th>
-                <th className="py-3 px-4">Stalls Booked</th>
-                <th className="py-3 px-4">Total Earnings</th>
-                <th className="py-3 px-4 text-center">Approval Status</th>
-                <th className="py-3 px-4 text-center">Lifecycle</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {loading && !loaded ? (
-                <tr>
-                  <td colSpan="8" className="p-8 text-center">
-                    <Skeleton className="w-full h-10 rounded-lg" />
-                  </td>
-                </tr>
-              ) : filteredEvents.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="p-12 text-center text-slate-500 font-semibold text-xs bg-slate-50/50">
-                    <div className="max-w-xs mx-auto space-y-3">
-                      <p className="font-bold text-slate-700">No events found</p>
-                      <p className="text-[11px] text-slate-400">Create your first event to start managing registrations, tickets, and exhibitors.</p>
-                      <Button
-                        onClick={() => navigate("/OrganizerHome/CreateEvent")}
-                        className="bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl border-none cursor-pointer"
-                      >
-                        + Create New Event
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredEvents.map((evt) => {
-                  const eventStatus = getEventTabStatus(evt);
-                  const sold = Number(evt.passesSold || evt.passes_sold || 0);
-                  const capacity = Number(evt.totalCapacity || evt.capacity || evt.total_capacity || 500);
-                  const stallsBooked = Number(evt.stalls_booked || evt.stallsBooked || 0);
-                  const stallsTotal = Number(evt.total_stalls || 50);
-                  const price = Number(evt.price_inr || evt.priceINR || evt.price || evt.pass_fee || 0);
-                  const earnings = price * sold;
+        <ResponsiveTableView
+          data={filteredEvents}
+          keyField="id"
+          loading={loading && !loaded}
+          emptyMessage="No events found matching your criteria."
+          emptyAction={
+            <Button
+              onClick={() => navigate("/OrganizerHome/CreateEvent")}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl border-none cursor-pointer mt-2"
+            >
+              + Create New Event
+            </Button>
+          }
+          renderDesktopTable={() => (
+            <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
+              <table className="w-full text-left border-collapse min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-3 px-4">Event Details</th>
+                    <th className="py-3 px-4">Date &amp; Time</th>
+                    <th className="py-3 px-4">Tickets Sold</th>
+                    <th className="py-3 px-4">Stalls Booked</th>
+                    <th className="py-3 px-4">Total Earnings</th>
+                    <th className="py-3 px-4 text-center">Approval Status</th>
+                    <th className="py-3 px-4 text-center">Lifecycle</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {filteredEvents.map((evt) => {
+                    const eventStatus = getEventTabStatus(evt);
+                    const sold = Number(evt.passesSold || evt.passes_sold || 0);
+                    const capacity = Number(evt.totalCapacity || evt.capacity || evt.total_capacity || 500);
+                    const stallsBooked = Number(evt.stalls_booked || evt.stallsBooked || 0);
+                    const stallsTotal = Number(evt.total_stalls || 50);
+                    const price = Number(evt.price_inr || evt.priceINR || evt.price || evt.pass_fee || 0);
+                    const earnings = price * sold;
 
-                  const rawSt = (evt.status || evt.approval_status || "PENDING").toUpperCase();
-                  const isApproved = ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"].includes(rawSt);
-                  const isSuspended = rawSt === "SUSPENDED";
-                  const isRejected = rawSt === "REJECTED";
-                  const isDraft = rawSt === "DRAFT";
+                    const rawSt = (evt.status || evt.approval_status || "PENDING").toUpperCase();
+                    const isApproved = ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"].includes(rawSt);
+                    const isSuspended = rawSt === "SUSPENDED";
+                    const isRejected = rawSt === "REJECTED";
+                    const isDraft = rawSt === "DRAFT";
 
-                  return (
-                    <tr key={evt.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div>
-                          <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm hover:text-cyan-600 transition-colors cursor-pointer" onClick={() => handleView(evt)}>
-                            {evt.name || evt.event_name || "Untitled Event"}
-                          </h3>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[10px] font-bold text-slate-500">{evt.category || evt.main_category_name || "General"}</span>
-                            <span className="text-slate-300">•</span>
-                            <span className="text-[10px] text-slate-400">{evt.city || evt.venue || "Venue TBD"}</span>
+                    return (
+                      <tr key={evt.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div>
+                            <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm hover:text-cyan-600 transition-colors cursor-pointer" onClick={() => handleView(evt)}>
+                              {evt.name || evt.event_name || "Untitled Event"}
+                            </h3>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] font-bold text-slate-500">{evt.category || evt.main_category_name || "General"}</span>
+                              <span className="text-slate-300">•</span>
+                              <span className="text-[10px] text-slate-400">{evt.city || evt.venue || "Venue TBD"}</span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-xs font-semibold text-slate-900">
-                        {formatDate(evt.event_date || evt.start_date)}
-                      </td>
-                      <td className="py-3.5 px-4 text-xs font-bold text-slate-800">
-                        {sold.toLocaleString()} / {capacity.toLocaleString()}
-                      </td>
-                      <td className="py-3.5 px-4 text-xs font-bold text-purple-700">
-                        {stallsBooked} / {stallsTotal}
-                      </td>
-                      <td className="py-3.5 px-4 text-xs font-black text-slate-900">
-                        {formatLakhs(earnings)}
-                      </td>
-
-                      {/* Approval Status Column */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 ${
-                          isApproved
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
-                            : isSuspended
-                            ? "bg-rose-50 text-rose-800 border border-rose-300"
-                            : isRejected
-                            ? "bg-red-50 text-red-800 border border-red-300"
-                            : isDraft
-                            ? "bg-slate-100 text-slate-700 border border-slate-300"
-                            : "bg-amber-50 text-amber-800 border border-amber-300"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
+                        </td>
+                        <td className="py-3.5 px-4 text-xs font-semibold text-slate-900">
+                          {formatDate(evt.event_date || evt.start_date)}
+                        </td>
+                        <td className="py-3.5 px-4 text-xs font-bold text-slate-800">
+                          {sold.toLocaleString()} / {capacity.toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-4 text-xs font-bold text-purple-700">
+                          {stallsBooked} / {stallsTotal}
+                        </td>
+                        <td className="py-3.5 px-4 text-xs font-black text-slate-900">
+                          {formatLakhs(earnings)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 ${
                             isApproved
-                              ? "bg-emerald-500"
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
                               : isSuspended
-                              ? "bg-rose-500 animate-pulse"
+                              ? "bg-rose-50 text-rose-800 border border-rose-300"
                               : isRejected
-                              ? "bg-red-500"
+                              ? "bg-red-50 text-red-800 border border-red-300"
                               : isDraft
-                              ? "bg-slate-400"
-                              : "bg-amber-500 animate-pulse"
-                          }`} />
-                          {isApproved
-                            ? "Approved & Live"
-                            : isSuspended
-                            ? "Suspended"
-                            : isRejected
-                            ? "Rejected"
-                            : isDraft
-                            ? "Draft"
-                            : "Pending Approval"}
-                        </span>
-                      </td>
+                              ? "bg-slate-100 text-slate-700 border border-slate-300"
+                              : "bg-amber-50 text-amber-800 border border-amber-300"
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              isApproved
+                                ? "bg-emerald-500"
+                                : isSuspended
+                                ? "bg-rose-500"
+                                : isRejected
+                                ? "bg-red-500"
+                                : isDraft
+                                ? "bg-slate-400"
+                                : "bg-amber-500 animate-pulse"
+                            }`} />
+                            {isApproved
+                              ? "Approved & Live"
+                              : isSuspended
+                              ? "Suspended"
+                              : isRejected
+                              ? "Rejected"
+                              : isDraft
+                              ? "Draft"
+                              : "Pending Approval"}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
+                            eventStatus === "Active"
+                              ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                              : eventStatus === "Upcoming"
+                              ? "bg-cyan-100 text-cyan-700 border border-cyan-200"
+                              : eventStatus === "Draft"
+                              ? "bg-amber-100 text-amber-700 border border-amber-200"
+                              : "bg-slate-100 text-slate-600 border border-slate-200"
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${eventStatus === "Active" ? "bg-emerald-500 animate-pulse" : eventStatus === "Upcoming" ? "bg-cyan-500" : "bg-slate-400"}`} />
+                            {eventStatus}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Can I="events.view">
+                              <button
+                                onClick={() => handleView(evt)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
+                                title="View Event Details"
+                              >
+                                <Eye size={15} />
+                              </button>
+                            </Can>
+                            <Can I="events.edit">
+                              <button
+                                onClick={() => handleEdit(evt)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
+                                title="Edit Event"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            </Can>
+                            <Can anyOf={["checkin.view", "checkin.scan"]}>
+                              <button
+                                onClick={() => handleGateScanner(evt)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer border border-slate-200"
+                                title="Gate Check In"
+                              >
+                                <QrCode size={15} />
+                              </button>
+                            </Can>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(evt) => {
+            const eventStatus = getEventTabStatus(evt);
+            const sold = Number(evt.passesSold || evt.passes_sold || 0);
+            const capacity = Number(evt.totalCapacity || evt.capacity || evt.total_capacity || 500);
+            const stallsBooked = Number(evt.stalls_booked || evt.stallsBooked || 0);
+            const stallsTotal = Number(evt.total_stalls || 50);
+            const price = Number(evt.price_inr || evt.priceINR || evt.price || evt.pass_fee || 0);
+            const earnings = price * sold;
 
-                      {/* Lifecycle Column */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
-                          eventStatus === "Active"
-                            ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
-                            : eventStatus === "Upcoming"
-                            ? "bg-cyan-100 text-cyan-700 border border-cyan-200"
-                            : eventStatus === "Draft"
-                            ? "bg-amber-100 text-amber-700 border border-amber-200"
-                            : "bg-slate-100 text-slate-600 border border-slate-200"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${eventStatus === "Active" ? "bg-emerald-500 animate-pulse" : eventStatus === "Upcoming" ? "bg-cyan-500" : "bg-slate-400"}`} />
-                          {eventStatus}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Can I="events.view">
-                            <button
-                              onClick={() => handleView(evt)}
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
-                              title="View Event Details"
-                            >
-                              <Eye size={15} />
-                            </button>
-                          </Can>
-                          <Can I="events.edit">
-                            <button
-                              onClick={() => handleEdit(evt)}
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
-                              title="Edit Event"
-                            >
-                              <Pencil size={15} />
-                            </button>
-                          </Can>
-                          <Can anyOf={["checkin.view", "checkin.scan"]}>
-                            <button
-                              onClick={() => handleGateScanner(evt)}
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer border border-slate-200"
-                              title="Gate Check In"
-                            >
-                              <QrCode size={15} />
-                            </button>
-                          </Can>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+            const rawSt = (evt.status || evt.approval_status || "PENDING").toUpperCase();
+            const isApproved = ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"].includes(rawSt);
+            const isSuspended = rawSt === "SUSPENDED";
+            const isRejected = rawSt === "REJECTED";
+            const isDraft = rawSt === "DRAFT";
+
+            return (
+              <MobileDataCard key={evt.id} highlightBorder={isApproved}>
+                <MobileDataCard.Header
+                  badge={
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-extrabold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-200">
+                        {evt.category || evt.main_category_name || "General"}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        📍 {evt.city || evt.venue || "Venue TBD"}
+                      </span>
+                    </div>
+                  }
+                  title={evt.name || evt.event_name || "Untitled Event"}
+                  onTitleClick={() => handleView(evt)}
+                  statusBadge={
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black inline-flex items-center gap-1 ${
+                      isApproved
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
+                        : isSuspended
+                        ? "bg-rose-50 text-rose-800 border border-rose-300"
+                        : isRejected
+                        ? "bg-red-50 text-red-800 border border-red-300"
+                        : isDraft
+                        ? "bg-slate-100 text-slate-700 border border-slate-300"
+                        : "bg-amber-50 text-amber-800 border border-amber-300"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        isApproved
+                          ? "bg-emerald-500"
+                          : isSuspended
+                          ? "bg-rose-500"
+                          : isRejected
+                          ? "bg-red-500"
+                          : isDraft
+                          ? "bg-slate-400"
+                          : "bg-amber-500 animate-pulse"
+                      }`} />
+                      {isApproved
+                        ? "Approved"
+                        : isSuspended
+                        ? "Suspended"
+                        : isRejected
+                        ? "Rejected"
+                        : isDraft
+                        ? "Draft"
+                        : "Pending"}
+                    </span>
+                  }
+                />
+
+                <MobileDataCard.Grid
+                  columns={3}
+                  items={[
+                    { label: "Date", value: formatDate(evt.event_date || evt.start_date) },
+                    { label: "Tickets", value: `${sold.toLocaleString()} / ${capacity.toLocaleString()}` },
+                    { label: "Earnings", value: formatLakhs(earnings) },
+                  ]}
+                />
+
+                <MobileDataCard.Actions>
+                  <Can I="events.view">
+                    <button
+                      onClick={() => handleView(evt)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-cyan-50 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
+                    >
+                      <Eye size={13} />
+                      <span>View</span>
+                    </button>
+                  </Can>
+                  <Can I="events.edit">
+                    <button
+                      onClick={() => handleEdit(evt)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
+                    >
+                      <Pencil size={13} />
+                      <span>Edit</span>
+                    </button>
+                  </Can>
+                  <Can anyOf={["checkin.view", "checkin.scan"]}>
+                    <button
+                      onClick={() => handleGateScanner(evt)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-extrabold inline-flex items-center gap-1.5 border border-emerald-200 cursor-pointer"
+                    >
+                      <QrCode size={13} />
+                      <span>Gate Scan</span>
+                    </button>
+                  </Can>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            );
+          }}
+        />
       </Card>
 
       {/* ── 4. INTERACTIVE CARD DETAIL MODAL ── */}

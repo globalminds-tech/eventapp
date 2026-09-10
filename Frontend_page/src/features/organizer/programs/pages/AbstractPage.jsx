@@ -86,14 +86,14 @@ export const AbstractVerification = () => {
   const slice = filtered.slice(startIndex, startIndex + perPage);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">
         Abstract Verification
       </h1>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <div className="relative w-96">
+          <div className="relative w-full sm:w-80">
             <input
               type="text"
               placeholder="Search"
@@ -108,8 +108,9 @@ export const AbstractVerification = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+          <div className="overflow-x-auto responsive-table-wrap touch-scroll">
+            <table className="w-full min-w-[650px]">
             <thead>
               <tr className="bg-sky-600 text-white">
                 {[
@@ -149,6 +150,7 @@ export const AbstractVerification = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {filtered.length > 0 && (

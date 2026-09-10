@@ -296,11 +296,11 @@ const MyProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-8 font-['Times_New_Roman',Times,serif]">
+    <div className="min-h-screen bg-[#f8fafc] p-3.5 sm:p-6 lg:p-8 font-sans">
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
             My Profile
           </h1>
           <p className="text-slate-500 font-medium">Update your account details and preferences</p>
@@ -309,7 +309,7 @@ const MyProfile = () => {
         <button
           onClick={handleSave}
           disabled={saving}
-          className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${saving ? "bg-slate-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30"
+          className={`w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${saving ? "bg-slate-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30"
             }`}
         >
           {saving ? <div className="animate-spin h-5 w-5 border-b-2 border-white rounded-full"></div> : <FaSave size={20} />}
@@ -328,7 +328,7 @@ const MyProfile = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         {/* PROFILE PICTURE CARD */}
-        <div className="lg:col-span-4 bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8 flex flex-col items-center text-center">
+        <div className="lg:col-span-4 bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-4 sm:p-8 flex flex-col items-center text-center">
           <h2 className="text-xl font-bold text-slate-800 self-start mb-8 flex items-center gap-2">
             <span className="w-2 h-6 bg-blue-600 rounded-full"></span>
             Profile Photo
@@ -358,7 +358,7 @@ const MyProfile = () => {
         <div className="lg:col-span-8 flex flex-col gap-8">
 
           {/* PERSONAL INFO */}
-          <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-8">
+          <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 p-4 sm:p-8">
             <h2 className="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2">
               <span className="w-2 h-6 bg-blue-600 rounded-full"></span>
               Identity Details

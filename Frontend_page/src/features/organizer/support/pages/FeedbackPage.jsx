@@ -169,7 +169,7 @@ export default function FeedbackModule() {
 
   // ── RENDER LIST ───────────────────────────────────────────────────────────
   const renderList = () => (
-    <div className="min-h-screen bg-[#fafafa] p-8 font-sans">
+    <div className="min-h-screen bg-[#fafafa] p-3.5 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
           <div>
@@ -196,7 +196,7 @@ export default function FeedbackModule() {
 
             <button
               onClick={openNew}
-              className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2 rounded-xl flex gap-2 items-center justify-center font-bold shadow-lg shadow-sky-200 transition-all hover:scale-105 active:scale-95 text-sm"
+              className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2 rounded-xl flex gap-2 items-center justify-center font-bold shadow-lg shadow-sky-200 transition-all hover:scale-105 active:scale-95 text-sm shrink-0"
             >
               <Plus size={18} />
               Add Feedback
@@ -204,9 +204,9 @@ export default function FeedbackModule() {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+          <div>
+            <table className="w-full min-w-[650px]">
               {/* HEADER */}
               <thead>
                 <tr className="bg-sky-600 text-white">
@@ -356,7 +356,7 @@ export default function FeedbackModule() {
 
   // ── RENDER FORM ───────────────────────────────────────────────────────────
   const renderForm = () => (
-    <div className="min-h-screen bg-[#fafafa] p-8 font-sans">
+    <div className="min-h-screen bg-[#fafafa] p-3.5 sm:p-6 lg:p-8 font-sans">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <button
@@ -371,7 +371,7 @@ export default function FeedbackModule() {
         </div>
 
         <div className="bg-white border border-gray-100 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.03)] overflow-hidden">
-          <div className="p-10">
+          <div className="p-4 sm:p-8 lg:p-10">
             <div className="grid grid-cols-1 gap-10">
               <div className="space-y-6">
                 <div>

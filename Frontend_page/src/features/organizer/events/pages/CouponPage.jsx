@@ -88,14 +88,14 @@ const ListPage = ({ onAdd }) => {
   const [search, setSearch] = useState("");
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">
         Coupon Code
       </h1>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex justify-between items-center mb-6">
-          <div className="relative w-96">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6">
+          <div className="relative w-full sm:w-80">
             <input
               type="text"
               placeholder="Search Keyword..."
@@ -119,9 +119,9 @@ const ListPage = ({ onAdd }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full" style={{ minWidth: 900 }}>
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+          <div className="overflow-x-auto responsive-table-wrap touch-scroll">
+            <table className="w-full min-w-[760px]">
               <thead>
                 <tr className="bg-sky-600 text-white">
                   {columns.map((col) => (
@@ -224,7 +224,7 @@ const FormPage = ({ onBack }) => {
         </div>
 
         {/* Three-column form */}
-        <div className="grid gap-5" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Basic Details */}
           <div className="bg-white rounded-lg p-6 shadow-sm" style={{ border: "1px solid #e2e8f0" }}>
             <h2 className="text-lg font-semibold mb-5" style={{ color: "#2563eb" }}>Basic Details</h2>

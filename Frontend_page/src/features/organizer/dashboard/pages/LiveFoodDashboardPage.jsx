@@ -83,19 +83,14 @@ export const LiveFoodDashboard = () => {
 
   return (
 
-    <div className="p-10 bg-gray-100 min-h-screen">
-
+    <div className="p-4 sm:p-6 lg:p-8 bg-[#f8fafc] min-h-screen font-sans text-slate-800">
       {/* TITLE */}
-
-      <h1 className="text-3xl font-bold mb-6">
-        Live Food Count
+      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mb-6">
+        Live Food Count Telemetry
       </h1>
 
-
       {/* FILTERS */}
-
-      <div className="flex gap-4 mb-10">
-
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8 max-w-3xl">
         {/* EVENT */}
         <Select
           value={event}
@@ -105,7 +100,7 @@ export const LiveFoodDashboard = () => {
             setMealType("");
           }}
           placeholder="Select Event"
-          className="w-64"
+          className="w-full"
           triggerClassName="h-11 bg-white border-slate-200 rounded-xl text-xs font-semibold focus:ring-cyan-500"
         >
           {events.map((ev) => (
@@ -124,7 +119,7 @@ export const LiveFoodDashboard = () => {
             setMealType("");
           }}
           placeholder="Select Meal Time"
-          className="w-64"
+          className="w-full"
           triggerClassName="h-11 bg-white border-slate-200 rounded-xl text-xs font-semibold focus:ring-cyan-500"
         >
           <SelectItem value="Breakfast">Breakfast</SelectItem>
@@ -139,19 +134,16 @@ export const LiveFoodDashboard = () => {
           value={mealType}
           onValueChange={(val) => setMealType(val)}
           placeholder="Select Meal Type"
-          className="w-64"
+          className="w-full"
           triggerClassName="h-11 bg-white border-slate-200 rounded-xl text-xs font-semibold focus:ring-cyan-500"
         >
           <SelectItem value="Veg">Veg</SelectItem>
           <SelectItem value="Non Veg">Non Veg</SelectItem>
         </Select>
-
       </div>
 
-
       {/* DASHBOARD CARDS */}
-
-      <div className="grid grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
 
 
         {/* INSIDE DINING */}

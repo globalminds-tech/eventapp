@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 const MyBookings = () => {
   const navigate = useNavigate();
@@ -153,7 +154,7 @@ const MyBookings = () => {
       <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Status Filter Tabs */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+          <div className="flex items-center overflow-x-auto touch-scroll bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0 max-w-full">
             {[
               { label: "All Bookings", value: "all" },
               { label: "Pending Approval", value: "pending" },
@@ -164,7 +165,7 @@ const MyBookings = () => {
               <button
                 key={t.value}
                 onClick={() => setSelectedStatusTab(t.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
                   selectedStatusTab === t.value
                     ? "bg-white text-slate-900 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -187,138 +188,197 @@ const MyBookings = () => {
           </div>
         </div>
 
-        {/* Table Container */}
-        <div className="rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3.5 px-4">Event Details</th>
-                <th className="py-3.5 px-4">Stall & Location</th>
-                <th className="py-3.5 px-4">Booking Fee</th>
-                <th className="py-3.5 px-4">Status & Payment Lock</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white text-xs">
-              {loading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="py-3.5 px-4 space-y-2">
-                      <Skeleton className="h-4 w-20 rounded" />
-                      <Skeleton className="h-4 w-36 rounded" />
-                    </td>
-                    <td className="py-3.5 px-4 space-y-1.5">
-                      <Skeleton className="h-4 w-24 rounded" />
-                      <Skeleton className="h-3 w-16 rounded" />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Skeleton className="h-4 w-20 rounded" />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <Skeleton className="h-6 w-28 rounded-full" />
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <Skeleton className="h-8 w-16 rounded-xl ml-auto" />
-                    </td>
+        {/* Table / Mobile Cards View */}
+        <ResponsiveTableView
+          data={filteredBookings}
+          keyField="id"
+          loading={loading}
+          emptyMessage="No stall bookings found matching the selected filter."
+          renderDesktopTable={() => (
+            <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
+              <table className="w-full min-w-[650px] text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Event Details</th>
+                    <th className="py-3.5 px-4">Stall &amp; Location</th>
+                    <th className="py-3.5 px-4">Booking Fee</th>
+                    <th className="py-3.5 px-4">Status &amp; Payment Lock</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
-                ))
-              ) : filteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="p-12 text-center text-slate-400 font-semibold text-xs bg-slate-50/50">
-                    No stall bookings found matching the selected filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredBookings.map((b) => {
-                  const status = (b.status || "Pending").toLowerCase();
-                  return (
-                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
-                              {b.company_name || 'Exhibitor Firm'}
-                            </Badge>
-                            {(b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED")) && (
-                              <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-extrabold text-[9px] gap-1 inline-flex items-center">
-                                <ShieldCheck size={11} className="text-amber-700 shrink-0" />
-                                <span>Stall Safe • Event Paused</span>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                  {filteredBookings.map((b) => {
+                    const status = (b.status || "Pending").toLowerCase();
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
+                                {b.company_name || 'Exhibitor Firm'}
                               </Badge>
+                              {(b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED")) && (
+                                <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-extrabold text-[9px] gap-1 inline-flex items-center">
+                                  <ShieldCheck size={11} className="text-amber-700 shrink-0" />
+                                  <span>Stall Safe • Event Paused</span>
+                                </Badge>
+                              )}
+                            </div>
+                            <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm mt-1">{b.event_name}</h4>
+                            {(b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED")) && (
+                              <p className="text-[10px] text-amber-800 font-medium mt-1 bg-amber-50/80 border border-amber-200/80 rounded-lg p-1.5 leading-tight">
+                                🛡️ <strong>Booking Safe:</strong> New booth registrations are paused. If this event is cancelled or rescheduled, your booking is guaranteed a 100% full refund.
+                              </p>
                             )}
                           </div>
-                          <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm mt-1">{b.event_name}</h4>
-                          {(b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED")) && (
-                            <p className="text-[10px] text-amber-800 font-medium mt-1 bg-amber-50/80 border border-amber-200/80 rounded-lg p-1.5 leading-tight">
-                              🛡️ <strong>Booking Safe:</strong> New booth registrations are paused. If this event is cancelled or rescheduled, your booking is guaranteed a 100% full refund.
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="text-slate-600 space-y-0.5">
-                          <p className="font-bold text-slate-800 text-xs">{b.stall_area || 'Standard Booth'}</p>
-                          <p className="text-[11px] text-slate-500 font-medium">{b.city || 'Chennai'}, {b.state || 'TN'}</p>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900 text-xs">
-                        ₹{Number(b.price_paid || 45000).toLocaleString('en-IN')}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        {status === 'pending' && (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
-                            <Clock size={12} className="animate-pulse" /> Pending Approval
-                          </span>
-                        )}
-                        {status === 'approved' && (
-                          <div>
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-200 inline-flex items-center gap-1">
-                              <CheckCircle2 size={12} /> Approved (24h Lock)
-                            </span>
-                            <span className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold mt-0.5">
-                              <Clock size={10} className="text-cyan-600" /> Payment lock active
-                            </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="text-slate-600 space-y-0.5">
+                            <p className="font-bold text-slate-800 text-xs">{b.stall_area || 'Standard Booth'}</p>
+                            <p className="text-[11px] text-slate-500 font-medium">{b.city || 'Chennai'}, {b.state || 'TN'}</p>
                           </div>
-                        )}
-                        {(status === 'confirmed' || status === 'paid') && (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
-                            <CheckCircle2 size={12} /> Confirmed & Paid
-                          </span>
-                        )}
-                        {status === 'rejected' && (
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-200 inline-flex items-center gap-1">
-                            <XCircle size={12} /> Rejected
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => navigate(`/exhibitor/my-bookings/${b.id}`)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
-                            title="View Booking Details"
-                          >
-                            <Eye size={14} />
-                          </button>
-
-                          {status === 'approved' && (
-                            <button
-                              onClick={() => handlePayNow(b)}
-                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-sm"
-                            >
-                              <CreditCard size={13} />
-                              <span>Pay Now</span>
-                            </button>
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900 text-xs">
+                          ₹{Number(b.price_paid || 45000).toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {status === 'pending' && (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                              <Clock size={12} className="animate-pulse" /> Pending Approval
+                            </span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                          {status === 'approved' && (
+                            <div>
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-200 inline-flex items-center gap-1">
+                                <CheckCircle2 size={12} /> Approved (24h Lock)
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                <Clock size={10} className="text-cyan-600" /> Payment lock active
+                              </span>
+                            </div>
+                          )}
+                          {(status === 'confirmed' || status === 'paid') && (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                              <CheckCircle2 size={12} /> Confirmed &amp; Paid
+                            </span>
+                          )}
+                          {status === 'rejected' && (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-200 inline-flex items-center gap-1">
+                              <XCircle size={12} /> Rejected
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => navigate(`/exhibitor/my-bookings/${b.id}`)}
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
+                              title="View Booking Details"
+                            >
+                              <Eye size={14} />
+                            </button>
+
+                            {status === 'approved' && (
+                              <button
+                                onClick={() => handlePayNow(b)}
+                                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-sm"
+                              >
+                                <CreditCard size={13} />
+                                <span>Pay Now</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(b) => {
+            const status = (b.status || "Pending").toLowerCase();
+            const isSuspended = b.is_suspended || (b.event_status && b.event_status.toUpperCase() === "SUSPENDED");
+
+            return (
+              <MobileDataCard key={b.id} highlightBorder={status === 'approved'}>
+                <MobileDataCard.Header
+                  badge={
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
+                        {b.company_name || 'Exhibitor Firm'}
+                      </Badge>
+                      {isSuspended && (
+                        <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-extrabold text-[9px] gap-1 inline-flex items-center">
+                          <ShieldCheck size={11} className="text-amber-700 shrink-0" />
+                          <span>Stall Safe</span>
+                        </Badge>
+                      )}
+                    </div>
+                  }
+                  title={b.event_name}
+                  onTitleClick={() => navigate(`/exhibitor/my-bookings/${b.id}`)}
+                  statusBadge={
+                    status === 'pending' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-1">
+                        <Clock size={11} className="animate-pulse" /> Pending
+                      </span>
+                    ) : status === 'approved' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-cyan-100 text-cyan-800 border border-cyan-200 inline-flex items-center gap-1">
+                        <CheckCircle2 size={11} /> 24h Lock Active
+                      </span>
+                    ) : (status === 'confirmed' || status === 'paid') ? (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                        <CheckCircle2 size={11} /> Confirmed
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-800 border border-red-200 inline-flex items-center gap-1">
+                        <XCircle size={11} /> Rejected
+                      </span>
+                    )
+                  }
+                />
+
+                {isSuspended && (
+                  <p className="text-[10px] text-amber-800 font-medium bg-amber-50/90 border border-amber-200/80 rounded-xl p-2 leading-tight">
+                    🛡️ <strong>Booking Safe:</strong> Registrations paused. 100% full refund guarantee.
+                  </p>
+                )}
+
+                <MobileDataCard.Grid
+                  columns={2}
+                  items={[
+                    { label: "Booth Space", value: b.stall_area || 'Standard Booth' },
+                    { label: "Location", value: `${b.city || 'Chennai'}, ${b.state || 'TN'}` },
+                    { label: "Fee Paid", value: `₹${Number(b.price_paid || 45000).toLocaleString('en-IN')}` },
+                    { label: "Status Info", value: status === 'approved' ? "Pay before lock expires" : (b.status || 'Active') },
+                  ]}
+                />
+
+                <MobileDataCard.Actions>
+                  <button
+                    onClick={() => navigate(`/exhibitor/my-bookings/${b.id}`)}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
+                  >
+                    <Eye size={13} />
+                    <span>View Details</span>
+                  </button>
+                  {status === 'approved' && (
+                    <button
+                      onClick={() => handlePayNow(b)}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      <CreditCard size={13} />
+                      <span>Pay Now</span>
+                    </button>
+                  )}
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            );
+          }}
+        />
       </Card>
+
 
     </div>
   );

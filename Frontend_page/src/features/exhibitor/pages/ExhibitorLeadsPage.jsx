@@ -183,8 +183,8 @@ export const ExhibitorLeadsPage = () => {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <table className="w-full min-w-[550px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Event Details</th>
@@ -375,8 +375,8 @@ export const ExhibitorLeadsPage = () => {
 
         {/* Visitor Leads View */}
         {activeTab === 'leads' && (
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <table className="w-full min-w-[650px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Visitor & Company</th>
@@ -425,8 +425,8 @@ export const ExhibitorLeadsPage = () => {
 
         {/* Staff Passes View */}
         {activeTab === 'staff' && (
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
+          <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <table className="w-full min-w-[600px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
                   <th className="py-3.5 px-4">Staff Name & Designation</th>

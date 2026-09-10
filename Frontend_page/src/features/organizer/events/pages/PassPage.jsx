@@ -146,17 +146,17 @@ function EventDetailPage({ event, onBack }) {
   const paged = visitors.slice((page - 1) * perPage, page * perPage);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
       <div className="flex items-center gap-4 mb-6">
         <button onClick={onBack} className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-all text-gray-600">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
         </button>
-        <h1 className="text-3xl font-bold text-gray-800">Pass</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Pass</h1>
       </div>
 
-      <div className="flex gap-6 flex-wrap">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: Search panel */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6" style={{ minWidth: 280, flex: "0 0 320px" }}>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 w-full lg:w-80 shrink-0">
           <h2 className="text-blue-600 font-semibold text-lg mb-4">Search / Scan QR Here to Get Pass</h2>
           <input
             value={search}
@@ -182,13 +182,13 @@ function EventDetailPage({ event, onBack }) {
         </div>
 
         {/* Right: Visitors table */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-1" style={{ minWidth: 0 }}>
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 flex-1 min-w-0">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-blue-600 font-semibold text-base">No. of Passes</h2>
           </div>
-          <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+            <div>
+              <table className="w-full min-w-[650px]">
                 <thead>
                   <tr className="bg-sky-600 text-white">
                     <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Action</th>
@@ -308,12 +308,12 @@ export default function Pass() {
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Pass</h1>
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">Pass</h1>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <div className="relative w-96">
+          <div className="relative w-full sm:w-80">
             <input
               type="text"
               placeholder="Search Keyword..."
@@ -325,9 +325,9 @@ export default function Pass() {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+          <div>
+            <table className="w-full min-w-[650px]">
               <thead>
                 <tr className="bg-sky-600 text-white">
                   <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Action</th>

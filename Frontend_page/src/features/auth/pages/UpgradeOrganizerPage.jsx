@@ -65,15 +65,18 @@ export default function UpgradeOrganizerPage() {
     upi_id: "",
   });
 
+  const isRedirectingRef = React.useRef(false);
+
   // On mount: check if user is already an organizer or has saved partial KYC step
   useEffect(() => {
+    if (isRedirectingRef.current) return;
     const orgProfile = user?.profiles?.organizer || user?.organizer_profile;
     const sharedKyc = user?.shared_kyc || {};
 
     if (orgProfile?.kyc_status === "VERIFIED") {
+      isRedirectingRef.current = true;
       sessionStorage.setItem("role", "organizer");
       localStorage.setItem("role", "organizer");
-      dispatch(setCredentials({ ...reduxAuth, role: "organizer" }));
       navigate("/OrganizerHome", { replace: true });
       return;
     }
@@ -103,7 +106,7 @@ export default function UpgradeOrganizerPage() {
     if (orgProfile?.kyc_step >= 1) {
       setStep(2);
     }
-  }, [user, navigate]);
+  }, [user?.id, user?.profiles?.organizer?.kyc_status, navigate]);
 
   const [isPincodeLoading, setIsPincodeLoading] = useState(false);
   const [pincodeSuccess, setPincodeSuccess] = useState(false);
@@ -285,6 +288,8 @@ export default function UpgradeOrganizerPage() {
       sessionStorage.setItem("active_role", "organizer");
       localStorage.setItem("roles", JSON.stringify(fullRoles));
       sessionStorage.setItem("roles", JSON.stringify(fullRoles));
+
+      isRedirectingRef.current = true;
 
       if (newToken) {
         dispatch(setCredentials({ user: userToStore, token: newToken, role: "organizer" }));

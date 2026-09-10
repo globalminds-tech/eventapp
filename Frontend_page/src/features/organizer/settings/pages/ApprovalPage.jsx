@@ -203,10 +203,10 @@ const AdminApproval = () => {
   }, [search]);
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
       {/* TOAST NOTIFICATION */}
       {toast.show && (
-        <div className={`fixed top-10 right-10 z-[250] px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 duration-500 flex items-center gap-4 border ${toast.type === "success"
+        <div className={`fixed top-10 right-4 sm:right-10 z-[250] px-4 sm:px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 duration-500 flex items-center gap-4 border ${toast.type === "success"
           ? "bg-emerald-600 text-white border-emerald-500 shadow-emerald-200"
           : "bg-rose-600 text-white border-rose-500 shadow-rose-200"
           }`}>
@@ -217,7 +217,7 @@ const AdminApproval = () => {
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div className="flex items-center gap-4">
           {viewMode === "bookings" && (
             <button
@@ -227,7 +227,7 @@ const AdminApproval = () => {
               <ArrowLeft size={24} />
             </button>
           )}
-          <h1 className="text-3xl font-bold text-gray-800">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
             {viewMode === "events" ? "Select Event for Approval" : `Bookings for ${selectedEvent?.event_name}`}
           </h1>
         </div>
@@ -238,9 +238,9 @@ const AdminApproval = () => {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <div className="relative w-96">
+          <div className="relative w-full sm:w-80">
             <input
               type="text"
               placeholder={`Search ${viewMode === "events" ? "Events" : "Bookings"}...`}
@@ -259,9 +259,9 @@ const AdminApproval = () => {
             <p className="text-slate-400 text-xs mt-1">Try adjusting your search criteria</p>
           </div>
         ) : (
-          <div className="bg-white rounded-3xl shadow-xl border border-slate-100">
-            <div className="overflow-x-auto min-h-[400px]">
-              <table className="w-full">
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+            <div className="min-h-[400px]">
+              <table className="w-full min-w-[650px]">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                     <th className="px-6 py-3.5 text-center font-semibold tracking-wider">Actions</th>
@@ -484,8 +484,8 @@ const AdminApproval = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 py-6 flex items-center justify-between z-10">
-              <h2 className="text-2xl font-bold text-slate-900">
+            <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 sm:px-8 py-5 sm:py-6 flex items-center justify-between z-10">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
                 Booking Details
               </h2>
               <button
@@ -503,14 +503,14 @@ const AdminApproval = () => {
                 <p className="text-slate-500 font-medium animate-pulse">Fetching information...</p>
               </div>
             ) : (
-              <div className="px-8 py-6 space-y-8">
+              <div className="px-4 sm:px-8 py-6 space-y-8">
                 {/* Personal Information Section */}
                 <div>
                   <h3 className="text-xs font-bold text-sky-600  tracking-widest mb-4 flex items-center gap-2">
                     <div className="w-1 h-4 bg-sky-600 rounded-full"></div>
                     Personal Information
                   </h3>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-xs font-bold text-slate-400 mb-1  tracking-tighter">Full Name</label>
                       <p className="text-slate-900 font-bold text-lg">{selectedBooking.first_name} {selectedBooking.last_name}</p>
@@ -536,7 +536,7 @@ const AdminApproval = () => {
                     <div className="w-1 h-4 bg-sky-600 rounded-full"></div>
                     Company Information
                   </h3>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-xs font-bold text-slate-400 mb-1  tracking-tighter">Company Name</label>
                       <p className="text-slate-900 font-bold">{selectedBooking.company_name}</p>
@@ -545,7 +545,7 @@ const AdminApproval = () => {
                       <label className="block text-xs font-bold text-slate-400 mb-1  tracking-tighter">Product Category</label>
                       <p className="text-slate-900 font-medium">{selectedBooking.products}</p>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <label className="block text-xs font-bold text-slate-400 mb-1  tracking-tighter">Event Applied For</label>
                       <div className="p-3 bg-sky-50 rounded-xl border border-sky-100">
                         <p className="text-sky-900 font-bold text-sm flex items-center gap-2">
@@ -563,7 +563,7 @@ const AdminApproval = () => {
                     <div className="w-1 h-4 bg-sky-600 rounded-full"></div>
                     Address Details
                   </h3>
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <label className="block text-xs font-bold text-slate-400 mb-1  tracking-tighter">Country</label>
                       <p className="text-slate-900 font-medium">{selectedBooking.country}</p>
@@ -580,7 +580,7 @@ const AdminApproval = () => {
                       <label className="block text-xs font-bold text-slate-400 mb-1  tracking-tighter">Pin Code</label>
                       <p className="text-slate-900 font-bold font-mono">{selectedBooking.pin_code}</p>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1 sm:col-span-2">
                       <label className="block text-xs font-bold text-slate-400 mb-1  tracking-tighter">Street Address</label>
                       <p className="text-slate-900 font-medium">{selectedBooking.address}</p>
                     </div>

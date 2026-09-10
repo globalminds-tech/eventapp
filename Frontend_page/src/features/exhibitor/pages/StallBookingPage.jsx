@@ -222,11 +222,11 @@ const Stall = () => {
   );
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+    <div className="min-h-screen lg:h-screen flex flex-col bg-slate-50 overflow-x-hidden">
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {/* ── Top Header Bar ─────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-sky-600 flex items-center justify-center">
             <Store className="w-4 h-4 text-white" />

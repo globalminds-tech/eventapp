@@ -372,7 +372,7 @@ export const PolicyPage = () => {
       {/* TOAST */}
       {/* TOAST NOTIFICATION */}
       {popup.show && (
-        <div className={`fixed top-10 right-10 z-[250] px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 duration-500 flex items-center gap-4 border ${popup.type === "success"
+        <div className={`fixed top-10 right-4 sm:right-10 z-[250] px-4 sm:px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right-10 duration-500 flex items-center gap-4 border ${popup.type === "success"
           ? "bg-emerald-600 text-white border-emerald-500 shadow-emerald-200"
           : "bg-rose-600 text-white border-rose-500 shadow-rose-200"
           }`}>
@@ -389,9 +389,9 @@ export const PolicyPage = () => {
           Policy Management
         </h1>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           {/* Search Bar */}
-          <div className="relative group flex-1 sm:flex-initial">
+          <div className="relative group w-full sm:w-auto">
             <Search
               size={16}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
@@ -405,7 +405,7 @@ export const PolicyPage = () => {
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={handleExportExcel}
               disabled={isExcelLoading}
@@ -445,9 +445,9 @@ export const PolicyPage = () => {
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+        <div>
+          <table className="w-full min-w-[850px]">
             {/* HEADER */}
             <thead>
               <tr className="bg-sky-600 text-white">

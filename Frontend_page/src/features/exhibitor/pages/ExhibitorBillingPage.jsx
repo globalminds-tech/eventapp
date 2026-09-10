@@ -94,7 +94,7 @@ export const ExhibitorBillingPage = () => {
       {/* ── INVOICES TABLE ── */}
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
-          <div className="relative w-72">
+          <div className="relative w-full sm:w-72">
             <Search className="absolute left-3.5 top-2.5 text-slate-400 w-4 h-4" />
             <input
               placeholder="Search invoice number..."
@@ -105,8 +105,8 @@ export const ExhibitorBillingPage = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="responsive-table-wrap">
+          <table className="w-full min-w-[760px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4">Invoice No</th>

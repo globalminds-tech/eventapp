@@ -33,14 +33,14 @@ export default function UserWiseScreenMapping() {
   const handleDelete = () => alert("Deleted!");
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 font-sans">
+    <div className="min-h-screen bg-gray-100 p-3.5 sm:p-6 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold text-gray-800">User Wise Screen Mapping</h1>
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">User Wise Screen Mapping</h1>
         <div className="flex gap-2">
           <button
             onClick={handleSave}
-            className="p-2 border border-gray-300 rounded bg-white hover:bg-gray-50 text-gray-600"
+            className="p-2 border border-gray-300 rounded bg-white hover:bg-gray-50 text-gray-600 shadow-sm"
             title="Save"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -50,7 +50,7 @@ export default function UserWiseScreenMapping() {
           </button>
           <button
             onClick={handleDelete}
-            className="p-2 border border-gray-300 rounded bg-white hover:bg-gray-50 text-gray-600"
+            className="p-2 border border-gray-300 rounded bg-white hover:bg-gray-50 text-gray-600 shadow-sm"
             title="Delete"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -61,9 +61,9 @@ export default function UserWiseScreenMapping() {
       </div>
 
       {/* Main Layout */}
-      <div className="flex gap-4">
+      <div className="flex flex-col lg:flex-row gap-4">
         {/* Left Panel */}
-        <div className="w-72 bg-white rounded border border-gray-200 p-5 flex-shrink-0">
+        <div className="w-full lg:w-72 bg-white rounded border border-gray-200 p-4 sm:p-5 shrink-0">
           <h2 className="text-blue-600 font-semibold text-lg mb-4">User Details</h2>
 
           <div className="mb-4">
@@ -112,10 +112,10 @@ export default function UserWiseScreenMapping() {
 
 
         {/* Right Panel */}
-        <div className="flex-1 bg-white rounded border border-gray-200 p-5">
+        <div className="flex-1 bg-white rounded border border-gray-200 p-4 sm:p-5 min-w-0">
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto responsive-table-wrap touch-scroll">
+            <table className="w-full min-w-[650px]">
               <thead>
             <tr className="bg-sky-600 text-white">
                   <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Module</th>

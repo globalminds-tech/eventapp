@@ -830,8 +830,27 @@ const CreateEvent = ({ onBack, editData, isView }) => {
           </div>
         )}
 
-        {/* ── STEPPER PROGRESS TRACKER ── */}
-        <div className="mt-3 pt-2 border-t border-slate-100">
+        {/* ── MOBILE STEPPER PROGRESS TRACKER (< md) ── */}
+        <div className="md:hidden mt-3 pt-2 border-t border-slate-100 space-y-1.5">
+          <div className="flex items-center justify-between text-xs px-0.5">
+            <span className="font-extrabold text-cyan-800 flex items-center gap-1.5">
+              <span>Step {step} of {STEPS.length}:</span>
+              <span className="text-slate-900 truncate">{STEPS[step - 1]?.label}</span>
+            </span>
+            <span className="font-bold text-[11px] text-slate-400 shrink-0">
+              {Math.round((step / STEPS.length) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 h-full rounded-full transition-all duration-300"
+              style={{ width: `${(step / STEPS.length) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* ── DESKTOP STEPPER PROGRESS TRACKER (>= md) ── */}
+        <div className="hidden md:block mt-3 pt-2 border-t border-slate-100">
           <div className="flex items-start justify-between w-full max-w-3xl mx-auto">
             {STEPS.map((s, idx) => {
               const isActive = step === idx + 1;
