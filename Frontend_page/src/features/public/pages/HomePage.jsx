@@ -374,24 +374,55 @@ const App = () => {
     }
   };
 
-  const handleCategorySwitch = (catKey) => {
-    if (catKey === selectedCategory) return;
+  // Synchronize currentTheme when categories are loaded or refreshed from backend
+  useEffect(() => {
+    if (dbCategories && dbCategories.length > 0) {
+      if (selectedCategory !== "All") {
+        const matchingCat = dbCategories.find(
+          (c) => c.name?.trim().toLowerCase() === selectedCategory?.trim().toLowerCase() || c.name === selectedCategory
+        );
+        if (matchingCat) {
+          const img = matchingCat.category_image || matchingCat.image || matchingCat.banner_url || matchingCat.banner;
+          if (img) {
+            setCurrentTheme((prev) => ({
+              ...prev,
+              background: img,
+            }));
+          }
+        }
+      }
+    }
+  }, [dbCategories, selectedCategory]);
 
+  const handleCategorySwitch = (catKey) => {
     let targetTheme = { ...categoryThemes.All };
 
     if (catKey !== "All") {
-      const dbCat = dbCategories.find(c => c.name === catKey);
-      const preTheme = categoryThemes[catKey];
+      const dbCat = dbCategories.find(
+        (c) => c.name?.trim().toLowerCase() === catKey?.trim().toLowerCase() || c.name === catKey
+      );
+      const preTheme = categoryThemes[catKey] || (dbCat ? categoryThemes[dbCat.name] : null);
+
+      const dynamicImg =
+        dbCat?.category_image ||
+        dbCat?.image ||
+        dbCat?.banner_url ||
+        dbCat?.banner ||
+        preTheme?.background ||
+        targetTheme.background;
 
       if (dbCat) {
         targetTheme = {
           key: dbCat.name,
           label: dbCat.name,
-          background: dbCat.category_image || preTheme?.background || targetTheme.background,
+          background: dynamicImg,
           primaryColor: preTheme?.primaryColor || "#0284c7",
           accentColor: "#f97316",
           placeholder: preTheme?.placeholder || `Search "${dbCat.name.toLowerCase()} events..."`,
-          icon: preTheme?.icon || Sparkles
+          bannerBadge: preTheme?.bannerBadge || `✦ ${dbCat.name.toUpperCase()} ✦`,
+          bannerTitle: preTheme?.bannerTitle || `Discover ${dbCat.name}`,
+          bannerSub: preTheme?.bannerSub || "Explore and book exclusive events",
+          icon: preTheme?.icon || Sparkles,
         };
       } else if (preTheme) {
         targetTheme = preTheme;
@@ -544,28 +575,26 @@ const App = () => {
       {/* CURVED HEADER WITH BG TRANSITION */}
       <div className="curved-header min-h-[250px] md:min-h-[270px] flex flex-col justify-between relative overflow-hidden">
         {/* Layer 0: Dynamic category background layers */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `url(${prevTheme.background})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            zIndex: 0,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `url(${currentTheme.background})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            opacity: opacity,
-            transition: "opacity 300ms ease-in-out",
-            zIndex: 0,
-          }}
-        />
+        {prevTheme?.background && (
+          <img
+            src={prevTheme.background}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            style={{ zIndex: 0 }}
+          />
+        )}
+        {currentTheme?.background && (
+          <img
+            src={currentTheme.background}
+            alt={currentTheme.label || "Category Banner"}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-300 ease-in-out"
+            style={{ opacity: opacity, zIndex: 0 }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = "/backgrounds/1.png";
+            }}
+          />
+        )}
 
         {/* Layer 1: Solid Dark Shade for Row 1 Contrast (NO GLASSMORPHISM) */}
         <div
