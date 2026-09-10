@@ -4,6 +4,7 @@ import { Search, ListFilter, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, 
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 const COLUMNS = [
   { key: "company_name", label: "Company Name" },
@@ -150,52 +151,90 @@ export default function ExhibitorTable() {
           </div>
         </div>
 
-        <div className="responsive-table-wrap">
-          <table className="w-full min-w-[760px] text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                {COLUMNS.map(col => (
-                  <th key={col.key} className="py-3.5 px-4">
-                    {col.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+        <div className="p-4">
+          <ResponsiveTableView
+            data={sliced}
+            keyField="id"
+            loading={loading}
+            emptyMessage="No exhibitors found matching your criteria."
+            renderDesktopTable={() => (
+              <div className="responsive-table-wrap">
+                <table className="w-full min-w-[760px] text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {COLUMNS.map(col => (
+                        <th key={col.key} className="py-3.5 px-4">
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
 
-            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {sliced.length === 0 ? (
-                <tr>
-                  <td colSpan={COLUMNS.length} className="py-12 text-center text-slate-400">
-                    <ListFilter size={32} className="mx-auto mb-2 opacity-40" />
-                    <p className="font-semibold text-sm">No exhibitors found</p>
-                  </td>
-                </tr>
-              ) : (
-                sliced.map((row, i) => (
-                  <tr key={row.id ?? i} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-4 font-bold text-slate-900">{row.company_name}</td>
-                    <td className="py-4 px-4 text-slate-800 font-semibold">{row.name}</td>
-                    <td className="py-4 px-4 text-slate-600">{row.mobile}</td>
-                    <td className="py-4 px-4 text-slate-600">{row.email}</td>
-                    <td className="py-4 px-4 font-bold text-indigo-600">{row.stall_area}</td>
-                    <td className="py-4 px-4 text-slate-700 font-semibold">{row.products}</td>
-                    <td className="py-4 px-4 text-slate-500">{row.address}</td>
-                    <td className="py-4 px-4">
-                      {row.status === "Approved" || row.status === "Active" ? (
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold px-2.5 py-0.5">
-                          Approved
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-800 border-amber-200 font-bold px-2.5 py-0.5">
-                          Pending
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    {sliced.map((row, i) => (
+                      <tr key={row.id ?? i} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-4 font-bold text-slate-900">{row.company_name}</td>
+                        <td className="py-4 px-4 text-slate-800 font-semibold">{row.name}</td>
+                        <td className="py-4 px-4 text-slate-600">{row.mobile}</td>
+                        <td className="py-4 px-4 text-slate-600">{row.email}</td>
+                        <td className="py-4 px-4 font-bold text-indigo-600">{row.stall_area}</td>
+                        <td className="py-4 px-4 text-slate-700 font-semibold">{row.products}</td>
+                        <td className="py-4 px-4 text-slate-500">{row.address}</td>
+                        <td className="py-4 px-4">
+                          {row.status === "Approved" || row.status === "Active" ? (
+                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold px-2.5 py-0.5">
+                              Approved
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-100 text-amber-800 border-amber-200 font-bold px-2.5 py-0.5">
+                              Pending
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(row) => {
+              const isApproved = row.status === "Approved" || row.status === "Active";
+
+              return (
+                <MobileDataCard key={row.id}>
+                  <MobileDataCard.Header
+                    title={row.company_name}
+                    subtitle={row.name ? `Contact: ${row.name}` : undefined}
+                    statusBadge={
+                      <Badge className={isApproved ? "bg-emerald-100 text-emerald-800 border-emerald-200 font-bold px-2.5 py-0.5" : "bg-amber-100 text-amber-800 border-amber-200 font-bold px-2.5 py-0.5"}>
+                        {isApproved ? "Approved" : "Pending"}
+                      </Badge>
+                    }
+                  />
+
+                  <MobileDataCard.Grid
+                    items={[
+                      { label: "Stall Space", value: <span className="font-extrabold text-indigo-600">{row.stall_area || "Standard"}</span> },
+                      { label: "Phone", value: row.mobile || "—" },
+                      { label: "Products / Category", value: row.products || "Exhibition" },
+                      { label: "City & Address", value: row.address || "—" }
+                    ]}
+                  />
+
+                  {row.email && (
+                    <MobileDataCard.Actions>
+                      <a
+                        href={`mailto:${row.email}`}
+                        className="text-xs font-bold text-slate-600 hover:text-cyan-600 transition-colors flex items-center gap-1.5"
+                      >
+                        <span>Email: {row.email}</span>
+                      </a>
+                    </MobileDataCard.Actions>
+                  )}
+                </MobileDataCard>
+              );
+            }}
+          />
         </div>
       </Card>
     </div>

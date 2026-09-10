@@ -17,10 +17,21 @@ from app.Services.email_templates import (
 
 _BRAND_LOGO_PNG_BYTES = base64.b64decode(BRAND_LOGO_MARK_B64)
 
-SMTP_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+def _get_smtp_config():
+    server = os.getenv("MAIL_SERVER", "smtp.gmail.com").strip()
+    try:
+        port = int(os.getenv("MAIL_PORT", 587))
+    except (ValueError, TypeError):
+        port = 587
+    username = (os.getenv("MAIL_USERNAME", "") or os.getenv("EMAIL_USER", "")).strip()
+    # Auto-strip spaces that are copied from Google's 16-character app password format (e.g. 'cujb rsli ihts oewf' -> 'cujbrsliihtsoewf')
+    password = (os.getenv("MAIL_PASSWORD", "") or os.getenv("EMAIL_PASS", "")).replace(" ", "").strip()
+    return server, port, username, password
+
+SMTP_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com").strip()
 SMTP_PORT = int(os.getenv("MAIL_PORT", 587))
-SMTP_USERNAME = os.getenv("MAIL_USERNAME", os.getenv("EMAIL_USER", ""))
-SMTP_PASSWORD = os.getenv("MAIL_PASSWORD", os.getenv("EMAIL_PASS", ""))
+SMTP_USERNAME = (os.getenv("MAIL_USERNAME", "") or os.getenv("EMAIL_USER", "")).strip()
+SMTP_PASSWORD = (os.getenv("MAIL_PASSWORD", "") or os.getenv("EMAIL_PASS", "")).replace(" ", "").strip()
 
 import concurrent.futures
 import logging
@@ -31,15 +42,43 @@ logger = logging.getLogger("mail_service")
 _mail_executor = concurrent.futures.ThreadPoolExecutor(max_workers=10, thread_name_prefix="bme_mail_worker")
 
 def _smtp_deliver_task(msg, to_email):
-    """Worker task executed in background thread pool to avoid blocking API threads."""
+    """Worker task executed in background thread pool to avoid blocking API threads.
+    Sanitizes credentials, supports Port 465 (SSL) and Port 587 (TLS), and automatically
+    falls back to SSL if TLS fails or is blocked on cloud platforms.
+    """
+    server_host, port, username, password = _get_smtp_config()
+
+    if not username or not password:
+        logger.warning(f"[MAIL SIMULATION] No credentials provided. Email to {to_email} skipped.")
+        return
+
+    # Primary delivery attempt
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=12) as server:
-            server.starttls()
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.send_message(msg)
-        print(f"[SUCCESS] Background email delivered to {to_email}")
-    except Exception as e:
-        print(f"[MAIL DEV FALLBACK] SMTP send exception (handled gracefully): {e}")
+        if port == 465:
+            with smtplib.SMTP_SSL(server_host, port, timeout=15) as server:
+                server.login(username, password)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(server_host, port, timeout=15) as server:
+                server.starttls()
+                server.login(username, password)
+                server.send_message(msg)
+        print(f"[SUCCESS] Background email delivered to {to_email} via {server_host}:{port}")
+        return
+    except Exception as primary_err:
+        print(f"[MAIL WARN] Primary delivery to {to_email} via port {port} failed: {primary_err}")
+
+    # Fallback attempt: If Port 587 failed (common cloud host port-block/TLS issue), try SSL Port 465
+    if port != 465:
+        try:
+            print(f"[MAIL FALLBACK] Retrying delivery to {to_email} via SSL port 465...")
+            with smtplib.SMTP_SSL(server_host, 465, timeout=15) as server:
+                server.login(username, password)
+                server.send_message(msg)
+            print(f"[SUCCESS] Email delivered to {to_email} via {server_host}:465 (SSL fallback)")
+            return
+        except Exception as fallback_err:
+            print(f"[MAIL ERROR] Fallback delivery on port 465 also failed: {fallback_err}")
 
 def send_email(to_email, subject, message, is_html=False, qr_base64=None, sync=False):
     """Universal Email Sender with HTML Support, brand mark & QR attachments, and asynchronous non-blocking dispatch."""
@@ -79,14 +118,15 @@ def send_email(to_email, subject, message, is_html=False, qr_base64=None, sync=F
 
     import email.utils
     import uuid
+    server_host, port, username, password = _get_smtp_config()
     msg['Subject'] = subject
-    msg['From'] = SMTP_USERNAME or "noreply@bookmyevent.com"
+    msg['From'] = username or "noreply@bookmyevent.com"
     msg['To'] = to_email
     msg['Message-ID'] = email.utils.make_msgid(domain='bookmyevent.com')
     msg['X-Entity-Ref-ID'] = str(uuid.uuid4())
 
     # Dev Mode Simulation if credentials are missing
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
+    if not username or not password:
         print(f"[MAIL SIMULATION SUCCESS] Email to: {to_email} | Subject: '{subject}'")
         return True
 

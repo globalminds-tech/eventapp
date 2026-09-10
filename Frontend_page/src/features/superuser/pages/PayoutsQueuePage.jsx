@@ -4,6 +4,7 @@ import { Landmark, IndianRupee, TrendingUp, Receipt, Clock, CheckCircle2, Refres
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 import { getDashboardStats, getAllEvents } from "@/Services/api";
 
 const formatIndianCurrency = (amount) => {
@@ -137,53 +138,83 @@ export default function PayoutsQueue() {
               )}
             </div>
 
-            <div className="overflow-x-auto responsive-table-wrap touch-scroll border border-slate-100 rounded-xl">
-              <table className="w-full text-left border-collapse min-w-[650px]">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3 px-4">Event Code</th>
-                    <th className="py-3 px-4">Event Name</th>
-                    <th className="py-3 px-4">Pass Fee</th>
-                    <th className="py-3 px-4">Passes Sold</th>
-                    <th className="py-3 px-4 text-right">Gross Sales Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                  {loading ? (
-                    [1, 2, 3, 4, 5].map((i) => (
-                      <tr key={i} className="animate-pulse">
-                        <td className="py-3.5 px-4"><Skeleton className="h-4 w-24 rounded-md" /></td>
-                        <td className="py-3.5 px-4"><Skeleton className="h-4 w-44 rounded-md" /></td>
-                        <td className="py-3.5 px-4"><Skeleton className="h-4 w-20 rounded-md" /></td>
-                        <td className="py-3.5 px-4"><Skeleton className="h-4 w-16 rounded-md" /></td>
-                        <td className="py-3.5 px-4 text-right"><Skeleton className="h-4 w-28 rounded-md ml-auto" /></td>
-                      </tr>
-                    ))
-                  ) : events.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-400">
-                        No transactions recorded in database.
-                      </td>
+            <ResponsiveTableView
+              columns={[
+                { header: "Event Code" },
+                { header: "Event Name" },
+                { header: "Pass Fee" },
+                { header: "Passes Sold" },
+                { header: "Gross Sales Value", className: "text-right" }
+              ]}
+              desktopBody={
+                loading ? (
+                  [1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-24 rounded-md" /></td>
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-44 rounded-md" /></td>
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-20 rounded-md" /></td>
+                      <td className="py-3.5 px-4"><Skeleton className="h-4 w-16 rounded-md" /></td>
+                      <td className="py-3.5 px-4 text-right"><Skeleton className="h-4 w-28 rounded-md ml-auto" /></td>
                     </tr>
-                  ) : (
-                    events.map((e) => {
-                      const price = floatVal(e.price || e.price_inr || e.pass_fee || 0);
-                      const sold = intVal(e.passesSold || e.passes_sold || 0);
-                      const totalVal = price * sold;
-                      return (
-                        <tr key={e.id} className="hover:bg-slate-50/60 transition">
-                          <td className="py-3 px-4 font-mono font-bold text-purple-700">{e.event_code || e.code || `EVT-${e.id}`}</td>
-                          <td className="py-3 px-4 font-bold text-slate-900">{e.event_name || e.name}</td>
-                          <td className="py-3 px-4 font-semibold text-slate-800">₹{price.toLocaleString("en-IN")}</td>
-                          <td className="py-3 px-4 font-bold text-slate-800">{sold}</td>
-                          <td className="py-3 px-4 text-right font-black text-indigo-950">₹{totalVal.toLocaleString("en-IN")}</td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                ) : events.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">
+                      No transactions recorded in database.
+                    </td>
+                  </tr>
+                ) : (
+                  events.map((e) => {
+                    const price = floatVal(e.price || e.price_inr || e.pass_fee || 0);
+                    const sold = intVal(e.passesSold || e.passes_sold || 0);
+                    const totalVal = price * sold;
+                    return (
+                      <tr key={e.id} className="hover:bg-slate-50/60 transition">
+                        <td className="py-3 px-4 font-mono font-bold text-purple-700">{e.event_code || e.code || `EVT-${e.id}`}</td>
+                        <td className="py-3 px-4 font-bold text-slate-900">{e.event_name || e.name}</td>
+                        <td className="py-3 px-4 font-semibold text-slate-800">₹{price.toLocaleString("en-IN")}</td>
+                        <td className="py-3 px-4 font-bold text-slate-800">{sold}</td>
+                        <td className="py-3 px-4 text-right font-black text-indigo-950">₹{totalVal.toLocaleString("en-IN")}</td>
+                      </tr>
+                    );
+                  })
+                )
+              }
+              mobileContent={
+                loading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-4 bg-white rounded-2xl border border-slate-200/80 animate-pulse space-y-3">
+                        <Skeleton className="h-4 w-3/4 rounded" />
+                        <Skeleton className="h-3 w-1/2 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : events.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                    No transactions recorded in database.
+                  </div>
+                ) : (
+                  events.map((e) => {
+                    const price = floatVal(e.price || e.price_inr || e.pass_fee || 0);
+                    const sold = intVal(e.passesSold || e.passes_sold || 0);
+                    const totalVal = price * sold;
+                    return (
+                      <MobileDataCard
+                        key={e.id}
+                        title={e.event_name || e.name}
+                        subtitle={e.event_code || e.code || `EVT-${e.id}`}
+                        badge={<Badge variant="outline" className="border-purple-200 text-purple-700 font-mono text-[10px]">₹{totalVal.toLocaleString("en-IN")}</Badge>}
+                        fields={[
+                          { label: "Pass Fee", value: `₹${price.toLocaleString("en-IN")}` },
+                          { label: "Passes Sold", value: `${sold} units` }
+                        ]}
+                      />
+                    );
+                  })
+                )
+              }
+            />
           </div>
         )}
 

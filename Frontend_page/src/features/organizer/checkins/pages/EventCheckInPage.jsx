@@ -38,6 +38,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import QRScanner, { playScanSound } from "@/components/QRScanner";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 const GATE_PRESETS = [
   "Main Turnstile 1",

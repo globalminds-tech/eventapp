@@ -296,11 +296,25 @@ export default function Login() {
         navigate("/", { replace: true });
       }
     } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-        err?.response?.data?.detail ||
-        "Invalid email or password. Please check your credentials."
-      );
+      if (!err?.response) {
+        if (err?.code === "ECONNABORTED") {
+          setError("Server request timed out. Please check your network and try again.");
+        } else {
+          setError("Cannot connect to server. Please verify the backend is running and reachable.");
+        }
+      } else if (err.response.status === 401 || err.response.status === 400) {
+        setError(
+          err.response.data?.message ||
+          err.response.data?.detail ||
+          "Invalid email or password. Please check your credentials."
+        );
+      } else if (err.response.status === 429) {
+        setError(err.response.data?.detail || "Too many login attempts. Please wait a minute.");
+      } else if (err.response.status >= 500) {
+        setError(err.response.data?.message || "Internal server error. Please try again later.");
+      } else {
+        setError(err.response.data?.message || err.response.data?.detail || "An unexpected error occurred.");
+      }
     } finally {
       setIsLoading(false);
     }

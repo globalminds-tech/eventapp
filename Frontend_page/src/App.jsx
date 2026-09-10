@@ -87,6 +87,22 @@ import { PermissionProvider, usePermissions } from "./shared/context/PermissionC
 import { useSelector } from "react-redux";
 import FirstLoginPasswordModal from "./components/FirstLoginPasswordModal";
 import MasterDataPage from "./features/organizer/master-data/pages/MasterDataPage";
+import { isSuperUser } from "./shared/services/authHelper";
+
+// Smart Root Redirect: Super Admin directly opens SuperUser Dashboard; others open standard Home
+function SmartRootRedirect() {
+  const authUser = useSelector((state) => state.auth?.user);
+  const authRole = useSelector((state) => state.auth?.role);
+  const userSliceUser = useSelector((state) => state.user);
+
+  const isSuper = isSuperUser(authUser || userSliceUser, authRole);
+
+  if (isSuper) {
+    return <Navigate to="/superuser/dashboard" replace />;
+  }
+
+  return <Home />;
+}
 
 // Smart Index Redirect for Organizers: routes to first permitted tool if dashboard is prohibited
 function OrganizerIndexRedirect() {
@@ -185,7 +201,7 @@ export default function App() {
         <PermissionProvider>
           <Routes>
             {/* ── TIER 1: PUBLIC / DISCOVERY ROUTES (Unprotected) ── */}
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<SmartRootRedirect />} />
             <Route path="/all-events" element={<AllEvents />} />
             <Route path="/event-detail/:id" element={<EventDetail />} />
             <Route path="/event/:id" element={<EventDetail />} />
