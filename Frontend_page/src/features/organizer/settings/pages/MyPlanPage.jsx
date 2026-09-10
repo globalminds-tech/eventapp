@@ -102,30 +102,16 @@ function MyPlansPage({ onUpgrade }) {
     background: "#fff",
     borderRadius: 12,
     border: "1px solid #e4e9f4",
-    padding: "28px 30px 32px",
+    padding: "24px",
   };
 
   return (
-    <div
-      style={{
-        padding: "36px 40px",
-        background: "#f5f7fc",
-        minHeight: "100vh",
-        boxSizing: "border-box",
-      }}
-    >
-      <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a2e", marginBottom: 28 }}>
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-[#f5f7fc] min-h-screen box-border font-sans">
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a2e] mb-6">
         My Plans
       </h1>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 20,
-          alignItems: "start",
-        }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 items-start">
         {/* Plan Information */}
         <div style={card}>
           <h2 style={{ color: "#3b5bdb", fontWeight: 700, fontSize: 17, marginBottom: 22 }}>
@@ -227,15 +213,8 @@ function SelectPlansPage({ onChoosePlan }) {
   const plans = yearly ? yearlyPlans : monthlyPlans;
 
   return (
-    <div
-      style={{
-        padding: "36px 40px",
-        background: "#edf0fb",
-        minHeight: "100vh",
-        boxSizing: "border-box",
-      }}
-    >
-      <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a2e", marginBottom: 28 }}>
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-[#edf0fb] min-h-screen box-border font-sans">
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a2e] mb-6">
         Select Plans
       </h1>
 
@@ -301,13 +280,7 @@ function SelectPlansPage({ onChoosePlan }) {
       </div>
 
       {/* Plan Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
-          gap: 20,
-        }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {plans.map((plan) => (
           <div
             key={plan.id}
@@ -478,43 +451,19 @@ function PaymentPage({ plan }) {
   };
 
   return (
-    <div
-      style={{
-        padding: "36px 40px 40px",
-        background: "#f5f7fc",
-        minHeight: "100vh",
-        boxSizing: "border-box",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a2e", marginBottom: 28 }}>
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-[#f5f7fc] min-h-screen box-border flex flex-col font-sans">
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1a1a2e] mb-6">
         Payment
       </h1>
 
-      <div style={{ display: "flex", gap: 20, flex: 1 }}>
+      <div className="flex flex-col lg:flex-row gap-6 flex-1">
         {/* Billing Information */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 12,
-            border: "1px solid #e4e9f4",
-            padding: "28px 32px 32px",
-            flex: 1,
-          }}
-        >
+        <div className="bg-white rounded-xl border border-[#e4e9f4] p-4 sm:p-8 flex-1">
           <h2 style={{ color: "#3b5bdb", fontWeight: 700, fontSize: 17, marginBottom: 24 }}>
             Billing Information
           </h2>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 20,
-              marginBottom: 20,
-            }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
             <div>
               <label style={labelStyle}>
                 Name <span style={{ color: "#e03131" }}>*</span>
@@ -549,17 +498,7 @@ function PaymentPage({ plan }) {
         </div>
 
         {/* Order Summary */}
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 12,
-            border: "1px solid #e4e9f4",
-            padding: "28px 28px 28px",
-            width: 380,
-            flexShrink: 0,
-            boxSizing: "border-box",
-          }}
-        >
+        <div className="bg-white rounded-xl border border-[#e4e9f4] p-4 sm:p-7 w-full lg:w-96 shrink-0 box-border">
           <h2 style={{ color: "#3b5bdb", fontWeight: 700, fontSize: 17, marginBottom: 24 }}>
             Order Summary
           </h2>

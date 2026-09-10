@@ -7,7 +7,8 @@ import {
   LayoutDashboard, LineChart, PlusCircle,
   QrCode, Utensils, Store, Users, MapPin, Receipt,
   ChevronLeft, ChevronRight, LogOut, Layers, Landmark, CheckCircle2, BarChart3, Calendar, UserCheck, User,
-  ArrowLeftRight, Shield, X, ChevronsUpDown, Check, CalendarDays, Building2, Compass, Ticket, Loader2, Database
+  ArrowLeftRight, Shield, X, ChevronsUpDown, Check, CalendarDays, Building2, Compass, Ticket, Loader2, Database,
+  Menu
 } from "lucide-react";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
@@ -85,6 +86,12 @@ export default function WebSidebar({ role }) {
   const dispatch = useDispatch();
   const { hasPermission, loading, permissions } = usePermissions();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Automatically close mobile navigation drawer when location changes
+  React.useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location.pathname]);
 
   const reduxAuthUser = useSelector((state) => state.auth?.user);
   const reduxUser = useSelector((state) => state.user);
@@ -163,18 +170,61 @@ export default function WebSidebar({ role }) {
   }, [activeRoleKey, hasPermission, visibleNavigationItems]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50">
+    <div className="flex flex-col lg:flex-row h-screen w-screen overflow-hidden bg-slate-50">
       
-      {/* ── SIDEBAR CONTAINER (Deep Dark Slate #0f172a theme) ── */}
+      {/* ── MOBILE APP HEADER BAR (< 1024px) ── */}
+      <header className="lg:hidden h-14 w-full bg-[#0f172a] border-b border-slate-800 flex items-center justify-between px-3.5 z-40 text-white shrink-0">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setIsMobileOpen(true)}
+            className="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition cursor-pointer border-none bg-transparent flex items-center justify-center"
+            aria-label="Open Navigation Menu"
+          >
+            <Menu size={20} />
+          </button>
+          <div onClick={() => navigate(mainDashboardPath)} className="cursor-pointer">
+            <BrandLogo isCollapsed={false} roleLabel={theme.roleLabel} textColor="text-white" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Quick Profile / Portal Indicator Trigger */}
+          <button
+            onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
+            className="relative flex items-center justify-center w-8 h-8 rounded-xl overflow-hidden border border-slate-700 bg-slate-800 text-white font-bold text-xs cursor-pointer"
+            aria-label="Switch Workspace"
+          >
+            {profileImage ? (
+              <img src={profileImage} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              username.charAt(0).toUpperCase()
+            )}
+            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-[#0f172a]" />
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Drawer Backdrop */}
+      {isMobileOpen && (
+        <div
+          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-xs lg:hidden transition-opacity"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* ── SIDEBAR CONTAINER (Desktop persistent + Mobile slide-out drawer) ── */}
       <aside
-        className={`flex flex-col h-full border-r border-slate-800 bg-[#0f172a] text-slate-300 transition-all duration-300 relative select-none z-30 ${
-          isCollapsed ? "w-[72px]" : "w-[250px]"
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col h-full border-r border-slate-800 bg-[#0f172a] text-slate-300 transition-all duration-300 select-none lg:static lg:z-30 ${
+          isMobileOpen ? "translate-x-0 w-[270px] shadow-2xl" : "-translate-x-full lg:translate-x-0"
+        } ${
+          isCollapsed ? "lg:w-[72px]" : "lg:w-[250px]"
         }`}
       >
-        {/* Toggle Button */}
+        {/* Toggle Button (Desktop Only) */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3.5 top-7 bg-[#0f172a] border border-slate-700 text-slate-400 hover:text-white p-1 rounded-full shadow-lg z-50 cursor-pointer flex items-center justify-center transition-colors"
+          className="hidden lg:flex absolute -right-3.5 top-7 bg-[#0f172a] border border-slate-700 text-slate-400 hover:text-white p-1 rounded-full shadow-lg z-50 cursor-pointer items-center justify-center transition-colors"
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -184,11 +234,22 @@ export default function WebSidebar({ role }) {
         <div 
           onClick={() => navigate(mainDashboardPath)}
           className={`h-16 flex items-center px-4 border-b border-slate-800/80 cursor-pointer transition-all duration-300 ${
-            isCollapsed ? "justify-center px-0" : "gap-3"
+            isCollapsed ? "justify-center px-0" : "justify-between"
           }`}
           title="Go to Main Dashboard"
         >
           <BrandLogo isCollapsed={isCollapsed} roleLabel={theme.roleLabel} textColor="text-white" />
+          {/* Mobile Drawer Close Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMobileOpen(false);
+            }}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition cursor-pointer border-none bg-transparent"
+            title="Close Menu"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Flat Navigation Menu List */}
@@ -315,7 +376,7 @@ export default function WebSidebar({ role }) {
                 className="fixed inset-0 z-40 bg-transparent"
               />
 
-              <div className="fixed bottom-20 left-3 w-80 z-50 overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0c1322] shadow-2xl ring-1 ring-white/10 animate-in fade-in zoom-in-95 duration-150">
+              <div className="fixed bottom-16 sm:bottom-20 left-2 sm:left-3 right-2 sm:right-auto sm:w-80 z-50 overflow-hidden rounded-2xl border border-slate-700/80 bg-[#0c1322] shadow-2xl ring-1 ring-white/10 animate-in fade-in zoom-in-95 duration-150">
                 {/* Popover Header */}
                 <div className="flex items-center justify-between border-b border-slate-800/80 px-3.5 py-2.5 bg-slate-900/40">
                   <div className="flex items-center gap-2">
@@ -468,9 +529,9 @@ export default function WebSidebar({ role }) {
       </aside>
 
       {/* ── MAIN CONTENT CONTAINER (FULL CANVAS VIEWPORT) ── */}
-      <main className="flex-1 h-full overflow-hidden flex flex-col bg-[#f8fafc]">
+      <main className="flex-1 h-full overflow-hidden flex flex-col bg-[#f8fafc] min-w-0">
         {/* Child Router Viewport */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto px-3.5 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-5 flex flex-col h-full">
           <Outlet />
         </div>
       </main>

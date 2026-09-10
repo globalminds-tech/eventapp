@@ -166,14 +166,14 @@ export default function CategoryMaster() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           <div className="relative">
             <input
               type="text"
               placeholder="Search category or subcategory..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 pr-8 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full sm:w-64 h-9 bg-slate-50 border border-slate-200 rounded-xl px-3 pr-8 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
             />
             <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
           </div>
@@ -197,8 +197,8 @@ export default function CategoryMaster() {
 
       {/* ── TABLE CONTAINER ── */}
       <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="responsive-table-wrap">
+          <table className="w-full min-w-[650px] text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                 <th className="p-3.5 pl-5">Category Image</th>
@@ -327,7 +327,7 @@ export default function CategoryMaster() {
       {/* ── ADD / EDIT CATEGORY MODAL ── */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-200 animate-fadeIn max-h-[92vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-slate-900 text-base">
                 {editingCategory ? "Edit Category" : "Add New Main Category"}

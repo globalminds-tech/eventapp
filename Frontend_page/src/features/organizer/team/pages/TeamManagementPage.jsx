@@ -492,7 +492,7 @@ export default function TeamManagementPage({ userScope }) {
     );
 
     return (
-      <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-8 space-y-6 animate-in fade-in duration-200">
+      <div className="min-h-screen bg-[#f8fafc] p-3.5 sm:p-6 lg:p-8 space-y-6 animate-in fade-in duration-200">
         {/* Top Breadcrumb & Return Nav */}
         <div className="flex items-center justify-between">
           <button
@@ -755,7 +755,7 @@ export default function TeamManagementPage({ userScope }) {
   // ─────────────────────────────────────────────────────────────────────────────
   if (viewMode === "role-editor") {
     return (
-      <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-8 space-y-6">
+      <div className="min-h-screen bg-[#f8fafc] p-3.5 sm:p-6 lg:p-8 space-y-6">
         {/* Top Breadcrumb & Return Nav */}
         <div className="flex items-center justify-between">
           <button
@@ -928,7 +928,7 @@ export default function TeamManagementPage({ userScope }) {
   // VIEW 1: TEAM MEMBERS & ROLES LIST VIEW
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-[#f8fafc] p-3.5 sm:p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>

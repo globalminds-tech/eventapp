@@ -48,28 +48,28 @@ export const ProgramVerification = () => {
   }, [searchTerm]);
 
   return (
-    <div className="bg-gray-100 min-h-screen p-8">
+    <div className="bg-gray-100 min-h-screen p-3.5 sm:p-6 lg:p-8 font-sans">
       {/* ================= PAGE 1 ================= */}
 
       {page === "list" && (
         <>
-          <h1 className="text-3xl font-semibold text-gray-700 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-700 mb-6">
             Program Verification
           </h1>
 
-          <div className="bg-white shadow rounded-lg p-6">
+          <div className="bg-white shadow rounded-lg p-4 sm:p-6">
             <div className="flex justify-between items-center mb-6">
               <input
                 type="text"
                 placeholder="Search"
-                className="border px-4 py-2 w-72 rounded outline-none focus:ring-2 focus:ring-blue-500"
+                className="border px-4 py-2 w-full sm:w-72 rounded outline-none focus:ring-2 focus:ring-blue-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-              <table className="w-full">
+            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+              <table className="w-full min-w-[650px]">
                 <thead>
                   <tr className="bg-sky-600 text-white">
                     <th className="px-6 py-4 text-left text-sm font-bold text-white tracking-wider">Action</th>
@@ -178,35 +178,37 @@ export const ProgramVerification = () => {
 
       {page === "details" && (
         <>
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-semibold text-gray-700">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-gray-700">
               Program Verification
             </h1>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <input
                 type="text"
                 placeholder="Search by Program Names"
-                className="border px-4 py-2 rounded"
+                className="border px-4 py-2 rounded w-full sm:w-auto outline-none focus:ring-2 focus:ring-blue-500"
               />
 
-              <Select
-                defaultValue="All"
-                className="w-36"
-                triggerClassName="border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold h-10 bg-white focus:ring-blue-500"
-              >
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value="Approved">Approved</SelectItem>
-                <SelectItem value="Rejected">Rejected</SelectItem>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  defaultValue="All"
+                  className="w-full sm:w-36"
+                  triggerClassName="border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold h-10 bg-white focus:ring-blue-500"
+                >
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value="Approved">Approved</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
+                </Select>
 
-              <button className="border px-4 py-2 rounded">🔍</button>
+                <button className="border px-4 py-2 rounded bg-white hover:bg-slate-50 transition-colors">🔍</button>
+              </div>
             </div>
           </div>
 
           <button
             onClick={() => setPage("list")}
-            className="mb-4 bg-blue-500 text-white px-4 py-2 rounded"
+            className="mb-4 bg-blue-500 hover:bg-blue-600 transition-colors text-white px-4 py-2 rounded font-medium"
           >
             Back
           </button>

@@ -703,9 +703,9 @@ export const Venuepage = () => {
       </div>
 
       {/* ── SHADCN TABLE ── */}
-      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-x-auto responsive-table-wrap touch-scroll">
+        <div>
+          <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="px-5 py-3.5">Action</th>

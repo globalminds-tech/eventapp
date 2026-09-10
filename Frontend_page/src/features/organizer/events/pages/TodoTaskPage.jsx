@@ -75,9 +75,9 @@ function ListView({ onAdd }) {
   }, [search]);
 
   return (
-    <div className="p-10 text-slate-800 bg-sky-50 min-h-screen w-full">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-sky-900">To-Do Task</h1>
+    <div className="p-3.5 sm:p-6 lg:p-8 text-slate-800 bg-sky-50 min-h-screen w-full font-sans">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-sky-900">To-Do Task</h1>
         <button
           onClick={onAdd}
           className="bg-sky-600 px-4 py-2 rounded text-white flex gap-2 items-center hover:bg-sky-700 transition shadow-lg font-bold"
@@ -108,9 +108,9 @@ function ListView({ onAdd }) {
           </div>
         )}
 
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+        <div>
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <th className="px-6 py-3.5 text-left font-semibold">Action</th>
@@ -422,9 +422,9 @@ function FormView({ onSaved }) {
   const req = <span className="text-red-500 ml-1">*</span>;
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
       {/* Top Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <button
             onClick={() => onSaved()}
@@ -433,7 +433,7 @@ function FormView({ onSaved }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
           </button>
           <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight mb-1">Create Task</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mb-1">Create Task</h1>
             <p className="text-gray-500 font-medium tracking-wide">Configure task details and milestones</p>
           </div>
         </div>
@@ -441,7 +441,7 @@ function FormView({ onSaved }) {
         <button 
           onClick={saveTask} 
           disabled={saving}
-          className="flex items-center gap-2 bg-blue-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
+          className="w-full sm:w-auto justify-center flex items-center gap-2 bg-blue-600 text-white px-8 py-3.5 rounded-2xl font-bold shadow-xl shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50"
         >
           {saving ? (
             <div className="flex items-center gap-2">

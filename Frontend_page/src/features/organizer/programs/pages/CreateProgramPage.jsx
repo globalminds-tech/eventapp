@@ -131,16 +131,16 @@ export default function CreateProgram() {
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans text-sm">
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans text-sm">
 
       {/* ================= PAGE 1 ================= */}
       {page === 1 && (
         <>
-          <h1 className="text-3xl font-bold mb-6 text-gray-800">My Programs</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">My Programs</h1>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex justify-between items-center mb-6">
-              <div className="relative w-96">
+              <div className="relative w-full sm:w-80">
                 <input
                   type="text"
                   placeholder="Search"
@@ -152,9 +152,9 @@ export default function CreateProgram() {
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+              <div className="overflow-x-auto responsive-table-wrap touch-scroll">
+                <table className="w-full min-w-[650px]">
                   <thead>
                     <tr className="bg-sky-600 text-white">
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Action</th>
@@ -295,9 +295,9 @@ export default function CreateProgram() {
             </h1>
           </div>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex justify-between items-center mb-6">
-              <div className="relative w-96">
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-6">
+              <div className="relative w-full sm:w-80">
                 <input
                   type="text"
                   placeholder="Search Program..."
@@ -308,7 +308,7 @@ export default function CreateProgram() {
                 <Search size={16} className="absolute left-3 top-2.5 text-gray-400 w-5 h-5" />
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-gray-600 font-medium text-xs whitespace-nowrap">View By:</span>
                   <Select
@@ -333,9 +333,9 @@ export default function CreateProgram() {
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+              <div className="overflow-x-auto responsive-table-wrap touch-scroll">
+                <table className="w-full min-w-[650px]">
                   <thead>
                     <tr className="bg-sky-600 text-white">
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">Program Code</th>

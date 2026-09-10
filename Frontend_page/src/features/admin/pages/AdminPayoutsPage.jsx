@@ -139,7 +139,7 @@ export const AdminPayoutsPage = () => {
       {/* ── QUEUE TABLE ── */}
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4">
-          <div className="relative w-72">
+          <div className="relative w-full sm:w-72">
             <Search className="absolute left-3.5 top-2.5 text-slate-400 w-4 h-4" />
             <input
               placeholder="Search organizer or company..."
@@ -150,8 +150,8 @@ export const AdminPayoutsPage = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div className="responsive-table-wrap">
+          <table className="w-full min-w-[760px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3.5 px-4">Organizer / Company</th>
@@ -216,7 +216,7 @@ export const AdminPayoutsPage = () => {
       {/* ── PAYOUT DISBURSEMENT MODAL ── */}
       {selectedOrg && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-slate-200 space-y-5 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-lg font-black text-slate-900">Disburse Organizer Payout</h3>

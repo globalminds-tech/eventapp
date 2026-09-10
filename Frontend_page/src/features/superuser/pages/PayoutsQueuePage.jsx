@@ -95,7 +95,7 @@ export default function PayoutsQueue() {
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-2xl p-5 space-y-4">
         
         {/* Tabs Bar */}
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 border-b border-slate-100 pb-3 overflow-x-auto touch-scroll whitespace-nowrap scrollbar-none">
           {tabs.map((t) => {
             const isActive = activeTab === t.key;
             const IconComp = t.icon;
@@ -137,8 +137,8 @@ export default function PayoutsQueue() {
               )}
             </div>
 
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto responsive-table-wrap touch-scroll border border-slate-100 rounded-xl">
+              <table className="w-full text-left border-collapse min-w-[650px]">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Event Code</th>

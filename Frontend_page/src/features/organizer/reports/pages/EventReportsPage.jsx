@@ -12,15 +12,15 @@ import { Select, SelectItem } from "@/components/ui/Select";
 
 export const EventReports = () => {
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-slate-50 p-3.5 sm:p-5 lg:p-6">
       {/* Title */}
-      <h1 className="text-2xl font-semibold text-gray-700 mb-4">
+      <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4">
         Event Reports
       </h1>
 
       {/* Filter Section */}
-      <div className="bg-white border rounded-lg p-6">
-        <div className="grid grid-cols-4 gap-6">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Event */}
           <div>
             <Select
@@ -150,60 +150,60 @@ export const EventReports = () => {
       </div>
 
       {/* Report Cards */}
-      <div className="grid grid-cols-3 gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-6">
         {/* Event Bookings */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="font-semibold mb-4">Event Bookings & Check-Ins</h2>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
+          <h2 className="font-bold text-slate-800 mb-4 text-sm sm:text-base">Event Bookings & Check-Ins</h2>
 
-          <div className="flex justify-between">
+          <div className="flex flex-col sm:flex-row justify-between gap-4">
             <div className="flex gap-3">
-              <div className="bg-gray-100 p-3 rounded-full">
-                <Calendar size={20} />
+              <div className="bg-slate-100 p-3 rounded-xl h-fit">
+                <Calendar size={20} className="text-slate-600" />
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Total Event Bookings</p>
-                <p className="font-bold">0</p>
+                <p className="text-xs text-slate-500">Total Event Bookings</p>
+                <p className="font-extrabold text-slate-900 text-lg">0</p>
               </div>
             </div>
 
             <div className="flex gap-3">
-              <div className="bg-gray-100 p-3 rounded-full">
-                <Users size={20} />
+              <div className="bg-slate-100 p-3 rounded-xl h-fit">
+                <Users size={20} className="text-slate-600" />
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Total Participants</p>
-                <p className="font-bold">0</p>
+                <p className="text-xs text-slate-500">Total Participants</p>
+                <p className="font-extrabold text-slate-900 text-lg">0</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Program Bookings */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="font-semibold mb-4">Program Bookings & Check-Ins</h2>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
+          <h2 className="font-bold text-slate-800 mb-4 text-sm sm:text-base">Program Bookings & Check-Ins</h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex gap-3">
-              <div className="bg-gray-100 p-3 rounded-full">
-                <Mic size={20} />
+              <div className="bg-slate-100 p-3 rounded-xl h-fit">
+                <Mic size={20} className="text-slate-600" />
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Total No of Programs</p>
-                <p className="font-bold">0</p>
+                <p className="text-xs text-slate-500">Total No of Programs</p>
+                <p className="font-extrabold text-slate-900 text-lg">0</p>
               </div>
             </div>
 
             <div className="flex gap-3">
-              <div className="bg-gray-100 p-3 rounded-full">
-                <Calendar size={20} />
+              <div className="bg-slate-100 p-3 rounded-xl h-fit">
+                <Calendar size={20} className="text-slate-600" />
               </div>
 
               <div>
-                <p className="text-sm text-gray-500">Total Program Bookings</p>
-                <p className="font-bold">0</p>
+                <p className="text-xs text-slate-500">Total Program Bookings</p>
+                <p className="font-extrabold text-slate-900 text-lg">0</p>
               </div>
             </div>
 
@@ -221,10 +221,10 @@ export const EventReports = () => {
         </div>
 
         {/* Food Bookings */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="font-semibold mb-4">Food Bookings & Check-Ins</h2>
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 sm:p-6">
+          <h2 className="font-bold text-slate-800 mb-4 text-sm sm:text-base">Food Bookings & Check-Ins</h2>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex gap-3">
               <div className="bg-gray-100 p-3 rounded-full">
                 <Utensils size={20} />

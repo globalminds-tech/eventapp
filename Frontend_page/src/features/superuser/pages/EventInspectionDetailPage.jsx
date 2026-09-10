@@ -460,8 +460,8 @@ export default function EventInspectionDetail() {
             <Skeleton className="h-5 w-28 rounded-full" />
           </div>
 
-          <div className="overflow-x-auto border border-slate-200/80 rounded-xl">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="responsive-table-wrap border border-slate-200/80 rounded-xl">
+            <table className="w-full min-w-[500px] text-left text-xs border-collapse">
               <thead className="bg-slate-100">
                 <tr>
                   <th className="p-3"><Skeleton className="h-4 w-44 rounded-md" /></th>
@@ -504,8 +504,8 @@ export default function EventInspectionDetail() {
                   <p>The organizer did not upload extra GST, PAN, or Municipal approval attachments.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto border border-slate-200/80 rounded-xl">
-                  <table className="w-full text-left text-xs border-collapse">
+                <div className="responsive-table-wrap border border-slate-200/80 rounded-xl">
+                  <table className="w-full min-w-[500px] text-left text-xs border-collapse">
                     <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px]">
                       <tr>
                         <th className="p-3">Document Title / File Name</th>

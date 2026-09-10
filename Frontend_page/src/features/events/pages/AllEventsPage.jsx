@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import UserEventCard from "@/components/UserEventCard";
 
 export default function AllEvents() {
   const navigate = useNavigate();
@@ -184,12 +185,12 @@ export default function AllEvents() {
 
           {/* Category Chips Bar */}
           <div className="flex items-center justify-between gap-3 pt-2 border-t border-slate-100 flex-wrap">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            <div className="flex items-center gap-2 overflow-x-auto touch-scroll no-scrollbar py-1 flex-1 min-w-0">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSearchCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border shrink-0 whitespace-nowrap ${
                     searchCategory === cat
                       ? "bg-orange-500 text-white border-orange-500 shadow-xs"
                       : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
@@ -213,103 +214,37 @@ export default function AllEvents() {
       </div>
 
       {/* Events Grid */}
-      <div className="max-w-6xl mx-auto px-4 w-full pt-8">
+      <div className="max-w-6xl mx-auto px-4 w-full pt-6 sm:pt-8">
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-              <Card key={n} className="bg-white border-slate-200/80 shadow-xs rounded-2xl overflow-hidden p-4 space-y-3">
-                <Skeleton className="h-44 w-full rounded-xl" />
-                <Skeleton className="h-5 w-3/4 rounded-lg" />
-                <Skeleton className="h-4 w-1/2 rounded-lg" />
-                <Skeleton className="h-8 w-full rounded-xl" />
+              <Card key={n} className="bg-white border-slate-200/80 shadow-xs rounded-xl sm:rounded-2xl overflow-hidden p-2.5 sm:p-4 space-y-2.5">
+                <Skeleton className="aspect-[16/10] sm:aspect-[4/3] w-full rounded-lg sm:rounded-xl" />
+                <Skeleton className="h-4 w-3/4 rounded-md" />
+                <Skeleton className="h-3 w-1/2 rounded-md" />
+                <Skeleton className="h-7 sm:h-8 w-full rounded-lg sm:rounded-xl" />
               </Card>
             ))}
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="p-16 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 font-semibold text-sm">
+          <div className="p-12 sm:p-16 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 font-semibold text-xs sm:text-sm">
             No events found matching your search criteria.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
             {filteredEvents.map((ev) => (
-              <Card
+              <UserEventCard
                 key={ev.id}
+                event={ev}
+                variant="grid"
                 onClick={() => navigate(`/event-detail/${ev.id}`)}
-                className="bg-white border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden flex flex-col justify-between cursor-pointer group"
-              >
-                <div className="relative h-44 w-full bg-slate-100 overflow-hidden">
-                  <img
-                    src={ev.image}
-                    alt={ev.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
-                  <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
-                    {ev.status === "SUSPENDED" && (
-                      <Badge className="bg-amber-500 text-white font-extrabold text-[10px] px-2.5 py-0.5 shadow-sm border border-amber-400">
-                        Bookings Paused
-                      </Badge>
-                    )}
-                    <Badge className="bg-slate-900/80 backdrop-blur-md text-white font-extrabold text-[10px] px-2.5 py-0.5 border border-white/20">
-                      {ev.price}
-                    </Badge>
-                  </div>
-                </div>
-
-                <CardContent className="p-4 space-y-2 flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-[10px] font-black mb-1">
-                      <span className="text-orange-600 uppercase tracking-wider">{ev.category}</span>
-                      <div className="flex items-center gap-1 text-amber-600">
-                        <Star size={11} className="fill-amber-500 text-amber-500" />
-                        <span>{ev.rating}</span>
-                      </div>
-                    </div>
-
-                    <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-orange-600 transition-colors line-clamp-1">
-                      {ev.title}
-                    </h3>
-
-                    <div className="text-xs text-slate-500 space-y-1 mt-2">
-                      <p className="flex items-center gap-1.5 font-medium">
-                        <MapPin size={13} className="text-orange-500 shrink-0" />
-                        <span className="truncate">{ev.location}</span>
-                      </p>
-                      <p className="flex items-center gap-1.5 font-medium">
-                        <Calendar size={13} className="text-orange-500 shrink-0" />
-                        <span>{ev.date}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold text-slate-400">Entry Pass</span>
-                    {ev.status === "SUSPENDED" ? (
-                      <span
-                        title="Currently we are not taking bookings for this event"
-                        className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[10px] px-3 py-1 rounded-xl tracking-wider uppercase text-center"
-                      >
-                        Bookings Paused
-                      </span>
-                    ) : (
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/event-detail/${ev.id}`);
-                        }}
-                        className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-xl border-none cursor-pointer gap-1 shadow-xs"
-                      >
-                        <span>Book</span>
-                        <ArrowRight size={13} />
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                onBookClick={() => navigate(`/event-detail/${ev.id}`)}
+              />
             ))}
           </div>
         )}
       </div>
+
     </div>
   );
 }

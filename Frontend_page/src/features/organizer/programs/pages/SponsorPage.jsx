@@ -455,10 +455,10 @@ const Sponsor = () => {
       {/* PAGE 1 - LIST */}
       {page === "list" && (
         <div className="p-1">
-          <div className="m-1 rounded-md border border-[#d9deea] bg-[#f8f9fc] px-6 py-4">
-            <div className="rounded-sm border border-[#d9deea] bg-white px-6 py-4">
-              <div className="mb-7 flex items-start justify-between">
-                <div className="w-[315px]">
+          <div className="m-1 rounded-md border border-[#d9deea] bg-[#f8f9fc] px-4 sm:px-6 py-4">
+            <div className="rounded-sm border border-[#d9deea] bg-white px-4 sm:px-6 py-4">
+              <div className="mb-7 flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">
+                <div className="w-full sm:w-[315px]">
                   <input
                     type="text"
                     placeholder="Search Keyword"
@@ -478,8 +478,8 @@ const Sponsor = () => {
                 </div>
               </div>
 
-              <div className="overflow-x-auto border border-[#d6dbe6]">
-                <table className="w-full">
+              <div className="overflow-x-auto responsive-table-wrap touch-scroll border border-[#d6dbe6]">
+                <table className="w-full min-w-[1000px]">
                   <thead>
                     <tr className="bg-sky-600 text-white">
                       <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">

@@ -724,7 +724,7 @@ export default function EventDetail() {
       </div>
 
       {/* ── MOBILE STICKY BOTTOM BOOKING BAR ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-2xl z-40 flex items-center justify-between gap-4">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3.5 pb-safe bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-2xl z-40 flex items-center justify-between gap-4">
         <div>
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Registration Fee</span>
           <span className="text-lg font-black text-slate-900">{priceDisplay}</span>

@@ -39,16 +39,17 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { categoryApi } from "@/features/catalog/api/category.api";
 import TextType from "@/components/ui/TextType";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import UserEventCard from "@/components/UserEventCard";
 
 /* ─────────────── Brand Logo ─────────────── */
 const BrandLogo = ({ textColor = "#0f172a" }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-    <div style={{ display: 'flex', gap: 3 }}>
-      <div style={{ width: 6, height: 16, borderRadius: 10, backgroundColor: '#3b82f6', transform: 'rotate(-15deg)' }} />
-      <div style={{ width: 6, height: 16, borderRadius: 10, backgroundColor: '#f97316', transform: 'rotate(10deg)' }} />
-      <div style={{ width: 6, height: 16, borderRadius: 10, backgroundColor: '#22c55e', transform: 'rotate(-5deg)' }} />
+  <div className="flex items-center gap-1.5 sm:gap-2">
+    <div className="flex gap-1">
+      <div style={{ width: 5, height: 16, borderRadius: 10, backgroundColor: '#3b82f6', transform: 'rotate(-15deg)' }} />
+      <div style={{ width: 5, height: 16, borderRadius: 10, backgroundColor: '#f97316', transform: 'rotate(10deg)' }} />
+      <div style={{ width: 5, height: 16, borderRadius: 10, backgroundColor: '#22c55e', transform: 'rotate(-5deg)' }} />
     </div>
-    <span style={{ fontSize: 22, fontWeight: 900, color: textColor, letterSpacing: '-0.5px' }}>BookMyEvent</span>
+    <span className="text-lg sm:text-xl font-black tracking-tight" style={{ color: textColor }}>BookMyEvent</span>
   </div>
 );
 
@@ -204,132 +205,75 @@ const EventCarouselSection = ({ title, icon: Icon, badge, events = [], onEventCl
   if (!events || events.length === 0) return null;
 
   return (
-    <div className="mb-12">
+    <div className="mb-8 sm:mb-12">
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-4 px-1">
-        <div className="flex items-center gap-2.5">
+      <div className="flex items-center justify-between mb-3 sm:mb-4 px-1 gap-2">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
           {Icon && (
-            <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold shadow-xs">
-              <Icon size={17} />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold shadow-xs shrink-0">
+              <Icon size={15} />
             </div>
           )}
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <span>{title}</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm sm:text-base md:text-lg font-black text-slate-900 tracking-tight truncate">
+                {title}
+              </h2>
               {badge && (
-                <span className="text-[10px] font-extrabold text-orange-700 bg-orange-100/70 px-2.5 py-0.5 rounded-full border border-orange-200">
+                <span className="text-[8.5px] sm:text-[10px] font-extrabold text-orange-700 bg-orange-100/70 px-2 py-0.5 rounded-full border border-orange-200 shrink-0">
                   {badge}
                 </span>
               )}
-            </h2>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {onViewAll && (
             <button
+              type="button"
               onClick={onViewAll}
-              className="text-xs font-black text-orange-600 hover:text-orange-700 mr-2 cursor-pointer bg-transparent border-none transition"
+              className="text-xs font-black text-orange-600 hover:text-orange-700 cursor-pointer bg-transparent border-none transition flex items-center gap-0.5 p-1"
             >
-              See All ›
+              <span>See All</span>
+              <ChevronRight size={14} />
             </button>
           )}
-          <button
-            onClick={() => scroll("left")}
-            className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
-            aria-label="Previous"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            onClick={() => scroll("right")}
-            className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
-            aria-label="Next"
-          >
-            <ChevronRight size={16} />
-          </button>
+          <div className="hidden sm:flex items-center gap-1.5">
+            <button
+              onClick={() => scroll("left")}
+              className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
+              aria-label="Previous"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center transition cursor-pointer shadow-xs active:scale-95"
+              aria-label="Next"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Horizontal Carousel Track */}
       <div
         ref={scrollRef}
-        className="flex items-stretch gap-4 overflow-x-auto no-scrollbar pb-3 pt-1 px-1 scroll-smooth"
+        className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto no-scrollbar pb-3 pt-1 px-1 scroll-smooth"
       >
         {events.map((ev) => (
-          <div
+          <UserEventCard
             key={ev.id}
+            event={ev}
+            variant="carousel"
             onClick={() => onEventClick(ev)}
-            className="w-[245px] sm:w-[270px] shrink-0 bg-white/95 rounded-2xl p-3.5 border border-orange-100/90 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-300 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between group"
-          >
-            <div>
-              {/* Card Banner */}
-              <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-slate-100 relative">
-                <img
-                  src={ev.image}
-                  alt={ev.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  loading="lazy"
-                />
-                <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-bold">
-                  {ev.category}
-                </span>
-                {ev.status === "SUSPENDED" && (
-                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[9px] font-black uppercase tracking-wider shadow-sm">
-                    Bookings Paused
-                  </span>
-                )}
-              </div>
-
-              {/* Likes & Rating */}
-              <div className="flex items-center justify-between mt-2.5 mb-1.5 px-0.5">
-                <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600">
-                  <ThumbsUp size={11} className="stroke-[2.5]" />
-                  <span>{ev.likes}</span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] font-black text-amber-500">
-                  <Star size={11} className="fill-amber-500 text-amber-500 stroke-[2.5]" />
-                  <span>{ev.rating}</span>
-                </div>
-              </div>
-
-              {/* Title */}
-              <h3 className="text-xs sm:text-sm font-black text-slate-900 line-clamp-1 mb-1 px-0.5 group-hover:text-orange-600 transition-colors">
-                {ev.title}
-              </h3>
-
-              {/* Location */}
-              <p className="text-[11px] text-slate-500 font-medium px-0.5 truncate">
-                📍 {getCityFromLocation(ev.fullLocation || ev.location) || "Multiple Cities"}
-              </p>
-            </div>
-
-            {/* Price & Book Button */}
-            <div className="mt-3 pt-2.5 flex items-center justify-between border-t border-slate-100 px-0.5">
-              <span className="text-xs font-black text-slate-900">{ev.price}</span>
-              {ev.status === "SUSPENDED" ? (
-                <span
-                  title="Currently we are not taking bookings for this event"
-                  className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[9px] px-2.5 py-1.5 rounded-lg tracking-wider uppercase text-center"
-                >
-                  Bookings Paused
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEventClick(ev);
-                  }}
-                  className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 active:scale-95 text-white font-black text-[10px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-all shadow-sm shadow-orange-500/25 tracking-wider"
-                >
-                  BOOK
-                </button>
-              )}
-            </div>
-          </div>
+            onBookClick={() => onEventClick(ev)}
+          />
         ))}
       </div>
+
     </div>
   );
 };
@@ -949,13 +893,13 @@ const App = () => {
               <Skeleton className="w-8 h-8 rounded-xl" />
               <Skeleton className="h-6 w-48 rounded-lg" />
             </div>
-            <div className="flex gap-4 overflow-hidden">
+            <div className="flex gap-3 sm:gap-4 overflow-hidden">
               {[1, 2, 3, 4].map((n) => (
-                <div key={n} className="w-[240px] shrink-0 bg-white rounded-2xl p-3 border border-slate-100 space-y-3">
-                  <Skeleton className="w-full aspect-[4/3] rounded-xl" />
-                  <Skeleton className="h-4 w-3/4 rounded-lg" />
-                  <Skeleton className="h-3 w-1/2 rounded-lg" />
-                  <Skeleton className="h-7 w-full rounded-lg" />
+                <div key={n} className="w-[calc((100vw-56px)/2.5)] min-w-[calc((100vw-56px)/2.5)] sm:w-[220px] sm:min-w-[220px] md:w-[240px] shrink-0 bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-3 border border-slate-100 space-y-2.5">
+                  <Skeleton className="w-full aspect-[16/10] sm:aspect-[4/3] rounded-lg sm:rounded-xl" />
+                  <Skeleton className="h-3.5 w-3/4 rounded-md" />
+                  <Skeleton className="h-3 w-1/2 rounded-md" />
+                  <Skeleton className="h-6 sm:h-7 w-full rounded-lg" />
                 </div>
               ))}
             </div>

@@ -5,18 +5,18 @@ export default function PassGeneration() {
   const [search, setSearch] = useState("");
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen font-sans">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+    <div className="p-3.5 sm:p-6 lg:p-8 bg-gray-50 min-h-screen font-sans">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800">
         Pass Generation
       </h1>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <div className="relative w-96">
+          <div className="relative w-full sm:w-80">
             <input
               type="text"
               placeholder="Search Keyword..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -25,8 +25,8 @@ export default function PassGeneration() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto responsive-table-wrap touch-scroll">
+          <table className="w-full min-w-[500px]">
             <thead>
               <tr className="bg-sky-600 text-white">
                 <th className="px-6 py-4 text-left text-xs font-bold text-white uppercase tracking-wider">

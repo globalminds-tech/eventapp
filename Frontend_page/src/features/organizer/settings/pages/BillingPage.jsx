@@ -2,66 +2,66 @@ import React from "react";
 
 export const Billing = () => {
   return (
-    <div className="bg-white border rounded shadow-sm p-6">
+    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs p-4 sm:p-6">
 
       {/* Header */}
-      <h1 className="text-2xl font-semibold text-gray-700 mb-6">
+      <h1 className="text-xl sm:text-2xl font-bold text-slate-800 mb-5">
         My Billings
       </h1>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
         {/* LEFT PANEL */}
-        <div className="border rounded p-5">
+        <div className="border border-slate-200/80 rounded-xl p-4 sm:p-5">
 
-          <h2 className="text-xl text-blue-600 font-semibold mb-4">
+          <h2 className="text-lg text-blue-600 font-semibold mb-4">
             Billing Address
           </h2>
 
           {/* Address */}
           <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-1">
+            <label className="block text-slate-700 text-sm font-medium mb-1">
               Address
             </label>
 
             <textarea
-              className="w-full border rounded p-2 h-20 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full border border-slate-300 rounded-lg p-2.5 h-20 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
           </div>
 
           {/* City State Country */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
             <div>
-              <label className="block font-medium text-gray-700 mb-1">
+              <label className="block font-medium text-slate-700 text-xs mb-1">
                 City
               </label>
               <input
                 type="text"
                 defaultValue="CHENNAI"
-                className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-gray-700 mb-1">
+              <label className="block font-medium text-slate-700 text-xs mb-1">
                 State
               </label>
               <input
                 type="text"
                 defaultValue="TAMIL NADU"
-                className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-gray-700 mb-1">
+              <label className="block font-medium text-slate-700 text-xs mb-1">
                 Country
               </label>
               <input
                 type="text"
                 defaultValue="INDIA"
-                className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
 
@@ -70,16 +70,16 @@ export const Billing = () => {
         </div>
 
         {/* RIGHT PANEL */}
-        <div className="border rounded p-5">
+        <div className="border border-slate-200/80 rounded-xl p-4 sm:p-5">
 
-          <h2 className="text-xl text-blue-600 font-semibold mb-4">
+          <h2 className="text-lg text-blue-600 font-semibold mb-4">
             Payment History
           </h2>
 
           {/* Table */}
-          <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-x-auto">
+          <div className="responsive-table-wrap bg-white rounded-xl shadow-xs border border-slate-200/80">
 
-            <table className="w-full min-w-max">
+            <table className="w-full min-w-[550px]">
 
               <thead>
                 <tr className="bg-sky-600 text-white">
@@ -111,7 +111,7 @@ export const Billing = () => {
           </div>
 
           {/* Footer */}
-          <div className="flex justify-between items-center mt-4 text-sm text-gray-600">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 text-xs text-slate-500">
 
             <span>
               Showing 1 to 1 of 1 entries
@@ -119,19 +119,19 @@ export const Billing = () => {
 
             <div className="flex items-center gap-2">
 
-              <button className="border px-2 py-1 rounded hover:bg-gray-100">
+              <button className="border border-slate-200 px-2 py-1 rounded hover:bg-slate-100">
                 «
               </button>
 
-              <button className="bg-blue-600 text-white px-3 py-1 rounded">
+              <button className="bg-blue-600 text-white px-3 py-1 rounded font-bold">
                 1
               </button>
 
-              <button className="border px-2 py-1 rounded hover:bg-gray-100">
+              <button className="border border-slate-200 px-2 py-1 rounded hover:bg-slate-100">
                 »
               </button>
 
-              <select className="border p-1 rounded ml-2">
+              <select className="border border-slate-200 p-1 rounded ml-2 text-xs bg-white">
                 <option>10</option>
                 <option>25</option>
                 <option>50</option>
