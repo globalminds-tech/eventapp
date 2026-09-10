@@ -6,6 +6,7 @@ import CustomTimePicker from "../TimePickerClock";
 import { get_Venues_details, getVenueDetails, getAdminCategories, createVenue } from "@/Services/api";
 import { Select, SelectItem } from "@/components/ui/Select";
 import AddVenueModal from "../../../master-data/components/AddVenueModal";
+import { categoryApi } from "@/features/catalog/api/category.api";
 
 const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, isReadOnly, isEditingAllowed }) => {
   const [venues, setVenues] = useState([]);
@@ -56,29 +57,13 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
     if (!categoryReqName.trim()) return;
     setIsSubmittingCatReq(true);
     try {
-      const res = await fetch("/api/v1/organizer/category-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          organizer_id: organizerId || 1,
-          category_name: categoryReqName,
-          subcategory_name: categoryReqSub,
-          reason: categoryReqReason
-        })
+      await categoryApi.submitCategoryRequest({
+        organizer_id: organizerId || 1,
+        category_name: categoryReqName,
+        subcategory_name: categoryReqSub,
+        reason: categoryReqReason
       });
-      const data = await res.json();
-      if (data.success || res.ok) {
-        setCategoryReqSuccess("✓ Category Request Submitted! Super Admin will review and add it.");
-        setTimeout(() => {
-          setShowCategoryModal(false);
-          setCategoryReqName("");
-          setCategoryReqSub("");
-          setCategoryReqReason("");
-          setCategoryReqSuccess("");
-        }, 1800);
-      }
-    } catch (err) {
-      setCategoryReqSuccess("✓ Category Request Logged! Super Admin will review and add it.");
+      setCategoryReqSuccess("✓ Category Request Submitted! Super Admin will review and add it.");
       setTimeout(() => {
         setShowCategoryModal(false);
         setCategoryReqName("");
@@ -86,6 +71,12 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
         setCategoryReqReason("");
         setCategoryReqSuccess("");
       }, 1800);
+    } catch (err) {
+      console.error("Category request submission failed:", err);
+      setCategoryReqSuccess("✗ Failed to submit request. Please try again.");
+      setTimeout(() => {
+        setCategoryReqSuccess("");
+      }, 3000);
     } finally {
       setIsSubmittingCatReq(false);
     }
