@@ -9,6 +9,8 @@ export const CATEGORY_ENDPOINTS = {
   DELETE: (id) => `/superadmin/api/categories/${id}`,
   CATEGORY_REQUESTS: "/superadmin/api/category-requests",
   SUBMIT_REQUEST: "/api/v1/organizer/category-requests",
+  UPDATE_REQUEST: (id) => `/superadmin/api/category-requests/${id}`,
 };
 
 export default CATEGORY_ENDPOINTS;
+
