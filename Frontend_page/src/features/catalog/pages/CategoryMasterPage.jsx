@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from "react";
-import { Plus, X, Upload, Pencil, Trash2, Search, PlusCircle } from "lucide-react";
+import { Plus, X, Upload, Pencil, Trash2, Search, PlusCircle, CheckCircle2, XCircle, Clock, MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { categoryApi } from "@/features/catalog/api/category.api";
 import { uploadCategoryImageToSupabase } from "@/Services/supabaseClient";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export default function CategoryMaster() {
   const [categories, setCategories] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+
+  // Category Requests State
+  const [categoryRequests, setCategoryRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [processingRequestId, setProcessingRequestId] = useState(null);
+  const [showRequests, setShowRequests] = useState(true);
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -29,6 +36,7 @@ export default function CategoryMaster() {
 
   useEffect(() => {
     fetchCategories();
+    fetchCategoryRequests();
   }, []);
 
   const fetchCategories = async () => {
@@ -42,6 +50,48 @@ export default function CategoryMaster() {
       setCategories([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCategoryRequests = async () => {
+    setRequestsLoading(true);
+    try {
+      const res = await categoryApi.getCategoryRequests();
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setCategoryRequests(list);
+    } catch (err) {
+      console.warn("Failed to fetch category requests:", err);
+      setCategoryRequests([]);
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const handleApproveRequest = async (requestId) => {
+    setProcessingRequestId(requestId);
+    try {
+      await categoryApi.updateCategoryRequestStatus(requestId, { status: "Approved" });
+      showNotification("Category request approved! Category has been added to master list.", "success");
+      // Refresh both lists — approved category now appears in master table
+      fetchCategoryRequests();
+      fetchCategories();
+    } catch (err) {
+      showNotification("Failed to approve category request", "error");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    setProcessingRequestId(requestId);
+    try {
+      await categoryApi.updateCategoryRequestStatus(requestId, { status: "Rejected" });
+      showNotification("Category request has been rejected.", "success");
+      fetchCategoryRequests();
+    } catch (err) {
+      showNotification("Failed to reject category request", "error");
+    } finally {
+      setProcessingRequestId(null);
     }
   };
 
@@ -153,6 +203,36 @@ export default function CategoryMaster() {
     (Array.isArray(c.subcategories) ? c.subcategories.join(" ") : (c.subcategories || "")).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Category request counts
+  const pendingRequests = categoryRequests.filter((r) => r.status === "Pending");
+  const pendingCount = pendingRequests.length;
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Approved":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-extrabold text-[10px]">
+            <CheckCircle2 size={11} />
+            APPROVED
+          </span>
+        );
+      case "Rejected":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-full font-extrabold text-[10px]">
+            <XCircle size={11} />
+            REJECTED
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-extrabold text-[10px]">
+            <Clock size={11} className="animate-pulse" />
+            PENDING
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12 text-slate-800">
       {/* ── SIMPLE & CLEAN HEADING BAR ── */}
@@ -189,139 +269,313 @@ export default function CategoryMaster() {
       </div>
 
       {toast && (
-        <div className="p-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-extrabold flex items-center justify-between shadow-lg animate-fadeIn">
+        <div className={`p-3.5 rounded-xl text-xs font-extrabold flex items-center justify-between shadow-lg animate-fadeIn ${
+          toast.type === "error"
+            ? "bg-gradient-to-r from-rose-600 to-red-600 text-white"
+            : "bg-gradient-to-r from-purple-600 to-indigo-600 text-white"
+        }`}>
           <span>{toast.message}</span>
           <button onClick={() => setToast(null)} className="border-none bg-transparent text-white font-bold cursor-pointer">✕</button>
         </div>
       )}
 
-      {/* ── TABLE CONTAINER ── */}
-      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-        <div className="responsive-table-wrap">
-          <table className="w-full min-w-[650px] text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                <th className="p-3.5 pl-5">Category Image</th>
-                <th className="p-3.5">Category Name</th>
-                <th className="p-3.5">Subcategories</th>
-                <th className="p-3.5 text-center">Status</th>
-                <th className="p-3.5 pr-5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredCategories.map((cat) => {
-                const subList = Array.isArray(cat.subcategories) ? cat.subcategories : (cat.subcategories ? cat.subcategories.split(",") : []);
+      {/* ── PENDING CATEGORY REQUESTS SECTION ── */}
+      {categoryRequests.length > 0 && (
+        <Card className="border border-purple-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+          {/* Section Header */}
+          <button
+            type="button"
+            onClick={() => setShowRequests(!showRequests)}
+            className="w-full flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-purple-50/80 to-indigo-50/50 border-b border-purple-100 cursor-pointer border-none outline-none"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center shadow-sm">
+                <MessageSquare size={16} className="text-white" />
+              </div>
+              <div className="text-left">
+                <h2 className="text-sm font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                  Organizer Category Requests
+                  {pendingCount > 0 && (
+                    <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-amber-500 text-white text-[10px] font-black rounded-full shadow-sm animate-pulse">
+                      {pendingCount}
+                    </span>
+                  )}
+                </h2>
+                <p className="text-[11px] font-medium text-slate-500 mt-0.5">
+                  Review and approve category suggestions from organizers
+                </p>
+              </div>
+            </div>
+            {showRequests ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+          </button>
 
-                return (
-                  <tr key={cat.id} className="hover:bg-slate-50/70 transition-colors">
-                    {/* Category Image Thumbnail */}
-                    <td className="p-3.5 pl-5">
-                      {cat.category_image ? (
-                        <img src={cat.category_image} alt={cat.name} className="w-14 h-11 object-cover rounded-lg border border-slate-200 shadow-xs" />
-                      ) : (
-                        <div className="w-14 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-[10px]">
-                          No Image
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Category Name */}
-                    <td className="p-3.5 font-extrabold text-slate-900 text-sm">
-                      {cat.name}
-                    </td>
-
-                    {/* Subcategories (Chips + Inline Add) */}
-                    <td className="p-3.5">
-                      <div className="flex flex-wrap items-center gap-1.5 max-w-xl">
-                        {subList.map((sub, i) => (
-                          <span key={i} className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md font-semibold text-xs shadow-2xs">
-                            {sub.trim()}
+          {/* Collapsible Table Body */}
+          {showRequests && (
+            <div className="responsive-table-wrap">
+              <table className="w-full min-w-[700px] text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                    <th className="p-3.5 pl-5">Organizer</th>
+                    <th className="p-3.5">Requested Category</th>
+                    <th className="p-3.5">Subcategory</th>
+                    <th className="p-3.5">Reason</th>
+                    <th className="p-3.5">Date</th>
+                    <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 pr-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {categoryRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="p-3.5 pl-5 font-extrabold text-slate-900">
+                        {req.organizer_name || "Organizer"}
+                      </td>
+                      <td className="p-3.5">
+                        <span className="px-2.5 py-1 bg-purple-50 text-purple-800 border border-purple-200/80 rounded-lg font-bold text-xs">
+                          {req.category_name}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-slate-600">
+                        {req.subcategory_name ? (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[11px] font-semibold">
+                            {req.subcategory_name}
                           </span>
-                        ))}
-
-                        {/* Inline Add Subcategory Pill */}
-                        {activeSubInputId === cat.id ? (
-                          <div className="flex items-center gap-1 bg-white border border-purple-400 p-0.5 rounded-lg shadow-xs">
-                            <input
-                              type="text"
-                              autoFocus
-                              placeholder="Subcategory..."
-                              value={quickSubName}
-                              onChange={(e) => setQuickSubName(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === "Enter") handleQuickAddSubcategory(cat); }}
-                              className="w-28 h-6 px-2 text-xs font-semibold outline-none border-none bg-transparent"
-                            />
+                        ) : (
+                          <span className="text-slate-400 italic">—</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-slate-600 max-w-[200px]">
+                        <span className="line-clamp-2 text-[11px]">{req.reason || "—"}</span>
+                      </td>
+                      <td className="p-3.5 text-slate-500 text-[11px] font-semibold whitespace-nowrap">
+                        {req.created_at ? new Date(req.created_at).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        {getStatusBadge(req.status)}
+                      </td>
+                      <td className="p-3.5 pr-5 text-right">
+                        {req.status === "Pending" ? (
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleQuickAddSubcategory(cat)}
-                              className="p-1 bg-purple-600 text-white rounded-md text-[10px] font-bold border-none cursor-pointer hover:bg-purple-700"
+                              onClick={() => handleApproveRequest(req.id)}
+                              disabled={processingRequestId === req.id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Approve & Add to Category Master"
                             >
-                              Add
+                              <CheckCircle2 size={13} />
+                              <span>Approve</span>
                             </button>
                             <button
                               type="button"
-                              onClick={() => { setActiveSubInputId(null); setQuickSubName(""); }}
-                              className="p-1 text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
+                              onClick={() => handleRejectRequest(req.id)}
+                              disabled={processingRequestId === req.id}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Reject Request"
                             >
-                              ✕
+                              <XCircle size={13} />
+                              <span>Reject</span>
                             </button>
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => { setActiveSubInputId(cat.id); setQuickSubName(""); }}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md cursor-pointer transition-all"
-                          >
-                            <PlusCircle size={12} />
-                            <span>+ Subcategory</span>
-                          </button>
+                          <span className="text-[11px] text-slate-400 font-semibold italic">Resolved</span>
                         )}
-                      </div>
-                    </td>
+                      </td>
+                    </tr>
+                  ))}
 
-                    {/* Status */}
-                    <td className="p-3.5 text-center">
-                      <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-extrabold text-[10px]">
-                        ACTIVE
-                      </span>
-                    </td>
+                  {categoryRequests.length === 0 && !requestsLoading && (
+                    <tr>
+                      <td colSpan={7} className="p-6 text-center text-slate-400 font-semibold text-xs">
+                        No category requests from organizers yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
 
-                    {/* Actions */}
-                    <td className="p-3.5 pr-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(cat)}
-                          className="p-1.5 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors border-none cursor-pointer"
-                          title="Edit Category"
-                        >
-                          <Pencil size={15} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setDeletingCatId(cat.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border-none cursor-pointer"
-                          title="Delete Category"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
+      {/* ── TABLE CONTAINER ── */}
+      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl p-4">
+        <ResponsiveTableView
+          data={filteredCategories}
+          keyField="id"
+          loading={isLoading}
+          emptyMessage={searchQuery ? `No categories found matching "${searchQuery}".` : 'No categories found in database. Click "+ Add Category" to create one.'}
+          renderDesktopTable={() => (
+            <div className="responsive-table-wrap">
+              <table className="w-full min-w-[650px] text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                    <th className="p-3.5 pl-5">Category Image</th>
+                    <th className="p-3.5">Category Name</th>
+                    <th className="p-3.5">Subcategories</th>
+                    <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 pr-5 text-right">Actions</th>
                   </tr>
-                );
-              })}
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredCategories.map((cat) => {
+                    const subList = Array.isArray(cat.subcategories) ? cat.subcategories : (cat.subcategories ? cat.subcategories.split(",") : []);
 
-              {filteredCategories.length === 0 && !isLoading && (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 font-semibold text-xs">
-                    {searchQuery ? `No categories found matching "${searchQuery}".` : 'No categories found in database. Click "+ Add Category" to create one.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    return (
+                      <tr key={cat.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="p-3.5 pl-5">
+                          {cat.category_image ? (
+                            <img src={cat.category_image} alt={cat.name} className="w-14 h-11 object-cover rounded-lg border border-slate-200 shadow-xs" />
+                          ) : (
+                            <div className="w-14 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-[10px]">
+                              No Image
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="p-3.5 font-extrabold text-slate-900 text-sm">
+                          {cat.name}
+                        </td>
+
+                        <td className="p-3.5">
+                          <div className="flex flex-wrap items-center gap-1.5 max-w-xl">
+                            {subList.map((sub, i) => (
+                              <span key={i} className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md font-semibold text-xs shadow-2xs">
+                                {sub.trim()}
+                              </span>
+                            ))}
+
+                            {activeSubInputId === cat.id ? (
+                              <div className="flex items-center gap-1 bg-white border border-purple-400 p-0.5 rounded-lg shadow-xs">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  placeholder="Subcategory..."
+                                  value={quickSubName}
+                                  onChange={(e) => setQuickSubName(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") handleQuickAddSubcategory(cat); }}
+                                  className="w-28 h-6 px-2 text-xs font-semibold outline-none border-none bg-transparent"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickAddSubcategory(cat)}
+                                  className="p-1 bg-purple-600 text-white rounded-md text-[10px] font-bold border-none cursor-pointer hover:bg-purple-700"
+                                >
+                                  Add
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setActiveSubInputId(null); setQuickSubName(""); }}
+                                  className="p-1 text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => { setActiveSubInputId(cat.id); setQuickSubName(""); }}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md cursor-pointer transition-all"
+                              >
+                                <PlusCircle size={12} />
+                                <span>+ Subcategory</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-extrabold text-[10px]">
+                            ACTIVE
+                          </span>
+                        </td>
+
+                        <td className="p-3.5 pr-5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(cat)}
+                              className="p-1.5 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors border-none cursor-pointer"
+                              title="Edit Category"
+                            >
+                              <Pencil size={15} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setDeletingCatId(cat.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border-none cursor-pointer"
+                              title="Delete Category"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(cat) => {
+            const subList = Array.isArray(cat.subcategories) ? cat.subcategories : (cat.subcategories ? cat.subcategories.split(",") : []);
+
+            return (
+              <MobileDataCard key={cat.id}>
+                <div className="flex items-start gap-3 border-b border-slate-100 pb-2.5">
+                  {cat.category_image ? (
+                    <img src={cat.category_image} alt={cat.name} className="w-12 h-12 object-cover rounded-xl border border-slate-200 shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center font-bold text-xs shrink-0">
+                      {cat.name?.charAt(0) || "C"}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-extrabold text-slate-900 text-sm">{cat.name}</h4>
+                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">{subList.length} Subcategories</p>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-extrabold text-[10px]">
+                    ACTIVE
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Subcategories</span>
+                  <div className="flex flex-wrap gap-1">
+                    {subList.map((sub, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[11px] font-medium border border-slate-200/80">
+                        {sub.trim()}
+                      </span>
+                    ))}
+                    {subList.length === 0 && <span className="text-xs text-slate-400">No subcategories</span>}
+                  </div>
+                </div>
+
+                <MobileDataCard.Actions>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenEdit(cat)}
+                    className="text-xs font-bold gap-1 rounded-xl h-8 text-purple-700 border-purple-200 hover:bg-purple-50"
+                  >
+                    <Pencil size={13} />
+                    <span>Edit</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDeletingCatId(cat.id)}
+                    className="text-xs font-bold gap-1 rounded-xl h-8 text-rose-700 border-rose-200 hover:bg-rose-50"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </Button>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            );
+          }}
+        />
       </Card>
 
       {/* ── ADD / EDIT CATEGORY MODAL ── */}

@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from app.exceptions.api_error import ApiError
 from app.extensions.database import db
 
+from sqlalchemy.exc import OperationalError, InterfaceError, DBAPIError
+
 logger = logging.getLogger(__name__)
 
 def get_cors_headers(request: Request) -> dict:
@@ -20,11 +22,31 @@ def safe_rollback():
     """Safely roll back and clear failed SQLAlchemy sessions."""
     try:
         db.session.rollback()
-        db.session.remove()
     except Exception as e:
-        logger.warning(f"Session rollback notice: {e}")
+        logger.debug(f"Session rollback notice: {e}")
+    finally:
+        try:
+            db.session.remove()
+        except Exception:
+            pass
 
 def register_error_handlers(app: FastAPI):
+    @app.exception_handler(OperationalError)
+    @app.exception_handler(InterfaceError)
+    @app.exception_handler(DBAPIError)
+    async def db_connection_error_handler(request: Request, exc: Exception):
+        safe_rollback()
+        logger.error(f"Database connection interrupted on {request.url}: {exc}")
+        return JSONResponse(
+            status_code=503,
+            headers=get_cors_headers(request),
+            content={
+                "success": False,
+                "error_code": "DB_CONNECTION_LOST",
+                "message": "Database is temporarily unreachable. Please check your internet connection or try again."
+            }
+        )
+
     @app.exception_handler(ApiError)
     async def api_error_handler(request: Request, exc: ApiError):
         safe_rollback()

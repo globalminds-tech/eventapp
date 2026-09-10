@@ -156,21 +156,21 @@ export const getHomeEventshow = async (forceRefresh = false) => {
 };
 
 export const getAllEvents = async () => {
-  const res = await apiClient.get("/superuser/get-events");
+  const res = await apiClient.get("/superadmin/get-events");
   return res.data;
 };
 
 export const updateEventStatus = async (id, status) => {
-  const res = await apiClient.put(`/superuser/update-status/${id}`, { status });
+  const res = await apiClient.put(`/superadmin/api/update-status/${id}`, { status });
   return res.data;
 };
 
 export const getDashboardStats = async (period = "30d") => {
-  const res = await apiClient.get(`/superuser/dashboard-stats?period=${period}`);
+  const res = await apiClient.get(`/superadmin/api/dashboard-stats?period=${period}`);
   return res.data;
 };
 
 export const getAllUsers = async () => {
-  const res = await apiClient.get("/superuser/users");
+  const res = await apiClient.get("/superadmin/api/users");
   return res.data;
 };

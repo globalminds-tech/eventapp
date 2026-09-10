@@ -82,6 +82,20 @@ export const getAddonCheckins = async () => {
   return res.data;
 };
 
+export const getGatePresets = async () => {
+  const res = await apiClient.get("/api/v1/checkins/gates");
+  return res.data;
+};
+
+export const addGatePreset = async (name) => {
+  const res = await apiClient.post("/api/v1/checkins/gates", { name });
+  return res.data;
+};
+
+export const deleteGatePreset = async (gateId) => {
+  const res = await apiClient.delete(`/api/v1/checkins/gates/${gateId}`);
+  return res.data;
+};
 
 export const getProgramVerificationEvents = async () => {
   const res = await apiClient.get("/superadmin/api/program-verification/events");

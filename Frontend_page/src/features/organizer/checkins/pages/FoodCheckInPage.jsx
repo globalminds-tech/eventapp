@@ -9,16 +9,13 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Dialog } from "@/components/ui/Dialog";
+import { Select } from "@/components/ui/Select";
 import QRScanner, { playScanSound } from "@/components/QRScanner";
-import { getFoodCheckinSummary, redeemFoodTokenApi, getEventAttendees } from "@/Services/miscService";
-import { Download } from "lucide-react";
+import { getFoodCheckinSummary, redeemFoodTokenApi, getEventAttendees, getGatePresets, addGatePreset, deleteGatePreset } from "@/Services/miscService";
+import { Download, Check, Trash2 } from "lucide-react";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
-const STALL_PRESETS = [
-  "Main Food Counter",
-  "VIP Buffet",
-  "Snack Bar",
-  "Beverage Station"
-];
+
 
 export default function FoodCheckIn() {
   const [search, setSearch] = useState("");
@@ -26,7 +23,7 @@ export default function FoodCheckIn() {
   const [selectedEventId, setSelectedEventId] = useState("");
   const [scanResultAlert, setScanResultAlert] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   const [attendees, setAttendees] = useState([]);
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,14 +37,29 @@ export default function FoodCheckIn() {
   });
 
   // Food Stall Controls
-  const [gateName, setGateName] = useState(STALL_PRESETS[0]);
+  const [gatePresets, setGatePresets] = useState([]);
+  const [gateName, setGateName] = useState("");
   const [customGate, setCustomGate] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [rapidCodeInput, setRapidCodeInput] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
 
+  const fetchGatePresets = async () => {
+    try {
+      const res = await getGatePresets();
+      const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+      setGatePresets(list);
+      if (list.length > 0 && !gateName) {
+        setGateName(list[0].name);
+      }
+    } catch (err) {
+      console.error("Failed to load gates", err);
+    }
+  };
+
   useEffect(() => {
     fetchFoodData();
+    fetchGatePresets();
   }, []);
 
   const fetchFoodData = async () => {
@@ -67,6 +79,34 @@ export default function FoodCheckIn() {
       setStats({ totalFoodTokens: 0, mealsServed: 0, pendingRedemptions: 0 });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveGate = async () => {
+    if (!customGate.trim()) return;
+    try {
+      const res = await addGatePreset(customGate.trim());
+      await fetchGatePresets();
+      setGateName(customGate.trim());
+      setCustomGate("");
+    } catch (err) {
+      console.error("Failed to save gate", err);
+    }
+  };
+
+  const handleDeleteGate = async () => {
+    const targetName = customGate.trim() || gateName;
+    if (!targetName) return;
+    const gateObj = gatePresets.find(g => g.name === targetName);
+    if (!gateObj) return;
+    
+    try {
+      await deleteGatePreset(gateObj.id);
+      await fetchGatePresets();
+      if (customGate) setCustomGate("");
+      setGateName(gatePresets.length > 1 ? gatePresets.find(g => g.id !== gateObj.id)?.name : "");
+    } catch (err) {
+      console.error("Failed to delete gate", err);
     }
   };
 
@@ -171,7 +211,7 @@ export default function FoodCheckIn() {
 
       // In this backend implementation, food checkin increases total_checkins or sets is_checked_in
       const hasRedeemed = a.is_checked_in || a.total_checkins > 0;
-      
+
       if (statusFilter === "REDEEMED") return hasRedeemed;
       if (statusFilter === "PENDING") return !hasRedeemed;
       return true;
@@ -216,11 +256,10 @@ export default function FoodCheckIn() {
   const verificationCardJSX = scanResultAlert ? (
     <div className="select-none flex flex-col h-full bg-white">
       {/* Modal Header Banner */}
-      <div className={`p-6 text-white text-center space-y-1 relative shrink-0 ${
-        scanResultAlert.status === "ACCESS_GRANTED"
-          ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600"
+      <div className={`p-6 text-white text-center space-y-1 relative shrink-0 ${scanResultAlert.status === "ACCESS_GRANTED"
+          ? "bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600"
           : "bg-gradient-to-r from-rose-600 via-red-600 to-rose-600"
-      }`}>
+        }`}>
         <div className="w-14 h-14 mx-auto rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center mb-2 shadow-inner">
           {scanResultAlert.status === "ACCESS_GRANTED" ? <CheckCircle2 size={32} className="text-white" /> : <ShieldAlert size={32} className="text-white" />}
         </div>
@@ -251,8 +290,8 @@ export default function FoodCheckIn() {
             <div>
               <span className="text-[10px] font-extrabold text-slate-400 uppercase block">Meal Entitlement</span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <Utensils size={13} className="text-emerald-600" />
-                <span className="font-extrabold text-emerald-700">
+                <Utensils size={13} className="text-cyan-600" />
+                <span className="font-extrabold text-cyan-700">
                   {scanResultAlert.attendee?.food_preference && scanResultAlert.attendee?.food_preference !== "None"
                     ? `${scanResultAlert.attendee.food_preference}`
                     : "No Meal Pass"}
@@ -311,86 +350,106 @@ export default function FoodCheckIn() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Active Events</h2>
           </div>
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-5">Event Details</th>
-                  <th className="py-3.5 px-4">Start Date</th>
-                  <th className="py-3.5 px-4">End Date</th>
-                  <th className="py-3.5 px-4 text-center">Food Pass Redemptions</th>
-                  <th className="py-3.5 px-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {loading ? (
-                  Array.from({ length: 4 }).map((_, idx) => (
-                    <tr key={idx} className="animate-pulse">
-                      <td className="py-4 px-5 space-y-1.5">
-                        <Skeleton className="h-4 w-16 rounded" />
-                        <Skeleton className="h-4 w-36 rounded" />
-                      </td>
-                      <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
-                      <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
-                      <td className="py-4 px-4"><Skeleton className="h-6 w-32 rounded-lg mx-auto" /></td>
-                      <td className="py-4 px-5 text-right"><Skeleton className="h-8 w-24 rounded-lg ml-auto" /></td>
+          <ResponsiveTableView
+            data={filtered}
+            keyField="id"
+            loading={loading}
+            emptyMessage="No food provisioning events found in database."
+            renderDesktopTable={() => (
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-5">Event Details</th>
+                      <th className="py-3.5 px-4">Start Date</th>
+                      <th className="py-3.5 px-4">End Date</th>
+                      <th className="py-3.5 px-4 text-center">Food Pass Redemptions</th>
+                      <th className="py-3.5 px-5 text-right">Actions</th>
                     </tr>
-                  ))
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400">
-                      No food provisioning events found in database.
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((item, idx) => (
-                    <tr key={item.id || item.code || idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-5">
-                        <div className="space-y-1">
-                          <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
-                            {item.code}
-                          </Badge>
-                          <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 font-semibold text-slate-800">{item.startDate || "---"}</td>
-                      <td className="py-4 px-4 text-slate-500">{item.endDate || "---"}</td>
-                      <td className="py-4 px-4">
-                        <div className="space-y-1.5 w-36 mx-auto">
-                          <div className="flex justify-between text-[11px] font-semibold">
-                            <span className="text-emerald-700">{item.scannedTokens || 0} redeemed</span>
-                            <span className="text-slate-400">/{item.totalFoodTokens || 0}</span>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    {filtered.map((item, idx) => (
+                      <tr key={item.id || item.code || idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-5">
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
+                              {item.code}
+                            </Badge>
+                            <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
                           </div>
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-emerald-500 rounded-full"
-                              style={{
-                                width: `${
-                                  item.totalFoodTokens > 0
-                                    ? Math.min(100, Math.round(((item.scannedTokens || 0) / item.totalFoodTokens) * 100))
-                                    : 0
-                                }%`
-                              }}
-                            />
+                        </td>
+                        <td className="py-4 px-4 font-semibold text-slate-800">{item.startDate || "---"}</td>
+                        <td className="py-4 px-4 text-slate-500">{item.endDate || "---"}</td>
+                        <td className="py-4 px-4">
+                          <div className="space-y-1.5 w-36 mx-auto">
+                            <div className="flex justify-between text-[11px] font-semibold">
+                              <span className="text-cyan-700">{item.scannedTokens || 0} redeemed</span>
+                              <span className="text-slate-400">/{item.totalFoodTokens || 0}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-cyan-500 rounded-full"
+                                style={{
+                                  width: `${item.totalFoodTokens > 0
+                                      ? Math.min(100, Math.round(((item.scannedTokens || 0) / item.totalFoodTokens) * 100))
+                                      : 0
+                                    }%`
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-5 text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => setSelectedEventId(item.id || item.code)}
-                          className="bg-slate-900 text-white font-bold text-xs px-4 py-1.5 rounded-lg border-none cursor-pointer gap-2 hover:bg-slate-800 transition"
-                        >
-                          <Settings size={14} />
-                          <span>Manage</span>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="py-4 px-5 text-right">
+                          <Button
+                            size="sm"
+                            onClick={() => setSelectedEventId(item.id || item.code)}
+                            className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:via-sky-400 hover:to-blue-500 shadow-md shadow-cyan-500/20 text-white font-black text-xs px-4 py-1.5 rounded-lg border-none cursor-pointer gap-2 transition-all"
+                          >
+                            <Settings size={14} />
+                            <span>Manage</span>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(item) => (
+              <MobileDataCard key={item.id || item.code}>
+                <MobileDataCard.Header
+                  badge={
+                    <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 text-[10px] font-bold">
+                      {item.code || "EVENT"}
+                    </Badge>
+                  }
+                  title={item.name}
+                  statusBadge={
+                    <span className="text-[10px] font-extrabold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">
+                      {item.scannedTokens || 0}/{item.totalFoodTokens || 0} Redeemed
+                    </span>
+                  }
+                />
+                <MobileDataCard.Grid
+                  columns={2}
+                  items={[
+                    { label: "Start Date", value: item.startDate || "---" },
+                    { label: "End Date", value: item.endDate || "---" },
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  <Button
+                    size="sm"
+                    onClick={() => setSelectedEventId(item.id || item.code)}
+                    className="w-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                  >
+                    <Settings size={14} />
+                    <span>Open Food Station</span>
+                  </Button>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            )}
+          />
         </Card>
       </div>
     );
@@ -408,7 +467,7 @@ export default function FoodCheckIn() {
 
   return (
     <div className="space-y-6 pb-16 select-none font-sans">
-      
+
       {/* ── TOP HEADER & EVENT SELECTOR ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-1">
         <div className="space-y-1">
@@ -416,7 +475,7 @@ export default function FoodCheckIn() {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               Food Token Scanner & Check-In
             </h1>
-            <Badge className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black text-[11px] border-none px-2.5 py-0.5 shadow-sm">
+            <Badge className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-black text-[11px] border-none px-2.5 py-0.5 shadow-sm">
               LIVE FOOD STALL
             </Badge>
           </div>
@@ -447,22 +506,25 @@ export default function FoodCheckIn() {
       </div>
 
       {/* ── FOOD STALL CONTROL BAR ── */}
-      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl overflow-hidden p-5 sm:p-6 relative">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-teal-600/10 blur-3xl pointer-events-none" />
-        
-        <div className="relative flex flex-col xl:flex-row xl:items-end justify-between gap-6">
-          
+      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl p-5 sm:p-6 relative">
+        {/* Background glow effect wrapper */}
+        <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl" />
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+
           {/* Left Side: Settings */}
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 flex-1">
-            
+
             {/* Mode Switch */}
             <div className="space-y-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Operation Mode</span>
               <div className="bg-slate-950/50 p-1 rounded-xl flex items-center gap-1 border border-slate-800 backdrop-blur-md">
                 <button
                   type="button"
-                  className="px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-400/20"
+                  className="px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-400/20"
                 >
                   <Utensils size={15} />
                   <span>Redeem Token</span>
@@ -476,25 +538,47 @@ export default function FoodCheckIn() {
               <div className="flex flex-wrap sm:flex-nowrap items-stretch gap-2 h-10.5">
                 <div className="relative flex-1 min-w-[150px]">
                   <DoorOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <select
+                  <Select
                     value={gateName}
-                    onChange={(e) => setGateName(e.target.value)}
-                    className="w-full h-full bg-slate-950/50 border border-slate-800 text-white text-xs font-bold pl-9 pr-8 rounded-xl outline-none cursor-pointer appearance-none focus:border-emerald-500 transition-colors"
-                  >
-                    {STALL_PRESETS.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
+                    onValueChange={(val) => {
+                      setGateName(val);
+                      setCustomGate("");
+                    }}
+                    placeholder={gatePresets.length === 0 ? "No Presets Saved" : "Select Stall..."}
+                    options={gatePresets.map((p) => ({ value: p.name, label: p.name }))}
+                    triggerClassName="w-full h-full bg-slate-950/50 border-slate-800 text-white text-xs font-bold pl-9 rounded-xl outline-none focus:border-cyan-500 transition-colors"
+                    contentClassName="bg-slate-900 border-slate-800 text-white"
+                  />
                 </div>
-                <div className="relative flex-1 min-w-[150px]">
-                  <Sparkles size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <div className="relative flex-1 min-w-[150px] flex items-center bg-slate-950/50 border border-slate-800 rounded-xl focus-within:border-cyan-500 transition-colors">
+                  <Sparkles size={14} className="absolute left-3 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Custom stall name..."
+                    placeholder="Custom gate name..."
                     value={customGate}
                     onChange={(e) => setCustomGate(e.target.value)}
-                    className="w-full h-full bg-slate-950/50 border border-slate-800 text-white text-xs font-medium pl-9 pr-3 rounded-xl outline-none placeholder:text-slate-600 focus:border-emerald-500 transition-colors"
+                    className="w-full h-full bg-transparent border-none text-white text-xs font-medium pl-9 pr-14 outline-none placeholder:text-slate-600"
                   />
+                  <div className="absolute right-1 flex items-center gap-1">
+                    <button 
+                      type="button" 
+                      onClick={handleSaveGate}
+                      disabled={!customGate.trim()}
+                      className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      title="Save Gate Preset"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={handleDeleteGate}
+                      disabled={!(customGate.trim() ? gatePresets.some(g => g.name === customGate.trim()) : gatePresets.some(g => g.name === gateName))}
+                      className="p-1.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      title="Delete Gate Preset"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -511,7 +595,7 @@ export default function FoodCheckIn() {
                   placeholder="Scan pass code..."
                   value={rapidCodeInput}
                   onChange={(e) => setRapidCodeInput(e.target.value)}
-                  className="w-full h-full pl-4 pr-24 bg-slate-950/80 border border-slate-800 rounded-xl text-sm font-mono font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder:text-slate-600 placeholder:font-sans transition-all"
+                  className="w-full h-full pl-4 pr-24 bg-slate-950/80 border border-slate-800 rounded-xl text-sm font-mono font-bold text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600 placeholder:font-sans transition-all"
                 />
                 <button
                   type="submit"
@@ -527,7 +611,7 @@ export default function FoodCheckIn() {
               {/* Camera Scanner Button */}
               <Button
                 onClick={() => setShowScanner(true)}
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs px-4 rounded-xl border-none cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2 whitespace-nowrap transition-all"
+                className="h-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs px-4 rounded-xl border-none cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 whitespace-nowrap transition-all"
               >
                 <QrCode size={16} />
                 <span className="hidden sm:inline">Camera</span>
@@ -540,7 +624,7 @@ export default function FoodCheckIn() {
                 title={soundEnabled ? "Mute Scanner Audio" : "Enable Scanner Audio"}
                 className="h-full px-3.5 bg-slate-950/50 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800 cursor-pointer flex items-center justify-center"
               >
-                {soundEnabled ? <Volume2 size={16} className="text-emerald-400" /> : <VolumeX size={16} className="text-slate-500" />}
+                {soundEnabled ? <Volume2 size={16} className="text-cyan-400" /> : <VolumeX size={16} className="text-slate-500" />}
               </button>
             </div>
           </div>
@@ -566,10 +650,10 @@ export default function FoodCheckIn() {
           <CardContent className="p-5 flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Meals Served</p>
-              <h3 className="text-2xl font-extrabold text-emerald-600">{eventStats.mealsServed.toLocaleString()}</h3>
-              <p className="text-xs font-medium text-emerald-600">{percentageRedeemed}% Tokens Redeemed</p>
+              <h3 className="text-2xl font-extrabold text-cyan-600">{eventStats.mealsServed.toLocaleString()}</h3>
+              <p className="text-xs font-medium text-cyan-600">{percentageRedeemed}% Tokens Redeemed</p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100">
               <CheckCircle2 size={22} />
             </div>
           </CardContent>
@@ -603,7 +687,7 @@ export default function FoodCheckIn() {
       {showScanner && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className={`w-full transition-all duration-300 ease-in-out ${scanResultAlert ? 'max-w-5xl flex flex-col md:flex-row items-stretch gap-4' : 'max-w-lg'}`}>
-            
+
             <div className={`w-full transition-all duration-300 ease-in-out flex flex-col justify-center ${scanResultAlert ? 'md:w-1/2' : ''}`}>
               <QRScanner
                 title={`Food Token Scanner (${selectedEvent?.name || "Event"})`}
@@ -629,7 +713,7 @@ export default function FoodCheckIn() {
 
       {/* ── ATTENDEE ROSTER & FOOD DESK ── */}
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-3xl overflow-hidden space-y-4 p-5 sm:p-6 mt-8">
-        
+
         {/* Table Filter & Search Controls */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="space-y-1">
@@ -650,7 +734,7 @@ export default function FoodCheckIn() {
                 placeholder="Search name, code, email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-500"
               />
             </div>
 
@@ -678,118 +762,152 @@ export default function FoodCheckIn() {
               key={tab.key}
               type="button"
               onClick={() => setStatusFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
-                statusFilter === tab.key
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${statusFilter === tab.key
                   ? "bg-slate-900 text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
+                }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Attendees Data Table */}
-        <div className="overflow-x-auto responsive-table-wrap">
-          <table className="w-full text-left border-collapse min-w-[650px]">
-            <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Pass Code</th>
-                <th className="py-3.5 px-4">Attendee Name & Contact</th>
-                <th className="py-3.5 px-4">Meal Option</th>
-                <th className="py-3.5 px-4">Status & Times</th>
-                <th className="py-3.5 px-4 text-right">Desk Action</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
-              {entriesLoading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-36 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-28 rounded" /></td>
-                    <td className="py-4 px-4 text-right"><Skeleton className="h-8 w-24 rounded-lg ml-auto" /></td>
+        {/* Attendees Data Table / Mobile Cards */}
+        <ResponsiveTableView
+          data={filteredAttendees}
+          keyField="id"
+          loading={entriesLoading}
+          emptyMessage="No attendee passes found matching your filter criteria."
+          renderDesktopTable={() => (
+            <div className="overflow-x-auto responsive-table-wrap">
+              <table className="w-full text-left border-collapse min-w-[650px]">
+                <thead>
+                  <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Pass Code</th>
+                    <th className="py-3.5 px-4">Attendee Name &amp; Contact</th>
+                    <th className="py-3.5 px-4">Meal Option</th>
+                    <th className="py-3.5 px-4">Status &amp; Times</th>
+                    <th className="py-3.5 px-4 text-right">Desk Action</th>
                   </tr>
-                ))
-              ) : filteredAttendees.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                    No attendee passes found matching your filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredAttendees.map((v) => {
-                  const isRedeemed = v.is_checked_in || v.total_checkins > 0;
-                  return (
-                    <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Pass Code */}
-                      <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
-                        {v.visitor_code || v.ticket_code}
-                      </td>
+                </thead>
 
-                      {/* Attendee Name & Contact */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-extrabold text-slate-900">{v.name}</div>
-                        <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
-                          {v.email || v.phone || "No contact info"}
-                        </div>
-                      </td>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
+                  {filteredAttendees.map((v) => {
+                    const isRedeemed = v.is_checked_in || v.total_checkins > 0;
+                    return (
+                      <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
+                          {v.visitor_code || v.ticket_code}
+                        </td>
 
-                      {/* Meal Option */}
-                      <td className="py-3.5 px-4">
-                        {v.food_preference && v.food_preference !== "None" ? (
-                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold px-2 py-0.5">
-                            {v.food_preference}
-                          </Badge>
-                        ) : (
-                          <span className="text-slate-400 text-xs font-medium">None</span>
-                        )}
-                      </td>
-
-                      {/* Status & Times */}
-                      <td className="py-3.5 px-4">
-                        {isRedeemed ? (
-                          <div>
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-black px-2 py-0.5">
-                              ● Meal Redeemed
-                            </Badge>
-                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                              At: {v.checkin_time || "Earlier"}
-                            </p>
+                        <td className="py-3.5 px-4">
+                          <div className="font-extrabold text-slate-900">{v.name}</div>
+                          <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
+                            {v.email || v.phone || "No contact info"}
                           </div>
-                        ) : (
-                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0.5">
-                            Pending
-                          </Badge>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Desk Action Button */}
-                      <td className="py-3.5 px-4 text-right">
-                        {!isRedeemed ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
-                          >
-                            <Utensils size={13} />
-                            <span>Redeem Token</span>
-                          </Button>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">
-                            Already Served
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <td className="py-3.5 px-4">
+                          {v.food_preference && v.food_preference !== "None" ? (
+                            <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-extrabold px-2 py-0.5">
+                              {v.food_preference}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-400 text-xs font-medium">None</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {isRedeemed ? (
+                            <div>
+                              <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-black px-2 py-0.5">
+                                ● Meal Redeemed
+                              </Badge>
+                              <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                At: {v.checkin_time || "Earlier"}
+                              </p>
+                            </div>
+                          ) : (
+                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0.5">
+                              Pending
+                            </Badge>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          {!isRedeemed ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
+                              className="bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
+                            >
+                              <Utensils size={13} />
+                              <span>Redeem Token</span>
+                            </Button>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">
+                              Already Served
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(v) => {
+            const isRedeemed = v.is_checked_in || v.total_checkins > 0;
+            return (
+              <MobileDataCard key={v.id} highlightBorder={isRedeemed}>
+                <MobileDataCard.Header
+                  badge={
+                    <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                      {v.visitor_code || v.ticket_code}
+                    </span>
+                  }
+                  title={v.name}
+                  subtitle={v.email || v.phone || "No contact info"}
+                  statusBadge={
+                    isRedeemed ? (
+                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[9px] font-black px-2 py-0.5">
+                        ● Redeemed
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[9px] font-bold px-2 py-0.5">
+                        Pending
+                      </Badge>
+                    )
+                  }
+                />
+                <MobileDataCard.Grid
+                  columns={2}
+                  items={[
+                    { label: "Meal Option", value: v.food_preference && v.food_preference !== "None" ? v.food_preference : "None" },
+                    { label: "Redeem Time", value: v.checkin_time || "Pending" },
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  {!isRedeemed ? (
+                    <Button
+                      size="sm"
+                      onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
+                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                    >
+                      <Utensils size={14} />
+                      <span>Redeem Meal Token</span>
+                    </Button>
+                  ) : (
+                    <div className="w-full text-center py-1.5 text-[11px] font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+                      Meal Already Served
+                    </div>
+                  )}
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            );
+          }}
+        />
       </Card>
     </div>
   );

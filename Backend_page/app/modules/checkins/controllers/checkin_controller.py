@@ -73,3 +73,26 @@ class CheckinController:
             "data": result
         }
 
+    @staticmethod
+    def get_gate_presets(organizer_id: str):
+        result = CheckinService.get_gate_presets(organizer_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def add_gate_preset(name: str, organizer_id: str):
+        result = CheckinService.add_gate_preset(name, organizer_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def delete_gate_preset(gate_id: str, organizer_id: str):
+        result = CheckinService.delete_gate_preset(gate_id, organizer_id)
+        return {
+            "success": True,
+            "message": "Gate deleted successfully"
+        }

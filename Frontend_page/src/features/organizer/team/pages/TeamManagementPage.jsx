@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/Table";
 import Can from "@/components/Can";
 import { usePermissions } from "@/shared/context/PermissionContext";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export default function TeamManagementPage({ userScope }) {
   const { accessToken, role: authRole } = useSelector((state) => state.auth);
@@ -1024,310 +1025,367 @@ export default function TeamManagementPage({ userScope }) {
 
       {/* Main Content Area */}
       {activeTab === "members" && canViewTeam ? (
-        /* Team Members Table (Unified Shadcn Table) */
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-6">Member Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Assigned Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined Date</TableHead>
-                <TableHead className="pr-6 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <TableRow key={idx} className="animate-pulse">
-                    <TableCell className="pl-6">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <div className="space-y-1.5">
-                          <Skeleton className="h-3.5 w-28 rounded" />
-                          <Skeleton className="h-2.5 w-16 rounded" />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-3.5 w-36 rounded" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-24 rounded-md" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-16 rounded-full" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-3.5 w-20 rounded" />
-                    </TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <Skeleton className="h-7 w-7 rounded-lg ml-auto" />
-                    </TableCell>
+        /* Team Members Table (Unified Shadcn Table with Responsive Mobile Cards) */
+        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs p-4">
+          <ResponsiveTableView
+            data={members}
+            keyField="id"
+            loading={loading}
+            emptyMessage="No team members found. Click 'Invite Team Member' to add your first collaborator."
+            renderDesktopTable={() => (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">Member Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Assigned Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined Date</TableHead>
+                    <TableHead className="pr-6 text-right">Actions</TableHead>
                   </TableRow>
-                ))
-              ) : members.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-12 text-center text-slate-400">
-                    No team members found. Click "Invite Team Member" to add your first collaborator.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                members.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="pl-6 font-bold text-slate-900">
-                      <div className="flex items-center gap-3">
-                        <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs ${theme.avatarBg}`}>
-                          {(m.user_name || m.title || "U").charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div>{m.user_name || m.title || "Team Member"}</div>
-                          {m.department && <div className="text-[10px] text-slate-400 font-normal">{m.department}</div>}
-                        </div>
-                      </div>
-                    </TableCell>
+                </TableHeader>
 
-                    <TableCell className="text-slate-600 font-medium">
-                      {m.user_email || "Pending Acceptance"}
-                    </TableCell>
-
-                    <TableCell>
-                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold ${theme.rolePill}`}>
-                        {m.role_name || "Custom Role"}
-                      </span>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                            m.status === "ACTIVE"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                              : m.status === "DEACTIVATED"
-                              ? "bg-rose-50 text-rose-700 border border-rose-100"
-                              : "bg-amber-50 text-amber-700 border border-amber-100"
-                          }`}
-                        >
-                          {m.status === "ACTIVE" ? (
-                            <CheckCircle className="h-3 w-3" />
-                          ) : m.status === "DEACTIVATED" ? (
-                            <XCircle className="h-3 w-3" />
-                          ) : (
-                            <Clock className="h-3 w-3" />
-                          )}
-                          {m.status}
-                        </span>
-
-                        {m.status !== "PENDING" && (
-                          <Can anyOf={["team.manage", "team.edit", "exhibitor.team.edit"]}>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleMemberStatus(m)}
-                              disabled={statusTogglingId === m.id}
-                              title={m.status === "ACTIVE" ? "Deactivate team member" : "Activate team member"}
-                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md transition border ${
-                                m.status === "ACTIVE"
-                                  ? "border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
-                                  : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                              }`}
-                            >
-                              {statusTogglingId === m.id ? (
-                                "Updating..."
-                              ) : m.status === "ACTIVE" ? (
-                                <>
-                                  <UserX className="h-2.5 w-2.5" />
-                                  Deactivate
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="h-2.5 w-2.5" />
-                                  Activate
-                                </>
-                              )}
-                            </button>
-                          </Can>
-                        )}
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="text-slate-500">
-                      {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Pending"}
-                    </TableCell>
-
-                    <TableCell className="pr-6 text-right">
-                      <Can anyOf={["team.remove", "exhibitor.team.remove"]}>
-                        <button
-                          onClick={() => handleInitiateRemoveMember(m)}
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
-                          title="Remove member"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </Can>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      ) : activeTab === "roles" && canViewRoles ? (
-        /* Roles & Permissions Table (Cleaned: No Type column, No code under name, User-friendly permissions, Edit Button) */
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-6">Role Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Granted Permissions</TableHead>
-                <TableHead>Total Scope</TableHead>
-                <TableHead className="pr-6 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <TableRow key={idx} className="animate-pulse">
-                    <TableCell className="pl-6">
-                      <Skeleton className="h-4 w-32 rounded" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-3.5 w-48 rounded" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Skeleton className="h-5 w-20 rounded" />
-                        <Skeleton className="h-5 w-20 rounded" />
-                        <Skeleton className="h-5 w-16 rounded" />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-16 rounded-full" />
-                    </TableCell>
-                    <TableCell className="pr-6 text-right">
-                      <Skeleton className="h-7 w-12 rounded-lg ml-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : roles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-14 text-center">
-                    <div className="mx-auto flex max-w-sm flex-col items-center justify-center space-y-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
-                        <Shield className="h-6 w-6" />
-                      </div>
-                      <div className="text-sm font-bold text-slate-700">No Custom Roles Created Yet</div>
-                      <p className="text-xs text-slate-400 leading-relaxed">
-                        Roles define granular screen and action access for your team. Click the button below to create your organization's first role.
-                      </p>
-                      <button
-                        onClick={handleOpenCreateRole}
-                        className={`mt-1 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition ${theme.primaryBtn}`}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Create Custom Role
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                roles.map((r) => {
-                  const permList = r.permissions || [];
-                  const previewPerms = permList.slice(0, 4);
-                  const remainingCount = permList.length - previewPerms.length;
-
-                  return (
-                    <TableRow key={r.id}>
-                      {/* Role Name only (no code printed underneath!) */}
-                      <TableCell className="pl-6">
-                        <div className="font-bold text-slate-900 flex items-center gap-2">
-                          {r.name}
-                          {r.is_default && (
-                            <span className="text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-100">
-                              Default Owner
-                            </span>
-                          )}
+                <TableBody>
+                  {members.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="pl-6 font-bold text-slate-900">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs ${theme.avatarBg}`}>
+                            {(m.user_name || m.title || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div>{m.user_name || m.title || "Team Member"}</div>
+                            {m.department && <div className="text-[10px] text-slate-400 font-normal">{m.department}</div>}
+                          </div>
                         </div>
                       </TableCell>
 
-                      <TableCell className="text-slate-500 max-w-xs truncate" title={r.description || ""}>
-                        {r.description || "No description provided."}
-                      </TableCell>
-
-                      {/* User-friendly permission display (e.g. "Create Events", "View Stalls") */}
-                      <TableCell>
-                        <div className="flex flex-wrap items-center gap-1.5 max-w-md">
-                          {previewPerms.map((p) => (
-                            <span
-                              key={p}
-                              className="rounded-md bg-slate-50 border border-slate-200/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
-                            >
-                              {permCodeToName[p] || p}
-                            </span>
-                          ))}
-                          {remainingCount > 0 && (
-                            <span
-                              className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 cursor-help"
-                              title={permList.slice(4).map((p) => permCodeToName[p] || p).join(", ")}
-                            >
-                              +{remainingCount} more
-                            </span>
-                          )}
-                        </div>
+                      <TableCell className="text-slate-600 font-medium">
+                        {m.user_email || "Pending Acceptance"}
                       </TableCell>
 
                       <TableCell>
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700">
-                          {permList.length} permissions
+                        <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold ${theme.rolePill}`}>
+                          {m.role_name || "Custom Role"}
                         </span>
                       </TableCell>
 
-                      <TableCell className="pr-6 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* View Access & Permissions (Eye) button */}
-                          <button
-                            onClick={() => handleOpenViewRole(r)}
-                            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-cyan-600 transition"
-                            title="View role permissions and access"
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                              m.status === "ACTIVE"
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                : m.status === "DEACTIVATED"
+                                ? "bg-rose-50 text-rose-700 border border-rose-100"
+                                : "bg-amber-50 text-amber-700 border border-amber-100"
+                            }`}
                           >
-                            <Eye className="h-4 w-4" />
-                          </button>
+                            {m.status === "ACTIVE" ? (
+                              <CheckCircle className="h-3 w-3" />
+                            ) : m.status === "DEACTIVATED" ? (
+                              <XCircle className="h-3 w-3" />
+                            ) : (
+                              <Clock className="h-3 w-3" />
+                            )}
+                            {m.status}
+                          </span>
 
-                          {/* Edit button */}
-                          <Can anyOf={["roles.edit", "roles.manage", "exhibitor.roles.manage"]}>
-                            <button
-                              onClick={() => handleOpenEditRole(r)}
-                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
-                              title="Edit role"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </button>
-                          </Can>
-
-                          {/* Delete button (available on all non-default roles) */}
-                          {!r.is_default && (
-                            <Can anyOf={["roles.delete", "roles.manage", "exhibitor.roles.manage"]}>
+                          {m.status !== "PENDING" && (
+                            <Can anyOf={["team.manage", "team.edit", "exhibitor.team.edit"]}>
                               <button
-                                onClick={() => handleInitiateDeleteRole(r)}
-                                className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
-                                title="Delete role"
+                                type="button"
+                                onClick={() => handleToggleMemberStatus(m)}
+                                disabled={statusTogglingId === m.id}
+                                title={m.status === "ACTIVE" ? "Deactivate team member" : "Activate team member"}
+                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md transition border ${
+                                  m.status === "ACTIVE"
+                                    ? "border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
+                                    : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                }`}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                {statusTogglingId === m.id ? (
+                                  "Updating..."
+                                ) : m.status === "ACTIVE" ? (
+                                  <>
+                                    <UserX className="h-2.5 w-2.5" />
+                                    Deactivate
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="h-2.5 w-2.5" />
+                                    Activate
+                                  </>
+                                )}
                               </button>
                             </Can>
                           )}
                         </div>
                       </TableCell>
 
+                      <TableCell className="text-slate-500">
+                        {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Pending"}
+                      </TableCell>
+
+                      <TableCell className="pr-6 text-right">
+                        <Can anyOf={["team.remove", "exhibitor.team.remove"]}>
+                          <button
+                            onClick={() => handleInitiateRemoveMember(m)}
+                            className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition cursor-pointer"
+                            title="Remove member"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </Can>
+                      </TableCell>
                     </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            renderMobileCard={(m) => (
+              <MobileDataCard key={m.id}>
+                <MobileDataCard.Header
+                  title={m.user_name || m.title || "Team Member"}
+                  subtitle={m.user_email || "Pending Acceptance"}
+                  statusBadge={
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                        m.status === "ACTIVE"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          : m.status === "DEACTIVATED"
+                          ? "bg-rose-50 text-rose-700 border border-rose-100"
+                          : "bg-amber-50 text-amber-700 border border-amber-100"
+                      }`}
+                    >
+                      {m.status}
+                    </span>
+                  }
+                />
+                <MobileDataCard.Grid
+                  items={[
+                    { label: "Assigned Role", value: <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${theme.rolePill}`}>{m.role_name || "Custom Role"}</span> },
+                    { label: "Joined", value: m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Pending" }
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  {m.status !== "PENDING" && (
+                    <Can anyOf={["team.manage", "team.edit", "exhibitor.team.edit"]}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleMemberStatus(m)}
+                        disabled={statusTogglingId === m.id}
+                        className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl transition border ${
+                          m.status === "ACTIVE"
+                            ? "border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {m.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                      </button>
+                    </Can>
+                  )}
+                  <Can anyOf={["team.remove", "exhibitor.team.remove"]}>
+                    <button
+                      onClick={() => handleInitiateRemoveMember(m)}
+                      className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Remove
+                    </button>
+                  </Can>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            )}
+          />
+        </div>
+      ) : activeTab === "roles" && canViewRoles ? (
+        /* Roles & Permissions Table with Responsive Mobile Cards */
+        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-xs p-4">
+          <ResponsiveTableView
+            data={roles}
+            keyField="id"
+            loading={loading}
+            emptyMessage="No custom roles created yet."
+            emptyAction={
+              <button
+                onClick={handleOpenCreateRole}
+                className={`mt-2 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition ${theme.primaryBtn}`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Create Custom Role
+              </button>
+            }
+            renderDesktopTable={() => (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-6">Role Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Granted Permissions</TableHead>
+                    <TableHead>Total Scope</TableHead>
+                    <TableHead className="pr-6 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {roles.map((r) => {
+                    const permList = r.permissions || [];
+                    const previewPerms = permList.slice(0, 4);
+                    const remainingCount = permList.length - previewPerms.length;
+
+                    return (
+                      <TableRow key={r.id}>
+                        <TableCell className="pl-6">
+                          <div className="font-bold text-slate-900 flex items-center gap-2">
+                            {r.name}
+                            {r.is_default && (
+                              <span className="text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-100">
+                                Default Owner
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="text-slate-500 max-w-xs truncate" title={r.description || ""}>
+                          {r.description || "No description provided."}
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-1.5 max-w-md">
+                            {previewPerms.map((p) => (
+                              <span
+                                key={p}
+                                className="rounded-md bg-slate-50 border border-slate-200/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700"
+                              >
+                                {permCodeToName[p] || p}
+                              </span>
+                            ))}
+                            {remainingCount > 0 && (
+                              <span
+                                className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 cursor-help"
+                                title={permList.slice(4).map((p) => permCodeToName[p] || p).join(", ")}
+                              >
+                                +{remainingCount} more
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700">
+                            {permList.length} permissions
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="pr-6 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleOpenViewRole(r)}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-cyan-600 transition"
+                              title="View role permissions and access"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+
+                            <Can anyOf={["roles.edit", "roles.manage", "exhibitor.roles.manage"]}>
+                              <button
+                                onClick={() => handleOpenEditRole(r)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+                                title="Edit role"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </button>
+                            </Can>
+
+                            {!r.is_default && (
+                              <Can anyOf={["roles.delete", "roles.manage", "exhibitor.roles.manage"]}>
+                                <button
+                                  onClick={() => handleInitiateDeleteRole(r)}
+                                  className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                                  title="Delete role"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </Can>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+            renderMobileCard={(r) => {
+              const permList = r.permissions || [];
+              return (
+                <MobileDataCard key={r.id}>
+                  <MobileDataCard.Header
+                    title={r.name}
+                    subtitle={r.description || "No description"}
+                    statusBadge={
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-700">
+                        {permList.length} perms
+                      </span>
+                    }
+                  />
+                  <MobileDataCard.Grid
+                    items={[
+                      {
+                        label: "Permissions",
+                        value: permList.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {permList.slice(0, 3).map((p) => (
+                              <span key={p} className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-700">
+                                {permCodeToName[p] || p}
+                              </span>
+                            ))}
+                            {permList.length > 3 && (
+                              <span className="text-[10px] text-slate-400">+{permList.length - 3}</span>
+                            )}
+                          </div>
+                        ) : "None"
+                      },
+                      {
+                        label: "Type",
+                        value: r.is_default ? "Default Owner" : r.is_system_role ? "System Role" : "Custom Role"
+                      }
+                    ]}
+                  />
+                  <MobileDataCard.Actions>
+                    <button
+                      onClick={() => handleOpenViewRole(r)}
+                      className="text-xs font-bold text-cyan-600 hover:underline flex items-center gap-1 mr-auto"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View Access
+                    </button>
+                    <Can anyOf={["roles.edit", "roles.manage", "exhibitor.roles.manage"]}>
+                      <button
+                        onClick={() => handleOpenEditRole(r)}
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        title="Edit role"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </button>
+                    </Can>
+                    {!r.is_default && (
+                      <Can anyOf={["roles.delete", "roles.manage", "exhibitor.roles.manage"]}>
+                        <button
+                          onClick={() => handleInitiateDeleteRole(r)}
+                          className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          title="Delete role"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </Can>
+                    )}
+                  </MobileDataCard.Actions>
+                </MobileDataCard>
+              );
+            }}
+          />
         </div>
       ) : (
         <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center text-slate-400">

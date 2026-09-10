@@ -96,6 +96,43 @@ export const getUserInitials = (name) => {
 };
 
 /**
+ * Strict Super Administrator validation helper.
+ * Returns true exclusively for platform super administrators / superusers.
+ */
+export const isSuperUser = (user, explicitRole) => {
+  const isExplicitlyLoggedOut = (
+    localStorage.getItem("is_logged_out") === "true" ||
+    sessionStorage.getItem("is_logged_out") === "true"
+  );
+  if (isExplicitlyLoggedOut) return false;
+
+  let storedUser = null;
+  let storedRole = null;
+  let storedRoles = [];
+  try {
+    storedUser = JSON.parse(localStorage.getItem("user") || sessionStorage.getItem("user") || "null");
+    storedRole = localStorage.getItem("role") || sessionStorage.getItem("role");
+    storedRoles = JSON.parse(localStorage.getItem("roles") || sessionStorage.getItem("roles") || "[]");
+  } catch {}
+
+  const effectiveUser = user || storedUser;
+  const effectiveRole = explicitRole || storedRole;
+
+  if (!effectiveUser && !effectiveRole && storedRoles.length === 0) {
+    return false;
+  }
+
+  const rawRoles = [
+    ...(Array.isArray(effectiveUser?.roles) ? effectiveUser.roles : (user ? [] : storedRoles)),
+    effectiveRole,
+    effectiveUser?.active_role,
+    effectiveUser?.role,
+  ].filter(Boolean).map((r) => String(r).toLowerCase());
+
+  return rawRoles.some((r) => ["superadmin", "superuser", "admin"].includes(r));
+};
+
+/**
  * Computes all accessible roles for a user based on backend roles array & profiles object
  */
 export const getUserAvailableRoles = (user) => {
@@ -106,14 +143,7 @@ export const getUserAvailableRoles = (user) => {
 
   // 1. Strict Super Administrator Isolation:
   // Super admins cannot be attendees, organizers, or exhibitors
-  const isSuper = (
-    rawRoles.includes("superadmin") ||
-    rawRoles.includes("superuser") ||
-    rawRoles.includes("admin") ||
-    activeRole === "superadmin" ||
-    activeRole === "superuser" ||
-    activeRole === "admin"
-  );
+  const isSuper = isSuperUser(user, activeRole);
 
   if (isSuper) {
     return ["superadmin", "superuser"];

@@ -458,10 +458,35 @@ class AdminService:
     @staticmethod
     def update_category_request_status(request_id, raw_data: dict) -> dict:
         from app.models.category_request import CategoryRequest
+        from app.models.category import CategoryMaster
         cat_req = db.session.get(CategoryRequest, request_id)
         if not cat_req:
             raise ApiError("Category request not found", 404)
         status = raw_data.get("status", "Approved")
         cat_req.status = status
+
+        # On Approval → auto-insert into category_master_table
+        if status == "Approved" and cat_req.category_name:
+            existing = db.session.scalars(
+                select(CategoryMaster).where(CategoryMaster.name == cat_req.category_name)
+            ).first()
+
+            if existing:
+                # Category exists — append new subcategory if provided and not already present
+                if cat_req.subcategory_name:
+                    current_subs = [s.strip() for s in (existing.subcategories or "").split(",") if s.strip()]
+                    if cat_req.subcategory_name.strip() not in current_subs:
+                        current_subs.append(cat_req.subcategory_name.strip())
+                        existing.subcategories = ", ".join(current_subs)
+            else:
+                # Create brand new category
+                new_cat = CategoryMaster(
+                    name=cat_req.category_name.strip(),
+                    subcategories=cat_req.subcategory_name.strip() if cat_req.subcategory_name else "",
+                    status="Active"
+                )
+                db.session.add(new_cat)
+
         db.session.commit()
         return cat_req.to_dict()
+

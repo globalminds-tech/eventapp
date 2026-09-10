@@ -23,6 +23,7 @@ from .category_request import CategoryRequest
 from .organization import Organization, OrganizationMember, OrganizationInvitation
 from .rbac import Role, Permission, RolePermission
 from .audit_log import AuditLog
+from .gate import GatePreset
 from .financial import EventTransaction, OrganizerPayout, FinancialInvoice
 
 __all__ = [
@@ -42,7 +43,7 @@ __all__ = [
     'FeedbackEvent', 'Complaint', 'ChatHistory', 'FAQ',
     'TodoTask', 'MessageGreeting', 'Contact',
     'Organization', 'OrganizationMember', 'OrganizationInvitation',
-    'Role', 'Permission', 'RolePermission', 'AuditLog',
+    'Role', 'Permission', 'RolePermission', 'AuditLog', 'GatePreset',
     'EventTransaction', 'OrganizerPayout', 'FinancialInvoice'
 ]
 

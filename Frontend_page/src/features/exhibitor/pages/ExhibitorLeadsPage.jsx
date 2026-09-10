@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getMyBookings } from "@/Services/api";
 import { getExhibitorLeads, addExhibitorLead } from "@/shared/services/bookingService";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export const ExhibitorLeadsPage = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -375,101 +376,172 @@ export const ExhibitorLeadsPage = () => {
 
         {/* Visitor Leads View */}
         {activeTab === 'leads' && (
-          <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
-            <table className="w-full min-w-[650px] text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Visitor & Company</th>
-                  <th className="py-3.5 px-4">Contact Info</th>
-                  <th className="py-3.5 px-4">Buying Intent</th>
-                  <th className="py-3.5 px-4">Logged Notes</th>
-                  <th className="py-3.5 px-4 text-right">Logged Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white text-xs">
-                {leads.map((l) => (
-                  <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{l.visitor_name || l.name}</h4>
-                        <p className="text-[11px] font-semibold text-slate-500">{l.company_name || l.company}</p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="text-slate-600 space-y-0.5">
-                        <p className="flex items-center gap-1 font-semibold text-[11px]"><Mail size={11} />{l.email}</p>
-                        <p className="flex items-center gap-1 text-slate-500 text-[11px]"><Phone size={11} />{l.mobile}</p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border inline-flex items-center gap-1 ${
-                        (l.buying_intent || l.interest) === "High Intent"
-                          ? "bg-orange-100 text-orange-800 border-orange-200"
-                          : "bg-blue-100 text-blue-800 border-blue-200"
-                      }`}>
-                        <Sparkles size={11} /> {l.buying_intent || l.interest}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-600 font-medium max-w-xs truncate">
-                      {l.notes}
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-medium text-slate-400 text-[11px]">
-                      {l.created_at ? new Date(l.created_at).toLocaleString() : l.date}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTableView
+            data={leads}
+            keyField="id"
+            loading={loadingLeads}
+            emptyMessage="No buyer leads scanned or logged yet for this expo."
+            renderDesktopTable={() => (
+              <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
+                <table className="w-full min-w-[650px] text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Visitor & Company</th>
+                      <th className="py-3.5 px-4">Contact Info</th>
+                      <th className="py-3.5 px-4">Buying Intent</th>
+                      <th className="py-3.5 px-4">Logged Notes</th>
+                      <th className="py-3.5 px-4 text-right">Logged Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                    {leads.map((l) => (
+                      <tr key={l.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{l.visitor_name || l.name}</h4>
+                            <p className="text-[11px] font-semibold text-slate-500">{l.company_name || l.company}</p>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="text-slate-600 space-y-0.5">
+                            <p className="flex items-center gap-1 font-semibold text-[11px]"><Mail size={11} />{l.email}</p>
+                            <p className="flex items-center gap-1 text-slate-500 text-[11px]"><Phone size={11} />{l.mobile}</p>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border inline-flex items-center gap-1 ${
+                            (l.buying_intent || l.interest) === "High Intent"
+                              ? "bg-orange-100 text-orange-800 border-orange-200"
+                              : "bg-blue-100 text-blue-800 border-blue-200"
+                          }`}>
+                            <Sparkles size={11} /> {l.buying_intent || l.interest}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600 font-medium max-w-xs truncate">
+                          {l.notes}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-medium text-slate-400 text-[11px]">
+                          {l.created_at ? new Date(l.created_at).toLocaleString() : l.date}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(l) => (
+              <MobileDataCard key={l.id}>
+                <MobileDataCard.Header
+                  title={l.visitor_name || l.name}
+                  subtitle={l.company_name || l.company}
+                  statusBadge={
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border inline-flex items-center gap-1 ${
+                      (l.buying_intent || l.interest) === "High Intent"
+                        ? "bg-orange-100 text-orange-800 border-orange-200"
+                        : "bg-blue-100 text-blue-800 border-blue-200"
+                    }`}>
+                      <Sparkles size={10} /> {l.buying_intent || l.interest}
+                    </span>
+                  }
+                />
+                <MobileDataCard.Grid
+                  items={[
+                    { label: "Email", value: l.email || "—" },
+                    { label: "Mobile", value: l.mobile || "—" },
+                    { label: "Notes", value: l.notes || "—" },
+                    { label: "Time", value: l.created_at ? new Date(l.created_at).toLocaleDateString() : l.date || "—" }
+                  ]}
+                />
+              </MobileDataCard>
+            )}
+          />
         )}
 
         {/* Staff Passes View */}
         {activeTab === 'staff' && (
-          <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
-            <table className="w-full min-w-[600px] text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Staff Name & Designation</th>
-                  <th className="py-3.5 px-4">Mobile</th>
-                  <th className="py-3.5 px-4">Gate Pass Code</th>
-                  <th className="py-3.5 px-4">Pass Status</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white text-xs">
-                {staffPasses.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{s.name}</h4>
-                        <p className="text-[11px] font-semibold text-slate-500">{s.role}</p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-700">{s.mobile}</td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-mono font-extrabold text-xs text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                        {s.pass_code}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
-                        <CheckCircle2 size={12} /> Active Pass
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleResendStaffPass(s)}
-                        className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 border border-teal-200 ml-auto"
-                      >
-                        <Send size={12} />
-                        <span>Resend Pass</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveTableView
+            data={staffPasses}
+            keyField="id"
+            loading={false}
+            emptyMessage="No booth staff passes assigned yet."
+            renderDesktopTable={() => (
+              <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
+                <table className="w-full min-w-[600px] text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Staff Name & Designation</th>
+                      <th className="py-3.5 px-4">Mobile</th>
+                      <th className="py-3.5 px-4">Gate Pass Code</th>
+                      <th className="py-3.5 px-4">Pass Status</th>
+                      <th className="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                    {staffPasses.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div>
+                            <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">{s.name}</h4>
+                            <p className="text-[11px] font-semibold text-slate-500">{s.role}</p>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-semibold text-slate-700">{s.mobile}</td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-mono font-extrabold text-xs text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {s.pass_code}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200 inline-flex items-center gap-1">
+                            <CheckCircle2 size={12} /> Active Pass
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => handleResendStaffPass(s)}
+                            className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 border border-teal-200 ml-auto"
+                          >
+                            <Send size={12} />
+                            <span>Resend Pass</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(s) => (
+              <MobileDataCard key={s.id}>
+                <MobileDataCard.Header
+                  title={s.name}
+                  subtitle={s.role}
+                  statusBadge={
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Active Pass
+                    </span>
+                  }
+                />
+                <MobileDataCard.Grid
+                  items={[
+                    { label: "Mobile", value: s.mobile },
+                    { label: "Gate Pass Code", value: <span className="font-mono font-bold">{s.pass_code}</span> }
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleResendStaffPass(s)}
+                    className="w-full text-xs font-bold gap-1.5 h-8 text-teal-700 border-teal-200 hover:bg-teal-50"
+                  >
+                    <Send size={12} />
+                    <span>Resend Pass</span>
+                  </Button>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            )}
+          />
         )}
       </Card>
 
