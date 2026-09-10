@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 import { kycApi } from "../api/kyc.api";
 import { userApi } from "../../../users/api/user.api";
 
@@ -199,127 +200,157 @@ export default function KycVerificationPage() {
       </div>
 
       {/* ── KYC DATA TABLE ── */}
-      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-        <div className="responsive-table-wrap">
-          <table className="w-full min-w-[720px] text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                <th className="p-3.5 pl-5">User Details</th>
-                <th className="p-3.5">Role</th>
-                <th className="p-3.5">Company / GST</th>
-                <th className="p-3.5">Bank Payout Info</th>
-                <th className="p-3.5 text-center">KYC Status</th>
-                <th className="p-3.5 pr-5 text-right">Verification Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {loading && (
-                <>
-                  {[1, 2, 3, 4].map((i) => (
-                    <tr key={`skel-${i}`} className="animate-pulse">
-                      <td className="p-3.5 pl-5 space-y-2">
-                        <div className="h-3.5 bg-slate-200 rounded w-28" />
-                        <div className="h-2.5 bg-slate-100 rounded w-36" />
-                      </td>
-                      <td className="p-3.5"><div className="h-4 bg-slate-100 rounded w-16" /></td>
-                      <td className="p-3.5 space-y-1.5"><div className="h-3 bg-slate-200 rounded w-24" /><div className="h-2 bg-slate-100 rounded w-32" /></td>
-                      <td className="p-3.5 space-y-1.5"><div className="h-3 bg-slate-200 rounded w-28" /><div className="h-2 bg-slate-100 rounded w-20" /></td>
-                      <td className="p-3.5 text-center"><div className="h-4 bg-slate-100 rounded w-16 mx-auto" /></td>
-                      <td className="p-3.5 pr-5 text-right"><div className="h-6 bg-slate-200 rounded w-20 ml-auto" /></td>
-                    </tr>
-                  ))}
-                </>
-              )}
-
-              {!loading && filteredUsers.map((u) => {
-                const kStatus = (u.kyc_status || "VERIFIED").toUpperCase();
-
-                return (
-                  <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="p-3.5 pl-5">
-                      <div className="font-extrabold text-slate-900 text-sm">{u.name}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">{u.email}</div>
-                    </td>
-
-                    <td className="p-3.5">
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-bold uppercase text-[10px]">
-                        {(Array.isArray(u.roles) && u.roles.length > 0) ? u.roles.join(', ') : (u.active_role || u.role || "user")}
-                      </Badge>
-                    </td>
-
-                    <td className="p-3.5 space-y-0.5">
-                      <div className="font-extrabold text-slate-800">{u.company_name || "Individual Account"}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">GST/PAN: {u.gst_pan || "N/A"}</div>
-                    </td>
-
-                    <td className="p-3.5 space-y-0.5">
-                      <div className="font-bold text-slate-700 font-mono">Acc: {u.bank_account || "N/A"}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">IFSC: {u.ifsc || "N/A"}</div>
-                    </td>
-
-                    <td className="p-3.5 text-center">
-                      <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] ${
-                        kStatus === "VERIFIED"
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                          : "bg-amber-50 text-amber-700 border border-amber-200"
-                      }`}>
-                        {kStatus}
-                      </span>
-                    </td>
-
-                    <td className="p-3.5 pr-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {kStatus !== "VERIFIED" ? (
-                          <Button
-                            size="xs"
-                            onClick={() => handleUpdateKyc(u.id, "VERIFIED")}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none shadow-xs"
-                          >
-                            <ShieldCheck size={13} /> Approve KYC
-                          </Button>
-                        ) : (
-                          <Button
-                            size="xs"
-                            variant="outline"
-                            onClick={() => handleUpdateKyc(u.id, "PENDING")}
-                            className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[11px] cursor-pointer"
-                          >
-                            Mark Pending
-                          </Button>
-                        )}
-                      </div>
-                    </td>
+      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl p-4">
+        <ResponsiveTableView
+          data={filteredUsers}
+          keyField="id"
+          loading={loading}
+          emptyMessage={
+            activeTab === "pending"
+              ? "No pending KYC applications. All registered accounts are verified!"
+              : "No user accounts found matching this criteria."
+          }
+          emptyAction={
+            activeTab !== "all" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setActiveTab("all")}
+                className="text-xs font-bold mt-2 text-purple-700 border-purple-200"
+              >
+                View All Users ({usersList.length})
+              </Button>
+            ) : null
+          }
+          renderDesktopTable={() => (
+            <div className="responsive-table-wrap">
+              <table className="w-full min-w-[720px] text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                    <th className="p-3.5 pl-5">User Details</th>
+                    <th className="p-3.5">Role</th>
+                    <th className="p-3.5">Company / GST</th>
+                    <th className="p-3.5">Bank Payout Info</th>
+                    <th className="p-3.5 text-center">KYC Status</th>
+                    <th className="p-3.5 pr-5 text-right">Verification Action</th>
                   </tr>
-                );
-              })}
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredUsers.map((u) => {
+                    const kStatus = (u.kyc_status || "VERIFIED").toUpperCase();
 
-              {filteredUsers.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <UserCheck className="w-8 h-8 text-slate-300" />
-                      <p className="font-semibold text-xs text-slate-600">
-                        {activeTab === "pending"
-                          ? "No pending KYC applications. All registered accounts are verified!"
-                          : "No user accounts found matching this criteria."}
-                      </p>
-                      {activeTab !== "all" && (
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          onClick={() => setActiveTab("all")}
-                          className="text-xs font-bold mt-1 text-purple-700 border-purple-200"
-                        >
-                          View All Users ({usersList.length})
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    return (
+                      <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="p-3.5 pl-5">
+                          <div className="font-extrabold text-slate-900 text-sm">{u.name}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">{u.email}</div>
+                        </td>
+
+                        <td className="p-3.5">
+                          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-bold uppercase text-[10px]">
+                            {(Array.isArray(u.roles) && u.roles.length > 0) ? u.roles.join(', ') : (u.active_role || u.role || "user")}
+                          </Badge>
+                        </td>
+
+                        <td className="p-3.5 space-y-0.5">
+                          <div className="font-extrabold text-slate-800">{u.company_name || "Individual Account"}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">GST/PAN: {u.gst_pan || "N/A"}</div>
+                        </td>
+
+                        <td className="p-3.5 space-y-0.5">
+                          <div className="font-bold text-slate-700 font-mono">Acc: {u.bank_account || "N/A"}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">IFSC: {u.ifsc || "N/A"}</div>
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] ${
+                            kStatus === "VERIFIED"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {kStatus}
+                          </span>
+                        </td>
+
+                        <td className="p-3.5 pr-5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {kStatus !== "VERIFIED" ? (
+                              <Button
+                                size="xs"
+                                onClick={() => handleUpdateKyc(u.id, "VERIFIED")}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none shadow-xs"
+                              >
+                                <ShieldCheck size={13} /> Approve KYC
+                              </Button>
+                            ) : (
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                onClick={() => handleUpdateKyc(u.id, "PENDING")}
+                                className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[11px] cursor-pointer"
+                              >
+                                Mark Pending
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(u) => {
+            const kStatus = (u.kyc_status || "VERIFIED").toUpperCase();
+            return (
+              <MobileDataCard key={u.id}>
+                <MobileDataCard.Header
+                  title={u.name}
+                  subtitle={u.email}
+                  statusBadge={
+                    <span className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] ${
+                      kStatus === "VERIFIED"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                    }`}>
+                      {kStatus}
+                    </span>
+                  }
+                />
+                <MobileDataCard.Grid
+                  items={[
+                    { label: "Role", value: (Array.isArray(u.roles) && u.roles.length > 0) ? u.roles.join(', ') : (u.active_role || u.role || "user") },
+                    { label: "Company", value: u.company_name || "Individual" },
+                    { label: "GST / PAN", value: u.gst_pan || "N/A" },
+                    { label: "Bank Account", value: u.bank_account || "N/A" }
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  {kStatus !== "VERIFIED" ? (
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateKyc(u.id, "VERIFIED")}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer border-none shadow-xs h-9 rounded-xl flex items-center justify-center gap-1.5"
+                    >
+                      <ShieldCheck size={14} />
+                      <span>Approve KYC Verification</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUpdateKyc(u.id, "PENDING")}
+                      className="w-full text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-xs cursor-pointer h-9 rounded-xl"
+                    >
+                      <span>Mark as Pending</span>
+                    </Button>
+                  )}
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            );
+          }}
+        />
       </Card>
     </div>
   );

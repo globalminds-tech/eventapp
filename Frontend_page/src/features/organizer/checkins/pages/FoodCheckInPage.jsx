@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/Select";
 import QRScanner, { playScanSound } from "@/components/QRScanner";
 import { getFoodCheckinSummary, redeemFoodTokenApi, getEventAttendees, getGatePresets, addGatePreset, deleteGatePreset } from "@/Services/miscService";
 import { Download, Check, Trash2 } from "lucide-react";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 
 
@@ -349,85 +350,106 @@ export default function FoodCheckIn() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Active Events</h2>
           </div>
-          <div className="rounded-xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-5">Event Details</th>
-                  <th className="py-3.5 px-4">Start Date</th>
-                  <th className="py-3.5 px-4">End Date</th>
-                  <th className="py-3.5 px-4 text-center">Food Pass Redemptions</th>
-                  <th className="py-3.5 px-5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {loading ? (
-                  Array.from({ length: 4 }).map((_, idx) => (
-                    <tr key={idx} className="animate-pulse">
-                      <td className="py-4 px-5 space-y-1.5">
-                        <Skeleton className="h-4 w-16 rounded" />
-                        <Skeleton className="h-4 w-36 rounded" />
-                      </td>
-                      <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
-                      <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
-                      <td className="py-4 px-4"><Skeleton className="h-6 w-32 rounded-lg mx-auto" /></td>
-                      <td className="py-4 px-5 text-right"><Skeleton className="h-8 w-24 rounded-lg ml-auto" /></td>
+          <ResponsiveTableView
+            data={filtered}
+            keyField="id"
+            loading={loading}
+            emptyMessage="No food provisioning events found in database."
+            renderDesktopTable={() => (
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-5">Event Details</th>
+                      <th className="py-3.5 px-4">Start Date</th>
+                      <th className="py-3.5 px-4">End Date</th>
+                      <th className="py-3.5 px-4 text-center">Food Pass Redemptions</th>
+                      <th className="py-3.5 px-5 text-right">Actions</th>
                     </tr>
-                  ))
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400">
-                      No food provisioning events found in database.
-                    </td>
-                  </tr>
-                ) : (
-                  filtered.map((item, idx) => (
-                    <tr key={item.id || item.code || idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-5">
-                        <div className="space-y-1">
-                          <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
-                            {item.code}
-                          </Badge>
-                          <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 font-semibold text-slate-800">{item.startDate || "---"}</td>
-                      <td className="py-4 px-4 text-slate-500">{item.endDate || "---"}</td>
-                      <td className="py-4 px-4">
-                        <div className="space-y-1.5 w-36 mx-auto">
-                          <div className="flex justify-between text-[11px] font-semibold">
-                            <span className="text-cyan-700">{item.scannedTokens || 0} redeemed</span>
-                            <span className="text-slate-400">/{item.totalFoodTokens || 0}</span>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    {filtered.map((item, idx) => (
+                      <tr key={item.id || item.code || idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-5">
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
+                              {item.code}
+                            </Badge>
+                            <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
                           </div>
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-cyan-500 rounded-full"
-                              style={{
-                                width: `${item.totalFoodTokens > 0
-                                    ? Math.min(100, Math.round(((item.scannedTokens || 0) / item.totalFoodTokens) * 100))
-                                    : 0
-                                  }%`
-                              }}
-                            />
+                        </td>
+                        <td className="py-4 px-4 font-semibold text-slate-800">{item.startDate || "---"}</td>
+                        <td className="py-4 px-4 text-slate-500">{item.endDate || "---"}</td>
+                        <td className="py-4 px-4">
+                          <div className="space-y-1.5 w-36 mx-auto">
+                            <div className="flex justify-between text-[11px] font-semibold">
+                              <span className="text-cyan-700">{item.scannedTokens || 0} redeemed</span>
+                              <span className="text-slate-400">/{item.totalFoodTokens || 0}</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-cyan-500 rounded-full"
+                                style={{
+                                  width: `${item.totalFoodTokens > 0
+                                      ? Math.min(100, Math.round(((item.scannedTokens || 0) / item.totalFoodTokens) * 100))
+                                      : 0
+                                    }%`
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-5 text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => setSelectedEventId(item.id || item.code)}
-                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:via-sky-400 hover:to-blue-500 shadow-md shadow-cyan-500/20 text-white font-black text-xs px-4 py-1.5 rounded-lg border-none cursor-pointer gap-2 transition-all"
-                        >
-                          <Settings size={14} />
-                          <span>Manage</span>
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="py-4 px-5 text-right">
+                          <Button
+                            size="sm"
+                            onClick={() => setSelectedEventId(item.id || item.code)}
+                            className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:via-sky-400 hover:to-blue-500 shadow-md shadow-cyan-500/20 text-white font-black text-xs px-4 py-1.5 rounded-lg border-none cursor-pointer gap-2 transition-all"
+                          >
+                            <Settings size={14} />
+                            <span>Manage</span>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(item) => (
+              <MobileDataCard key={item.id || item.code}>
+                <MobileDataCard.Header
+                  badge={
+                    <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 text-[10px] font-bold">
+                      {item.code || "EVENT"}
+                    </Badge>
+                  }
+                  title={item.name}
+                  statusBadge={
+                    <span className="text-[10px] font-extrabold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">
+                      {item.scannedTokens || 0}/{item.totalFoodTokens || 0} Redeemed
+                    </span>
+                  }
+                />
+                <MobileDataCard.Grid
+                  columns={2}
+                  items={[
+                    { label: "Start Date", value: item.startDate || "---" },
+                    { label: "End Date", value: item.endDate || "---" },
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  <Button
+                    size="sm"
+                    onClick={() => setSelectedEventId(item.id || item.code)}
+                    className="w-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                  >
+                    <Settings size={14} />
+                    <span>Open Food Station</span>
+                  </Button>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            )}
+          />
         </Card>
       </div>
     );
@@ -750,107 +772,142 @@ export default function FoodCheckIn() {
           ))}
         </div>
 
-        {/* Attendees Data Table */}
-        <div className="overflow-x-auto responsive-table-wrap">
-          <table className="w-full text-left border-collapse min-w-[650px]">
-            <thead>
-              <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Pass Code</th>
-                <th className="py-3.5 px-4">Attendee Name & Contact</th>
-                <th className="py-3.5 px-4">Meal Option</th>
-                <th className="py-3.5 px-4">Status & Times</th>
-                <th className="py-3.5 px-4 text-right">Desk Action</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
-              {entriesLoading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-24 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-36 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-28 rounded" /></td>
-                    <td className="py-4 px-4 text-right"><Skeleton className="h-8 w-24 rounded-lg ml-auto" /></td>
+        {/* Attendees Data Table / Mobile Cards */}
+        <ResponsiveTableView
+          data={filteredAttendees}
+          keyField="id"
+          loading={entriesLoading}
+          emptyMessage="No attendee passes found matching your filter criteria."
+          renderDesktopTable={() => (
+            <div className="overflow-x-auto responsive-table-wrap">
+              <table className="w-full text-left border-collapse min-w-[650px]">
+                <thead>
+                  <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Pass Code</th>
+                    <th className="py-3.5 px-4">Attendee Name &amp; Contact</th>
+                    <th className="py-3.5 px-4">Meal Option</th>
+                    <th className="py-3.5 px-4">Status &amp; Times</th>
+                    <th className="py-3.5 px-4 text-right">Desk Action</th>
                   </tr>
-                ))
-              ) : filteredAttendees.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
-                    No attendee passes found matching your filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredAttendees.map((v) => {
-                  const isRedeemed = v.is_checked_in || v.total_checkins > 0;
-                  return (
-                    <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Pass Code */}
-                      <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
-                        {v.visitor_code || v.ticket_code}
-                      </td>
+                </thead>
 
-                      {/* Attendee Name & Contact */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-extrabold text-slate-900">{v.name}</div>
-                        <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
-                          {v.email || v.phone || "No contact info"}
-                        </div>
-                      </td>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
+                  {filteredAttendees.map((v) => {
+                    const isRedeemed = v.is_checked_in || v.total_checkins > 0;
+                    return (
+                      <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
+                          {v.visitor_code || v.ticket_code}
+                        </td>
 
-                      {/* Meal Option */}
-                      <td className="py-3.5 px-4">
-                        {v.food_preference && v.food_preference !== "None" ? (
-                          <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-extrabold px-2 py-0.5">
-                            {v.food_preference}
-                          </Badge>
-                        ) : (
-                          <span className="text-slate-400 text-xs font-medium">None</span>
-                        )}
-                      </td>
-
-                      {/* Status & Times */}
-                      <td className="py-3.5 px-4">
-                        {isRedeemed ? (
-                          <div>
-                            <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-black px-2 py-0.5">
-                              ● Meal Redeemed
-                            </Badge>
-                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                              At: {v.checkin_time || "Earlier"}
-                            </p>
+                        <td className="py-3.5 px-4">
+                          <div className="font-extrabold text-slate-900">{v.name}</div>
+                          <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
+                            {v.email || v.phone || "No contact info"}
                           </div>
-                        ) : (
-                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0.5">
-                            Pending
-                          </Badge>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Desk Action Button */}
-                      <td className="py-3.5 px-4 text-right">
-                        {!isRedeemed ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
-                            className="bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
-                          >
-                            <Utensils size={13} />
-                            <span>Redeem Token</span>
-                          </Button>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">
-                            Already Served
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        <td className="py-3.5 px-4">
+                          {v.food_preference && v.food_preference !== "None" ? (
+                            <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-extrabold px-2 py-0.5">
+                              {v.food_preference}
+                            </Badge>
+                          ) : (
+                            <span className="text-slate-400 text-xs font-medium">None</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          {isRedeemed ? (
+                            <div>
+                              <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-black px-2 py-0.5">
+                                ● Meal Redeemed
+                              </Badge>
+                              <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                At: {v.checkin_time || "Earlier"}
+                              </p>
+                            </div>
+                          ) : (
+                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0.5">
+                              Pending
+                            </Badge>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          {!isRedeemed ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
+                              className="bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
+                            >
+                              <Utensils size={13} />
+                              <span>Redeem Token</span>
+                            </Button>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">
+                              Already Served
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(v) => {
+            const isRedeemed = v.is_checked_in || v.total_checkins > 0;
+            return (
+              <MobileDataCard key={v.id} highlightBorder={isRedeemed}>
+                <MobileDataCard.Header
+                  badge={
+                    <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                      {v.visitor_code || v.ticket_code}
+                    </span>
+                  }
+                  title={v.name}
+                  subtitle={v.email || v.phone || "No contact info"}
+                  statusBadge={
+                    isRedeemed ? (
+                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[9px] font-black px-2 py-0.5">
+                        ● Redeemed
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[9px] font-bold px-2 py-0.5">
+                        Pending
+                      </Badge>
+                    )
+                  }
+                />
+                <MobileDataCard.Grid
+                  columns={2}
+                  items={[
+                    { label: "Meal Option", value: v.food_preference && v.food_preference !== "None" ? v.food_preference : "None" },
+                    { label: "Redeem Time", value: v.checkin_time || "Pending" },
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  {!isRedeemed ? (
+                    <Button
+                      size="sm"
+                      onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
+                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                    >
+                      <Utensils size={14} />
+                      <span>Redeem Meal Token</span>
+                    </Button>
+                  ) : (
+                    <div className="w-full text-center py-1.5 text-[11px] font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+                      Meal Already Served
+                    </div>
+                  )}
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            );
+          }}
+        />
       </Card>
     </div>
   );

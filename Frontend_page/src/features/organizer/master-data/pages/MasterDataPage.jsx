@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import { ENV } from "@/config/env";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 import AddVendorModal from "../components/AddVendorModal";
 import AddVenueModal from "../components/AddVenueModal";
 import AddPolicyModal from "../components/AddPolicyModal";
@@ -300,338 +301,500 @@ export default function MasterDataPage() {
               {/* ── VENDOR TABLE ── */}
               {selectedTab === "vendor" && (
                 <div className="animate-in fade-in duration-200">
-                  {vendors.length === 0 ? (
-                    <div className="p-12 text-center bg-slate-50/70 border border-dashed border-slate-200 rounded-2xl space-y-3">
-                      <div className="w-12 h-12 mx-auto rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center">
-                        <Store size={22} />
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-extrabold text-slate-800">No Vendors Registered</h3>
-                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                          Add vendors for catering, AV, staging, and logistics to link them to your events.
-                        </p>
-                      </div>
-                      {canCreate && (
+                  <ResponsiveTableView
+                    data={currentData}
+                    keyField="id"
+                    loading={false}
+                    emptyMessage="No vendors registered yet."
+                    emptyAction={
+                      canCreate ? (
                         <Button
                           size="sm"
                           onClick={() => setIsAddVendorOpen(true)}
-                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer mt-2"
                         >
                           <Plus size={13} className="mr-1" />
                           <span>Add First Vendor</span>
                         </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
-                      <table className="w-full min-w-[620px] text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
-                            <th className="py-3 px-4">Vendor Name</th>
-                            <th className="py-3 px-4">Company</th>
-                            <th className="py-3 px-4">Contact</th>
-                            <th className="py-3 px-4">Status</th>
-                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 bg-white">
-                          {currentData.map((v, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                              <td className="py-3 px-4 text-xs font-bold text-slate-900">{v.vendor_name || "-"}</td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600">{v.company_name || "-"}</td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600">
-                                <div>{v.primary_contact || "-"}</div>
-                                <div className="text-[10px] text-slate-400">{v.mail_id || ""}</div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <Badge variant={v.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
-                                  {v.status || "Active"}
-                                </Badge>
-                              </td>
-                              {(canEdit || canDelete) && (
-                                <td className="py-3 px-4 text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    {canEdit && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Edit"
-                                        onClick={() => handleEdit("vendor", v)}
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Delete"
-                                        onClick={() => handleDeleteConfirm("vendor", v.id, v.vendor_name || v.name)}
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              )}
+                      ) : null
+                    }
+                    renderDesktopTable={() => (
+                      <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                        <table className="w-full min-w-[620px] text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
+                              <th className="py-3 px-4">Vendor Name</th>
+                              <th className="py-3 px-4">Company</th>
+                              <th className="py-3 px-4">Contact</th>
+                              <th className="py-3 px-4">Status</th>
+                              {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {currentData.map((v, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-3 px-4 text-xs font-bold text-slate-900">{v.vendor_name || "-"}</td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600">{v.company_name || "-"}</td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600">
+                                  <div>{v.primary_contact || "-"}</div>
+                                  <div className="text-[10px] text-slate-400">{v.mail_id || ""}</div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <Badge variant={v.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
+                                    {v.status || "Active"}
+                                  </Badge>
+                                </td>
+                                {(canEdit || canDelete) && (
+                                  <td className="py-3 px-4 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {canEdit && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Edit"
+                                          onClick={() => handleEdit("vendor", v)}
+                                        >
+                                          <Pencil size={14} />
+                                        </button>
+                                      )}
+                                      {canDelete && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Delete"
+                                          onClick={() => handleDeleteConfirm("vendor", v.id, v.vendor_name || v.name)}
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    renderMobileCard={(v) => (
+                      <MobileDataCard key={v.id}>
+                        <MobileDataCard.Header
+                          title={v.vendor_name || "Vendor"}
+                          subtitle={v.company_name}
+                          statusBadge={
+                            <Badge variant={v.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
+                              {v.status || "Active"}
+                            </Badge>
+                          }
+                        />
+                        <MobileDataCard.Grid
+                          items={[
+                            { label: "Contact", value: v.primary_contact || "—" },
+                            { label: "Email", value: v.mail_id || "—" }
+                          ]}
+                        />
+                        {(canEdit || canDelete) && (
+                          <MobileDataCard.Actions>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit("vendor", v)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-cyan-700 border-cyan-200 hover:bg-cyan-50"
+                              >
+                                <Pencil size={13} />
+                                <span>Edit</span>
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteConfirm("vendor", v.id, v.vendor_name || v.name)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-rose-700 border-rose-200 hover:bg-rose-50"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </Button>
+                            )}
+                          </MobileDataCard.Actions>
+                        )}
+                      </MobileDataCard>
+                    )}
+                  />
                 </div>
               )}
 
               {/* ── VENUE TABLE ── */}
               {selectedTab === "venue" && (
                 <div className="animate-in fade-in duration-200">
-                  {venues.length === 0 ? (
-                    <div className="p-12 text-center bg-slate-50/70 border border-dashed border-slate-200 rounded-2xl space-y-3">
-                      <div className="w-12 h-12 mx-auto rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center">
-                        <MapPin size={22} />
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-extrabold text-slate-800">No Venues Added</h3>
-                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                          Configure convention centers, stadiums, and grounds for fast event assignment.
-                        </p>
-                      </div>
-                      {canCreate && (
+                  <ResponsiveTableView
+                    data={currentData}
+                    keyField="id"
+                    loading={false}
+                    emptyMessage="No venues added yet."
+                    emptyAction={
+                      canCreate ? (
                         <Button
                           size="sm"
                           onClick={() => setIsAddVenueOpen(true)}
-                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer mt-2"
                         >
                           <Plus size={13} className="mr-1" />
                           <span>Add First Venue</span>
                         </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
-                      <table className="w-full min-w-[620px] text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
-                            <th className="py-3 px-4">Venue Name</th>
-                            <th className="py-3 px-4">Location</th>
-                            <th className="py-3 px-4">Address</th>
-                            <th className="py-3 px-4">Status</th>
-                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 bg-white">
-                          {currentData.map((v, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                              <td className="py-3 px-4 text-xs font-bold text-slate-900">{v.venue_name || v.name || "-"}</td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600">
-                                {v.city_name || v.city || "-"}, {v.state_name || v.state || ""}
-                              </td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600 max-w-xs truncate" title={v.address}>
-                                {v.address || "-"}
-                              </td>
-                              <td className="py-3 px-4">
-                                <Badge variant={v.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
-                                  {v.status || "Active"}
-                                </Badge>
-                              </td>
-                              {(canEdit || canDelete) && (
-                                <td className="py-3 px-4 text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    {canEdit && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Edit"
-                                        onClick={() => handleEdit("venue", v)}
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Delete"
-                                        onClick={() => handleDeleteConfirm("venue", v.id, v.venue_name || v.name)}
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              )}
+                      ) : null
+                    }
+                    renderDesktopTable={() => (
+                      <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                        <table className="w-full min-w-[620px] text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
+                              <th className="py-3 px-4">Venue Name</th>
+                              <th className="py-3 px-4">Location</th>
+                              <th className="py-3 px-4">Address</th>
+                              <th className="py-3 px-4">Status</th>
+                              {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {currentData.map((v, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-3 px-4 text-xs font-bold text-slate-900">{v.venue_name || v.name || "-"}</td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600">
+                                  {v.city_name || v.city || "-"}, {v.state_name || v.state || ""}
+                                </td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600 max-w-xs truncate" title={v.address}>
+                                  {v.address || "-"}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <Badge variant={v.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
+                                    {v.status || "Active"}
+                                  </Badge>
+                                </td>
+                                {(canEdit || canDelete) && (
+                                  <td className="py-3 px-4 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {canEdit && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Edit"
+                                          onClick={() => handleEdit("venue", v)}
+                                        >
+                                          <Pencil size={14} />
+                                        </button>
+                                      )}
+                                      {canDelete && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Delete"
+                                          onClick={() => handleDeleteConfirm("venue", v.id, v.venue_name || v.name)}
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    renderMobileCard={(v) => (
+                      <MobileDataCard key={v.id}>
+                        <MobileDataCard.Header
+                          title={v.venue_name || v.name || "Venue"}
+                          subtitle={`${v.city_name || v.city || ""}, ${v.state_name || v.state || ""}`}
+                          statusBadge={
+                            <Badge variant={v.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
+                              {v.status || "Active"}
+                            </Badge>
+                          }
+                        />
+                        <MobileDataCard.Grid
+                          items={[
+                            { label: "Address", value: v.address || "—" }
+                          ]}
+                        />
+                        {(canEdit || canDelete) && (
+                          <MobileDataCard.Actions>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit("venue", v)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-cyan-700 border-cyan-200 hover:bg-cyan-50"
+                              >
+                                <Pencil size={13} />
+                                <span>Edit</span>
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteConfirm("venue", v.id, v.venue_name || v.name)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-rose-700 border-rose-200 hover:bg-rose-50"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </Button>
+                            )}
+                          </MobileDataCard.Actions>
+                        )}
+                      </MobileDataCard>
+                    )}
+                  />
                 </div>
               )}
 
               {/* ── POLICY TABLE ── */}
               {selectedTab === "policy" && (
                 <div className="animate-in fade-in duration-200">
-                  {policies.length === 0 ? (
-                    <div className="p-12 text-center bg-slate-50/70 border border-dashed border-slate-200 rounded-2xl space-y-3">
-                      <div className="w-12 h-12 mx-auto rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center">
-                        <ScrollText size={22} />
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-extrabold text-slate-800">No Policies Created</h3>
-                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                          Create standard terms, cancellation rules, and entry policies for easy re-use in Step 5 of event creation.
-                        </p>
-                      </div>
-                      {canCreate && (
+                  <ResponsiveTableView
+                    data={currentData}
+                    keyField="id"
+                    loading={false}
+                    emptyMessage="No policies created yet."
+                    emptyAction={
+                      canCreate ? (
                         <Button
                           size="sm"
                           onClick={() => setIsAddPolicyOpen(true)}
-                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer mt-2"
                         >
                           <Plus size={13} className="mr-1" />
                           <span>Add First Policy</span>
                         </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
-                      <table className="w-full min-w-[620px] text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
-                            <th className="py-3 px-4">Policy Name</th>
-                            <th className="py-3 px-4">Group</th>
-                            <th className="py-3 px-4">Type</th>
-                            <th className="py-3 px-4">Description</th>
-                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 bg-white">
-                          {currentData.map((p, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                              <td className="py-3 px-4 text-xs font-bold text-slate-900">{p.policy_name || "-"}</td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600">
-                                <Badge className="bg-sky-50 text-sky-800 border-sky-200 font-bold text-[10px]">
-                                  {p.policy_group || "General"}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600">{p.policy_type || "-"}</td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-500 max-w-md truncate" title={p.description}>
-                                {p.description || "-"}
-                              </td>
-                              {(canEdit || canDelete) && (
-                                <td className="py-3 px-4 text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    {canEdit && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Edit"
-                                        onClick={() => handleEdit("policy", p)}
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Delete"
-                                        onClick={() => handleDeleteConfirm("policy", p.id, p.policy_name)}
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              )}
+                      ) : null
+                    }
+                    renderDesktopTable={() => (
+                      <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                        <table className="w-full min-w-[620px] text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
+                              <th className="py-3 px-4">Policy Name</th>
+                              <th className="py-3 px-4">Group</th>
+                              <th className="py-3 px-4">Type</th>
+                              <th className="py-3 px-4">Description</th>
+                              {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {currentData.map((p, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-3 px-4 text-xs font-bold text-slate-900">{p.policy_name || "-"}</td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600">
+                                  <Badge className="bg-sky-50 text-sky-800 border-sky-200 font-bold text-[10px]">
+                                    {p.policy_group || "General"}
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600">{p.policy_type || "-"}</td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-500 max-w-md truncate" title={p.description}>
+                                  {p.description || "-"}
+                                </td>
+                                {(canEdit || canDelete) && (
+                                  <td className="py-3 px-4 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {canEdit && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Edit"
+                                          onClick={() => handleEdit("policy", p)}
+                                        >
+                                          <Pencil size={14} />
+                                        </button>
+                                      )}
+                                      {canDelete && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Delete"
+                                          onClick={() => handleDeleteConfirm("policy", p.id, p.policy_name)}
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    renderMobileCard={(p) => (
+                      <MobileDataCard key={p.id}>
+                        <MobileDataCard.Header
+                          title={p.policy_name || "Policy"}
+                          subtitle={p.policy_type}
+                          statusBadge={
+                            <Badge className="bg-sky-50 text-sky-800 border-sky-200 font-bold text-[10px]">
+                              {p.policy_group || "General"}
+                            </Badge>
+                          }
+                        />
+                        <MobileDataCard.Grid
+                          items={[
+                            { label: "Description", value: p.description || "—" }
+                          ]}
+                        />
+                        {(canEdit || canDelete) && (
+                          <MobileDataCard.Actions>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit("policy", p)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-cyan-700 border-cyan-200 hover:bg-cyan-50"
+                              >
+                                <Pencil size={13} />
+                                <span>Edit</span>
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteConfirm("policy", p.id, p.policy_name)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-rose-700 border-rose-200 hover:bg-rose-50"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </Button>
+                            )}
+                          </MobileDataCard.Actions>
+                        )}
+                      </MobileDataCard>
+                    )}
+                  />
                 </div>
               )}
 
               {/* ── SPONSOR TABLE ── */}
               {selectedTab === "sponsor" && (
                 <div className="animate-in fade-in duration-200">
-                  {sponsors.length === 0 ? (
-                    <div className="p-12 text-center bg-slate-50/70 border border-dashed border-slate-200 rounded-2xl space-y-3">
-                      <div className="w-12 h-12 mx-auto rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center">
-                        <Award size={22} />
-                      </div>
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-extrabold text-slate-800">No Sponsors Added</h3>
-                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                          Record corporate partners, title sponsors, and brand collaborators for easy inclusion in your events.
-                        </p>
-                      </div>
-                      {canCreate && (
+                  <ResponsiveTableView
+                    data={currentData}
+                    keyField="id"
+                    loading={false}
+                    emptyMessage="No sponsors added yet."
+                    emptyAction={
+                      canCreate ? (
                         <Button
                           size="sm"
                           onClick={() => setIsAddSponsorOpen(true)}
-                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer"
+                          className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer mt-2"
                         >
                           <Plus size={13} className="mr-1" />
                           <span>Add First Sponsor</span>
                         </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
-                      <table className="w-full min-w-[620px] text-left border-collapse">
-                        <thead>
-                          <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
-                            <th className="py-3 px-4">Sponsor Name</th>
-                            <th className="py-3 px-4">Contact</th>
-                            <th className="py-3 px-4">Address</th>
-                            <th className="py-3 px-4">Status</th>
-                            {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 bg-white">
-                          {currentData.map((s, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                              <td className="py-3 px-4 text-xs font-bold text-slate-900">{s.sponsor_name || "-"}</td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600">
-                                <div>{s.primary_contact || "-"}</div>
-                                <div className="text-[10px] text-slate-400">{s.mail_id || ""}</div>
-                              </td>
-                              <td className="py-3 px-4 text-xs font-semibold text-slate-600 max-w-xs truncate" title={s.address}>
-                                {s.address || "-"}
-                              </td>
-                              <td className="py-3 px-4">
-                                <Badge variant={s.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
-                                  {s.status || "Active"}
-                                </Badge>
-                              </td>
-                              {(canEdit || canDelete) && (
-                                <td className="py-3 px-4 text-right">
-                                  <div className="flex items-center justify-end gap-1">
-                                    {canEdit && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Edit"
-                                        onClick={() => handleEdit("sponsor", s)}
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                    )}
-                                    {canDelete && (
-                                      <button
-                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                        title="Delete"
-                                        onClick={() => handleDeleteConfirm("sponsor", s.id, s.sponsor_name)}
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              )}
+                      ) : null
+                    }
+                    renderDesktopTable={() => (
+                      <div className="responsive-table-wrap rounded-xl border border-slate-200/80 bg-white shadow-2xs">
+                        <table className="w-full min-w-[620px] text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-200">
+                              <th className="py-3 px-4">Sponsor Name</th>
+                              <th className="py-3 px-4">Contact</th>
+                              <th className="py-3 px-4">Address</th>
+                              <th className="py-3 px-4">Status</th>
+                              {(canEdit || canDelete) && <th className="py-3 px-4 text-right">Action</th>}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {currentData.map((s, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                <td className="py-3 px-4 text-xs font-bold text-slate-900">{s.sponsor_name || "-"}</td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600">
+                                  <div>{s.primary_contact || "-"}</div>
+                                  <div className="text-[10px] text-slate-400">{s.mail_id || ""}</div>
+                                </td>
+                                <td className="py-3 px-4 text-xs font-semibold text-slate-600 max-w-xs truncate" title={s.address}>
+                                  {s.address || "-"}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <Badge variant={s.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
+                                    {s.status || "Active"}
+                                  </Badge>
+                                </td>
+                                {(canEdit || canDelete) && (
+                                  <td className="py-3 px-4 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {canEdit && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Edit"
+                                          onClick={() => handleEdit("sponsor", s)}
+                                        >
+                                          <Pencil size={14} />
+                                        </button>
+                                      )}
+                                      {canDelete && (
+                                        <button
+                                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                          title="Delete"
+                                          onClick={() => handleDeleteConfirm("sponsor", s.id, s.sponsor_name)}
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    renderMobileCard={(s) => (
+                      <MobileDataCard key={s.id}>
+                        <MobileDataCard.Header
+                          title={s.sponsor_name || "Sponsor"}
+                          subtitle={s.primary_contact ? `Contact: ${s.primary_contact}` : undefined}
+                          statusBadge={
+                            <Badge variant={s.status === "Inactive" ? "secondary" : "success"} className="text-[10px] font-bold px-2 py-0.5">
+                              {s.status || "Active"}
+                            </Badge>
+                          }
+                        />
+                        <MobileDataCard.Grid
+                          items={[
+                            { label: "Email", value: s.mail_id || "—" },
+                            { label: "Address", value: s.address || "—" }
+                          ]}
+                        />
+                        {(canEdit || canDelete) && (
+                          <MobileDataCard.Actions>
+                            {canEdit && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEdit("sponsor", s)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-cyan-700 border-cyan-200 hover:bg-cyan-50"
+                              >
+                                <Pencil size={13} />
+                                <span>Edit</span>
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteConfirm("sponsor", s.id, s.sponsor_name)}
+                                className="text-xs font-bold gap-1 rounded-xl h-8 text-rose-700 border-rose-200 hover:bg-rose-50"
+                              >
+                                <Trash2 size={13} />
+                                <span>Delete</span>
+                              </Button>
+                            )}
+                          </MobileDataCard.Actions>
+                        )}
+                      </MobileDataCard>
+                    )}
+                  />
                 </div>
               )}
             </>

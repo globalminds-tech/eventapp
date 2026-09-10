@@ -14,7 +14,7 @@ const axiosClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 15000,
+  timeout: 45000,
 });
 
 let lastSlowDispatchTime = 0;
@@ -33,7 +33,7 @@ axiosClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Set slow request timer (only warn if an active request takes > 12000ms and throttled)
+    // Set slow request timer (warn if an active request takes > 14000ms while waiting for cold starts)
     if (typeof window !== "undefined") {
       const slowTimer = setTimeout(() => {
         const now = Date.now();
@@ -41,11 +41,11 @@ axiosClient.interceptors.request.use(
           lastSlowDispatchTime = now;
           window.dispatchEvent(
             new CustomEvent("network:slow-request", {
-              detail: { message: "Server connection is unusually slow. Still waiting for response..." },
+              detail: { message: "Server is waking up (Render cold start). Still establishing connection..." },
             })
           );
         }
-      }, 12000);
+      }, 14000);
       config._slowTimer = slowTimer;
     }
 
