@@ -59,7 +59,22 @@ def get_addons_checkin(current_user: dict = Depends(get_current_user)):
     organizer_id = None if is_super else user_id
     return CheckinController.get_addons(organizer_id=organizer_id)
 
+@checkin_router.get("/gates")
+def get_gate_presets(current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("user_id") or current_user.get("id") or "")
+    return CheckinController.get_gate_presets(organizer_id=user_id)
+
+@checkin_router.post("/gates")
+def add_gate_preset(payload: dict, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("user_id") or current_user.get("id") or "")
+    name = payload.get("name")
+    return CheckinController.add_gate_preset(name=name, organizer_id=user_id)
+
+@checkin_router.delete("/gates/{gate_id}")
+def delete_gate_preset(gate_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("user_id") or current_user.get("id") or "")
+    return CheckinController.delete_gate_preset(gate_id=gate_id, organizer_id=user_id)
+
 @checkin_router.post("/{code_or_id}")
 def checkin_attendee(code_or_id: str, current_user: dict = Depends(get_current_user)):
     return CheckinController.checkin_attendee(code_or_id, action="CHECK_IN")
-

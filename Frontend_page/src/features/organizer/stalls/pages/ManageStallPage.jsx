@@ -87,38 +87,47 @@ export const ManageStall = () => {
   const handleViewAppDetails = async (appId) => {
     setLoadingAppDetails(true);
     try {
-      const res = await apiClient.get(`/exhibitor/api/booking/${appId}`);
-      const data = res.data;
-      if (data.success) {
-        setSelectedAppDetails(data.data);
+      // Bug 4 Fixed: correct path is /api/v1/organizer/exhibitor-applications or fallback to local state
+      const res = await apiClient.get(`/api/v1/organizer/exhibitor-applications`);
+      const all = res?.data?.data || [];
+      const found = all.find(a => String(a.id) === String(appId));
+      if (found) {
+        setSelectedAppDetails(found);
       } else {
+        // Fallback to already-loaded state
         const item = applications.find(a => String(a.id) === String(appId));
-        if(item) setSelectedAppDetails(item);
+        if (item) setSelectedAppDetails(item);
       }
     } catch (err) {
       console.error(err);
+      // Fallback to local state on error
       const item = applications.find(a => String(a.id) === String(appId));
-      if(item) setSelectedAppDetails(item);
+      if (item) setSelectedAppDetails(item);
     }
     setLoadingAppDetails(false);
   };
 
   const handleUpdateStatus = async (appId, newStatus) => {
     try {
-      await apiClient.put(`/api/v1/organizer/exhibitor-applications/${appId}/status`, {
-        status: newStatus, 
-        rejection_reason: rejectionReason 
+      const res = await apiClient.put(`/api/v1/organizer/exhibitor-applications/${appId}/status`, {
+        status: newStatus,
+        rejection_reason: rejectionReason
       });
-    } catch (err) {
-      console.log("Local state update note:", err);
-    } finally {
+      if (!res?.data?.success) throw new Error("Update failed");
+
+      // Only update local state on confirmed API success
       setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
       setSelectedAppDetails(prev => prev && prev.id === appId ? { ...prev, status: newStatus } : prev);
       setActionSuccess(`✓ Stall Application #${appId} updated to ${newStatus.toUpperCase()}`);
+      setTimeout(() => setActionSuccess(''), 3500);
+    } catch (err) {
+      console.error("Status update failed:", err);
+      setActionSuccess(`✗ Failed to update status. Please try again.`);
+      setTimeout(() => setActionSuccess(''), 3500);
+    } finally {
       setIsRejectModalOpen(false);
       setSelectedApp(null);
       setRejectionReason('');
-      setTimeout(() => setActionSuccess(''), 3000);
     }
   };
 
@@ -166,7 +175,8 @@ export const ManageStall = () => {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {(selectedAppDetails.status || 'Pending').toLowerCase() === 'pending' && (
+            {/* Bug 2 Fixed: Use .toLowerCase() for case-insensitive comparison */}
+            {(selectedAppDetails.status || 'pending').toLowerCase() === 'pending' && (
               <>
                 <button
                   onClick={() => handleUpdateStatus(selectedAppDetails.id, 'Approved')}
@@ -380,8 +390,15 @@ export const ManageStall = () => {
     <div className="space-y-6 pb-12 select-none font-sans text-slate-800">
       {/* ── ACTION NOTIFICATION TOAST ── */}
       {actionSuccess && (
-        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-2 animate-bounce">
-          <CheckCircle2 size={16} className="text-emerald-400" />
+        <div className={`fixed top-5 right-5 z-50 text-white font-extrabold text-xs px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-2 ${
+          actionSuccess.startsWith('✗')
+            ? 'bg-red-700 border-red-600'
+            : 'bg-slate-900 border-slate-700'
+        }`}>
+          {actionSuccess.startsWith('✗')
+            ? <AlertCircle size={16} className="text-red-300 shrink-0" />
+            : <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+          }
           <span>{actionSuccess}</span>
         </div>
       )}

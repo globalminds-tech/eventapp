@@ -3,7 +3,10 @@ import {
   getEventscheckin,
   getEventAttendees,
   verifyCheckinTicket,
-  getEventCheckinLogs
+  getEventCheckinLogs,
+  getGatePresets,
+  addGatePreset,
+  deleteGatePreset
 } from "@/Services/miscService";
 import {
   QrCode,
@@ -33,15 +36,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Dialog } from "@/components/ui/Dialog";
+import { Select } from "@/components/ui/Select";
 import QRScanner, { playScanSound } from "@/components/QRScanner";
-
-const GATE_PRESETS = [
-  "Main Turnstile 1",
-  "VIP Gate A",
-  "North Entrance",
-  "East Gate",
-  "Exit Turnstile 1"
-];
+import { Check, Trash2 } from "lucide-react";
 
 export default function EventCheckIn() {
   const [events, setEvents] = useState([]);
@@ -53,7 +50,8 @@ export default function EventCheckIn() {
 
   // Turnstile Station Controls
   const [scanMode, setScanMode] = useState("CHECK_IN"); // "CHECK_IN" | "CHECK_OUT"
-  const [gateName, setGateName] = useState(GATE_PRESETS[0]);
+  const [gatePresets, setGatePresets] = useState([]);
+  const [gateName, setGateName] = useState("");
   const [customGate, setCustomGate] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [continuousScan, setContinuousScan] = useState(true);
@@ -70,8 +68,22 @@ export default function EventCheckIn() {
 
   const autoDismissTimerRef = useRef(null);
 
+  const fetchGatePresets = async () => {
+    try {
+      const res = await getGatePresets();
+      const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+      setGatePresets(list);
+      if (list.length > 0 && !gateName) {
+        setGateName(list[0].name);
+      }
+    } catch (err) {
+      console.error("Failed to load gates", err);
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
+    fetchGatePresets();
   }, []);
 
   const fetchEvents = async () => {
@@ -86,6 +98,34 @@ export default function EventCheckIn() {
       setEvents([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveGate = async () => {
+    if (!customGate.trim()) return;
+    try {
+      const res = await addGatePreset(customGate.trim());
+      await fetchGatePresets();
+      setGateName(customGate.trim());
+      setCustomGate("");
+    } catch (err) {
+      console.error("Failed to save gate", err);
+    }
+  };
+
+  const handleDeleteGate = async () => {
+    const targetName = customGate.trim() || gateName;
+    if (!targetName) return;
+    const gateObj = gatePresets.find(g => g.name === targetName);
+    if (!gateObj) return;
+    
+    try {
+      await deleteGatePreset(gateObj.id);
+      await fetchGatePresets();
+      if (customGate) setCustomGate("");
+      setGateName(gatePresets.length > 1 ? gatePresets.find(g => g.id !== gateObj.id)?.name : "");
+    } catch (err) {
+      console.error("Failed to delete gate", err);
     }
   };
 
@@ -363,15 +403,14 @@ export default function EventCheckIn() {
   const verificationCardJSX = verificationResult ? (
     <div className="select-none flex flex-col h-full bg-white">
       {/* Modal Header Banner */}
-      <div className={`p-6 text-white text-center space-y-1 relative shrink-0 ${
-        verificationResult.status === "ACCESS_GRANTED"
+      <div className={`p-6 text-white text-center space-y-1 relative shrink-0 ${verificationResult.status === "ACCESS_GRANTED"
           ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600"
           : verificationResult.status === "ALREADY_CHECKED_IN"
-          ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600"
-          : verificationResult.status === "CHECKED_OUT"
-          ? "bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800"
-          : "bg-gradient-to-r from-rose-600 via-red-600 to-rose-600"
-      }`}>
+            ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600"
+            : verificationResult.status === "CHECKED_OUT"
+              ? "bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800"
+              : "bg-gradient-to-r from-rose-600 via-red-600 to-rose-600"
+        }`}>
         <div className="w-14 h-14 mx-auto rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center mb-2 shadow-inner">
           {verificationResult.status === "ACCESS_GRANTED" && <CheckCircle2 size={32} className="text-white" />}
           {verificationResult.status === "ALREADY_CHECKED_IN" && <AlertTriangle size={32} className="text-white animate-bounce" />}
@@ -474,7 +513,7 @@ export default function EventCheckIn() {
 
   return (
     <div className="space-y-6 pb-16 select-none font-sans">
-      
+
       {/* ── TOP HEADER & EVENT SELECTOR ── */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 py-1">
         <div className="space-y-1">
@@ -518,16 +557,18 @@ export default function EventCheckIn() {
       </div>
 
       {/* ── TURNSTILE STATION CONTROL BAR ── */}
-      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl overflow-hidden p-5 sm:p-6 relative">
-        {/* Background glow effect */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
-        
-        <div className="relative flex flex-col xl:flex-row xl:items-end justify-between gap-6">
-          
+      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl p-5 sm:p-6 relative">
+        {/* Background glow effect wrapper */}
+        <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl" />
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+
           {/* Left Side: Settings */}
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 flex-1">
-            
+
             {/* Mode Switch */}
             <div className="space-y-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Operation Mode</span>
@@ -535,11 +576,10 @@ export default function EventCheckIn() {
                 <button
                   type="button"
                   onClick={() => setScanMode("CHECK_IN")}
-                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
-                    scanMode === "CHECK_IN"
+                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${scanMode === "CHECK_IN"
                       ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-400/20"
                       : "text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <LogIn size={15} />
                   <span>Entry Check-In</span>
@@ -547,11 +587,10 @@ export default function EventCheckIn() {
                 <button
                   type="button"
                   onClick={() => setScanMode("CHECK_OUT")}
-                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
-                    scanMode === "CHECK_OUT"
+                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${scanMode === "CHECK_OUT"
                       ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400/20"
                       : "text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent"
-                  }`}
+                    }`}
                 >
                   <LogOutIcon size={15} />
                   <span>Exit Check-Out</span>
@@ -565,25 +604,47 @@ export default function EventCheckIn() {
               <div className="flex flex-wrap sm:flex-nowrap items-stretch gap-2 h-10.5">
                 <div className="relative flex-1 min-w-[150px]">
                   <DoorOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <select
+                  <Select
                     value={gateName}
-                    onChange={(e) => setGateName(e.target.value)}
-                    className="w-full h-full bg-slate-950/50 border border-slate-800 text-white text-xs font-bold pl-9 pr-8 rounded-xl outline-none cursor-pointer appearance-none focus:border-cyan-500 transition-colors"
-                  >
-                    {GATE_PRESETS.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
+                    onValueChange={(val) => {
+                      setGateName(val);
+                      setCustomGate("");
+                    }}
+                    placeholder={gatePresets.length === 0 ? "No Presets Saved" : "Select Gate..."}
+                    options={gatePresets.map((p) => ({ value: p.name, label: p.name }))}
+                    triggerClassName="w-full h-full bg-slate-950/50 border-slate-800 text-white text-xs font-bold pl-9 rounded-xl outline-none focus:border-cyan-500 transition-colors"
+                    contentClassName="bg-slate-900 border-slate-800 text-white"
+                  />
                 </div>
-                <div className="relative flex-1 min-w-[150px]">
-                  <Sparkles size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <div className="relative flex-1 min-w-[150px] flex items-center bg-slate-950/50 border border-slate-800 rounded-xl focus-within:border-cyan-500 transition-colors">
+                  <Sparkles size={14} className="absolute left-3 text-slate-400" />
                   <input
                     type="text"
                     placeholder="Custom gate name..."
                     value={customGate}
                     onChange={(e) => setCustomGate(e.target.value)}
-                    className="w-full h-full bg-slate-950/50 border border-slate-800 text-white text-xs font-medium pl-9 pr-3 rounded-xl outline-none placeholder:text-slate-600 focus:border-cyan-500 transition-colors"
+                    className="w-full h-full bg-transparent border-none text-white text-xs font-medium pl-9 pr-14 outline-none placeholder:text-slate-600"
                   />
+                  <div className="absolute right-1 flex items-center gap-1">
+                    <button 
+                      type="button" 
+                      onClick={handleSaveGate}
+                      disabled={!customGate.trim()}
+                      className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      title="Save Gate Preset"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={handleDeleteGate}
+                      disabled={!(customGate.trim() ? gatePresets.some(g => g.name === customGate.trim()) : gatePresets.some(g => g.name === gateName))}
+                      className="p-1.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      title="Delete Gate Preset"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -638,7 +699,7 @@ export default function EventCheckIn() {
 
       {/* ── LIVE TURNSTILE OCCUPANCY KPI STRIP ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         {/* Total Registered */}
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
           <CardContent className="p-4 sm:p-5 flex items-center justify-between">
@@ -717,11 +778,10 @@ export default function EventCheckIn() {
             {recentLogs.slice(0, 8).map((log, idx) => (
               <div
                 key={log.id || idx}
-                className={`shrink-0 p-2.5 rounded-xl border flex items-center gap-2.5 text-xs transition ${
-                  log.action === "CHECK_OUT"
+                className={`shrink-0 p-2.5 rounded-xl border flex items-center gap-2.5 text-xs transition ${log.action === "CHECK_OUT"
                     ? "bg-slate-50 border-slate-200 text-slate-700"
                     : "bg-emerald-50/60 border-emerald-200 text-emerald-950"
-                }`}
+                  }`}
               >
                 <div className={`p-1.5 rounded-lg ${log.action === "CHECK_OUT" ? "bg-slate-200 text-slate-700" : "bg-emerald-200 text-emerald-800"}`}>
                   {log.action === "CHECK_OUT" ? <LogOutIcon size={12} /> : <CheckCircle2 size={12} />}
@@ -757,7 +817,7 @@ export default function EventCheckIn() {
       {showCameraScanner && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className={`w-full transition-all duration-300 ease-in-out ${verificationResult ? 'max-w-5xl flex flex-col md:flex-row items-stretch gap-4' : 'max-w-lg'}`}>
-            
+
             <div className={`w-full transition-all duration-300 ease-in-out flex flex-col justify-center ${verificationResult ? 'md:w-1/2' : ''}`}>
               <QRScanner
                 title={`Gate Scanner: ${selectedEvent?.event_name || "Event"}`}
@@ -784,7 +844,7 @@ export default function EventCheckIn() {
 
       {/* ── ATTENDEE ROSTER & DESK CHECK-IN ── */}
       <Card className="border-slate-200/80 shadow-sm bg-white rounded-3xl overflow-hidden space-y-4 p-5 sm:p-6">
-        
+
         {/* Table Filter & Search Controls */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="space-y-1">
@@ -834,11 +894,10 @@ export default function EventCheckIn() {
               key={tab.key}
               type="button"
               onClick={() => setStatusFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${
-                statusFilter === tab.key
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer shrink-0 ${statusFilter === tab.key
                   ? "bg-slate-900 text-white shadow-xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
+                }`}
             >
               {tab.label}
             </button>

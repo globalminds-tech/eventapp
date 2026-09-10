@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Camera, QrCode, AlertCircle, RefreshCw, X, Keyboard, Flashlight, Volume2, VolumeX, SwitchCamera } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
+import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 
 const SCAN_COOLDOWN_MS = 2500;
 
@@ -176,8 +177,23 @@ export default function QRScanner({
       setError(null);
 
       try {
-        activeReader = new BrowserMultiFormatReader();
-        activeReader.timeBetweenDecodingAttempts = 250;
+        if (videoRef.current && videoRef.current.srcObject) {
+          try { videoRef.current.pause(); } catch(e){}
+          videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+          videoRef.current.srcObject = null;
+        }
+
+        const hints = new Map();
+        hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE]);
+        activeReader = new BrowserMultiFormatReader(hints);
+        activeReader.timeBetweenDecodingAttempts = 400; // Increased to lower CPU usage
+
+        // Suppress zxing internal warning spam
+        const originalWarn = console.warn;
+        console.warn = (...args) => {
+          if (args[0] && typeof args[0] === 'string' && args[0].includes('Trying to play video')) return;
+          originalWarn.apply(console, args);
+        };
 
         const constraints = {
           audio: false,
@@ -215,7 +231,9 @@ export default function QRScanner({
               }
             }
           );
+          console.warn = originalWarn; // restore
         } catch (firstErr) {
+          console.warn = originalWarn; // restore
           console.warn("Retrying with fallback video constraints:", firstErr);
           if (cancelled) return;
           
