@@ -227,7 +227,7 @@ export default function App() {
             {/* ── TIER 2: AUTHENTICATED ATTENDEE & ACCOUNT ROUTES ── */}
             {/* Ticket checkout requires logged-in user so passes bind to account */}
             <Route path="/usersbooking/:id" element={<ProtectedRoute allowedRoles={["user"]}><Userbooking /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute allowedRoles={["user"]}><Profile /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor", "superuser", "admin", "superadmin"]}><Profile /></ProtectedRoute>} />
             <Route path="/my-passes" element={<ProtectedRoute allowedRoles={["user"]}><MyPassesPage /></ProtectedRoute>} />
             <Route path="/my-bookings" element={<ProtectedRoute allowedRoles={["user"]}><MyPassesPage /></ProtectedRoute>} />
             <Route path="/upgrade/organizer" element={<ProtectedRoute allowedRoles={["user"]}><UpgradeOrganizerPage /></ProtectedRoute>} />
