@@ -270,8 +270,20 @@ export const ResponsiveTableView = ({
     );
   }
 
+  const safeData = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.data)
+    ? data.data
+    : Array.isArray(data?.events)
+    ? data.events
+    : Array.isArray(data?.users)
+    ? data.users
+    : Array.isArray(data?.items)
+    ? data.items
+    : [];
+
   // ── EMPTY STATE ──
-  if (!data || data.length === 0) {
+  if (!safeData || safeData.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200/80 p-8 sm:p-12 text-center shadow-2xs space-y-3">
         <p className="text-slate-400 font-semibold text-xs sm:text-sm">
@@ -287,7 +299,7 @@ export const ResponsiveTableView = ({
       {/* ── DESKTOP VIEW (MD and up): TABLE ── */}
       <div className="hidden md:block">
         {renderDesktopTable ? (
-          renderDesktopTable({ data, columns, onRowClick, loading, loadingCount })
+          renderDesktopTable({ data: safeData, columns, onRowClick, loading, loadingCount })
         ) : (
           <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs">
             <Table className={tableClassName}>
@@ -301,7 +313,7 @@ export const ResponsiveTableView = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((row, rIdx) => (
+                {safeData.map((row, rIdx) => (
                   <TableRow
                     key={row[keyField] ?? rIdx}
                     onClick={() => onRowClick && onRowClick(row)}
@@ -329,7 +341,7 @@ export const ResponsiveTableView = ({
 
       {/* ── MOBILE VIEW (< MD): CARDS LIST ── */}
       <div className={cn("md:hidden flex flex-col gap-3", mobileContainerClassName)}>
-        {data.map((row, rIdx) => {
+        {safeData.map((row, rIdx) => {
           if (renderMobileCard) {
             return (
               <React.Fragment key={row[keyField] ?? rIdx}>
