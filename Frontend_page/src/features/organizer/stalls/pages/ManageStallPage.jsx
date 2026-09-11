@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchEventsThunk } from "@/app/store/eventSlice";
 import apiClient from "@/Services/client";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export const ManageStall = () => {
   const [applications, setApplications] = useState([]);
@@ -310,77 +311,116 @@ export const ManageStall = () => {
         </div>
 
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5">
-          <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Exhibitor Company & Contact</th>
-                  <th className="py-3.5 px-4">Reserved Booth</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white text-xs">
-                {eventApps.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="py-14 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
-                          <Store size={24} />
-                        </div>
-                        <p className="font-extrabold text-slate-800 text-sm">No Exhibitor Applications</p>
-                        <p className="text-xs text-slate-400 text-center font-medium">
-                          No exhibitors have requested booths for this event yet. Once exhibitors apply, their applications and 24-hour payment locks will appear here.
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  eventApps.map((app) => (
-                    <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4">
-                        <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
-                          <Building size={14} className="text-slate-400" /> {app.company_name}
-                        </div>
-                        <div className="text-slate-500 mt-1 font-medium text-[11px]">
-                          {app.first_name} {app.last_name} • {app.mobile}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold text-[10px]">
-                          {app.stall_area || 'Unassigned'}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
-                          (app.status || '').toLowerCase() === 'approved' || (app.status || '').toLowerCase() === 'confirmed'
-                            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
-                            : (app.status || '').toLowerCase() === 'rejected'
-                            ? 'bg-red-100 text-red-700 border border-red-200'
-                            : 'bg-amber-100 text-amber-700 border border-amber-200'
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            (app.status || '').toLowerCase() === 'approved' || (app.status || '').toLowerCase() === 'confirmed'
-                            ? 'bg-emerald-500' : (app.status || '').toLowerCase() === 'rejected' ? 'bg-red-500' : 'bg-amber-500'
-                          }`} />
-                          {app.status || 'Pending'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button 
-                          disabled={loadingAppDetails}
-                          onClick={() => handleViewAppDetails(app.id)} 
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                        >
-                          <Eye size={18} />
-                        </button>
-                      </td>
+          <ResponsiveTableView
+            data={eventApps}
+            keyField="id"
+            loading={loading}
+            emptyMessage="No exhibitor applications for this event yet."
+            renderDesktopTable={() => (
+              <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Exhibitor Company & Contact</th>
+                      <th className="py-3.5 px-4">Reserved Booth</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-4 text-right">Action</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                    {eventApps.map((app) => (
+                      <tr key={app.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                            <Building size={14} className="text-slate-400" /> {app.company_name}
+                          </div>
+                          <div className="text-slate-500 mt-1 font-medium text-[11px]">
+                            {app.first_name} {app.last_name} • {app.mobile}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold text-[10px]">
+                            {app.stall_area || 'Unassigned'}
+                          </Badge>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
+                            (app.status || '').toLowerCase() === 'approved' || (app.status || '').toLowerCase() === 'confirmed'
+                              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                              : (app.status || '').toLowerCase() === 'rejected'
+                              ? 'bg-red-100 text-red-700 border border-red-200'
+                              : 'bg-amber-100 text-amber-700 border border-amber-200'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              (app.status || '').toLowerCase() === 'approved' || (app.status || '').toLowerCase() === 'confirmed'
+                                ? 'bg-emerald-500' : (app.status || '').toLowerCase() === 'rejected' ? 'bg-red-500' : 'bg-amber-500'
+                            }`} />
+                            {app.status || 'Pending'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button 
+                            disabled={loadingAppDetails}
+                            onClick={() => handleViewAppDetails(app.id)} 
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <Eye size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(app) => {
+              const isApproved = (app.status || '').toLowerCase() === 'approved' || (app.status || '').toLowerCase() === 'confirmed';
+              const isRejected = (app.status || '').toLowerCase() === 'rejected';
+
+              return (
+                <MobileDataCard key={app.id}>
+                  <MobileDataCard.Header
+                    title={app.company_name || "Unnamed Company"}
+                    subtitle={`${app.first_name || ""} ${app.last_name || ""} • ${app.mobile || ""}`}
+                    statusBadge={
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
+                        isApproved
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          : isRejected
+                          ? 'bg-red-100 text-red-700 border border-red-200'
+                          : 'bg-amber-100 text-amber-700 border border-amber-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          isApproved ? 'bg-emerald-500' : isRejected ? 'bg-red-500' : 'bg-amber-500'
+                        }`} />
+                        {app.status || 'Pending'}
+                      </span>
+                    }
+                  />
+
+                  <MobileDataCard.Grid
+                    items={[
+                      { label: "Reserved Booth", value: <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold text-[10px]">{app.stall_area || 'Unassigned'}</Badge> },
+                      { label: "Contact Email", value: app.email || "—" }
+                    ]}
+                  />
+
+                  <MobileDataCard.Actions>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={loadingAppDetails}
+                      onClick={() => handleViewAppDetails(app.id)}
+                      className="w-full text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 hover:bg-indigo-50 hover:text-indigo-700"
+                    >
+                      <Eye size={14} />
+                      <span>View Application Details</span>
+                    </Button>
+                  </MobileDataCard.Actions>
+                </MobileDataCard>
+              );
+            }}
+          />
         </Card>
       </div>
     );
@@ -461,64 +501,70 @@ export const ManageStall = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Event Stall Overview</h2>
         </div>
-        <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
-          <table className="w-full text-left border-collapse min-w-[600px]">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
-                <th className="py-3.5 px-4">Event Name</th>
-                <th className="py-3.5 px-4">Start & End Date</th>
-                <th className="py-3.5 px-4">Stall Quantity(Count)</th>
-                <th className="py-3.5 px-4">Stall Fees</th>
-                <th className="py-3.5 px-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white text-xs">
-              {eventsLoading ? (
-                Array.from({ length: 3 }).map((_, idx) => (
-                  <tr key={idx} className="animate-pulse">
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-40 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-32 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-12 rounded" /></td>
-                    <td className="py-4 px-4"><Skeleton className="h-4 w-20 rounded" /></td>
-                    <td className="py-4 px-4 text-right"><Skeleton className="h-7 w-7 rounded-lg ml-auto" /></td>
+        <ResponsiveTableView
+          data={eventStalls}
+          keyField="id"
+          loading={eventsLoading}
+          emptyMessage="You haven't created any events with stall allocations yet."
+          renderDesktopTable={() => (
+            <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
+              <table className="w-full text-left border-collapse min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-600 text-[11px] font-extrabold uppercase tracking-wider">
+                    <th className="py-3.5 px-4">Event Name</th>
+                    <th className="py-3.5 px-4">Start & End Date</th>
+                    <th className="py-3.5 px-4">Stall Quantity(Count)</th>
+                    <th className="py-3.5 px-4">Stall Fees</th>
+                    <th className="py-3.5 px-4 text-right">Action</th>
                   </tr>
-                ))
-              ) : eventStalls.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-14 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-1">
-                        <Store size={24} />
-                      </div>
-                      <p className="font-extrabold text-slate-800 text-sm">No Events Found</p>
-                      <p className="text-xs text-slate-400 text-center font-medium">
-                        You haven't created any events with stall allocations yet. Create an event to begin receiving and managing exhibitor booth applications.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                eventStalls.map((ev) => (
-                  <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-extrabold text-slate-900">{ev.event_name}</td>
-                    <td className="py-3.5 px-4 text-slate-600 font-medium">{ev.start_date} - {ev.end_date}</td>
-                    <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_quantity}</td>
-                    <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_fees}</td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedEventOverview(ev)}
-                        className="p-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200"
-                        title="View Event Details & Exhibitors"
-                      >
-                        <Eye size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                  {eventStalls.map((ev) => (
+                    <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-extrabold text-slate-900">{ev.event_name}</td>
+                      <td className="py-3.5 px-4 text-slate-600 font-medium">{ev.start_date} - {ev.end_date}</td>
+                      <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_quantity}</td>
+                      <td className="py-3.5 px-4 text-slate-900 font-bold">{ev.stall_fees}</td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => setSelectedEventOverview(ev)}
+                          className="p-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200"
+                          title="View Event Details & Exhibitors"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(ev) => (
+            <MobileDataCard key={ev.id}>
+              <MobileDataCard.Header
+                title={ev.event_name}
+                subtitle={`${ev.start_date} - ${ev.end_date}`}
+              />
+              <MobileDataCard.Grid
+                items={[
+                  { label: "Stall Count", value: `${ev.stall_quantity} Booths` },
+                  { label: "Stall Fees", value: ev.stall_fees }
+                ]}
+              />
+              <MobileDataCard.Actions>
+                <Button
+                  size="sm"
+                  onClick={() => setSelectedEventOverview(ev)}
+                  className="w-full text-xs font-bold gap-1.5 h-9 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white shadow-xs border-none"
+                >
+                  <Eye size={14} />
+                  <span>View Details & Exhibitors</span>
+                </Button>
+              </MobileDataCard.Actions>
+            </MobileDataCard>
+          )}
+        />
       </Card>
 
 

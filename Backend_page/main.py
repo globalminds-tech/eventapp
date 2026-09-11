@@ -24,6 +24,7 @@ def on_startup():
 
 
 @app.get("/", tags=["Health"])
+@app.get("/health", tags=["Health"])
 def root():
     return {
         "success": True,

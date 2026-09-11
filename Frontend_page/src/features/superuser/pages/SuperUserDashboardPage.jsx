@@ -64,10 +64,10 @@ export default function SuperUserDashboard() {
   ];
 
   return (
-    <div className="min-h-full flex-1 flex flex-col justify-between select-none text-slate-800 font-sans max-w-full gap-4 pb-6">
+    <div className="space-y-6 select-none text-slate-800 font-sans max-w-full pb-8">
       
       {/* ── CLEAN ELEGANT HEADER ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 pb-2.5 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 pb-3 shrink-0">
         <div className="space-y-0.5">
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
             Super Admin Executive Dashboard
@@ -87,8 +87,8 @@ export default function SuperUserDashboard() {
         </button>
       </div>
 
-      {/* ── EVENTS OVERVIEW (ROW 1 - STRETCHES VERTICALLY) ── */}
-      <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
+      {/* ── EVENTS OVERVIEW (ROW 1) ── */}
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between px-0.5 mb-1.5 shrink-0">
           <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-purple-600" />
@@ -96,7 +96,7 @@ export default function SuperUserDashboard() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Events */}
           <Card
             onClick={() => navigate("/superuser/approvals?tab=all")}
@@ -234,8 +234,8 @@ export default function SuperUserDashboard() {
         </div>
       </div>
 
-      {/* ── PLATFORM USERS (ROW 2 - STRETCHES VERTICALLY) ── */}
-      <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
+      {/* ── PLATFORM USERS (ROW 2) ── */}
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between px-0.5 mb-1.5 shrink-0">
           <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-blue-600" />
@@ -243,7 +243,7 @@ export default function SuperUserDashboard() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Users */}
           <Card
             onClick={() => navigate("/superuser/kyc?tab=all")}
@@ -378,7 +378,8 @@ export default function SuperUserDashboard() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-between py-0.5 min-h-0">
+      {/* ── FINANCIAL OVERVIEW (ROW 3) ── */}
+      <div className="space-y-2.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-0.5 mb-1.5 shrink-0">
           <h2 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-600" />
@@ -404,7 +405,7 @@ export default function SuperUserDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Gross GMV */}
           <Card
             onClick={() => navigate("/superuser/payouts?tab=gmv")}

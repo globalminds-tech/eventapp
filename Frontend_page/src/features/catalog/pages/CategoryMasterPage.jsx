@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { categoryApi } from "@/features/catalog/api/category.api";
 import { uploadCategoryImageToSupabase } from "@/Services/supabaseClient";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export default function CategoryMaster() {
   const [categories, setCategories] = useState([]);
@@ -398,132 +399,183 @@ export default function CategoryMaster() {
       )}
 
       {/* ── TABLE CONTAINER ── */}
-      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-        <div className="responsive-table-wrap">
-          <table className="w-full min-w-[650px] text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                <th className="p-3.5 pl-5">Category Image</th>
-                <th className="p-3.5">Category Name</th>
-                <th className="p-3.5">Subcategories</th>
-                <th className="p-3.5 text-center">Status</th>
-                <th className="p-3.5 pr-5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredCategories.map((cat) => {
-                const subList = Array.isArray(cat.subcategories) ? cat.subcategories : (cat.subcategories ? cat.subcategories.split(",") : []);
+      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl p-4">
+        <ResponsiveTableView
+          data={filteredCategories}
+          keyField="id"
+          loading={isLoading}
+          emptyMessage={searchQuery ? `No categories found matching "${searchQuery}".` : 'No categories found in database. Click "+ Add Category" to create one.'}
+          renderDesktopTable={() => (
+            <div className="responsive-table-wrap">
+              <table className="w-full min-w-[650px] text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                    <th className="p-3.5 pl-5">Category Image</th>
+                    <th className="p-3.5">Category Name</th>
+                    <th className="p-3.5">Subcategories</th>
+                    <th className="p-3.5 text-center">Status</th>
+                    <th className="p-3.5 pr-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredCategories.map((cat) => {
+                    const subList = Array.isArray(cat.subcategories) ? cat.subcategories : (cat.subcategories ? cat.subcategories.split(",") : []);
 
-                return (
-                  <tr key={cat.id} className="hover:bg-slate-50/70 transition-colors">
-                    {/* Category Image Thumbnail */}
-                    <td className="p-3.5 pl-5">
-                      {cat.category_image ? (
-                        <img src={cat.category_image} alt={cat.name} className="w-14 h-11 object-cover rounded-lg border border-slate-200 shadow-xs" />
-                      ) : (
-                        <div className="w-14 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-[10px]">
-                          No Image
-                        </div>
-                      )}
-                    </td>
+                    return (
+                      <tr key={cat.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="p-3.5 pl-5">
+                          {cat.category_image ? (
+                            <img src={cat.category_image} alt={cat.name} className="w-14 h-11 object-cover rounded-lg border border-slate-200 shadow-xs" />
+                          ) : (
+                            <div className="w-14 h-11 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 font-bold text-[10px]">
+                              No Image
+                            </div>
+                          )}
+                        </td>
 
-                    {/* Category Name */}
-                    <td className="p-3.5 font-extrabold text-slate-900 text-sm">
-                      {cat.name}
-                    </td>
+                        <td className="p-3.5 font-extrabold text-slate-900 text-sm">
+                          {cat.name}
+                        </td>
 
-                    {/* Subcategories (Chips + Inline Add) */}
-                    <td className="p-3.5">
-                      <div className="flex flex-wrap items-center gap-1.5 max-w-xl">
-                        {subList.map((sub, i) => (
-                          <span key={i} className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md font-semibold text-xs shadow-2xs">
-                            {sub.trim()}
+                        <td className="p-3.5">
+                          <div className="flex flex-wrap items-center gap-1.5 max-w-xl">
+                            {subList.map((sub, i) => (
+                              <span key={i} className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-md font-semibold text-xs shadow-2xs">
+                                {sub.trim()}
+                              </span>
+                            ))}
+
+                            {activeSubInputId === cat.id ? (
+                              <div className="flex items-center gap-1 bg-white border border-purple-400 p-0.5 rounded-lg shadow-xs">
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  placeholder="Subcategory..."
+                                  value={quickSubName}
+                                  onChange={(e) => setQuickSubName(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") handleQuickAddSubcategory(cat); }}
+                                  className="w-28 h-6 px-2 text-xs font-semibold outline-none border-none bg-transparent"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickAddSubcategory(cat)}
+                                  className="p-1 bg-purple-600 text-white rounded-md text-[10px] font-bold border-none cursor-pointer hover:bg-purple-700"
+                                >
+                                  Add
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setActiveSubInputId(null); setQuickSubName(""); }}
+                                  className="p-1 text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => { setActiveSubInputId(cat.id); setQuickSubName(""); }}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md cursor-pointer transition-all"
+                              >
+                                <PlusCircle size={12} />
+                                <span>+ Subcategory</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="p-3.5 text-center">
+                          <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-extrabold text-[10px]">
+                            ACTIVE
                           </span>
-                        ))}
+                        </td>
 
-                        {/* Inline Add Subcategory Pill */}
-                        {activeSubInputId === cat.id ? (
-                          <div className="flex items-center gap-1 bg-white border border-purple-400 p-0.5 rounded-lg shadow-xs">
-                            <input
-                              type="text"
-                              autoFocus
-                              placeholder="Subcategory..."
-                              value={quickSubName}
-                              onChange={(e) => setQuickSubName(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === "Enter") handleQuickAddSubcategory(cat); }}
-                              className="w-28 h-6 px-2 text-xs font-semibold outline-none border-none bg-transparent"
-                            />
+                        <td className="p-3.5 pr-5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              onClick={() => handleQuickAddSubcategory(cat)}
-                              className="p-1 bg-purple-600 text-white rounded-md text-[10px] font-bold border-none cursor-pointer hover:bg-purple-700"
+                              onClick={() => handleOpenEdit(cat)}
+                              className="p-1.5 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors border-none cursor-pointer"
+                              title="Edit Category"
                             >
-                              Add
+                              <Pencil size={15} />
                             </button>
+
                             <button
                               type="button"
-                              onClick={() => { setActiveSubInputId(null); setQuickSubName(""); }}
-                              className="p-1 text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
+                              onClick={() => setDeletingCatId(cat.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border-none cursor-pointer"
+                              title="Delete Category"
                             >
-                              ✕
+                              <Trash2 size={15} />
                             </button>
                           </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => { setActiveSubInputId(cat.id); setQuickSubName(""); }}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md cursor-pointer transition-all"
-                          >
-                            <PlusCircle size={12} />
-                            <span>+ Subcategory</span>
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          renderMobileCard={(cat) => {
+            const subList = Array.isArray(cat.subcategories) ? cat.subcategories : (cat.subcategories ? cat.subcategories.split(",") : []);
 
-                    {/* Status */}
-                    <td className="p-3.5 text-center">
-                      <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-extrabold text-[10px]">
-                        ACTIVE
+            return (
+              <MobileDataCard key={cat.id}>
+                <div className="flex items-start gap-3 border-b border-slate-100 pb-2.5">
+                  {cat.category_image ? (
+                    <img src={cat.category_image} alt={cat.name} className="w-12 h-12 object-cover rounded-xl border border-slate-200 shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center font-bold text-xs shrink-0">
+                      {cat.name?.charAt(0) || "C"}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-extrabold text-slate-900 text-sm">{cat.name}</h4>
+                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">{subList.length} Subcategories</p>
+                  </div>
+                  <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-extrabold text-[10px]">
+                    ACTIVE
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Subcategories</span>
+                  <div className="flex flex-wrap gap-1">
+                    {subList.map((sub, i) => (
+                      <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[11px] font-medium border border-slate-200/80">
+                        {sub.trim()}
                       </span>
-                    </td>
+                    ))}
+                    {subList.length === 0 && <span className="text-xs text-slate-400">No subcategories</span>}
+                  </div>
+                </div>
 
-                    {/* Actions */}
-                    <td className="p-3.5 pr-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(cat)}
-                          className="p-1.5 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors border-none cursor-pointer"
-                          title="Edit Category"
-                        >
-                          <Pencil size={15} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setDeletingCatId(cat.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border-none cursor-pointer"
-                          title="Delete Category"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {filteredCategories.length === 0 && !isLoading && (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 font-semibold text-xs">
-                    {searchQuery ? `No categories found matching "${searchQuery}".` : 'No categories found in database. Click "+ Add Category" to create one.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                <MobileDataCard.Actions>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenEdit(cat)}
+                    className="text-xs font-bold gap-1 rounded-xl h-8 text-purple-700 border-purple-200 hover:bg-purple-50"
+                  >
+                    <Pencil size={13} />
+                    <span>Edit</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDeletingCatId(cat.id)}
+                    className="text-xs font-bold gap-1 rounded-xl h-8 text-rose-700 border-rose-200 hover:bg-rose-50"
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </Button>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            );
+          }}
+        />
       </Card>
 
       {/* ── ADD / EDIT CATEGORY MODAL ── */}

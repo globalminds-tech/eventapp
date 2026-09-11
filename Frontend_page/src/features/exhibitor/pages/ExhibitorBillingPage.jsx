@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import axiosClient from "@/shared/api/axiosClient";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export const ExhibitorBillingPage = () => {
   const [invoices, setInvoices] = useState([]);
@@ -105,61 +106,93 @@ export const ExhibitorBillingPage = () => {
           </div>
         </div>
 
-        <div className="responsive-table-wrap">
-          <table className="w-full min-w-[760px] text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3.5 px-4">Invoice No</th>
-                <th className="py-3.5 px-4">Invoice Date</th>
-                <th className="py-3.5 px-4">Billed Company</th>
-                <th className="py-3.5 px-4">Base Amount</th>
-                <th className="py-3.5 px-4">CGST (9%)</th>
-                <th className="py-3.5 px-4">SGST (9%)</th>
-                <th className="py-3.5 px-4">Total Amount</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                <th className="py-3.5 px-4 text-center">Action</th>
-              </tr>
-            </thead>
+        <div className="p-4">
+          <ResponsiveTableView
+            data={filteredInvoices}
+            keyField="invoice_number"
+            loading={isLoading}
+            emptyMessage="No stall invoices found."
+            renderDesktopTable={() => (
+              <div className="responsive-table-wrap">
+                <table className="w-full min-w-[760px] text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Invoice No</th>
+                      <th className="py-3.5 px-4">Invoice Date</th>
+                      <th className="py-3.5 px-4">Billed Company</th>
+                      <th className="py-3.5 px-4">Base Amount</th>
+                      <th className="py-3.5 px-4">CGST (9%)</th>
+                      <th className="py-3.5 px-4">SGST (9%)</th>
+                      <th className="py-3.5 px-4">Total Amount</th>
+                      <th className="py-3.5 px-4 text-center">Status</th>
+                      <th className="py-3.5 px-4 text-center">Action</th>
+                    </tr>
+                  </thead>
 
-            <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-              {filteredInvoices.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    <Receipt size={32} className="mx-auto mb-2 opacity-50" />
-                    <p className="text-sm font-semibold">No stall invoices found</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredInvoices.map((inv, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-4 font-mono font-bold text-slate-900">{inv.invoice_number}</td>
-                    <td className="py-4 px-4 text-slate-600">{inv.created_at ? inv.created_at.substring(0, 10) : ""}</td>
-                    <td className="py-4 px-4 font-bold text-slate-900">{inv.billing_name}</td>
-                    <td className="py-4 px-4 font-semibold text-slate-800">₹{inv.subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                    <td className="py-4 px-4 text-slate-600">₹{inv.cgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                    <td className="py-4 px-4 text-slate-600">₹{inv.sgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                    <td className="py-4 px-4 font-extrabold text-emerald-600">₹{inv.total_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                    <td className="py-4 px-4 text-center">
-                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold">
-                        {inv.status}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => alert(`Downloading GST Tax Invoice ${inv.invoice_number}`)}
-                        className="h-8 gap-1.5 text-xs font-bold text-slate-700 hover:text-sky-600 rounded-lg cursor-pointer"
-                      >
-                        <Download size={14} />
-                        <span>PDF</span>
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    {filteredInvoices.map((inv, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-4 font-mono font-bold text-slate-900">{inv.invoice_number}</td>
+                        <td className="py-4 px-4 text-slate-600">{inv.created_at ? inv.created_at.substring(0, 10) : ""}</td>
+                        <td className="py-4 px-4 font-bold text-slate-900">{inv.billing_name}</td>
+                        <td className="py-4 px-4 font-semibold text-slate-800">₹{inv.subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                        <td className="py-4 px-4 text-slate-600">₹{inv.cgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                        <td className="py-4 px-4 text-slate-600">₹{inv.sgst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                        <td className="py-4 px-4 font-extrabold text-emerald-600">₹{inv.total_amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                        <td className="py-4 px-4 text-center">
+                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold">
+                            {inv.status}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => alert(`Downloading GST Tax Invoice ${inv.invoice_number}`)}
+                            className="h-8 gap-1.5 text-xs font-bold text-slate-700 hover:text-sky-600 rounded-lg cursor-pointer"
+                          >
+                            <Download size={14} />
+                            <span>PDF</span>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            renderMobileCard={(inv) => (
+              <MobileDataCard key={inv.invoice_number || Math.random()}>
+                <MobileDataCard.Header
+                  title={inv.billing_name || "Billed Company"}
+                  subtitle={`Inv: ${inv.invoice_number} • ${inv.created_at ? inv.created_at.substring(0, 10) : ""}`}
+                  statusBadge={
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[10px]">
+                      {inv.status || "Paid"}
+                    </Badge>
+                  }
+                />
+                <MobileDataCard.Grid
+                  items={[
+                    { label: "Base Amount", value: `₹${Number(inv.subtotal || 0).toLocaleString("en-IN")}` },
+                    { label: "Tax (18% GST)", value: `₹${(Number(inv.cgst || 0) + Number(inv.sgst || 0)).toLocaleString("en-IN")}` },
+                    { label: "Total Paid", value: <span className="font-extrabold text-emerald-600">₹{Number(inv.total_amount || 0).toLocaleString("en-IN")}</span> }
+                  ]}
+                />
+                <MobileDataCard.Actions>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => alert(`Downloading GST Tax Invoice ${inv.invoice_number}`)}
+                    className="w-full text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 hover:bg-slate-50 text-slate-800"
+                  >
+                    <Download size={14} />
+                    <span>Download GST Invoice (PDF)</span>
+                  </Button>
+                </MobileDataCard.Actions>
+              </MobileDataCard>
+            )}
+          />
         </div>
       </Card>
     </div>

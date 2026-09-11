@@ -39,7 +39,7 @@ export const fetchApprovalQueueThunk = createAsyncThunk(
   async (force, { getState, rejectWithValue }) => {
     try {
       const state = getState();
-      if (!force && state.admin?.approvalLoaded && state.admin?.approvalQueue?.length > 0) {
+      if (!force && state.admin?.approvalLoaded && Array.isArray(state.admin?.approvalQueue)) {
         return state.admin.approvalQueue;
       }
 
@@ -57,7 +57,7 @@ export const fetchKycUsersThunk = createAsyncThunk(
   async (force, { getState, rejectWithValue }) => {
     try {
       const state = getState();
-      if (!force && state.admin?.kycLoaded && state.admin?.kycUsers?.length > 0) {
+      if (!force && state.admin?.kycLoaded && Array.isArray(state.admin?.kycUsers)) {
         return state.admin.kycUsers;
       }
 
@@ -75,7 +75,7 @@ export const fetchCategoriesThunk = createAsyncThunk(
   async (force, { getState, rejectWithValue }) => {
     try {
       const state = getState();
-      if (!force && state.admin?.categoriesLoaded && state.admin?.categories?.length > 0) {
+      if (!force && state.admin?.categoriesLoaded && Array.isArray(state.admin?.categories)) {
         return state.admin.categories;
       }
 

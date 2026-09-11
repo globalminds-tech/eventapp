@@ -32,7 +32,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import MediaRenderer from "@/components/MediaRenderer";
 import { getHomeEventshow } from "@/Services/api";
-import { getRedirectPathForUser, performLogout, getUserInitials, getUserAvailableRoles, hasProfile } from "@/shared/services/authHelper";
+import { getRedirectPathForUser, performLogout, getUserInitials, getUserAvailableRoles, hasProfile, isSuperUser } from "@/shared/services/authHelper";
 import { authApi } from "@/features/auth/api/auth.api";
 import { setUser } from "@/app/store/userSlice";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -303,6 +303,13 @@ const App = () => {
   const reduxUser = useSelector((state) => state.user);
   const isAuthenticated = Boolean(reduxAuth?.isAuthenticated || reduxAuth?.accessToken || reduxUser?.id);
   const currentUser = reduxAuth?.user || reduxUser;
+
+  // Strict Super Admin portal isolation: redirect immediately if super admin reaches HomePage
+  useEffect(() => {
+    if (isSuperUser(currentUser, reduxAuth?.role)) {
+      navigate("/superuser/dashboard", { replace: true });
+    }
+  }, [currentUser, reduxAuth?.role, navigate]);
 
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedCity, setSelectedCity] = useState("");

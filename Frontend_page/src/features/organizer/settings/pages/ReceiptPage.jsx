@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import axiosClient from "@/shared/api/axiosClient";
+import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export const Receipt = () => {
   const [activeTab, setActiveTab] = useState("inward"); // "inward" | "payouts"
@@ -173,103 +174,145 @@ export const Receipt = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto responsive-table-wrap">
+        <div className="p-4">
           {activeTab === "inward" ? (
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Invoice / Ref</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Person</th>
-                  <th className="py-3.5 px-4">Customer Name</th>
-                  <th className="py-3.5 px-4">Event</th>
-                  <th className="py-3.5 px-4">Gross Sales</th>
-                  <th className="py-3.5 px-4">Deductions</th>
-                  <th className="py-3.5 px-4">Net Earned</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {filteredTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
-                      <ReceiptIcon size={32} className="mx-auto mb-2 opacity-50" />
-                      <p className="text-sm font-semibold">No transactions recorded yet</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredTransactions.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-4 font-mono font-bold text-slate-900">{item.invoiceNo}</td>
-                      <td className="py-4 px-4 text-slate-600">{item.date}</td>
-                      <td className="py-4 px-4">
-                        <Badge className={item.personType === "Exhibitor" ? "bg-purple-100 text-purple-800" : "bg-sky-100 text-sky-800"}>
-                          {item.personType}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4 font-bold text-slate-900">{item.billingName}</td>
-                      <td className="py-4 px-4 font-semibold text-slate-800">{item.eventName}</td>
-                      <td className="py-4 px-4 font-bold text-slate-900">₹{item.grossAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                      <td className="py-4 px-4 text-amber-600 font-semibold">-₹{item.platformFee.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                      <td className="py-4 px-4 font-extrabold text-emerald-600">₹{item.netAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                      <td className="py-4 px-4 text-center">
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold">
-                          {item.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <ResponsiveTableView
+              data={filteredTransactions}
+              keyField="invoiceNo"
+              loading={isLoading}
+              emptyMessage="No inward transactions recorded yet."
+              renderDesktopTable={() => (
+                <div className="overflow-x-auto responsive-table-wrap">
+                  <table className="w-full text-left border-collapse min-w-[700px]">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="py-3.5 px-4">Invoice / Ref</th>
+                        <th className="py-3.5 px-4">Date</th>
+                        <th className="py-3.5 px-4">Person</th>
+                        <th className="py-3.5 px-4">Customer Name</th>
+                        <th className="py-3.5 px-4">Event</th>
+                        <th className="py-3.5 px-4">Gross Sales</th>
+                        <th className="py-3.5 px-4">Deductions</th>
+                        <th className="py-3.5 px-4">Net Earned</th>
+                        <th className="py-3.5 px-4 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                      {filteredTransactions.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-4 px-4 font-mono font-bold text-slate-900">{item.invoiceNo}</td>
+                          <td className="py-4 px-4 text-slate-600">{item.date}</td>
+                          <td className="py-4 px-4">
+                            <Badge className={item.personType === "Exhibitor" ? "bg-purple-100 text-purple-800" : "bg-sky-100 text-sky-800"}>
+                              {item.personType}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4 font-bold text-slate-900">{item.billingName}</td>
+                          <td className="py-4 px-4 font-semibold text-slate-800">{item.eventName}</td>
+                          <td className="py-4 px-4 font-bold text-slate-900">₹{item.grossAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                          <td className="py-4 px-4 text-amber-600 font-semibold">-₹{item.platformFee.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                          <td className="py-4 px-4 font-extrabold text-emerald-600">₹{item.netAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                          <td className="py-4 px-4 text-center">
+                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold">
+                              {item.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              renderMobileCard={(item) => (
+                <MobileDataCard key={item.invoiceNo || Math.random()}>
+                  <MobileDataCard.Header
+                    title={item.billingName || "Customer"}
+                    subtitle={`${item.invoiceNo} • ${item.eventName || "Event"}`}
+                    statusBadge={
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[10px]">
+                        {item.status || "Completed"}
+                      </Badge>
+                    }
+                  />
+                  <MobileDataCard.Grid
+                    items={[
+                      { label: "Date", value: item.date || "—" },
+                      { label: "Buyer Type", value: <Badge className={item.personType === "Exhibitor" ? "bg-purple-100 text-purple-800 text-[10px]" : "bg-sky-100 text-sky-800 text-[10px]"}>{item.personType || "Attendee"}</Badge> },
+                      { label: "Gross Amount", value: `₹${Number(item.grossAmount || 0).toLocaleString("en-IN")}` },
+                      { label: "Net Earned", value: <span className="font-extrabold text-emerald-600">₹{Number(item.netAmount || 0).toLocaleString("en-IN")}</span> }
+                    ]}
+                  />
+                </MobileDataCard>
+              )}
+            />
           ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Payout Ref</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Bank Account</th>
-                  <th className="py-3.5 px-4">IFSC</th>
-                  <th className="py-3.5 px-4">Bank UTR Number</th>
-                  <th className="py-3.5 px-4">Mode</th>
-                  <th className="py-3.5 px-4">Amount</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                {filteredPayouts.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      <Clock size={32} className="mx-auto mb-2 opacity-50" />
-                      <p className="text-sm font-semibold">No bank payouts recorded yet</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPayouts.map((payout, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-4 px-4 font-mono font-bold text-slate-900">{payout.payout_ref}</td>
-                      <td className="py-4 px-4 text-slate-600">{payout.settled_at ? payout.settled_at.substring(0, 10) : "Pending"}</td>
-                      <td className="py-4 px-4 font-semibold text-slate-800">{payout.bank_name} ({payout.account_number_masked})</td>
-                      <td className="py-4 px-4 font-mono text-slate-600">{payout.ifsc_code}</td>
-                      <td className="py-4 px-4 font-mono font-bold text-blue-600">{payout.utr_number || "—"}</td>
-                      <td className="py-4 px-4">
-                        <Badge className="bg-slate-100 text-slate-700 border-slate-200">
-                          {payout.disbursement_mode}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4 font-extrabold text-slate-900">₹{payout.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                      <td className="py-4 px-4 text-center">
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold">
-                          {payout.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+            <ResponsiveTableView
+              data={filteredPayouts}
+              keyField="payout_ref"
+              loading={isLoading}
+              emptyMessage="No bank payouts recorded yet."
+              renderDesktopTable={() => (
+                <div className="overflow-x-auto responsive-table-wrap">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="py-3.5 px-4">Payout Ref</th>
+                        <th className="py-3.5 px-4">Date</th>
+                        <th className="py-3.5 px-4">Bank Account</th>
+                        <th className="py-3.5 px-4">IFSC</th>
+                        <th className="py-3.5 px-4">Bank UTR Number</th>
+                        <th className="py-3.5 px-4">Mode</th>
+                        <th className="py-3.5 px-4">Amount</th>
+                        <th className="py-3.5 px-4 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                      {filteredPayouts.map((payout, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-4 px-4 font-mono font-bold text-slate-900">{payout.payout_ref}</td>
+                          <td className="py-4 px-4 text-slate-600">{payout.settled_at ? payout.settled_at.substring(0, 10) : "Pending"}</td>
+                          <td className="py-4 px-4 font-semibold text-slate-800">{payout.bank_name} ({payout.account_number_masked})</td>
+                          <td className="py-4 px-4 font-mono text-slate-600">{payout.ifsc_code}</td>
+                          <td className="py-4 px-4 font-mono font-bold text-blue-600">{payout.utr_number || "—"}</td>
+                          <td className="py-4 px-4">
+                            <Badge className="bg-slate-100 text-slate-700 border-slate-200">
+                              {payout.disbursement_mode}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4 font-extrabold text-slate-900">₹{payout.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                          <td className="py-4 px-4 text-center">
+                            <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold">
+                              {payout.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              renderMobileCard={(payout) => (
+                <MobileDataCard key={payout.payout_ref || Math.random()}>
+                  <MobileDataCard.Header
+                    title={payout.bank_name || "Bank Settlement"}
+                    subtitle={`${payout.payout_ref} • ${payout.account_number_masked || ""}`}
+                    statusBadge={
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[10px]">
+                        {payout.status || "Settled"}
+                      </Badge>
+                    }
+                  />
+                  <MobileDataCard.Grid
+                    items={[
+                      { label: "Date", value: payout.settled_at ? payout.settled_at.substring(0, 10) : "Pending" },
+                      { label: "Bank UTR", value: <span className="font-mono text-blue-600 font-bold">{payout.utr_number || "—"}</span> },
+                      { label: "Disbursement Mode", value: payout.disbursement_mode || "NEFT" },
+                      { label: "Amount Settled", value: <span className="font-extrabold text-slate-900">₹{Number(payout.amount || 0).toLocaleString("en-IN")}</span> }
+                    ]}
+                  />
+                </MobileDataCard>
+              )}
+            />
           )}
         </div>
       </Card>

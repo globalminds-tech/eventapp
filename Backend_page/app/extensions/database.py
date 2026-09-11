@@ -25,7 +25,13 @@ def create_supabase_engine():
         pool_recycle=120,
         pool_size=15,
         max_overflow=5,
-        connect_args={"connect_timeout": 10}
+        connect_args={
+            "connect_timeout": 10,
+            "keepalives": 1,
+            "keepalives_idle": 10,
+            "keepalives_interval": 5,
+            "keepalives_count": 3
+        }
     )
     return engine
 
