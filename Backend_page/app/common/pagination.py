@@ -46,3 +46,28 @@ def build_pagination_metadata(total: int, page: int, limit: int) -> Dict[str, An
         "has_next": safe_page < total_pages,
         "has_prev": safe_page > 1
     }
+
+def get_pagination_params(request=None):
+    try:
+        if request and hasattr(request, "query_params"):
+            page = int(request.query_params.get('page', 1))
+            per_page = int(request.query_params.get('per_page', request.query_params.get('limit', 10)))
+        else:
+            page = 1
+            per_page = 10
+    except (ValueError, TypeError):
+        page = 1
+        per_page = 10
+    return page, per_page
+
+def paginate_query(query, page=1, per_page=10):
+    total = query.count() if hasattr(query, "count") else len(query)
+    items = query.offset((page - 1) * per_page).limit(per_page).all() if hasattr(query, "offset") else query[(page-1)*per_page:page*per_page]
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": (total + per_page - 1) // per_page if per_page > 0 else 0
+    }
+
