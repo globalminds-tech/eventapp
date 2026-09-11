@@ -15,7 +15,19 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const reduxUser = useSelector((state) => state.user);
 
   // 1. Resolve token & active role from Redux or persistent storage fallback
-  const token = reduxAuth?.accessToken || sessionStorage.getItem("token") || localStorage.getItem("token") || sessionStorage.getItem("accessToken");
+  const token =
+    reduxAuth?.accessToken ||
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    sessionStorage.getItem("accessToken");
+
+  // Sync token into Redux store if present in storage but not in Redux
+  useEffect(() => {
+    if (token && !reduxAuth?.accessToken) {
+      dispatch(setCredentials({ token, accessToken: token }));
+    }
+  }, [token, reduxAuth?.accessToken, dispatch]);
   const currentRole = (
     reduxAuth?.role ||
     reduxAuth?.active_role ||

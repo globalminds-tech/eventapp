@@ -301,6 +301,14 @@ export default function CategoryMaster() {
           data={filteredCategories}
           keyField="id"
           loading={isLoading}
+          columnCount={5}
+          columns={[
+            { header: "Category Image", className: "p-3.5 pl-5" },
+            { header: "Category Name", className: "p-3.5" },
+            { header: "Subcategories", className: "p-3.5" },
+            { header: "Status", className: "p-3.5 text-center" },
+            { header: "Actions", className: "p-3.5 pr-5 text-right" },
+          ]}
           emptyMessage={searchQuery ? `No categories found matching "${searchQuery}".` : 'No categories found in database. Click "+ Add Category" to create one.'}
           renderDesktopTable={() => (
             <div className="responsive-table-wrap">

@@ -9,15 +9,24 @@ const getStoredUser = () => {
   }
 };
 
+const getStoredToken = () => {
+  try {
+    return localStorage.getItem("token") || sessionStorage.getItem("token") || localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || null;
+  } catch {
+    return null;
+  }
+};
+
 const initialUser = getStoredUser();
+const initialToken = getStoredToken();
 
 const initialState = {
   user: initialUser,
-  accessToken: null, // Purely in-memory access token (XSS safe)
+  accessToken: initialToken,
   active_role: initialUser?.active_role || localStorage.getItem("active_role") || sessionStorage.getItem("active_role") || "user",
   role: initialUser?.active_role || localStorage.getItem("active_role") || "user",
-  isAuthenticated: Boolean(initialUser),
-  loading: Boolean(initialUser), // Start loading if a previous session exists so routes await token refresh
+  isAuthenticated: Boolean(initialUser && initialToken),
+  loading: false,
   error: null
 };
 
@@ -32,9 +41,13 @@ const authSlice = createSlice({
       if (validToken && !validToken.includes("authenticated-user-token")) {
         state.accessToken = validToken;
         state.isAuthenticated = true;
-        // Clean up legacy persistent tokens from storage to enforce in-memory security
-        localStorage.removeItem("token");
-        sessionStorage.removeItem("token");
+        // Persist token for seamless page reloads, tab navigation and cross-origin stability
+        try {
+          localStorage.setItem("token", validToken);
+          sessionStorage.setItem("token", validToken);
+        } catch (e) {
+          console.warn("[authSlice] Could not persist token:", e);
+        }
       }
 
       // If a role or active_role is passed (e.g. during workspace switch), immediately sync it

@@ -111,6 +111,18 @@ export const ExhibitorBillingPage = () => {
             data={filteredInvoices}
             keyField="invoice_number"
             loading={isLoading}
+            columnCount={9}
+            columns={[
+              { header: "Invoice No", className: "py-3.5 px-4" },
+              { header: "Invoice Date", className: "py-3.5 px-4" },
+              { header: "Billed Company", className: "py-3.5 px-4" },
+              { header: "Base Amount", className: "py-3.5 px-4" },
+              { header: "CGST (9%)", className: "py-3.5 px-4" },
+              { header: "SGST (9%)", className: "py-3.5 px-4" },
+              { header: "Total Amount", className: "py-3.5 px-4" },
+              { header: "Status", className: "py-3.5 px-4 text-center" },
+              { header: "Action", className: "py-3.5 px-4 text-center" },
+            ]}
             emptyMessage="No stall invoices found."
             renderDesktopTable={() => (
               <div className="responsive-table-wrap">

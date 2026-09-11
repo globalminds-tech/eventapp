@@ -205,6 +205,14 @@ export default function User() {
         <ResponsiveTableView
           data={filteredAttendees}
           keyField="id"
+          columnCount={5}
+          columns={[
+            { header: "Attendee Profile", className: "py-3.5 px-4" },
+            { header: "Event & Ticket Pass", className: "py-3.5 px-4" },
+            { header: "Booking Code", className: "py-3.5 px-4" },
+            { header: "Gate Scanner Status", className: "py-3.5 px-4" },
+            { header: "Actions", className: "py-3.5 px-4 text-right" },
+          ]}
           emptyMessage="No attendee records found matching the filter."
           renderDesktopTable={() => (
             <div className="rounded-xl border border-slate-200 overflow-x-auto responsive-table-wrap touch-scroll">

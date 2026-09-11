@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getDashboardStats } from "@/shared/services/eventService";
 import { approvalApi } from "@/features/admin/approvals/api/approval.api";
 import { kycApi } from "@/features/admin/kyc/api/kyc.api";
+import { userApi } from "@/features/users/api/user.api";
 import { getAdminCategories } from "@/shared/services/miscService";
 
 const ensureArray = (payload) => {
@@ -36,15 +37,27 @@ export const fetchDashboardStatsThunk = createAsyncThunk(
 // 2. Approval Queue Thunk
 export const fetchApprovalQueueThunk = createAsyncThunk(
   "admin/fetchApprovalQueue",
-  async (force, { getState, rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const isForce = typeof params === "boolean" ? params : Boolean(params?.force);
+      const queryParams = typeof params === "object" && !Array.isArray(params) ? { ...params } : {};
+      delete queryParams.force;
+
+      const hasCustomQuery = Boolean(queryParams.search || queryParams.status || queryParams.page);
+
       const state = getState();
-      if (!force && state.admin?.approvalLoaded && Array.isArray(state.admin?.approvalQueue)) {
-        return state.admin.approvalQueue;
+      if (!isForce && !hasCustomQuery && state.admin?.approvalLoaded && Array.isArray(state.admin?.approvalQueue)) {
+        return {
+          data: state.admin.approvalQueue,
+          pagination: state.admin.approvalPagination || null
+        };
       }
 
-      const res = await approvalApi.getEvents();
-      return ensureArray(res);
+      const res = await approvalApi.getEvents(queryParams);
+      return {
+        data: ensureArray(res),
+        pagination: res?.pagination || null
+      };
     } catch (err) {
       return rejectWithValue(err.response?.data || "Failed to fetch approval queue");
     }
@@ -54,15 +67,27 @@ export const fetchApprovalQueueThunk = createAsyncThunk(
 // 3. KYC Verification Users Thunk
 export const fetchKycUsersThunk = createAsyncThunk(
   "admin/fetchKycUsers",
-  async (force, { getState, rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
+      const isForce = typeof params === "boolean" ? params : Boolean(params?.force);
+      const queryParams = typeof params === "object" && !Array.isArray(params) ? { ...params } : {};
+      delete queryParams.force;
+
+      const hasCustomQuery = Boolean(queryParams.search || queryParams.role || queryParams.kyc_status || queryParams.page);
+
       const state = getState();
-      if (!force && state.admin?.kycLoaded && Array.isArray(state.admin?.kycUsers)) {
-        return state.admin.kycUsers;
+      if (!isForce && !hasCustomQuery && state.admin?.kycLoaded && Array.isArray(state.admin?.kycUsers)) {
+        return {
+          data: state.admin.kycUsers,
+          pagination: state.admin.kycPagination || null
+        };
       }
 
-      const res = await kycApi.getPendingOrganizers();
-      return ensureArray(res);
+      const res = await userApi.getUsers(queryParams);
+      return {
+        data: ensureArray(res),
+        pagination: res?.pagination || null
+      };
     } catch (err) {
       return rejectWithValue(err.response?.data || "Failed to fetch KYC users");
     }
@@ -95,10 +120,12 @@ const adminSlice = createSlice({
     statsLoaded: false,
 
     approvalQueue: [],
+    approvalPagination: null,
     approvalLoading: false,
     approvalLoaded: false,
 
     kycUsers: [],
+    kycPagination: null,
     kycLoading: false,
     kycLoaded: false,
 
@@ -162,10 +189,17 @@ const adminSlice = createSlice({
 
       // Approval Queue
       .addCase(fetchApprovalQueueThunk.pending, (state) => {
-        if (!state.approvalLoaded) state.approvalLoading = true;
+        state.approvalLoading = true;
       })
       .addCase(fetchApprovalQueueThunk.fulfilled, (state, action) => {
-        state.approvalQueue = action.payload;
+        const payload = action.payload;
+        if (payload && payload.data !== undefined) {
+          state.approvalQueue = payload.data;
+          state.approvalPagination = payload.pagination || null;
+        } else {
+          state.approvalQueue = payload || [];
+          state.approvalPagination = null;
+        }
         state.approvalLoading = false;
         state.approvalLoaded = true;
       })
@@ -175,10 +209,17 @@ const adminSlice = createSlice({
 
       // KYC Users
       .addCase(fetchKycUsersThunk.pending, (state) => {
-        if (!state.kycLoaded) state.kycLoading = true;
+        state.kycLoading = true;
       })
       .addCase(fetchKycUsersThunk.fulfilled, (state, action) => {
-        state.kycUsers = action.payload;
+        const payload = action.payload;
+        if (payload && payload.data !== undefined) {
+          state.kycUsers = payload.data;
+          state.kycPagination = payload.pagination || null;
+        } else {
+          state.kycUsers = payload || [];
+          state.kycPagination = null;
+        }
         state.kycLoading = false;
         state.kycLoaded = true;
       })

@@ -156,6 +156,8 @@ export default function ExhibitorTable() {
             data={sliced}
             keyField="id"
             loading={loading}
+            columnCount={COLUMNS.length}
+            columns={COLUMNS.map(c => ({ header: c.label, className: "py-3.5 px-4" }))}
             emptyMessage="No exhibitors found matching your criteria."
             renderDesktopTable={() => (
               <div className="responsive-table-wrap">
