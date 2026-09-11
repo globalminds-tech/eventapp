@@ -47,6 +47,7 @@ import SuperUserDashboard from "./features/superuser/pages/SuperUserDashboardPag
 import EventApprovalQueue from "./features/admin/approvals/pages/EventApprovalQueuePage";
 import EventInspectionDetail from "./features/superuser/pages/EventInspectionDetailPage";
 import CategoryMaster from "./features/catalog/pages/CategoryMasterPage";
+import CategoryRequestsPage from "./features/catalog/pages/CategoryRequestsPage";
 import KycVerification from "./features/admin/kyc/pages/KycVerificationPage";
 import PayoutsQueue from "./features/superuser/pages/PayoutsQueuePage";
 import { ExhibitorBillingPage } from "./features/exhibitor/pages/ExhibitorBillingPage";
@@ -227,7 +228,7 @@ export default function App() {
             {/* ── TIER 2: AUTHENTICATED ATTENDEE & ACCOUNT ROUTES ── */}
             {/* Ticket checkout requires logged-in user so passes bind to account */}
             <Route path="/usersbooking/:id" element={<ProtectedRoute allowedRoles={["user"]}><Userbooking /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute allowedRoles={["user"]}><Profile /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute allowedRoles={["user", "organizer", "exhibitor", "superuser", "admin", "superadmin"]}><Profile /></ProtectedRoute>} />
             <Route path="/my-passes" element={<ProtectedRoute allowedRoles={["user"]}><MyPassesPage /></ProtectedRoute>} />
             <Route path="/my-bookings" element={<ProtectedRoute allowedRoles={["user"]}><MyPassesPage /></ProtectedRoute>} />
             <Route path="/upgrade/organizer" element={<ProtectedRoute allowedRoles={["user"]}><UpgradeOrganizerPage /></ProtectedRoute>} />
@@ -334,6 +335,8 @@ export default function App() {
               <Route path="approvals/:eventId" element={<EventInspectionDetail />} />
               <Route path="inspection/:eventId" element={<EventInspectionDetail />} />
               <Route path="categories" element={<CategoryMaster />} />
+              <Route path="categories/requests" element={<CategoryRequestsPage />} />
+              <Route path="category-requests" element={<CategoryRequestsPage />} />
               <Route path="kyc" element={<KycVerification />} />
               <Route path="payouts" element={<AdminPayoutsPage />} />
             </Route>

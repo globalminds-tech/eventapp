@@ -2,8 +2,8 @@ import axiosClient from "@/shared/api/axiosClient";
 import { USER_ENDPOINTS } from "./user.endpoints";
 
 export const userApi = {
-  getUsers: async () => {
-    const res = await axiosClient.get(USER_ENDPOINTS.LIST);
+  getUsers: async (params = {}) => {
+    const res = await axiosClient.get(USER_ENDPOINTS.LIST, { params });
     return res.data;
   },
 

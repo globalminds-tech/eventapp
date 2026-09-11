@@ -1,66 +1,73 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import { UserCheck, CheckCircle2, ShieldCheck, X, Users, Building2, Store, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { kycApi } from "../api/kyc.api";
-import { userApi } from "../../../users/api/user.api";
+import { fetchKycUsersThunk, updateKycStatusInStore } from "@/app/store/adminSlice";
 
 export default function KycVerificationPage() {
-  const [searchParams] = useSearchParams();
-  const initialTab = (searchParams.get("tab") || "all").toLowerCase();
+  const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [usersList, setUsersList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Connect to Redux store
+  const { kycUsers, kycPagination, kycLoading } = useSelector((state) => state.admin);
+
+  const initialTab = (searchParams.get("tab") || "all").toLowerCase();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [toast, setToast] = useState(null);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
 
+  // Debounce search input by 350ms to prevent spamming backend queries
+  const debouncedSearch = useDebounce(searchQuery.trim(), 350);
+
+  // Sync tab with URL query parameter
   useEffect(() => {
     const qTab = (searchParams.get("tab") || "all").toLowerCase();
     setActiveTab(qTab);
   }, [searchParams]);
 
+  // Reset pagination to page 1 whenever debounced search query or active tab changes
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    setPage(1);
+  }, [debouncedSearch, activeTab]);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      let list = [];
-      try {
-        const res = await userApi.getUsers();
-        if (Array.isArray(res?.data)) {
-          list = res.data;
-        } else if (Array.isArray(res)) {
-          list = res;
-        } else if (Array.isArray(res?.data?.data)) {
-          list = res.data.data;
-        }
-      } catch (e) {
-        console.warn("userApi.getUsers warning:", e);
-      }
+  // Trigger server-side API query whenever debounced search, active tab, page, or limit changes
+  useEffect(() => {
+    const roleParam = (activeTab === "all" || activeTab === "pending") ? undefined : activeTab;
+    const kycParam = activeTab === "pending" ? "PENDING" : undefined;
 
-      if (list.length === 0) {
-        try {
-          const pendingRes = await kycApi.getPendingOrganizers();
-          list = Array.isArray(pendingRes?.data) ? pendingRes.data : (Array.isArray(pendingRes) ? pendingRes : []);
-        } catch (e) {
-          console.warn("kycApi.getPendingOrganizers warning:", e);
-        }
-      }
+    dispatch(fetchKycUsersThunk({
+      search: debouncedSearch,
+      role: roleParam,
+      kyc_status: kycParam,
+      page,
+      limit,
+      force: true
+    }));
+  }, [dispatch, debouncedSearch, activeTab, page, limit]);
 
-      setUsersList(list);
-    } catch (err) {
-      console.error("fetchUsers global error:", err);
-      setUsersList([]);
-    } finally {
-      setLoading(false);
-    }
+  const handleRefresh = () => {
+    const roleParam = (activeTab === "all" || activeTab === "pending") ? undefined : activeTab;
+    const kycParam = activeTab === "pending" ? "PENDING" : undefined;
+
+    dispatch(fetchKycUsersThunk({
+      search: debouncedSearch,
+      role: roleParam,
+      kyc_status: kycParam,
+      page,
+      limit,
+      force: true
+    }));
   };
 
   const showNotification = (message, type = "success") => {
@@ -69,56 +76,30 @@ export default function KycVerificationPage() {
   };
 
   const handleUpdateKyc = async (userId, newStatus) => {
+    setActionLoadingId(userId);
     try {
       await kycApi.updateKycStatus(userId, newStatus);
-      setUsersList((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, kyc_status: newStatus } : u))
-      );
+      dispatch(updateKycStatusInStore({ userId, status: newStatus }));
       showNotification(`KYC status updated to ${newStatus}!`, "success");
     } catch (err) {
-      // Local optimistic update
-      setUsersList((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, kyc_status: newStatus } : u))
-      );
+      console.error("KYC update error:", err);
+      // Optimistic fallback update in Redux store
+      dispatch(updateKycStatusInStore({ userId, status: newStatus }));
       showNotification(`KYC status updated to ${newStatus}!`, "success");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
-  const counts = {
-    all: usersList.length,
-    organizer: usersList.filter((u) => {
-      const roles = Array.isArray(u.roles) ? u.roles.map((r) => String(r).toLowerCase()) : [String(u.role || "").toLowerCase()];
-      return roles.includes("organizer");
-    }).length,
-    exhibitor: usersList.filter((u) => {
-      const roles = Array.isArray(u.roles) ? u.roles.map((r) => String(r).toLowerCase()) : [String(u.role || "").toLowerCase()];
-      return roles.includes("exhibitor");
-    }).length,
-    user: usersList.filter((u) => {
-      const roles = Array.isArray(u.roles) ? u.roles.map((r) => String(r).toLowerCase()) : [String(u.role || "").toLowerCase()];
-      return roles.includes("user") || roles.includes("attendee");
-    }).length,
-    pending: usersList.filter((u) => (u.kyc_status || "").toUpperCase() === "PENDING").length,
-  };
+  const tabs = [
+    { key: "all", label: "All Users" },
+    { key: "organizer", label: "Organizers" },
+    { key: "exhibitor", label: "Exhibitors" },
+    { key: "user", label: "Attendees" },
+    { key: "pending", label: "Pending KYC" },
+  ];
 
-  const filteredUsers = usersList.filter((u) => {
-    const matchesSearch = searchQuery
-      ? (u.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (u.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (u.company_name || "").toLowerCase().includes(searchQuery.toLowerCase())
-      : true;
-
-    const userRoles = Array.isArray(u.roles)
-      ? u.roles.map((r) => String(r).toLowerCase())
-      : [String(u.active_role || u.role || "user").toLowerCase()];
-
-    if (activeTab === "all") return matchesSearch;
-    if (activeTab === "organizer") return matchesSearch && userRoles.includes("organizer");
-    if (activeTab === "exhibitor") return matchesSearch && userRoles.includes("exhibitor");
-    if (activeTab === "user") return matchesSearch && (userRoles.includes("user") || userRoles.includes("attendee"));
-    if (activeTab === "pending") return matchesSearch && (u.kyc_status || "").toUpperCase() === "PENDING";
-    return matchesSearch;
-  });
+  const totalCount = kycPagination?.total ?? kycUsers.length;
 
   return (
     <div className="space-y-6 pb-12 select-none text-slate-800 font-sans">
@@ -138,8 +119,13 @@ export default function KycVerificationPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button onClick={fetchUsers} variant="outline" className="text-xs font-bold gap-1.5 rounded-xl cursor-pointer">
-            <RefreshCw size={14} className={loading ? "animate-spin text-purple-600" : "text-slate-500"} />
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            disabled={kycLoading}
+            className="text-xs font-bold gap-1.5 rounded-xl cursor-pointer"
+          >
+            <RefreshCw size={14} className={kycLoading ? "animate-spin text-purple-600" : "text-slate-500"} />
             <span>Refresh Users</span>
           </Button>
         </div>
@@ -152,73 +138,113 @@ export default function KycVerificationPage() {
         </div>
       )}
 
-      {/* ── FILTER TABS BAR ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-1 overflow-x-auto touch-scroll w-full sm:w-auto max-w-full">
-          {[
-            { key: "all", label: "All Users", count: counts.all },
-            { key: "organizer", label: "Organizers", count: counts.organizer },
-            { key: "exhibitor", label: "Exhibitors", count: counts.exhibitor },
-            { key: "user", label: "Attendees", count: counts.user },
-            { key: "pending", label: "Pending KYC", count: counts.pending, alert: counts.pending > 0 },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === t.key
-                  ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                  : "bg-transparent text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              <span>{t.label}</span>
-              <span
-                className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
-                  activeTab === t.key
-                    ? "bg-white/25 text-white"
-                    : t.alert
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-slate-100 text-slate-600"
+      {/* ── FILTER TABS ROW ── */}
+      <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          {tabs.map((t) => {
+            const isActive = activeTab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => {
+                  setActiveTab(t.key);
+                  setSearchParams(t.key === "all" ? {} : { tab: t.key });
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
+                    : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/70"
                 }`}
               >
-                {t.count}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
-          <input
-            type="text"
-            placeholder="Search name, email, company..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500"
-          />
+                <span>{t.label}</span>
+                {isActive && (
+                  <span className="px-1.5 py-0.2 text-[10px] rounded-full font-bold bg-white/25 text-white">
+                    {totalCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ── KYC DATA TABLE ── */}
-      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl p-4">
+      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+        {/* Table Toolbar Header with Integrated Search */}
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
+              Users &amp; Organizations Directory
+            </h2>
+            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-extrabold text-[11px]">
+              {totalCount} {totalCount === 1 ? "User" : "Users"}
+            </Badge>
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+            <input
+              type="text"
+              placeholder="Search name, email, company..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500 transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold border-none bg-transparent cursor-pointer"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
         <ResponsiveTableView
-          data={filteredUsers}
+          data={kycUsers}
           keyField="id"
-          loading={loading}
+          loading={kycLoading}
+          columnCount={6}
+          mobileContainerClassName="p-3 sm:p-4"
+          containerClassName="p-0"
+          columns={[
+            { header: "User Details", className: "p-3.5 pl-5" },
+            { header: "Role", className: "p-3.5" },
+            { header: "Company / GST", className: "p-3.5" },
+            { header: "Bank Payout Info", className: "p-3.5" },
+            { header: "KYC Status", className: "p-3.5 text-center" },
+            { header: "Verification Action", className: "p-3.5 pr-5 text-right" },
+          ]}
           emptyMessage={
-            activeTab === "pending"
+            debouncedSearch
+              ? `No user accounts found matching "${debouncedSearch}".`
+              : activeTab === "pending"
               ? "No pending KYC applications. All registered accounts are verified!"
               : "No user accounts found matching this criteria."
           }
           emptyAction={
-            activeTab !== "all" ? (
+            searchQuery ? (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => setSearchQuery("")}
+                className="text-xs font-bold mt-1 text-purple-700 border-purple-200 hover:bg-purple-50 cursor-pointer"
+              >
+                Clear Search Query
+              </Button>
+            ) : activeTab !== "all" ? (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setActiveTab("all")}
-                className="text-xs font-bold mt-2 text-purple-700 border-purple-200"
+                onClick={() => {
+                  setActiveTab("all");
+                  setSearchParams({});
+                }}
+                className="text-xs font-bold mt-2 text-purple-700 border-purple-200 cursor-pointer"
               >
-                View All Users ({usersList.length})
+                View All Users
               </Button>
             ) : null
           }
@@ -236,8 +262,9 @@ export default function KycVerificationPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
-                  {filteredUsers.map((u) => {
+                  {kycUsers.map((u) => {
                     const kStatus = (u.kyc_status || "VERIFIED").toUpperCase();
+                    const isRowActionLoading = actionLoadingId === u.id;
 
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
@@ -277,6 +304,7 @@ export default function KycVerificationPage() {
                             {kStatus !== "VERIFIED" ? (
                               <Button
                                 size="xs"
+                                disabled={isRowActionLoading}
                                 onClick={() => handleUpdateKyc(u.id, "VERIFIED")}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none shadow-xs"
                               >
@@ -286,6 +314,7 @@ export default function KycVerificationPage() {
                               <Button
                                 size="xs"
                                 variant="outline"
+                                disabled={isRowActionLoading}
                                 onClick={() => handleUpdateKyc(u.id, "PENDING")}
                                 className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[11px] cursor-pointer"
                               >
@@ -303,6 +332,8 @@ export default function KycVerificationPage() {
           )}
           renderMobileCard={(u) => {
             const kStatus = (u.kyc_status || "VERIFIED").toUpperCase();
+            const isRowActionLoading = actionLoadingId === u.id;
+
             return (
               <MobileDataCard key={u.id}>
                 <MobileDataCard.Header
@@ -330,6 +361,7 @@ export default function KycVerificationPage() {
                   {kStatus !== "VERIFIED" ? (
                     <Button
                       size="sm"
+                      disabled={isRowActionLoading}
                       onClick={() => handleUpdateKyc(u.id, "VERIFIED")}
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer border-none shadow-xs h-9 rounded-xl flex items-center justify-center gap-1.5"
                     >
@@ -340,6 +372,7 @@ export default function KycVerificationPage() {
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={isRowActionLoading}
                       onClick={() => handleUpdateKyc(u.id, "PENDING")}
                       className="w-full text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-xs cursor-pointer h-9 rounded-xl"
                     >
@@ -349,6 +382,18 @@ export default function KycVerificationPage() {
                 </MobileDataCard.Actions>
               </MobileDataCard>
             );
+          }}
+        />
+
+        {/* ── Table Pagination Footer ── */}
+        <TablePagination
+          pagination={kycPagination}
+          page={page}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
           }}
         />
       </Card>

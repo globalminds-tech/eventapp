@@ -102,6 +102,10 @@ export default function FirstLoginPasswordModal({
       sessionStorage.setItem("active_role", activeRole);
       localStorage.setItem("roles", JSON.stringify(allRoles));
       sessionStorage.setItem("roles", JSON.stringify(allRoles));
+      if (activeToken) {
+        localStorage.setItem("token", activeToken);
+        sessionStorage.setItem("token", activeToken);
+      }
 
       if (onSuccess) {
         onSuccess(sanitizedUser);

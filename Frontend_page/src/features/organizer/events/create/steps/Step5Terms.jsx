@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getPolicies, createPolicy } from "@/Services/api";
 import { useSelector } from "react-redux";
-import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit, FileText } from "lucide-react";
+import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit, FileText, ExternalLink } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
+import { ENV } from "@/config/env";
 import AddPolicyModal from "../../../master-data/components/AddPolicyModal";
 import Step4Documents from "./Step4Documents";
 
 const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
   const [policyData, setPolicyData] = useState({});
+  const [policyMetaMap, setPolicyMetaMap] = useState({});
   const [policyGroup, setPolicyGroup] = useState("");
   const [policyType, setPolicyType] = useState("");
   const [policyName, setPolicyName] = useState("");
@@ -15,6 +17,7 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewDescription, setViewDescription] = useState("");
+  const [viewPolicyItem, setViewPolicyItem] = useState(null);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
@@ -60,6 +63,7 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
       const res = await getPolicies(organizer?.id || 1);
       const data = res?.data || res;
       const grouped = {};
+      const metaMap = {};
 
       if (Array.isArray(data) && data.length > 0) {
         data.forEach((item) => {
@@ -72,6 +76,17 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
             if (!grouped[group]) grouped[group] = {};
             if (!grouped[group][type]) grouped[group][type] = {};
             grouped[group][type][name] = desc;
+
+            const key = `${group}:::${type}:::${name}`;
+            metaMap[key] = {
+              document_file:
+                item.document_file ||
+                item.file_path ||
+                item.documents?.[0]?.document_file ||
+                item.documents?.[0]?.file_path ||
+                "",
+              documents: item.documents || [],
+            };
           }
         });
       } else if (typeof data === "object" && data !== null && Object.keys(data).length > 0) {
@@ -79,10 +94,33 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
       }
 
       setPolicyData(grouped);
+      setPolicyMetaMap(metaMap);
     } catch (error) {
       console.error("Failed to load policies", error);
       setPolicyData({});
+      setPolicyMetaMap({});
     }
+  };
+
+  const getFullUrl = (path) => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    return `${ENV.API_BASE_URL}${path}`;
+  };
+
+  const getSelectedPolicyMeta = () => {
+    if (!policyGroup || !policyType || !policyName) return null;
+    let exactGroup = policyGroup;
+    if (policyGroup === "All") {
+      for (const g of Object.keys(policyData)) {
+        if (policyData[g][policyType] && policyData[g][policyType][policyName]) {
+          exactGroup = g;
+          break;
+        }
+      }
+    }
+    const key = `${exactGroup}:::${policyType}:::${policyName}`;
+    return policyMetaMap[key] || null;
   };
 
   const showNotification = (message, type = "success") => {
@@ -156,7 +194,16 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
       description = policyData[policyGroup][policyType][policyName] || "";
     }
 
-    const newPolicyItem = { policyGroup: exactGroup, policyType, policyName, description, isDefault };
+    const meta = getSelectedPolicyMeta();
+    const newPolicyItem = {
+      policyGroup: exactGroup,
+      policyType,
+      policyName,
+      description,
+      isDefault,
+      document_file: meta?.document_file || "",
+      documents: meta?.documents || [],
+    };
     const existing = formData.terms || [];
 
     const isDuplicate = existing.some(
@@ -392,7 +439,7 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
                 )}
               </div>
             </div>
-            {/* DESCRIPTION PREVIEW */}
+            {/* DESCRIPTION PREVIEW & ATTACHED DOCUMENT */}
             {policyName && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <label className={labelClasses}>Policy Description Preview</label>
@@ -400,6 +447,37 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
                   className="w-full px-6 py-4 rounded-3xl border border-slate-200 bg-slate-50 text-xs text-slate-600 max-h-40 overflow-y-auto custom-scrollbar policy-desc-view whitespace-pre-wrap shadow-inner"
                   dangerouslySetInnerHTML={{ __html: getSelectedDescription() || "<i>No description available for this policy.</i>" }}
                 />
+
+                {(() => {
+                  const meta = getSelectedPolicyMeta();
+                  if (!meta || !meta.document_file) return null;
+                  return (
+                    <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 overflow-hidden">
+                        <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 shrink-0">
+                          <FileText size={15} />
+                        </div>
+                        <div className="text-xs truncate">
+                          <span className="font-extrabold text-slate-900 block">
+                            Attached Additional Document
+                          </span>
+                          <p className="text-[10px] text-slate-500 font-medium truncate">
+                            Supplementary policy guideline or compliance document
+                          </p>
+                        </div>
+                      </div>
+
+                      <a
+                        href={getFullUrl(meta.document_file)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-600 hover:text-white text-[11px] font-bold transition-all shadow-2xs"
+                      >
+                        <ExternalLink size={12} /> View File
+                      </a>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -457,6 +535,7 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
                     <th className="px-6 py-4 font-black text-[10px] tracking-widest">Group</th>
                     <th className="px-6 py-4 font-black text-[10px] tracking-widest">Name</th>
                     <th className="px-6 py-4 font-black text-[10px] tracking-widest">Type</th>
+                    <th className="px-6 py-4 font-black text-[10px] tracking-widest">Additional Document</th>
                     <th className="px-6 py-4 font-black text-[10px] tracking-widest text-center">Info</th>
                     <th className="px-6 py-4 font-black text-[10px] tracking-widest text-center">Default</th>
                   </tr>
@@ -464,7 +543,7 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
                 <tbody className="divide-y divide-slate-50">
                   {currentTerms.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-20 text-center">
+                      <td colSpan="7" className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center justify-center text-slate-300">
                           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                             <Info size={32} />
@@ -509,10 +588,28 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
                               {p.policyType || p.policy_type || "General"}
                             </span>
                           </td>
+                          <td className="px-6 py-4">
+                            {p.document_file ? (
+                              <a
+                                href={getFullUrl(p.document_file)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200 text-[10px] font-bold hover:bg-cyan-100 transition-colors"
+                                title="Open Additional Document"
+                              >
+                                <FileText size={12} className="text-cyan-600" />
+                                <span>View Document</span>
+                                <ExternalLink size={10} className="text-cyan-600" />
+                              </a>
+                            ) : (
+                              <span className="text-slate-300 text-xs">—</span>
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => {
                                 setViewDescription(p.description || p.details || p.policyName || p.policy_name || "No additional description provided.");
+                                setViewPolicyItem(p);
                                 setShowViewModal(true);
                               }}
                               className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-full transition-all"
@@ -547,20 +644,20 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
         </div>
       </div>
 
-      {/* MODAL: VIEW DESCRIPTION */}
+      {/* MODAL: VIEW DESCRIPTION & DOCUMENT DETAILS */}
       {showViewModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex justify-center items-center z-[5000] p-4 animate-in fade-in duration-300">
           <div className="w-full max-w-3xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
             <div className="bg-slate-50 px-10 py-8 border-b border-slate-100 flex justify-between items-center shrink-0">
               <div>
                 <h3 className="text-xl font-black text-slate-800 tracking-tight">Policy Insight</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Detailed terms overview</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Detailed terms & compliance overview</p>
               </div>
-              <button onClick={() => setShowViewModal(false)} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-200 transition-all shadow-sm">
+              <button onClick={() => { setShowViewModal(false); setViewPolicyItem(null); }} className="w-10 h-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-200 transition-all shadow-sm">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-10 overflow-y-auto custom-scrollbar flex-1">
+            <div className="p-10 overflow-y-auto custom-scrollbar flex-1 space-y-6">
               <div className="relative">
                 <div className="absolute -top-4 -left-4 text-purple-100 opacity-50"><Info size={40} /></div>
                 <div 
@@ -568,9 +665,33 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
                   dangerouslySetInnerHTML={{ __html: viewDescription || "<i>No detailed description provided for this specific policy.</i>" }}
                 />
               </div>
+
+              {viewPolicyItem && viewPolicyItem.document_file && (
+                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                        <FileText size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-slate-800">Attached Additional Document</h4>
+                        <p className="text-[11px] text-slate-500 font-medium">Supplementary compliance document or agreement</p>
+                      </div>
+                    </div>
+                    <a
+                      href={getFullUrl(viewPolicyItem.document_file)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 text-xs font-bold transition-all shadow-sm"
+                    >
+                      <ExternalLink size={14} /> View File
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="px-10 py-6 bg-slate-50 flex justify-end shrink-0">
-              <button onClick={() => setShowViewModal(false)} className="px-8 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 hover:scale-105 transition-all">
+              <button onClick={() => { setShowViewModal(false); setViewPolicyItem(null); }} className="px-8 py-2 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 hover:scale-105 transition-all">
                 Acknowledge
               </button>
             </div>

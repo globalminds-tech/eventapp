@@ -2,8 +2,8 @@ import axiosClient from "@/shared/api/axiosClient";
 import { KYC_ENDPOINTS } from "./kyc.endpoints";
 
 export const kycApi = {
-  getPendingOrganizers: async () => {
-    const res = await axiosClient.get(KYC_ENDPOINTS.PENDING_ORGANIZERS);
+  getPendingOrganizers: async (params = {}) => {
+    const res = await axiosClient.get(KYC_ENDPOINTS.PENDING_ORGANIZERS, { params });
     return res.data;
   },
 

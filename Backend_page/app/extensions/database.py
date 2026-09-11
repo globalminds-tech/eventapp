@@ -22,11 +22,11 @@ def create_supabase_engine():
     engine = create_engine(
         db_url,
         pool_pre_ping=True,
-        pool_recycle=180,
-        pool_size=10,
-        max_overflow=20,
+        pool_recycle=120,
+        pool_size=15,
+        max_overflow=5,
         connect_args={
-            "connect_timeout": 5,
+            "connect_timeout": 10,
             "keepalives": 1,
             "keepalives_idle": 10,
             "keepalives_interval": 5,

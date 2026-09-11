@@ -107,18 +107,58 @@ class AdminService:
             }
 
     @staticmethod
-    def get_events(host_url: str = "", organizer_id: str = None, only_approved: bool = False) -> list[dict]:
+    def get_events(
+        host_url: str = "",
+        organizer_id: str = None,
+        only_approved: bool = False,
+        search: str = None,
+        status: str = None,
+        page: int = None,
+        limit: int = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc"
+    ):
         from app.extensions.database import SessionLocal
-        from sqlalchemy import or_, func
+        from app.common.pagination import build_pagination_metadata
+        from sqlalchemy import or_, func, desc, asc
         import uuid
         session = SessionLocal()
         try:
-            stmt = select(EventDetails).where(EventDetails.deleted_at.is_(None)).order_by(desc(EventDetails.created_at))
+            stmt = select(EventDetails).where(EventDetails.deleted_at.is_(None))
 
             if only_approved:
                 stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "SUSPENDED"]))
-                # Hide concluded events whose date is over from the public user & exhibitor catalog
                 stmt = stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date) >= func.current_date())
+
+            if status and status.strip().upper() != "ALL":
+                st = status.strip().upper()
+                if st == "LIVE":
+                    stmt = stmt.where(func.upper(EventDetails.status).in_(["LIVE", "ACTIVE"]))
+                elif st == "UPCOMING":
+                    stmt = stmt.where(func.upper(EventDetails.status).in_(["UPCOMING", "APPROVED", "PUBLISHED"]))
+                elif st == "COMPLETED":
+                    stmt = stmt.where(func.upper(EventDetails.status).in_(["COMPLETED", "PAST"]))
+                elif st == "PENDING":
+                    stmt = stmt.where(func.upper(EventDetails.status).in_(["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"]))
+                elif st == "APPROVED":
+                    stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"]))
+                elif st == "REJECTED":
+                    stmt = stmt.where(func.upper(EventDetails.status) == "REJECTED")
+                elif st == "SUSPENDED":
+                    stmt = stmt.where(func.upper(EventDetails.status) == "SUSPENDED")
+                else:
+                    stmt = stmt.where(func.upper(EventDetails.status) == st)
+
+            if search and search.strip():
+                clean_term = f"%{search.strip().lower()[:100]}%"
+                stmt = stmt.where(or_(
+                    func.lower(func.coalesce(EventDetails.event_name, "")).like(clean_term),
+                    func.lower(func.coalesce(EventDetails.event_code, "")).like(clean_term),
+                    func.lower(func.coalesce(EventDetails.category, "")).like(clean_term),
+                    func.lower(func.coalesce(EventDetails.sub_category, "")).like(clean_term),
+                    func.lower(func.coalesce(EventDetails.venue, "")).like(clean_term),
+                    func.lower(func.coalesce(EventDetails.address, "")).like(clean_term)
+                ))
 
             if organizer_id:
                 org_str = str(organizer_id).strip()
@@ -137,9 +177,72 @@ class AdminService:
 
                 stmt = stmt.where(or_(*filter_conds))
 
+            # Deterministic sorting
+            sort_field = EventDetails.created_at
+            if sort_by == "event_name" or sort_by == "name":
+                sort_field = EventDetails.event_name
+            elif sort_by == "start_date" or sort_by == "date":
+                sort_field = EventDetails.start_date
+
+            if sort_order == "asc":
+                stmt = stmt.order_by(asc(sort_field), desc(EventDetails.id))
+            else:
+                stmt = stmt.order_by(desc(sort_field), desc(EventDetails.id))
+
+            # Count query for pagination metadata
+            pagination_info = None
+            if page is not None or limit is not None:
+                safe_page = max(1, int(page or 1))
+                safe_limit = min(max(1, int(limit or 20)), 100)
+
+                count_stmt = select(func.count(EventDetails.id)).where(EventDetails.deleted_at.is_(None))
+                if only_approved:
+                    count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "SUSPENDED"]))
+                    count_stmt = count_stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date) >= func.current_date())
+                if status and status.strip().upper() != "ALL":
+                    st = status.strip().upper()
+                    if st == "LIVE":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["LIVE", "ACTIVE"]))
+                    elif st == "UPCOMING":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["UPCOMING", "APPROVED", "PUBLISHED"]))
+                    elif st == "COMPLETED":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["COMPLETED", "PAST"]))
+                    elif st == "PENDING":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"]))
+                    elif st == "APPROVED":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"]))
+                    elif st == "REJECTED":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status) == "REJECTED")
+                    elif st == "SUSPENDED":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status) == "SUSPENDED")
+                    else:
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status) == st)
+                if search and search.strip():
+                    clean_term = f"%{search.strip().lower()[:100]}%"
+                    count_stmt = count_stmt.where(or_(
+                        func.lower(func.coalesce(EventDetails.event_name, "")).like(clean_term),
+                        func.lower(func.coalesce(EventDetails.event_code, "")).like(clean_term),
+                        func.lower(func.coalesce(EventDetails.category, "")).like(clean_term),
+                        func.lower(func.coalesce(EventDetails.sub_category, "")).like(clean_term),
+                        func.lower(func.coalesce(EventDetails.venue, "")).like(clean_term),
+                        func.lower(func.coalesce(EventDetails.address, "")).like(clean_term)
+                    ))
+                if organizer_id:
+                    count_stmt = count_stmt.where(or_(*filter_conds))
+
+                total_records = session.scalar(count_stmt) or 0
+                offset = (safe_page - 1) * safe_limit
+                stmt = stmt.offset(offset).limit(safe_limit)
+                pagination_info = build_pagination_metadata(total=total_records, page=safe_page, limit=safe_limit)
+
             events = session.scalars(stmt).all()
 
             if not events:
+                if pagination_info is not None:
+                    return {
+                        "events": [],
+                        "pagination": pagination_info
+                    }
                 return []
 
             event_ids = [e.id for e in events]
@@ -161,8 +264,8 @@ class AdminService:
             bookings_list = session.scalars(select(ExhibitorStallBooking).where(ExhibitorStallBooking.event_id.in_(event_ids))).all()
             stalls_booked_map = {}
             for b in bookings_list:
-                status = str(b.status or "").lower()
-                if status in ["approved", "confirmed", "paid"]:
+                status_b = str(b.status or "").lower()
+                if status_b in ["approved", "confirmed", "paid"]:
                     stalls_booked_map[b.event_id] = stalls_booked_map.get(b.event_id, 0) + 1
 
             from app.models.booking import UserBookingDetails
@@ -223,6 +326,12 @@ class AdminService:
                     "image": b_url,
                     "banner_preview": b_url
                 })
+
+            if pagination_info is not None:
+                return {
+                    "events": events_list,
+                    "pagination": pagination_info
+                }
             return events_list
         except Exception as e:
             print("Failed to load events from DB:", e)
@@ -336,11 +445,96 @@ class AdminService:
         return {"message": f"Organizer KYC status updated to {data.status}"}
 
     @staticmethod
-    def get_all_users() -> list[dict]:
+    def get_all_users(
+        search: str = None,
+        role: str = None,
+        kyc_status: str = None,
+        page: int = None,
+        limit: int = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc"
+    ):
         from app.models.organizer_profile import OrganizerProfile
         from app.models.exhibitor_profile import ExhibitorProfile
+        from app.common.pagination import build_pagination_metadata
+        from sqlalchemy import or_, func, desc, asc, String
 
-        stmt = select(User).order_by(desc(User.created_at))
+        stmt = select(User)
+
+        if search and search.strip():
+            clean_term = f"%{search.strip().lower()[:100]}%"
+            stmt = stmt.where(or_(
+                func.lower(func.coalesce(User.name, "")).like(clean_term),
+                func.lower(func.coalesce(User.email, "")).like(clean_term),
+                func.lower(func.coalesce(User.mobile, "")).like(clean_term),
+                func.lower(func.coalesce(User.organization_name, "")).like(clean_term)
+            ))
+
+        if role and role.strip().lower() != "all":
+            r = role.strip().lower()
+            stmt = stmt.where(or_(
+                func.lower(func.cast(User.roles, String)).like(f"%{r}%"),
+                func.lower(func.coalesce(User.active_role, "")).like(f"%{r}%")
+            ))
+
+        if kyc_status and kyc_status.strip().lower() != "all":
+            k_val = kyc_status.strip().upper()
+            stmt = stmt.outerjoin(OrganizerProfile, OrganizerProfile.user_id == User.id)\
+                       .outerjoin(ExhibitorProfile, ExhibitorProfile.user_id == User.id)
+            if k_val == "PENDING":
+                stmt = stmt.where(or_(
+                    func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == "PENDING",
+                    func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == "PENDING"
+                ))
+            else:
+                stmt = stmt.where(or_(
+                    func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == k_val,
+                    func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == k_val
+                ))
+
+        # Deterministic sort
+        stmt = stmt.order_by(desc(User.created_at), desc(User.id))
+
+        pagination_info = None
+        if page is not None or limit is not None:
+            safe_page = max(1, int(page or 1))
+            safe_limit = min(max(1, int(limit or 20)), 100)
+
+            count_stmt = select(func.count(User.id))
+            if search and search.strip():
+                clean_term = f"%{search.strip().lower()[:100]}%"
+                count_stmt = count_stmt.where(or_(
+                    func.lower(func.coalesce(User.name, "")).like(clean_term),
+                    func.lower(func.coalesce(User.email, "")).like(clean_term),
+                    func.lower(func.coalesce(User.mobile, "")).like(clean_term),
+                    func.lower(func.coalesce(User.organization_name, "")).like(clean_term)
+                ))
+            if role and role.strip().lower() != "all":
+                r = role.strip().lower()
+                count_stmt = count_stmt.where(or_(
+                    func.lower(func.cast(User.roles, String)).like(f"%{r}%"),
+                    func.lower(func.coalesce(User.active_role, "")).like(f"%{r}%")
+                ))
+            if kyc_status and kyc_status.strip().lower() != "all":
+                k_val = kyc_status.strip().upper()
+                count_stmt = count_stmt.outerjoin(OrganizerProfile, OrganizerProfile.user_id == User.id)\
+                                       .outerjoin(ExhibitorProfile, ExhibitorProfile.user_id == User.id)
+                if k_val == "PENDING":
+                    count_stmt = count_stmt.where(or_(
+                        func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == "PENDING",
+                        func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == "PENDING"
+                    ))
+                else:
+                    count_stmt = count_stmt.where(or_(
+                        func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == k_val,
+                        func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == k_val
+                    ))
+
+            total_users = db.session.scalar(count_stmt) or 0
+            offset = (safe_page - 1) * safe_limit
+            stmt = stmt.offset(offset).limit(safe_limit)
+            pagination_info = build_pagination_metadata(total=total_users, page=safe_page, limit=safe_limit)
+
         users = db.session.scalars(stmt).all()
         user_list = []
         for u in users:
@@ -417,6 +611,11 @@ class AdminService:
             gst_pan = gst_pan or getattr(u, "gst_pan", None) or "N/A"
             kyc_st = kyc_st or "VERIFIED"
 
+            # Filter by KYC status if requested
+            if kyc_status and kyc_status.strip().lower() != "all":
+                if kyc_st.upper() != kyc_status.strip().upper():
+                    continue
+
             user_list.append({
                 "id": str(u.id),
                 "name": u.name or "Unnamed User",
@@ -431,6 +630,12 @@ class AdminService:
                 "kyc_status": kyc_st,
                 "created_at": str(getattr(u, "created_at", "")) if getattr(u, "created_at", None) else None
             })
+
+        if pagination_info is not None:
+            return {
+                "users": user_list,
+                "pagination": pagination_info
+            }
         return user_list
 
 

@@ -380,6 +380,14 @@ export const ExhibitorLeadsPage = () => {
             data={leads}
             keyField="id"
             loading={loadingLeads}
+            columnCount={5}
+            columns={[
+              { header: "Visitor & Company", className: "py-3.5 px-4" },
+              { header: "Contact Info", className: "py-3.5 px-4" },
+              { header: "Buying Intent", className: "py-3.5 px-4" },
+              { header: "Logged Notes", className: "py-3.5 px-4" },
+              { header: "Logged Time", className: "py-3.5 px-4 text-right" },
+            ]}
             emptyMessage="No buyer leads scanned or logged yet for this expo."
             renderDesktopTable={() => (
               <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">
@@ -463,6 +471,14 @@ export const ExhibitorLeadsPage = () => {
             data={staffPasses}
             keyField="id"
             loading={false}
+            columnCount={5}
+            columns={[
+              { header: "Staff Name & Designation", className: "py-3.5 px-4" },
+              { header: "Mobile", className: "py-3.5 px-4" },
+              { header: "Gate Pass Code", className: "py-3.5 px-4" },
+              { header: "Pass Status", className: "py-3.5 px-4" },
+              { header: "Actions", className: "py-3.5 px-4 text-right" },
+            ]}
             emptyMessage="No booth staff passes assigned yet."
             renderDesktopTable={() => (
               <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">

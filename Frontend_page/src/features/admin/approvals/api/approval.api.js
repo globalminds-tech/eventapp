@@ -2,8 +2,8 @@ import axiosClient from "@/shared/api/axiosClient";
 import { APPROVAL_ENDPOINTS } from "./approval.endpoints";
 
 export const approvalApi = {
-  getEvents: async () => {
-    const res = await axiosClient.get(APPROVAL_ENDPOINTS.LIST);
+  getEvents: async (params = {}) => {
+    const res = await axiosClient.get(APPROVAL_ENDPOINTS.LIST, { params });
     return res.data;
   },
 
