@@ -146,8 +146,13 @@ async def create_sponsor_route(request: Request):
 async def create_policy_route(request: Request):
     data = await request.json()
     user_id = data.get("organizer_id")
-    result = OrganizerController.create_policy(data, user_id)
-    return { "success": True, "message": "Policy created successfully", "data": result }
+    try:
+        result = OrganizerController.create_policy(data, user_id)
+        return { "success": True, "message": "Policy created successfully", "data": result }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @root_organizer_router.get("/superadmin/api/all-policies/{organizer_id}")
 @root_organizer_router.get("/superadmin/api/all-policies")
@@ -201,8 +206,13 @@ def delete_venue_route(venue_id: str):
 @root_organizer_router.patch("/superadmin/api/update_policy/{policy_id}")
 async def update_policy_route(policy_id: str, request: Request):
     data = await request.json()
-    result = OrganizerController.update_policy(policy_id, data)
-    return result
+    try:
+        result = OrganizerController.update_policy(policy_id, data)
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @root_organizer_router.delete("/superadmin/api/delete-policy/{policy_id}")
 @root_organizer_router.delete("/superadmin/api/delete_policy/{policy_id}")

@@ -30,7 +30,7 @@ class OrganizerService:
                 try:
                     import uuid as uuid_mod
                     org_uuid = uuid_mod.UUID(str(organizer_id))
-                    stmt = stmt.where(Venue.organizer_id == org_uuid)
+                    stmt = stmt.where((Venue.organizer_id == org_uuid) | (Venue.organizer_id.is_(None)))
                 except Exception:
                     pass
             stmt = stmt.order_by(Venue.created_at.desc())
@@ -38,19 +38,25 @@ class OrganizerService:
             result = []
             if venues:
                 from app.models.venue import VenueDocument
-                for v in venues:
-                    v_dict = v.to_dict()
-                    doc_stmt = select(VenueDocument).where(VenueDocument.venue_id == v.id)
-                    docs = db.session.scalars(doc_stmt).all()
-                    v_dict["documents"] = [{
+                v_ids = [v.id for v in venues]
+                doc_stmt = select(VenueDocument).where(VenueDocument.venue_id.in_(v_ids))
+                all_docs = db.session.scalars(doc_stmt).all()
+                doc_map = {}
+                for d in all_docs:
+                    if d.venue_id not in doc_map:
+                        doc_map[d.venue_id] = []
+                    doc_map[d.venue_id].append({
                         "document_type": d.document_type,
                         "document_number": d.document_number,
                         "document_file": d.document_file
-                    } for d in docs]
+                    })
+                for v in venues:
+                    v_dict = v.to_dict()
+                    v_dict["documents"] = doc_map.get(v.id, [])
                     result.append(v_dict)
             return result
-        except Exception:
-            pass
+        except Exception as e:
+            print("[get_venues error]:", e)
         return []
 
     @staticmethod
@@ -130,38 +136,43 @@ class OrganizerService:
                 try:
                     import uuid as uuid_mod
                     org_uuid = uuid_mod.UUID(str(organizer_id))
-                    stmt = stmt.where(SponsorDetails.organizer_id == org_uuid)
+                    stmt = stmt.where((SponsorDetails.organizer_id == org_uuid) | (SponsorDetails.organizer_id.is_(None)))
                 except Exception:
                     pass
             stmt = stmt.order_by(SponsorDetails.created_at.desc())
             sponsors = db.session.scalars(stmt).all()
             result = []
-            for s in sponsors:
-                if not s.sponsor_name:
-                    continue
-                # Fetch documents
+            if sponsors:
                 from app.models.sponsor import SponsorDocument
-                doc_stmt = select(SponsorDocument).where(SponsorDocument.sponsor_id == s.id)
-                docs = db.session.scalars(doc_stmt).all()
-                docs_list = [{
-                    "document_type": d.document_type,
-                    "document_number": d.document_number,
-                    "document_file": d.document_file
-                } for d in docs]
-                
-                result.append({
-                    "id": str(s.id),
-                    "sponsor_name": s.sponsor_name,
-                    "primary_contact": s.primary_contact,
-                    "secondary_contact": s.secondary_contact,
-                    "mail_id": s.mail_id,
-                    "address": s.address,
-                    "status": s.status,
-                    "documents": docs_list,
-                    "created_at": str(s.created_at) if s.created_at else None
-                })
+                s_ids = [s.id for s in sponsors]
+                doc_stmt = select(SponsorDocument).where(SponsorDocument.sponsor_id.in_(s_ids))
+                all_docs = db.session.scalars(doc_stmt).all()
+                doc_map = {}
+                for d in all_docs:
+                    if d.sponsor_id not in doc_map:
+                        doc_map[d.sponsor_id] = []
+                    doc_map[d.sponsor_id].append({
+                        "document_type": d.document_type,
+                        "document_number": d.document_number,
+                        "document_file": d.document_file
+                    })
+                for s in sponsors:
+                    if not s.sponsor_name:
+                        continue
+                    result.append({
+                        "id": str(s.id),
+                        "sponsor_name": s.sponsor_name,
+                        "primary_contact": s.primary_contact,
+                        "secondary_contact": s.secondary_contact,
+                        "mail_id": s.mail_id,
+                        "address": s.address,
+                        "status": s.status,
+                        "documents": doc_map.get(s.id, []),
+                        "created_at": str(s.created_at) if s.created_at else None
+                    })
             return result
-        except Exception:
+        except Exception as e:
+            print("[get_sponsors error]:", e)
             return []
 
     @staticmethod
@@ -175,46 +186,51 @@ class OrganizerService:
                 try:
                     import uuid as uuid_mod
                     org_uuid = uuid_mod.UUID(str(organizer_id))
-                    stmt = stmt.where(VendorDetails.organizer_id == org_uuid)
+                    stmt = stmt.where((VendorDetails.organizer_id == org_uuid) | (VendorDetails.organizer_id.is_(None)))
                 except Exception:
                     pass
             stmt = stmt.order_by(VendorDetails.created_at.desc())
             vendors = db.session.scalars(stmt).all()
             result = []
-            for v in vendors:
-                # Fetch documents
+            if vendors:
                 from app.models.vendor import VendorDocument
-                doc_stmt = select(VendorDocument).where(VendorDocument.vendor_id == v.id)
-                docs = db.session.scalars(doc_stmt).all()
-                docs_list = [{
-                    "document_type": d.document_type,
-                    "document_number": d.document_number,
-                    "document_file": d.document_file
-                } for d in docs]
-                
-                result.append({
-                    "id": str(v.id),
-                    "vendor_type": v.vendor_type,
-                    "vendor_name": v.vendor_name,
-                    "company_name": v.company_name,
-                    "primary_contact": v.primary_contact,
-                    "secondary_contact": v.secondary_contact,
-                    "mail_id": v.mail_id,
-                    "country": v.country,
-                    "state": v.state,
-                    "city": v.city,
-                    "address": v.address,
-                    "bank_name": v.bank_name,
-                    "account_holder": v.account_holder,
-                    "ifsc_code": v.ifsc_code,
-                    "account_number": v.account_number,
-                    "status": v.status,
-                    "bank_passbook": v.bank_passbook,
-                    "documents": docs_list,
-                    "created_at": str(v.created_at) if v.created_at else None
-                })
+                v_ids = [v.id for v in vendors]
+                doc_stmt = select(VendorDocument).where(VendorDocument.vendor_id.in_(v_ids))
+                all_docs = db.session.scalars(doc_stmt).all()
+                doc_map = {}
+                for d in all_docs:
+                    if d.vendor_id not in doc_map:
+                        doc_map[d.vendor_id] = []
+                    doc_map[d.vendor_id].append({
+                        "document_type": d.document_type,
+                        "document_number": d.document_number,
+                        "document_file": d.document_file
+                    })
+                for v in vendors:
+                    result.append({
+                        "id": str(v.id),
+                        "vendor_type": v.vendor_type,
+                        "vendor_name": v.vendor_name,
+                        "company_name": v.company_name,
+                        "primary_contact": v.primary_contact,
+                        "secondary_contact": v.secondary_contact,
+                        "mail_id": v.mail_id,
+                        "country": v.country,
+                        "state": v.state,
+                        "city": v.city,
+                        "address": v.address,
+                        "bank_name": v.bank_name,
+                        "account_holder": v.account_holder,
+                        "ifsc_code": v.ifsc_code,
+                        "account_number": v.account_number,
+                        "status": v.status,
+                        "bank_passbook": v.bank_passbook,
+                        "documents": doc_map.get(v.id, []),
+                        "created_at": str(v.created_at) if v.created_at else None
+                    })
             return result
-        except Exception:
+        except Exception as e:
+            print("[get_vendors error]:", e)
             return []
 
     @staticmethod
@@ -307,19 +323,46 @@ class OrganizerService:
             raise e
 
     @staticmethod
+    def validate_policy_documents(policy_data: dict):
+        pass
+
+    @staticmethod
     def create_policy(policy_data: dict, user_id = None) -> dict:
         from app.extensions.database import db
-        from app.models.policy import Policy
+        from app.models.policy import Policy, PolicyDocument
         try:
+            OrganizerService.validate_policy_documents(policy_data)
+            docs = policy_data.get("documents", [])
+            primary_doc_type = policy_data.get("document_type") or (docs[0].get("document_type") if docs else "")
+            primary_doc_number = policy_data.get("document_number") or (docs[0].get("document_number") if docs else "")
+            primary_doc_file = policy_data.get("document_file") or policy_data.get("file_path") or (docs[0].get("document_file") if docs else "")
+
             new_policy = Policy(
                 policy_name=policy_data.get("policy_name"),
                 policy_type=policy_data.get("policy_type", ""),
                 policy_group=policy_data.get("policy_group", ""),
                 description=policy_data.get("description", ""),
                 status=policy_data.get("status", "Active"),
+                file_path=primary_doc_file,
+                document_type=primary_doc_type,
+                document_number=primary_doc_number,
+                document_file=primary_doc_file,
                 organizer_id=user_id or policy_data.get("organizer_id")
             )
             db.session.add(new_policy)
+            db.session.flush()
+
+            if docs:
+                for doc in docs:
+                    if doc.get("document_type") or doc.get("document_number") or doc.get("document_file"):
+                        new_pdoc = PolicyDocument(
+                            policy_id=new_policy.id,
+                            document_type=doc.get("document_type", ""),
+                            document_number=doc.get("document_number", ""),
+                            document_file=doc.get("document_file", "")
+                        )
+                        db.session.add(new_pdoc)
+
             db.session.commit()
             return {
                 "id": str(new_policy.id),
@@ -327,7 +370,11 @@ class OrganizerService:
                 "policy_group": new_policy.policy_group,
                 "policy_type": new_policy.policy_type,
                 "description": new_policy.description,
-                "status": new_policy.status
+                "status": new_policy.status,
+                "document_type": new_policy.document_type,
+                "document_number": new_policy.document_number,
+                "document_file": new_policy.document_file,
+                "file_path": new_policy.file_path
             }
         except Exception as e:
             db.session.rollback()
@@ -337,14 +384,32 @@ class OrganizerService:
     def get_policies(organizer_id = None) -> list[dict]:
         from sqlalchemy import select
         from app.extensions.database import db
-        from app.models.policy import Policy
+        from app.models.policy import Policy, PolicyDocument
         try:
             stmt = select(Policy)
             if organizer_id:
-                stmt = stmt.where(Policy.organizer_id == organizer_id)
+                try:
+                    import uuid as uuid_mod
+                    org_uuid = uuid_mod.UUID(str(organizer_id))
+                    stmt = stmt.where((Policy.organizer_id == org_uuid) | (Policy.organizer_id.is_(None)))
+                except Exception:
+                    pass
             stmt = stmt.order_by(Policy.created_at.desc())
             policies = db.session.scalars(stmt).all()
             if policies:
+                policy_ids = [p.id for p in policies]
+                doc_stmt = select(PolicyDocument).where(PolicyDocument.policy_id.in_(policy_ids))
+                pdocs = db.session.scalars(doc_stmt).all()
+                doc_map = {}
+                for pd in pdocs:
+                    if pd.policy_id not in doc_map:
+                        doc_map[pd.policy_id] = []
+                    doc_map[pd.policy_id].append({
+                        "document_type": pd.document_type,
+                        "document_number": pd.document_number,
+                        "document_file": pd.document_file
+                    })
+
                 return [{
                     "id": str(p.id),
                     "policy_code": p.policy_code,
@@ -354,10 +419,18 @@ class OrganizerService:
                     "description": p.description,
                     "status": p.status,
                     "file_path": p.file_path,
+                    "document_type": getattr(p, "document_type", "") or "",
+                    "document_number": getattr(p, "document_number", "") or "",
+                    "document_file": getattr(p, "document_file", "") or getattr(p, "file_path", "") or "",
+                    "documents": doc_map.get(p.id, ([{
+                        "document_type": getattr(p, "document_type", ""),
+                        "document_number": getattr(p, "document_number", ""),
+                        "document_file": getattr(p, "document_file", "") or getattr(p, "file_path", "")
+                    }] if (getattr(p, "document_type", "") or getattr(p, "document_file", "")) else [])),
                     "created_at": str(p.created_at) if p.created_at else None
                 } for p in policies]
-        except Exception:
-            pass
+        except Exception as e:
+            print("[get_policies error]:", e)
         return []
 
     @staticmethod
@@ -496,16 +569,45 @@ class OrganizerService:
     def update_policy(policy_id: str, policy_data: dict) -> dict:
         from sqlalchemy import select
         from app.extensions.database import db
-        from app.models.policy import Policy
+        from app.models.policy import Policy, PolicyDocument
         import uuid as uuid_mod
         try:
+            OrganizerService.validate_policy_documents(policy_data)
             pid = uuid_mod.UUID(str(policy_id))
             policy = db.session.scalars(select(Policy).where(Policy.id == pid)).first()
             if not policy:
                 return {"success": False, "message": "Policy not found"}
-            for field in ["policy_name", "policy_type", "policy_group", "description", "status"]:
+
+            for field in ["policy_name", "policy_type", "policy_group", "description", "status", "document_type", "document_number", "document_file", "file_path"]:
                 if field in policy_data:
                     setattr(policy, field, policy_data[field])
+
+            docs = policy_data.get("documents")
+            if docs is not None:
+                if len(docs) > 0:
+                    first = docs[0]
+                    if first.get("document_type"):
+                        policy.document_type = first.get("document_type")
+                    if first.get("document_number"):
+                        policy.document_number = first.get("document_number")
+                    if first.get("document_file"):
+                        policy.document_file = first.get("document_file")
+                        policy.file_path = first.get("document_file")
+
+                existing_docs = db.session.scalars(select(PolicyDocument).where(PolicyDocument.policy_id == pid)).all()
+                for ed in existing_docs:
+                    db.session.delete(ed)
+
+                for doc in docs:
+                    if doc.get("document_type") or doc.get("document_number") or doc.get("document_file"):
+                        new_pdoc = PolicyDocument(
+                            policy_id=pid,
+                            document_type=doc.get("document_type", ""),
+                            document_number=doc.get("document_number", ""),
+                            document_file=doc.get("document_file", "")
+                        )
+                        db.session.add(new_pdoc)
+
             db.session.commit()
             return {"success": True, "message": "Policy updated successfully"}
         except Exception as e:
@@ -569,3 +671,4 @@ class OrganizerService:
         except Exception as e:
             db.session.rollback()
             raise e
+
