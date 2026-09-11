@@ -354,6 +354,14 @@ export default function FoodCheckIn() {
             data={filtered}
             keyField="id"
             loading={loading}
+            columnCount={5}
+            columns={[
+              { header: "Event Details", className: "py-3.5 px-5" },
+              { header: "Start Date", className: "py-3.5 px-4" },
+              { header: "End Date", className: "py-3.5 px-4" },
+              { header: "Food Pass Redemptions", className: "py-3.5 px-4 text-center" },
+              { header: "Actions", className: "py-3.5 px-5 text-right" },
+            ]}
             emptyMessage="No food provisioning events found in database."
             renderDesktopTable={() => (
               <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -777,6 +785,14 @@ export default function FoodCheckIn() {
           data={filteredAttendees}
           keyField="id"
           loading={entriesLoading}
+          columnCount={5}
+          columns={[
+            { header: "Pass Code", className: "py-3.5 px-4" },
+            { header: "Attendee Name & Contact", className: "py-3.5 px-4" },
+            { header: "Meal Option", className: "py-3.5 px-4" },
+            { header: "Status & Times", className: "py-3.5 px-4" },
+            { header: "Desk Action", className: "py-3.5 px-4 text-right" },
+          ]}
           emptyMessage="No attendee passes found matching your filter criteria."
           renderDesktopTable={() => (
             <div className="overflow-x-auto responsive-table-wrap">

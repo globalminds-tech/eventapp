@@ -180,6 +180,18 @@ export const Receipt = () => {
               data={filteredTransactions}
               keyField="invoiceNo"
               loading={isLoading}
+              columnCount={9}
+              columns={[
+                { header: "Invoice / Ref", className: "py-3.5 px-4" },
+                { header: "Date", className: "py-3.5 px-4" },
+                { header: "Person", className: "py-3.5 px-4" },
+                { header: "Customer Name", className: "py-3.5 px-4" },
+                { header: "Event", className: "py-3.5 px-4" },
+                { header: "Gross Sales", className: "py-3.5 px-4" },
+                { header: "Deductions", className: "py-3.5 px-4" },
+                { header: "Net Earned", className: "py-3.5 px-4" },
+                { header: "Status", className: "py-3.5 px-4 text-center" },
+              ]}
               emptyMessage="No inward transactions recorded yet."
               renderDesktopTable={() => (
                 <div className="overflow-x-auto responsive-table-wrap">
@@ -250,6 +262,17 @@ export const Receipt = () => {
               data={filteredPayouts}
               keyField="payout_ref"
               loading={isLoading}
+              columnCount={8}
+              columns={[
+                { header: "Payout Ref", className: "py-3.5 px-4" },
+                { header: "Date", className: "py-3.5 px-4" },
+                { header: "Bank Account", className: "py-3.5 px-4" },
+                { header: "IFSC", className: "py-3.5 px-4" },
+                { header: "Bank UTR Number", className: "py-3.5 px-4" },
+                { header: "Mode", className: "py-3.5 px-4" },
+                { header: "Amount", className: "py-3.5 px-4" },
+                { header: "Status", className: "py-3.5 px-4 text-center" },
+              ]}
               emptyMessage="No bank payouts recorded yet."
               renderDesktopTable={() => (
                 <div className="overflow-x-auto responsive-table-wrap">

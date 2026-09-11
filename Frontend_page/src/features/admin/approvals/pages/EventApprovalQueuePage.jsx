@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
+import { TablePagination } from "@/components/ui/TablePagination";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { approvalApi } from "../api/approval.api";
 import {
   fetchApprovalQueueThunk,
@@ -33,13 +35,18 @@ export default function EventApprovalQueuePage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Connect to Redux store
-  const { approvalQueue, approvalLoading, approvalLoaded } = useSelector((state) => state.admin);
+  const { approvalQueue, approvalPagination, approvalLoading } = useSelector((state) => state.admin);
 
   const initialTab = (searchParams.get("tab") || "all").toUpperCase();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [toast, setToast] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+
+  // Debounce search input by 350ms
+  const debouncedSearch = useDebounce(searchQuery.trim(), 350);
 
   // Sync tab with URL query parameter
   useEffect(() => {
@@ -47,15 +54,30 @@ export default function EventApprovalQueuePage() {
     setActiveTab(queryTab);
   }, [searchParams]);
 
-  // Initial load using Redux thunk (uses cache if available)
+  // Reset page to 1 whenever search query or tab changes
   useEffect(() => {
-    if (!approvalLoaded) {
-      dispatch(fetchApprovalQueueThunk(false));
-    }
-  }, [dispatch, approvalLoaded]);
+    setPage(1);
+  }, [debouncedSearch, activeTab]);
+
+  // Trigger server-side API search whenever debounced search, status, page, or limit changes
+  useEffect(() => {
+    dispatch(fetchApprovalQueueThunk({
+      search: debouncedSearch,
+      status: activeTab,
+      page,
+      limit,
+      force: true
+    }));
+  }, [dispatch, debouncedSearch, activeTab, page, limit]);
 
   const handleRefresh = () => {
-    dispatch(fetchApprovalQueueThunk(true));
+    dispatch(fetchApprovalQueueThunk({
+      search: debouncedSearch,
+      status: activeTab,
+      page,
+      limit,
+      force: true
+    }));
   };
 
   const showNotification = (message, type = "success") => {
@@ -118,20 +140,8 @@ export default function EventApprovalQueuePage() {
     return counts;
   }, [eventsList]);
 
-  const filteredEvents = useMemo(() => {
-    return eventsList.filter((e) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch = q
-        ? (e.event_name || e.name || "").toLowerCase().includes(q) ||
-          (e.event_code || e.code || "").toLowerCase().includes(q) ||
-          (e.category || "").toLowerCase().includes(q) ||
-          (e.venue || "").toLowerCase().includes(q) ||
-          (e.city || "").toLowerCase().includes(q)
-        : true;
-
-      return matchesSearch && checkMatchesTab(e.status, activeTab);
-    });
-  }, [eventsList, searchQuery, activeTab]);
+  // Server-side filtered events from API
+  const filteredEvents = eventsList;
 
   const handleTabChange = (key) => {
     setActiveTab(key);
@@ -193,9 +203,9 @@ export default function EventApprovalQueuePage() {
         </div>
       )}
 
-      {/* ── FILTER TABS & SEARCH BAR ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div className="flex items-center gap-1 overflow-x-auto touch-scroll pb-1 md:pb-0 max-w-full">
+      {/* ── FILTER TABS ROW ── */}
+      <div className="bg-white p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2">
           {tabList.map((t) => {
             const count = tabCounts[t.key] || 0;
             const isActive = activeTab === t.key;
@@ -203,15 +213,15 @@ export default function EventApprovalQueuePage() {
               <button
                 key={t.key}
                 onClick={() => handleTabChange(t.key)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer border-none flex items-center gap-1.5 ${
                   isActive
                     ? "bg-purple-600 text-white shadow-sm shadow-purple-500/30"
-                    : "bg-transparent text-slate-600 hover:bg-slate-100"
+                    : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/70"
                 }`}
               >
                 <span>{t.label}</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                  isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                  isActive ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
                 }`}>
                   {count}
                 </span>
@@ -219,39 +229,75 @@ export default function EventApprovalQueuePage() {
             );
           })}
         </div>
-
-        <div className="relative w-full md:w-72 shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
-          <input
-            type="text"
-            placeholder="Search name, code, category, venue..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500 transition"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold border-none bg-transparent cursor-pointer"
-            >
-              ✕
-            </button>
-          )}
-        </div>
       </div>
 
       {/* ── EVENTS DATA TABLE / MOBILE CARDS ── */}
-      <ResponsiveTableView
-        data={filteredEvents}
-        keyField="id"
-        loading={showContentSkeleton}
-        emptyMessage={
-          searchQuery
-            ? `No matches found for "${searchQuery}" in ${activeTab.toLowerCase()} view.`
-            : `No events currently in ${activeTab.toLowerCase()} status.`
-        }
-        renderDesktopTable={() => (
-          <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+      <Card className="border border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
+        {/* Table Toolbar Header with Integrated Search */}
+        <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
+              {tabList.find((t) => t.key === activeTab)?.label || "Events"} Directory
+            </h2>
+            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-extrabold text-[11px]">
+              {approvalPagination?.total ?? filteredEvents.length} {(approvalPagination?.total ?? filteredEvents.length) === 1 ? "Event" : "Events"}
+            </Badge>
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+            <input
+              type="text"
+              placeholder="Search name, code, category, venue..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-8.5 bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-7 text-xs font-semibold outline-none focus:ring-2 focus:ring-purple-500 transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold border-none bg-transparent cursor-pointer"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        <ResponsiveTableView
+          data={filteredEvents}
+          keyField="id"
+          loading={showContentSkeleton}
+          columnCount={6}
+          mobileContainerClassName="p-3 sm:p-4"
+          containerClassName="p-0"
+          columns={[
+            { header: "Event Name", className: "p-3.5 pl-5" },
+            { header: "Category", className: "p-3.5" },
+            { header: "Venue / City", className: "p-3.5" },
+            { header: "Dates", className: "p-3.5" },
+            { header: "Status", className: "p-3.5 text-center" },
+            { header: "Actions", className: "p-3.5 pr-5 text-right" },
+          ]}
+          emptyMessage={
+            searchQuery
+              ? `No matches found for "${searchQuery}" in ${activeTab.toLowerCase()} view.`
+              : `No events currently in ${activeTab.toLowerCase()} status.`
+          }
+          emptyAction={
+            searchQuery ? (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => setSearchQuery("")}
+                className="text-xs font-bold mt-1 text-purple-700 border-purple-200 hover:bg-purple-50"
+              >
+                Clear Search Query
+              </Button>
+            ) : null
+          }
+          renderDesktopTable={() => (
             <div className="responsive-table-wrap">
               <table className="w-full min-w-[700px] text-left border-collapse text-xs">
                 <thead>
@@ -392,7 +438,6 @@ export default function EventApprovalQueuePage() {
                 </tbody>
               </table>
             </div>
-          </Card>
         )}
         renderMobileCard={(ev) => {
           const st = (ev.status || "PENDING").toUpperCase();
@@ -514,6 +559,12 @@ export default function EventApprovalQueuePage() {
           );
         }}
       />
+        <TablePagination
+          pagination={approvalPagination || { page, limit, total: filteredEvents.length, total_pages: 1, has_next: false, has_prev: false }}
+          onPageChange={(newPage) => setPage(newPage)}
+          onLimitChange={(newLimit) => { setLimit(newLimit); setPage(1); }}
+        />
+      </Card>
 
     </div>
   );

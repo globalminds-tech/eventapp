@@ -1031,6 +1031,15 @@ export default function TeamManagementPage({ userScope }) {
             data={members}
             keyField="id"
             loading={loading}
+            columnCount={6}
+            columns={[
+              { header: "Member Name", className: "pl-6" },
+              { header: "Email" },
+              { header: "Assigned Role" },
+              { header: "Status" },
+              { header: "Joined Date" },
+              { header: "Actions", className: "pr-6 text-right" },
+            ]}
             emptyMessage="No team members found. Click 'Invite Team Member' to add your first collaborator."
             renderDesktopTable={() => (
               <Table>
@@ -1206,6 +1215,14 @@ export default function TeamManagementPage({ userScope }) {
             data={roles}
             keyField="id"
             loading={loading}
+            columnCount={5}
+            columns={[
+              { header: "Role Name", className: "pl-6" },
+              { header: "Description" },
+              { header: "Granted Permissions" },
+              { header: "Total Scope" },
+              { header: "Actions", className: "pr-6 text-right" },
+            ]}
             emptyMessage="No custom roles created yet."
             emptyAction={
               <button

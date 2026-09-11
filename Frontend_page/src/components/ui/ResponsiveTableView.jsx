@@ -92,6 +92,120 @@ MobileDataCard.Actions = ({ children, className = "" }) => (
 );
 
 /**
+ * TableSkeleton
+ * Universal desktop table skeleton with customizable column count and realistic cell shapes.
+ */
+export const TableSkeleton = ({
+  columns = [],
+  columnCount = 5,
+  rows = 4,
+  className = "",
+  tableClassName = "",
+}) => {
+  const effectiveCols =
+    Array.isArray(columns) && columns.length > 0
+      ? columns
+      : Array.from({ length: Math.max(1, columnCount) }).map((_, idx) => {
+          if (idx === 0) return { header: null, className: "w-1/3 min-w-[180px]" };
+          if (idx === columnCount - 1) return { header: null, className: "w-24 text-right" };
+          return { header: null, className: "w-1/5" };
+        });
+
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs",
+        className
+      )}
+    >
+      <Table className={tableClassName}>
+        <TableHeader>
+          <TableRow className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-[11px] font-black uppercase tracking-wider">
+            {effectiveCols.map((col, idx) => (
+              <TableHead key={idx} className={col.className}>
+                {col.header ? (
+                  col.header
+                ) : (
+                  <Skeleton
+                    className={cn(
+                      "h-3.5 rounded-md bg-slate-200/90",
+                      idx === 0
+                        ? "w-28"
+                        : idx === effectiveCols.length - 1
+                        ? "w-14 ml-auto"
+                        : "w-20"
+                    )}
+                  />
+                )}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rows }).map((_, rIdx) => (
+            <TableRow key={rIdx} className="animate-pulse">
+              {effectiveCols.map((col, cIdx) => (
+                <TableCell key={cIdx} className={col.className}>
+                  {cIdx === 0 ? (
+                    <div className="space-y-1.5 py-1">
+                      <Skeleton className="h-4 w-40 rounded-md bg-slate-200/90" />
+                      <Skeleton className="h-3 w-24 rounded bg-slate-200/60" />
+                    </div>
+                  ) : cIdx === effectiveCols.length - 1 ? (
+                    <Skeleton className="h-7 w-20 rounded-xl ml-auto bg-slate-200/90" />
+                  ) : cIdx % 2 === 1 ? (
+                    <Skeleton className="h-5 w-20 rounded-full bg-slate-200/80" />
+                  ) : (
+                    <Skeleton className="h-4 w-28 rounded-md bg-slate-200/70" />
+                  )}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
+/**
+ * MobileDataCardSkeleton
+ * Smooth, native-like mobile card skeleton matching MobileDataCard dimensions.
+ */
+export const MobileDataCardSkeleton = ({ count = 4, className = "" }) => (
+  <div className={cn("md:hidden flex flex-col gap-3", className)}>
+    {Array.from({ length: count }).map((_, idx) => (
+      <div
+        key={idx}
+        className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-2xs animate-pulse"
+      >
+        <div className="flex justify-between items-start gap-2 border-b border-slate-100 pb-2.5">
+          <div className="space-y-1.5 flex-1">
+            <Skeleton className="h-3 w-16 rounded bg-slate-200/70" />
+            <Skeleton className="h-4 w-36 rounded-md bg-slate-200/90" />
+            <Skeleton className="h-3 w-24 rounded bg-slate-200/60" />
+          </div>
+          <Skeleton className="h-5 w-16 rounded-full shrink-0 bg-slate-200/80" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <Skeleton className="h-2.5 w-14 rounded bg-slate-200/60" />
+            <Skeleton className="h-4 w-24 rounded bg-slate-200/80" />
+          </div>
+          <div className="space-y-1">
+            <Skeleton className="h-2.5 w-14 rounded bg-slate-200/60" />
+            <Skeleton className="h-4 w-20 rounded bg-slate-200/80" />
+          </div>
+        </div>
+        <div className="pt-2 border-t border-slate-100 flex justify-end">
+          <Skeleton className="h-7 w-24 rounded-xl bg-slate-200/80" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/**
  * ResponsiveTableView
  * Dual-rendering container:
  * - Desktop (>= 768px): Full-featured Shadcn data table
@@ -99,10 +213,13 @@ MobileDataCard.Actions = ({ children, className = "" }) => (
  */
 export const ResponsiveTableView = ({
   columns = [],
+  columnCount = 5,
   data = [],
   keyField = "id",
   loading = false,
   loadingCount = 4,
+  desktopSkeleton = null,
+  mobileSkeleton = null,
   emptyMessage = "No records found.",
   emptyAction = null,
   onRowClick,
@@ -117,50 +234,38 @@ export const ResponsiveTableView = ({
     return (
       <div className={cn("space-y-3", containerClassName)}>
         {/* Desktop Skeleton */}
-        <div className="hidden md:block rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.map((col, idx) => (
-                  <TableHead key={idx} className={col.className}>
-                    {col.header}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: loadingCount }).map((_, rIdx) => (
-                <TableRow key={rIdx} className="animate-pulse">
-                  {columns.map((col, cIdx) => (
-                    <TableCell key={cIdx} className={col.className}>
-                      <Skeleton className="h-4 w-full max-w-[120px] rounded-md" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="hidden md:block">
+          {desktopSkeleton ? (
+            typeof desktopSkeleton === "function" ? (
+              desktopSkeleton({ loadingCount, columns, columnCount })
+            ) : (
+              desktopSkeleton
+            )
+          ) : (
+            <TableSkeleton
+              columns={columns}
+              columnCount={
+                columns && columns.length > 0 ? columns.length : columnCount
+              }
+              rows={loadingCount}
+              tableClassName={tableClassName}
+            />
+          )}
         </div>
 
         {/* Mobile Skeleton Cards */}
-        <div className="md:hidden flex flex-col gap-3">
-          {Array.from({ length: loadingCount }).map((_, idx) => (
-            <div
-              key={idx}
-              className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-2xs animate-pulse"
-            >
-              <div className="flex justify-between">
-                <Skeleton className="h-4 w-32 rounded" />
-                <Skeleton className="h-4 w-16 rounded-full" />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <Skeleton className="h-8 w-full rounded" />
-                <Skeleton className="h-8 w-full rounded" />
-              </div>
-              <Skeleton className="h-7 w-24 rounded-lg ml-auto" />
-            </div>
-          ))}
-        </div>
+        {mobileSkeleton ? (
+          typeof mobileSkeleton === "function" ? (
+            mobileSkeleton({ loadingCount })
+          ) : (
+            mobileSkeleton
+          )
+        ) : (
+          <MobileDataCardSkeleton
+            count={loadingCount}
+            className={mobileContainerClassName}
+          />
+        )}
       </div>
     );
   }
@@ -182,7 +287,7 @@ export const ResponsiveTableView = ({
       {/* ── DESKTOP VIEW (MD and up): TABLE ── */}
       <div className="hidden md:block">
         {renderDesktopTable ? (
-          renderDesktopTable({ data, columns, onRowClick })
+          renderDesktopTable({ data, columns, onRowClick, loading, loadingCount })
         ) : (
           <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs">
             <Table className={tableClassName}>
