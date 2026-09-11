@@ -10,6 +10,7 @@ import ExhibitorRegister from "../features/auth/pages/ExhibitorRegisterPage";
 
 // Admin Role Feature Pages
 import CategoriesPage from "../features/catalog/pages/CategoryMasterPage";
+import CategoryRequestsPage from "../features/catalog/pages/CategoryRequestsPage";
 import EventApprovalQueuePage from "../features/admin/approvals/pages/EventApprovalQueuePage";
 import KycVerificationPage from "../features/admin/kyc/pages/KycVerificationPage";
 
@@ -38,6 +39,8 @@ export default function AppRouter() {
       <Route path="/superuser/events" element={<ProtectedRoute allowedRoles={["superuser", "admin"]}><EventApprovalQueuePage /></ProtectedRoute>} />
       <Route path="/superuser/approvals" element={<ProtectedRoute allowedRoles={["superuser", "admin"]}><EventApprovalQueuePage /></ProtectedRoute>} />
       <Route path="/superuser/categories" element={<ProtectedRoute allowedRoles={["superuser", "admin"]}><CategoriesPage /></ProtectedRoute>} />
+      <Route path="/superuser/categories/requests" element={<ProtectedRoute allowedRoles={["superuser", "admin"]}><CategoryRequestsPage /></ProtectedRoute>} />
+      <Route path="/superuser/category-requests" element={<ProtectedRoute allowedRoles={["superuser", "admin"]}><CategoryRequestsPage /></ProtectedRoute>} />
 
       {/* Organizer Role Routes */}
       <Route path="/OrganizerHome" element={<ProtectedRoute allowedRoles={["organizer", "admin"]}><OrganizerDashboardPage /></ProtectedRoute>} />

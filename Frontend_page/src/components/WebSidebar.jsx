@@ -134,6 +134,13 @@ export default function WebSidebar({ role }) {
         location.pathname.startsWith("/OrganizerHome/CreateEvent")
       );
     }
+    if (path === "/superuser/categories") {
+      return (
+        location.pathname === "/superuser/categories" ||
+        location.pathname.startsWith("/superuser/categories") ||
+        location.pathname.startsWith("/superuser/category-requests")
+      );
+    }
     return location.pathname === path && !location.search;
   }, [location.pathname, location.search]);
 
