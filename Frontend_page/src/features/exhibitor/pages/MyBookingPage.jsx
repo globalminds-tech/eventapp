@@ -193,6 +193,14 @@ const MyBookings = () => {
           data={filteredBookings}
           keyField="id"
           loading={loading}
+          columnCount={5}
+          columns={[
+            { header: "Event Details", className: "py-3.5 px-4" },
+            { header: "Stall & Location", className: "py-3.5 px-4" },
+            { header: "Booking Fee", className: "py-3.5 px-4" },
+            { header: "Status & Payment Lock", className: "py-3.5 px-4" },
+            { header: "Actions", className: "py-3.5 px-4 text-right" },
+          ]}
           emptyMessage="No stall bookings found matching the selected filter."
           renderDesktopTable={() => (
             <div className="responsive-table-wrap rounded-xl border border-slate-200 bg-white shadow-2xs">

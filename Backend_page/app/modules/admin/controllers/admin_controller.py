@@ -2,11 +2,37 @@ from app.modules.admin.services.admin_service import AdminService
 
 class AdminController:
     @staticmethod
-    def get_events(host_url: str = "", organizer_id: str = None, only_approved: bool = False):
-        events = AdminService.get_events(host_url=host_url, organizer_id=organizer_id, only_approved=only_approved)
+    def get_events(
+        host_url: str = "",
+        organizer_id: str = None,
+        only_approved: bool = False,
+        search: str = None,
+        status: str = None,
+        page: int = None,
+        limit: int = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc"
+    ):
+        res = AdminService.get_events(
+            host_url=host_url,
+            organizer_id=organizer_id,
+            only_approved=only_approved,
+            search=search,
+            status=status,
+            page=page,
+            limit=limit,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        if isinstance(res, dict) and "pagination" in res:
+            return {
+                "success": True,
+                "data": res.get("events", []),
+                "pagination": res.get("pagination")
+            }
         return {
             "success": True,
-            "data": events
+            "data": res
         }
 
     @staticmethod
@@ -74,11 +100,33 @@ class AdminController:
         }
 
     @staticmethod
-    def get_all_users():
-        users = AdminService.get_all_users()
+    def get_all_users(
+        search: str = None,
+        role: str = None,
+        kyc_status: str = None,
+        page: int = None,
+        limit: int = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc"
+    ):
+        res = AdminService.get_all_users(
+            search=search,
+            role=role,
+            kyc_status=kyc_status,
+            page=page,
+            limit=limit,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        if isinstance(res, dict) and "pagination" in res:
+            return {
+                "success": True,
+                "data": res.get("users", []),
+                "pagination": res.get("pagination")
+            }
         return {
             "success": True,
-            "data": users
+            "data": res
         }
 
     @staticmethod

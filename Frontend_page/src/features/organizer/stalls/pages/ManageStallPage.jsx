@@ -315,6 +315,13 @@ export const ManageStall = () => {
             data={eventApps}
             keyField="id"
             loading={loading}
+            columnCount={4}
+            columns={[
+              { header: "Exhibitor Company & Contact", className: "py-3.5 px-4" },
+              { header: "Reserved Booth", className: "py-3.5 px-4" },
+              { header: "Status", className: "py-3.5 px-4" },
+              { header: "Action", className: "py-3.5 px-4 text-right" },
+            ]}
             emptyMessage="No exhibitor applications for this event yet."
             renderDesktopTable={() => (
               <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
@@ -505,6 +512,14 @@ export const ManageStall = () => {
           data={eventStalls}
           keyField="id"
           loading={eventsLoading}
+          columnCount={5}
+          columns={[
+            { header: "Event Name", className: "py-3.5 px-4" },
+            { header: "Start & End Date", className: "py-3.5 px-4" },
+            { header: "Stall Quantity(Count)", className: "py-3.5 px-4" },
+            { header: "Stall Fees", className: "py-3.5 px-4" },
+            { header: "Action", className: "py-3.5 px-4 text-right" },
+          ]}
           emptyMessage="You haven't created any events with stall allocations yet."
           renderDesktopTable={() => (
             <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">

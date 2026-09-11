@@ -405,6 +405,17 @@ export default function OrganizerDashboardPage() {
           data={filteredEvents}
           keyField="id"
           loading={loading && !loaded}
+          columnCount={8}
+          columns={[
+            { header: "Event Details", className: "py-3 px-4" },
+            { header: "Date & Time", className: "py-3 px-4" },
+            { header: "Tickets Sold", className: "py-3 px-4" },
+            { header: "Stalls Booked", className: "py-3 px-4" },
+            { header: "Total Earnings", className: "py-3 px-4" },
+            { header: "Approval Status", className: "py-3 px-4 text-center" },
+            { header: "Lifecycle", className: "py-3 px-4 text-center" },
+            { header: "Actions", className: "py-3 px-4 text-right" },
+          ]}
           emptyMessage="No events found matching your criteria."
           emptyAction={
             <Button

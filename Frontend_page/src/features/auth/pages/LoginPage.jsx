@@ -88,7 +88,7 @@ export default function Login() {
         navigate("/superuser/dashboard", { replace: true });
         return;
       }
-      if (returnUrl && returnUrl !== "/profile") {
+      if (returnUrl) {
         navigate(returnUrl, { replace: true });
         return;
       }
@@ -210,6 +210,10 @@ export default function Login() {
         localStorage.setItem("email", userEmail);
         localStorage.setItem("user", JSON.stringify(userToStore));
         sessionStorage.setItem("user", JSON.stringify(userToStore));
+        if (token) {
+          localStorage.setItem("token", token);
+          sessionStorage.setItem("token", token);
+        }
         localStorage.removeItem("is_logged_out");
         sessionStorage.removeItem("is_logged_out");
 
@@ -246,6 +250,10 @@ export default function Login() {
       localStorage.setItem("email", userEmail);
       localStorage.setItem("user", JSON.stringify(userToStore));
       sessionStorage.setItem("user", JSON.stringify(userToStore));
+      if (token) {
+        localStorage.setItem("token", token);
+        sessionStorage.setItem("token", token);
+      }
       localStorage.removeItem("is_logged_out");
       sessionStorage.removeItem("is_logged_out");
 
@@ -607,6 +615,10 @@ export default function Login() {
           localStorage.setItem("roles", JSON.stringify(allRoles));
           localStorage.setItem("user", JSON.stringify(sanitizedUser));
           sessionStorage.setItem("user", JSON.stringify(sanitizedUser));
+          if (firstLoginData?.token) {
+            localStorage.setItem("token", firstLoginData.token);
+            sessionStorage.setItem("token", firstLoginData.token);
+          }
 
           dispatch(setCredentials({
             user: sanitizedUser,

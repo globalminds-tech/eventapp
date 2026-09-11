@@ -348,6 +348,12 @@ export default function EventCheckIn() {
             data={events}
             keyField="id"
             loading={loading}
+            columnCount={3}
+            columns={[
+              { header: "Event Name", className: "py-3.5 px-4" },
+              { header: "Start & End Date", className: "py-3.5 px-4" },
+              { header: "Action", className: "py-3.5 px-4 text-right" },
+            ]}
             emptyMessage="You haven't created any events yet."
             renderDesktopTable={() => (
               <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -926,6 +932,14 @@ export default function EventCheckIn() {
           data={filteredAttendees}
           keyField="id"
           loading={entriesLoading}
+          columnCount={5}
+          columns={[
+            { header: "Pass Code", className: "py-3.5 px-4" },
+            { header: "Attendee Name & Contact", className: "py-3.5 px-4" },
+            { header: "Meal Option", className: "py-3.5 px-4" },
+            { header: "Status & Times", className: "py-3.5 px-4" },
+            { header: "Desk Action", className: "py-3.5 px-4 text-right" },
+          ]}
           emptyMessage="No attendee passes found matching your filter criteria."
           renderDesktopTable={() => (
             <div className="overflow-x-auto responsive-table-wrap">

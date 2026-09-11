@@ -39,7 +39,17 @@ def get_home_events(request: Request):
 @root_admin_router.post("/superadmin/api/get-events")
 @root_admin_router.get("/superadmin/get-events")
 @root_admin_router.get("/superuser/get-events")
-def get_events(request: Request, organizer: str = None, organizer_id: str = None):
+def get_events(
+    request: Request,
+    organizer: str = None,
+    organizer_id: str = None,
+    search: str = None,
+    status: str = None,
+    page: int = None,
+    limit: int = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+):
     try:
         host_url = str(request.base_url)
         target_organizer = organizer or organizer_id
@@ -63,7 +73,24 @@ def get_events(request: Request, organizer: str = None, organizer_id: str = None
                 except Exception:
                     pass
 
-        return AdminController.get_events(host_url=host_url, organizer_id=target_organizer, only_approved=False)
+        # Extract query parameters with robust fallback
+        req_params = request.query_params
+        q_page = page if page is not None else req_params.get("page")
+        q_limit = limit if limit is not None else req_params.get("limit")
+        q_search = search if search is not None else req_params.get("search")
+        q_status = status if status is not None else req_params.get("status")
+
+        return AdminController.get_events(
+            host_url=host_url,
+            organizer_id=target_organizer,
+            only_approved=False,
+            search=q_search,
+            status=q_status,
+            page=int(q_page) if q_page is not None else None,
+            limit=int(q_limit) if q_limit is not None else None,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
     except Exception as e:
         print("[get_events Exception]:", e)
         return {"success": True, "data": []}
@@ -209,8 +236,32 @@ def get_pending_organizers():
 @root_admin_router.get("/superuser/users")
 @root_admin_router.get("/superadmin/api/users")
 @admin_router.get("/users")
-def get_all_users_alias():
-    return AdminController.get_all_users()
+def get_all_users_alias(
+    request: Request,
+    search: str = None,
+    role: str = None,
+    kyc_status: str = None,
+    page: int = None,
+    limit: int = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+):
+    req_params = request.query_params
+    q_page = page if page is not None else req_params.get("page")
+    q_limit = limit if limit is not None else req_params.get("limit")
+    q_search = search if search is not None else req_params.get("search")
+    q_role = role if role is not None else req_params.get("role")
+    q_kyc = kyc_status if kyc_status is not None else req_params.get("kyc_status")
+
+    return AdminController.get_all_users(
+        search=q_search,
+        role=q_role,
+        kyc_status=q_kyc,
+        page=int(q_page) if q_page is not None else None,
+        limit=int(q_limit) if q_limit is not None else None,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
 
 @root_admin_router.put("/admin/users/{user_id}/kyc-status")
 @root_admin_router.put("/admin/organizers/{user_id}/kyc-status")

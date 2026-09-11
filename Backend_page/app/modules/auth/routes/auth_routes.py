@@ -25,7 +25,8 @@ def _attach_refresh_cookie(response: Response, res_data: dict):
                 value=ref_token,
                 httponly=True,
                 max_age=7 * 24 * 3600,
-                samesite="lax"
+                samesite="none",
+                secure=True
             )
 
 @auth_router.post("/register", status_code=201)
@@ -129,7 +130,8 @@ def refresh_token(request: Request, response: Response):
             value=new_refresh_token,
             httponly=True,
             max_age=7 * 24 * 3600,
-            samesite="lax"
+            samesite="none",
+            secure=True
         )
         return {
             "success": True,
@@ -150,7 +152,8 @@ def logout(response: Response):
         key="refresh_token",
         path="/",
         httponly=True,
-        samesite="lax"
+        samesite="none",
+        secure=True
     )
     response.set_cookie(
         key="refresh_token",
@@ -159,7 +162,8 @@ def logout(response: Response):
         expires="Thu, 01 Jan 1970 00:00:00 GMT",
         path="/",
         httponly=True,
-        samesite="lax"
+        samesite="none",
+        secure=True
     )
     return {"success": True, "message": "Logged out successfully"}
 
