@@ -1,8 +1,8 @@
 import uuid as uuid_pkg
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Text, ForeignKey, DateTime, func
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import String, Text, ForeignKey, DateTime, func, Uuid
+
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
 
@@ -10,9 +10,9 @@ from app.extensions.database import db
 class ExhibitorStallBooking(db.Model):
     __tablename__ = 'exhibitor_stall_bookings'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
-    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
-    user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
+    user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)
     title: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     first_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     last_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -39,9 +39,9 @@ class ExhibitorStallBooking(db.Model):
 class ExhibitorLead(db.Model):
     __tablename__ = 'exhibitor_leads'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
-    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
-    user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)  # exhibitor's user_id
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
+    user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)  # exhibitor's user_id
     visitor_name: Mapped[str] = mapped_column(String(150), nullable=False)
     company_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     email: Mapped[str] = mapped_column(String(150), nullable=False)

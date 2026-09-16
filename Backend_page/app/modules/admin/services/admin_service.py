@@ -47,10 +47,19 @@ class AdminService:
                     live_events += 1
                     approved_events += 1
 
-            total_users = len(users)
-            total_organizers = sum(1 for u in users if "organizer" in [str(r).lower() for r in (u.roles or [])])
-            total_exhibitors = sum(1 for u in users if "exhibitor" in [str(r).lower() for r in (u.roles or [])])
-            total_attendees = max(0, total_users - (total_organizers + total_exhibitors))
+            admin_roles = {"superuser", "superadmin", "admin"}
+            platform_users = [
+                u for u in users
+                if getattr(u, "deleted_at", None) is None
+                and not any(str(r).lower() in admin_roles for r in (u.roles or []))
+                and str(getattr(u, "active_role", "") or "").lower() not in admin_roles
+                and str(getattr(u, "email", "") or "").lower() != "bookmyevent2026@gmail.com"
+            ]
+
+            total_users = len(platform_users)
+            total_organizers = sum(1 for u in platform_users if "organizer" in [str(r).lower() for r in (u.roles or [])])
+            total_exhibitors = sum(1 for u in platform_users if "exhibitor" in [str(r).lower() for r in (u.roles or [])])
+            total_attendees = sum(1 for u in platform_users if "organizer" not in [str(r).lower() for r in (u.roles or [])] and "exhibitor" not in [str(r).lower() for r in (u.roles or [])])
 
             gross_gmv = 0.0
             for e in events:
@@ -459,7 +468,11 @@ class AdminService:
         from app.common.pagination import build_pagination_metadata
         from sqlalchemy import or_, func, desc, asc, String
 
-        stmt = select(User)
+        stmt = select(User).where(
+            User.deleted_at.is_(None),
+            func.lower(User.email) != "bookmyevent2026@gmail.com",
+            ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"])
+        )
 
         if search and search.strip():
             clean_term = f"%{search.strip().lower()[:100]}%"
@@ -500,7 +513,11 @@ class AdminService:
             safe_page = max(1, int(page or 1))
             safe_limit = min(max(1, int(limit or 20)), 100)
 
-            count_stmt = select(func.count(User.id))
+            count_stmt = select(func.count(User.id)).where(
+                User.deleted_at.is_(None),
+                func.lower(User.email) != "bookmyevent2026@gmail.com",
+                ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"])
+            )
             if search and search.strip():
                 clean_term = f"%{search.strip().lower()[:100]}%"
                 count_stmt = count_stmt.where(or_(

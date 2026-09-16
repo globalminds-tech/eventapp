@@ -4,7 +4,8 @@ import axios from "axios";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { ENV } from "@/config/env";
 import { setCredentials, setAuthLoading, logout } from "@/app/store/authSlice";
-import { setUser } from "@/app/store/userSlice";
+import { setUser, clearUser } from "@/app/store/userSlice";
+import { isTokenExpired } from "@/shared/utils/jwtUtils";
 import BrandLogo from "@/components/ui/BrandLogo";
 
 export default function AuthInitializer({ children }) {
@@ -65,8 +66,8 @@ export default function AuthInitializer({ children }) {
         return;
       }
 
-      // If access token is already present in Redux, no initialization refresh needed
-      if (accessToken) {
+      // If access token is already present in Redux AND not expired, no initialization refresh needed
+      if (accessToken && !isTokenExpired(accessToken)) {
         if (isMounted) setIsInitializing(false);
         return;
       }
@@ -109,12 +110,8 @@ export default function AuthInitializer({ children }) {
         // If 401 Unauthorized or 403 Forbidden, session cookie is invalid or dead -> clean up completely
         if (err.response && (err.response.status === 401 || err.response.status === 403)) {
           console.log(`[AuthInitializer] No active session cookie or session expired.`);
-          localStorage.removeItem("user");
-          sessionStorage.removeItem("user");
-          localStorage.removeItem("role");
-          sessionStorage.removeItem("role");
-          localStorage.removeItem("roles");
-          sessionStorage.removeItem("roles");
+          dispatch(logout());
+          dispatch(clearUser());
           if (isMounted) {
             dispatch(setAuthLoading(false));
             setIsInitializing(false);

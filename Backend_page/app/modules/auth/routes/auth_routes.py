@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, Request, Response, HTTPException
 from app.exceptions.api_error import ApiError
 from app.modules.auth.controllers.auth_controller import AuthController
@@ -16,6 +17,15 @@ auth_router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 legacy_auth_router = APIRouter(prefix="/auth/api", tags=["Legacy Auth"])
 root_auth_router = APIRouter(prefix="", tags=["Root Auth Aliases"])
 
+def _get_cookie_params():
+    is_prod = os.getenv("FLASK_ENV") == "production" or os.getenv("ENVIRONMENT") == "production"
+    return {
+        "httponly": True,
+        "path": "/",
+        "samesite": "none" if is_prod else "lax",
+        "secure": is_prod,
+    }
+
 def _attach_refresh_cookie(response: Response, res_data: dict):
     if isinstance(res_data, dict) and "data" in res_data and isinstance(res_data["data"], dict):
         ref_token = res_data["data"].get("refresh_token")
@@ -23,10 +33,8 @@ def _attach_refresh_cookie(response: Response, res_data: dict):
             response.set_cookie(
                 key="refresh_token",
                 value=ref_token,
-                httponly=True,
                 max_age=7 * 24 * 3600,
-                samesite="none",
-                secure=True
+                **_get_cookie_params()
             )
 
 @auth_router.post("/register", status_code=201)
@@ -128,10 +136,8 @@ def refresh_token(request: Request, response: Response):
         response.set_cookie(
             key="refresh_token",
             value=new_refresh_token,
-            httponly=True,
             max_age=7 * 24 * 3600,
-            samesite="none",
-            secure=True
+            **_get_cookie_params()
         )
         return {
             "success": True,
@@ -148,22 +154,17 @@ def refresh_token(request: Request, response: Response):
 @legacy_auth_router.post("/logout")
 @root_auth_router.post("/logout")
 def logout(response: Response):
+    cookie_params = _get_cookie_params()
     response.delete_cookie(
         key="refresh_token",
-        path="/",
-        httponly=True,
-        samesite="none",
-        secure=True
+        **cookie_params
     )
     response.set_cookie(
         key="refresh_token",
         value="",
         max_age=0,
         expires="Thu, 01 Jan 1970 00:00:00 GMT",
-        path="/",
-        httponly=True,
-        samesite="none",
-        secure=True
+        **cookie_params
     )
     return {"success": True, "message": "Logged out successfully"}
 

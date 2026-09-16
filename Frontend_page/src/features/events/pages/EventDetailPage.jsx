@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import AuthBookingModal from "@/features/events/components/AuthBookingModal";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import { isTokenExpired } from "@/shared/utils/jwtUtils";
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -27,7 +28,10 @@ export default function EventDetail() {
   // Auth resolution
   const auth = useSelector((state) => state.auth);
   const token = auth?.accessToken || sessionStorage.getItem("token") || localStorage.getItem("token");
-  const isAuthenticated = Boolean(auth?.isAuthenticated || (token && !token.includes("-session-token")));
+  const isAuthenticated = Boolean(
+    (auth?.isAuthenticated && auth?.accessToken && !isTokenExpired(auth?.accessToken)) ||
+    (token && !token.includes("-session-token") && !isTokenExpired(token))
+  );
 
   useEffect(() => {
     if (!id) { setError("No event ID provided"); setLoading(false); return; }

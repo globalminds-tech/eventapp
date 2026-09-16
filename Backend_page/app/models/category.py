@@ -1,8 +1,8 @@
 import uuid as uuid_pkg
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, func
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import String, Text, DateTime, func, Uuid
+
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
 
@@ -10,7 +10,7 @@ from app.extensions.database import db
 class CategoryMaster(db.Model):
     __tablename__ = 'category_master_table'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     slug: Mapped[Optional[str]] = mapped_column(String(150), unique=True, index=True, nullable=True)
     subcategories: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Comma-separated or JSON list
@@ -18,11 +18,11 @@ class CategoryMaster(db.Model):
     category_image: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="Active")
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
-    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
-    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)
 
     def to_dict(self):
         subs = [s.strip() for s in (self.subcategories or "").split(",") if s.strip()]
