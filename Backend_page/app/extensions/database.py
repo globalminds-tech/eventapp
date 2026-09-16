@@ -5,16 +5,27 @@ from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
 
 load_dotenv()
 
-# Exclusive Supabase PostgreSQL Engine Setup
-def create_supabase_engine():
+# Database Engine Setup (Supports Microsoft SQL Server & PostgreSQL)
+def create_app_engine():
     db_url = os.getenv("DATABASE_URL", "")
     
     if db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-    if not db_url or "sqlite" in db_url:
-        raise RuntimeError("DATABASE_URL must be configured with a valid Supabase PostgreSQL connection string.")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL must be configured.")
 
+    # Microsoft SQL Server (SSMS / Azure SQL)
+    if db_url.startswith("mssql"):
+        return create_engine(
+            db_url,
+            pool_pre_ping=True,
+            pool_recycle=1800,
+            pool_size=15,
+            max_overflow=5
+        )
+
+    # PostgreSQL / Supabase
     if "sslmode" not in db_url and "supabase" in db_url:
         separator = "&" if "?" in db_url else "?"
         db_url = f"{db_url}{separator}sslmode=require"
@@ -35,7 +46,7 @@ def create_supabase_engine():
     )
     return engine
 
-engine = create_supabase_engine()
+engine = create_app_engine()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 db_session = scoped_session(SessionLocal)

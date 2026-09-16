@@ -113,10 +113,25 @@ class UserService:
                     raise ApiError("This event is completely sold out.", 400)
                 raise ApiError(f"Insufficient seats. Only {remaining} seat(s) available.", 400)
 
-        # 3. Validate Max Pass Limit Per Booking
+        # 3. Validate Cumulative Max Pass Limit Per Attendee/Account for this Event
         max_pass = int(getattr(booking_settings, "max_pass", 0) or getattr(event, "max_pass", 0) or 0)
-        if max_pass > 0 and qty > max_pass:
-            raise ApiError(f"You can only book up to {max_pass} pass(es) per booking.", 400)
+        if max_pass > 0:
+            already_booked = UserRepository.get_user_booked_passes_count(
+                event.id,
+                user_id=data.user_id,
+                email=email_clean
+            )
+            if already_booked >= max_pass:
+                raise ApiError(
+                    f"Booking Limit Reached: You have already reserved {already_booked} pass(es) for this event. Maximum allowed is {max_pass} per attendee.",
+                    400
+                )
+            if already_booked + qty > max_pass:
+                remaining_allowed = max_pass - already_booked
+                raise ApiError(
+                    f"Pass Limit Exceeded: You already hold {already_booked} pass(es). You can only book {remaining_allowed} more pass(es) (Max {max_pass} per attendee).",
+                    400
+                )
 
         # 4. Save Booking with full provision snapshots
         booking = UserRepository.create_booking(
@@ -207,6 +222,10 @@ class UserService:
             "food_details": data.food_details,
             "vehicle_details": data.vehicle_details,
             "vehicle_number": data.vehicle_number,
+            "entry_type": (getattr(booking_settings, "entry_type", None) or "Single Entry").strip(),
+            "max_reentries": (getattr(booking_settings, "max_reentries", None) or "Unlimited").strip(),
+            "total_checkins": 0,
+            "remaining_entries": 1 if (getattr(booking_settings, "entry_type", "Single Entry") or "Single Entry").strip().lower() == "single entry" else (getattr(booking_settings, "max_reentries", "Unlimited") or "Unlimited"),
             "event_details": {
                 "name": event.event_name,
                 "venue": event.venue,

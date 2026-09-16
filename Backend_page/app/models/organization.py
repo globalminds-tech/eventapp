@@ -1,8 +1,8 @@
 import uuid as uuid_pkg
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, func, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import String, Text, DateTime, func, ForeignKey, Uuid
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions.database import db
 
@@ -10,21 +10,21 @@ from app.extensions.database import db
 class Organization(db.Model):
     __tablename__ = 'organizations'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     org_type: Mapped[str] = mapped_column(String(50), default='ORGANIZER', nullable=False) # ORGANIZER, EXHIBITOR, AGENCY
     logo_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     website: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    owner_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='RESTRICT'), nullable=False)
+    owner_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('users.id', ondelete='RESTRICT'), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default='ACTIVE')
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     members = relationship("OrganizationMember", back_populates="organization", cascade="all, delete-orphan")
     custom_roles = relationship("Role", back_populates="organization", cascade="all, delete-orphan")
@@ -48,21 +48,21 @@ class Organization(db.Model):
 class OrganizationMember(db.Model):
     __tablename__ = 'organization_members'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
-    organization_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('organizations.id', ondelete='CASCADE'), nullable=False)
-    user_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    role_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('roles.id', ondelete='RESTRICT'), nullable=False)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
+    organization_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('organizations.id', ondelete='CASCADE'), nullable=False)
+    user_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    role_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('roles.id', ondelete='RESTRICT'), nullable=False)
     title: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     department: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default='ACTIVE') # INVITED, ACTIVE, SUSPENDED, DEACTIVATED
     joined_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     organization = relationship("Organization", back_populates="members")
     user = relationship("User", foreign_keys=[user_id])
@@ -90,19 +90,19 @@ class OrganizationMember(db.Model):
 class OrganizationInvitation(db.Model):
     __tablename__ = 'organization_invitations'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
-    organization_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('organizations.id', ondelete='CASCADE'), nullable=False)
-    role_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('roles.id', ondelete='RESTRICT'), nullable=False)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
+    organization_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('organizations.id', ondelete='CASCADE'), nullable=False)
+    role_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('roles.id', ondelete='RESTRICT'), nullable=False)
     invited_email: Mapped[str] = mapped_column(String(150), nullable=False, index=True)
     invited_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default='PENDING') # PENDING, ACCEPTED, EXPIRED, REVOKED
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    accepted_by_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    accepted_by_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    created_by: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    created_by: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
 
     organization = relationship("Organization")
     role = relationship("Role")

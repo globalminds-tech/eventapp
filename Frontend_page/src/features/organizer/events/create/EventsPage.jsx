@@ -21,14 +21,15 @@ import {
   ChevronRight,
   X,
   Eye,
-  Trash2
+  Trash2,
+  PlayCircle
 } from "lucide-react";
 
 import CreateEvent from "./CreateEvent";
 import MediaRenderer from "@/components/MediaRenderer";
 import { deleteEvent, getEventFullDetails } from "@/Services/api";
 
-/* 🔥 CONTINUOUS IMAGE SLIDER */
+/* CONTINUOUS IMAGE SLIDER */
 const ImageSlider = ({ images = [], className = "w-28 h-20" }) => {
   const sliderImages =
     images.length === 0
@@ -191,6 +192,10 @@ const EventsPage = () => {
   };
 
   const handleView = async (event) => {
+    const rawSt = (event.status || event.approval_status || "").toUpperCase();
+    if (rawSt === "DRAFT") {
+      return handleEdit(event);
+    }
     setIsLoadingFullData(true);
     try {
       const fullData = await getEventFullDetails(event.id);
@@ -210,6 +215,9 @@ const EventsPage = () => {
   };
 
   const getEventTabStatus = (e) => {
+    const rawSt = (e.status || e.approval_status || "").toUpperCase();
+    if (rawSt === "DRAFT") return "Draft";
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -342,6 +350,7 @@ const EventsPage = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 scrollbar-none">
         {[
           { label: "All Events", value: "All", count: events.length },
+          { label: "Drafts", value: "Draft", count: events.filter(e => (e.status || e.approval_status || "").toUpperCase() === "DRAFT").length },
           { label: "Active Events", value: "Active", count: events.filter(e => getEventTabStatus(e) === "Active").length },
           { label: "Upcoming Events", value: "Upcoming", count: events.filter(e => getEventTabStatus(e) === "Upcoming").length },
           { label: "Past Events", value: "Past", count: events.filter(e => getEventTabStatus(e) === "Past").length },
@@ -474,35 +483,65 @@ const EventsPage = () => {
                             ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
                             : eventStatus === "Upcoming"
                             ? "bg-cyan-100 text-cyan-700 border border-cyan-200"
+                            : eventStatus === "Draft"
+                            ? "bg-slate-100 text-slate-700 border border-slate-300"
                             : "bg-slate-100 text-slate-600 border border-slate-200"
                         }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${eventStatus === "Active" ? "bg-emerald-500 animate-pulse" : eventStatus === "Upcoming" ? "bg-cyan-500" : "bg-slate-400"}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            eventStatus === "Active" 
+                              ? "bg-emerald-500 animate-pulse" 
+                              : eventStatus === "Upcoming" 
+                              ? "bg-cyan-500" 
+                              : "bg-slate-400"
+                          }`} />
                           {eventStatus}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleView(e)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
-                            title="View Event Details"
-                          >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(e)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
-                            title="Edit Event"
-                          >
-                            <Pencil size={15} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(e.id)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 transition-colors cursor-pointer border border-slate-200"
-                            title="Delete Event"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {eventStatus === "Draft" ? (
+                            <>
+                              <button
+                                onClick={() => handleEdit(e)}
+                                className="px-3 py-1 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-xs shadow-cyan-500/25 cursor-pointer transition-all active:scale-95"
+                                title="Resume Draft & Publish Event"
+                              >
+                                <PlayCircle size={13} strokeWidth={2.5} />
+                                <span>Resume Setup</span>
+                              </button>
+                              <button
+                                onClick={() => handleDelete(e.id)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 transition-colors cursor-pointer border border-slate-200"
+                                title="Discard Draft"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleView(e)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
+                                title="View Event Details"
+                              >
+                                <Eye size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleEdit(e)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
+                                title="Edit Event"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(e.id)}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 transition-colors cursor-pointer border border-slate-200"
+                                title="Delete Event"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -527,16 +566,34 @@ const EventsPage = () => {
               </div>
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-900">₹{e.price || e.pass_fee || 0}</span>
-                <div className="flex gap-1">
-                  <button onClick={() => handleView(e)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-cyan-50 hover:text-cyan-600" title="View">
-                    <Eye size={14} />
-                  </button>
-                  <button onClick={() => handleEdit(e)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600" title="Edit">
-                    <Pencil size={14} />
-                  </button>
-                  <button onClick={() => handleDelete(e.id)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600" title="Delete">
-                    <Trash2 size={14} />
-                  </button>
+                <div className="flex items-center gap-1">
+                  {eventStatus === "Draft" ? (
+                    <>
+                      <button
+                        onClick={() => handleEdit(e)}
+                        className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white text-[11px] font-extrabold inline-flex items-center gap-1 shadow-xs cursor-pointer"
+                        title="Resume Setup"
+                      >
+                        <PlayCircle size={12} strokeWidth={2.5} />
+                        <span>Resume</span>
+                      </button>
+                      <button onClick={() => handleDelete(e.id)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600" title="Delete Draft">
+                        <Trash2 size={13} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => handleView(e)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-cyan-50 hover:text-cyan-600" title="View">
+                        <Eye size={14} />
+                      </button>
+                      <button onClick={() => handleEdit(e)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600" title="Edit">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(e.id)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-600" title="Delete">
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

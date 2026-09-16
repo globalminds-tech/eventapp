@@ -7,6 +7,7 @@ import { getUserAvailableRoles } from "@/shared/services/authHelper";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { ShieldCheck } from "lucide-react";
 import FirstLoginPasswordModal from "./FirstLoginPasswordModal";
+import { isTokenExpired } from "@/shared/utils/jwtUtils";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const dispatch = useDispatch();
@@ -114,8 +115,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // 5. Check valid session token
-  const isValidToken = Boolean(token && !token.includes("authenticated-user-token") && !token.includes("-session-token"));
+  // 5. Check valid session token (including expiration check)
+  const isValidToken = Boolean(
+    token &&
+    !token.includes("authenticated-user-token") &&
+    !token.includes("-session-token") &&
+    !isTokenExpired(token)
+  );
 
   if (!isValidToken) {
     const returnUrl = encodeURIComponent(location.pathname + location.search);

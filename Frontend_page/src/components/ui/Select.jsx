@@ -168,20 +168,26 @@ export const Select = ({
             </SelectTrigger>
             <SelectContent className={contentClassName}>
               {options
-                ? options.map((opt, idx) => {
-                    const optVal = typeof opt === "object" ? opt.value : opt;
-                    const optLabel = typeof opt === "object" ? opt.label : opt;
-                    const optDisabled = typeof opt === "object" ? opt.disabled : false;
-                    return (
-                      <SelectItem
-                        key={idx}
-                        value={optVal}
-                        disabled={optDisabled}
-                      >
-                        {optLabel}
-                      </SelectItem>
-                    );
-                  })
+                ? options.length > 0 ? (
+                    options.map((opt, idx) => {
+                      const optVal = typeof opt === "object" ? opt.value : opt;
+                      const optLabel = typeof opt === "object" ? opt.label : opt;
+                      const optDisabled = typeof opt === "object" ? opt.disabled : false;
+                      return (
+                        <SelectItem
+                          key={idx}
+                          value={optVal}
+                          disabled={optDisabled}
+                        >
+                          {optLabel}
+                        </SelectItem>
+                      );
+                    })
+                  ) : (
+                    <div className="py-2.5 px-3 text-xs text-slate-400 font-medium text-center">
+                      {placeholder || "No options available"}
+                    </div>
+                  )
                 : React.Children.map(children, (child) => {
                     if (!React.isValidElement(child)) return child;
                     if (child.type === "option") {

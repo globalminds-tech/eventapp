@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { getPolicies, createPolicy } from "@/Services/api";
 import { useSelector } from "react-redux";
-import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit, FileText, ExternalLink } from "lucide-react";
+import { Plus, X, CheckCircle, Trash2, Eye, ChevronRight, ChevronDown, Info, Edit, FileText, ExternalLink, ShieldCheck, AlertCircle } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
 import { ENV } from "@/config/env";
 import AddPolicyModal from "../../../master-data/components/AddPolicyModal";
@@ -15,6 +15,7 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
   const [policyName, setPolicyName] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [modalDefaultGroup, setModalDefaultGroup] = useState("");
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewDescription, setViewDescription] = useState("");
   const [viewPolicyItem, setViewPolicyItem] = useState(null);
@@ -171,6 +172,32 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
     return "";
   };
 
+  const isPaidEvent =
+    formData?.booking?.chargeType === "Paid" ||
+    formData?.booking?.charge_type === "Paid" ||
+    (Number(formData?.booking?.priceINR || formData?.booking?.price_inr || formData?.booking?.price || 0) > 0);
+
+  const hasRefundPolicy = (formData?.terms || []).some((p) => {
+    const grp = (p.policyGroup || p.policy_group || "").toLowerCase();
+    const typ = (p.policyType || p.policy_type || "").toLowerCase();
+    const isRefund = grp.includes("refund") || grp.includes("cancel") || typ.includes("refund") || typ.includes("cancel");
+    const hasText = Boolean(p.description && p.description.trim().length > 0);
+    const hasDoc = Boolean(p.document_file || (p.documents && p.documents.length > 0));
+    return isRefund && (hasText || hasDoc);
+  });
+
+  // Auto-select refund group if paid event and no group selected
+  useEffect(() => {
+    if (isPaidEvent && !policyGroup && Object.keys(policyData).length > 0) {
+      const refundGrp = Object.keys(policyData).find((g) =>
+        g.toLowerCase().includes("refund") || g.toLowerCase().includes("cancel")
+      );
+      if (refundGrp) {
+        setPolicyGroup(refundGrp);
+      }
+    }
+  }, [isPaidEvent, policyData]);
+
   const addPolicy = () => {
     if (!policyGroup || !policyType || !policyName) {
       showNotification("Please select all fields", "error");
@@ -195,6 +222,22 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
     }
 
     const meta = getSelectedPolicyMeta();
+
+    const isRefundOrCancellation =
+      exactGroup.toLowerCase().includes("refund") ||
+      exactGroup.toLowerCase().includes("cancel") ||
+      policyType.toLowerCase().includes("refund") ||
+      policyType.toLowerCase().includes("cancel");
+
+    if (isRefundOrCancellation) {
+      const hasText = Boolean(description && description.trim().length > 0);
+      const hasDoc = Boolean(meta?.document_file || (meta?.documents && meta.documents.length > 0));
+      if (!hasText && !hasDoc) {
+        showNotification("Refund & Cancellation policies require either written terms or an uploaded document.", "error");
+        return;
+      }
+    }
+
     const newPolicyItem = {
       policyGroup: exactGroup,
       policyType,
@@ -316,6 +359,50 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
       </div>
 
       {/* ── 2. TERMS & CONDITIONS (BELOW DOCUMENTS) ── */}
+      {/* PAID EVENT REFUND POLICY MANDATORY BANNER */}
+      {isPaidEvent && (
+        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          hasRefundPolicy 
+            ? "bg-emerald-50/70 border-emerald-200/80 text-emerald-900" 
+            : "bg-amber-50/80 border-amber-200 text-amber-900 shadow-xs"
+        }`}>
+          <div className="flex items-start sm:items-center gap-3">
+            <div className={`p-2 rounded-xl shrink-0 ${hasRefundPolicy ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+              {hasRefundPolicy ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-black tracking-tight">
+                  {hasRefundPolicy ? "Refund & Cancellation Policy Attached" : "Refund & Cancellation Policy Required (Paid Event)"}
+                </h4>
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                  hasRefundPolicy ? "bg-emerald-100 text-emerald-800" : "bg-amber-200 text-amber-900"
+                }`}>
+                  {hasRefundPolicy ? "Compliant" : "Action Required"}
+                </span>
+              </div>
+              <p className="text-[11px] font-medium opacity-80 mt-0.5">
+                {hasRefundPolicy 
+                  ? "Attendees will see this refund terms and document attached to their ticket pass." 
+                  : "Paid events require an explicit Refund & Cancellation policy with either written terms or an uploaded document."}
+              </p>
+            </div>
+          </div>
+
+          {!hasRefundPolicy && (
+            <button
+              onClick={() => {
+                setModalDefaultGroup("Refund Policy");
+                setShowAddModal(true);
+              }}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer border-none flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <Plus size={14} /> Add Refund Policy
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-10">
         {/* LEFT SECTION: SELECTION FORM */}
         <div className={`${cardClasses} flex flex-col h-auto`}>
@@ -702,10 +789,15 @@ const Step5Terms = ({ formData, setFormData, isReadOnly }) => {
       {/* MODAL: ADD NEW POLICY (RE-PREMIUMIZED) */}
       <AddPolicyModal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        defaultGroup={modalDefaultGroup}
+        onClose={() => {
+          setShowAddModal(false);
+          setModalDefaultGroup("");
+        }}
         onSuccess={() => {
           fetchPolicies();
           setShowAddModal(false);
+          setModalDefaultGroup("");
         }}
       />
     </div>

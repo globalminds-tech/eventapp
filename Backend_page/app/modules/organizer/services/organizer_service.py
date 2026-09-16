@@ -35,26 +35,7 @@ class OrganizerService:
                     pass
             stmt = stmt.order_by(Venue.created_at.desc())
             venues = db.session.scalars(stmt).all()
-            result = []
-            if venues:
-                from app.models.venue import VenueDocument
-                v_ids = [v.id for v in venues]
-                doc_stmt = select(VenueDocument).where(VenueDocument.venue_id.in_(v_ids))
-                all_docs = db.session.scalars(doc_stmt).all()
-                doc_map = {}
-                for d in all_docs:
-                    if d.venue_id not in doc_map:
-                        doc_map[d.venue_id] = []
-                    doc_map[d.venue_id].append({
-                        "document_type": d.document_type,
-                        "document_number": d.document_number,
-                        "document_file": d.document_file
-                    })
-                for v in venues:
-                    v_dict = v.to_dict()
-                    v_dict["documents"] = doc_map.get(v.id, [])
-                    result.append(v_dict)
-            return result
+            return [v.to_dict() for v in venues]
         except Exception as e:
             print("[get_venues error]:", e)
         return []
@@ -63,7 +44,17 @@ class OrganizerService:
     def create_venue(venue_data: dict, user_id = None) -> dict:
         from app.extensions.database import db
         from app.models.venue import Venue
+        import uuid as uuid_mod
         try:
+            creator_id = user_id or venue_data.get("created_by") or venue_data.get("organizer_id") or venue_data.get("user_id")
+            org_id = venue_data.get("organizer_id") or user_id
+            org_uuid = None
+            if org_id:
+                try:
+                    org_uuid = uuid_mod.UUID(str(org_id))
+                except Exception:
+                    org_uuid = None
+
             new_venue = Venue(
                 venue_name=venue_data.get("venue_name"),
                 address=venue_data.get("address"),
@@ -76,22 +67,10 @@ class OrganizerService:
                 longitude=venue_data.get("longitude") if venue_data.get("longitude") else None,
                 google_place_id=venue_data.get("location_details", ""),
                 status=venue_data.get("status", "Active"),
-                organizer_id=user_id or venue_data.get("organizer_id")
+                organizer_id=org_uuid,
+                created_by=str(creator_id) if creator_id else None
             )
             db.session.add(new_venue)
-            db.session.flush()
-
-            documents = venue_data.get("documents", [])
-            if documents:
-                from app.models.venue import VenueDocument
-                for doc in documents:
-                    new_doc = VenueDocument(
-                        venue_id=new_venue.id,
-                        document_type=doc.get("document_type", ""),
-                        document_number=doc.get("document_number", ""),
-                        document_file=doc.get("document_file", "")
-                    )
-                    db.session.add(new_doc)
             db.session.commit()
             return new_venue.to_dict()
         except Exception as e:
@@ -521,10 +500,11 @@ class OrganizerService:
     # ── VENUE UPDATE & DELETE ──
 
     @staticmethod
-    def update_venue(venue_id: str, venue_data: dict) -> dict:
+    def update_venue(venue_id: str, venue_data: dict, user_id = None) -> dict:
         from sqlalchemy import select
         from app.extensions.database import db
         from app.models.venue import Venue
+        from datetime import datetime
         import uuid as uuid_mod
         try:
             vid = uuid_mod.UUID(str(venue_id))
@@ -539,8 +519,17 @@ class OrganizerService:
                     setattr(venue, field, venue_data[field])
             if "location_details" in venue_data:
                 venue.google_place_id = venue_data["location_details"]
+
+            updater_id = user_id or venue_data.get("updated_by") or venue_data.get("organizer_id") or venue_data.get("user_id")
+            if updater_id:
+                try:
+                    venue.updated_by = uuid_mod.UUID(str(updater_id))
+                except Exception:
+                    pass
+            venue.updated_at = datetime.utcnow()
+
             db.session.commit()
-            return {"success": True, "message": "Venue updated successfully"}
+            return {"success": True, "message": "Venue updated successfully", "data": venue.to_dict()}
         except Exception as e:
             db.session.rollback()
             raise e

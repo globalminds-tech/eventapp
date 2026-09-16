@@ -37,7 +37,7 @@ class AdminService:
                 s_date = getattr(e, "start_date", None)
                 e_date = getattr(e, "end_date", None)
 
-                if st in ["PENDING", "SUBMITTED", "DRAFT"]:
+                if st in ["PENDING", "SUBMITTED"]:
                     pending_events += 1
                 elif e_date and e_date < today:
                     completed_events += 1
@@ -47,10 +47,19 @@ class AdminService:
                     live_events += 1
                     approved_events += 1
 
-            total_users = len(users)
-            total_organizers = sum(1 for u in users if "organizer" in [str(r).lower() for r in (u.roles or [])])
-            total_exhibitors = sum(1 for u in users if "exhibitor" in [str(r).lower() for r in (u.roles or [])])
-            total_attendees = max(0, total_users - (total_organizers + total_exhibitors))
+            admin_roles = {"superuser", "superadmin", "admin"}
+            platform_users = [
+                u for u in users
+                if getattr(u, "deleted_at", None) is None
+                and not any(str(r).lower() in admin_roles for r in (u.roles or []))
+                and str(getattr(u, "active_role", "") or "").lower() not in admin_roles
+                and str(getattr(u, "email", "") or "").lower() != "bookmyevent2026@gmail.com"
+            ]
+
+            total_users = len(platform_users)
+            total_organizers = sum(1 for u in platform_users if "organizer" in [str(r).lower() for r in (u.roles or [])])
+            total_exhibitors = sum(1 for u in platform_users if "exhibitor" in [str(r).lower() for r in (u.roles or [])])
+            total_attendees = sum(1 for u in platform_users if "organizer" not in [str(r).lower() for r in (u.roles or [])] and "exhibitor" not in [str(r).lower() for r in (u.roles or [])])
 
             gross_gmv = 0.0
             for e in events:
@@ -125,6 +134,8 @@ class AdminService:
         session = SessionLocal()
         try:
             stmt = select(EventDetails).where(EventDetails.deleted_at.is_(None))
+            if not organizer_id:
+                stmt = stmt.where(func.upper(EventDetails.status) != "DRAFT")
 
             if only_approved:
                 stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "SUSPENDED"]))
@@ -139,7 +150,7 @@ class AdminService:
                 elif st == "COMPLETED":
                     stmt = stmt.where(func.upper(EventDetails.status).in_(["COMPLETED", "PAST"]))
                 elif st == "PENDING":
-                    stmt = stmt.where(func.upper(EventDetails.status).in_(["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"]))
+                    stmt = stmt.where(func.upper(EventDetails.status).in_(["PENDING", "PENDING APPROVAL", "SUBMITTED"]))
                 elif st == "APPROVED":
                     stmt = stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"]))
                 elif st == "REJECTED":
@@ -196,6 +207,8 @@ class AdminService:
                 safe_limit = min(max(1, int(limit or 20)), 100)
 
                 count_stmt = select(func.count(EventDetails.id)).where(EventDetails.deleted_at.is_(None))
+                if not organizer_id:
+                    count_stmt = count_stmt.where(func.upper(EventDetails.status) != "DRAFT")
                 if only_approved:
                     count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "SUSPENDED"]))
                     count_stmt = count_stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date) >= func.current_date())
@@ -208,7 +221,7 @@ class AdminService:
                     elif st == "COMPLETED":
                         count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["COMPLETED", "PAST"]))
                     elif st == "PENDING":
-                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"]))
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["PENDING", "PENDING APPROVAL", "SUBMITTED"]))
                     elif st == "APPROVED":
                         count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"]))
                     elif st == "REJECTED":
@@ -280,10 +293,16 @@ class AdminService:
                 if ub.is_scanned or ub.is_checked_in:
                     gate_scans_map[ub.event_id] = gate_scans_map.get(ub.event_id, 0) + 1
 
+            user_ids = [e.user_id for e in events if e.user_id]
+            from app.models.organizer_profile import OrganizerProfile
+            org_profiles = session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id.in_(user_ids))).all() if user_ids else []
+            org_map = {op.user_id: op for op in org_profiles}
+
             events_list = []
             for event in events:
                 booking = booking_map.get(event.id)
                 b_url = banner_map.get(event.id, "")
+                org_p = org_map.get(event.user_id)
 
                 price_val = float(getattr(booking, "price_inr", 0) or getattr(booking, "price", 0) or getattr(event, "pass_fee", 0) or 0)
                 capacity_val = int(getattr(booking, "capacity", 500) or getattr(event, "total_capacity", 500) or 500)
@@ -309,6 +328,8 @@ class AdminService:
                     "address": event.address or "",
                     "created_by": getattr(event, "created_by", None),
                     "user_id": str(getattr(event, "user_id", "")) if getattr(event, "user_id", None) else None,
+                    "organizer_kyc_status": (org_p.kyc_status if org_p else "PENDING") or "PENDING",
+                    "organizer_company": (org_p.company_name if org_p else None) or "Event Organizer",
                     "price": price_val,
                     "price_inr": price_val,
                     "passesSold": passes_sold_val,
@@ -348,6 +369,29 @@ class AdminService:
         status_upper = data.status.strip().upper()
         if status_upper not in ["APPROVED", "REJECTED", "PENDING", "ACTIVE", "DRAFT", "SUSPENDED"]:
             raise ApiError("Invalid status value", 400)
+
+        if status_upper in ["APPROVED", "ACTIVE"]:
+            import uuid
+            from app.models.event import EventDetails
+            from app.models.organizer_profile import OrganizerProfile
+
+            target_evt = None
+            try:
+                eid = uuid.UUID(str(event_id))
+                target_evt = db.session.get(EventDetails, eid)
+            except Exception:
+                target_evt = db.session.scalars(select(EventDetails).where(
+                    (EventDetails.event_code == str(event_id)) | (EventDetails.slug == str(event_id))
+                )).first()
+
+            if target_evt and target_evt.user_id:
+                org_p = db.session.scalar(select(OrganizerProfile).where(OrganizerProfile.user_id == target_evt.user_id))
+                if not org_p or (org_p.kyc_status or "").strip().upper() != "VERIFIED":
+                    raise ApiError(
+                        "Cannot approve event: The organizer's business KYC is pending verification. "
+                        "Please verify the organizer's KYC under the KYC Verification tab before publishing this event.",
+                        400
+                    )
 
         event = AdminRepository.update_event_status(event_id, status_upper)
         if not event:
@@ -413,36 +457,81 @@ class AdminService:
     @staticmethod
     def update_organizer_kyc_status(user_id, raw_data: dict) -> dict:
         data = UpdateKycStatusSchema(**raw_data)
-        user = AdminRepository.update_organizer_kyc_status(user_id, data.status)
+        target_status = data.status.strip().upper()
+        target_role = (data.role or raw_data.get("role") or "").strip().lower()
+
+        user = AdminRepository.update_organizer_kyc_status(user_id, target_status)
         if not user:
             raise ApiError("User not found", 404)
         
-        # Also sync to OrganizerProfile and ExhibitorProfile if they exist, or create them
         user_roles = [str(r).lower() for r in (user.roles or [])]
         org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == user.id)).first()
-        if org_p:
-            org_p.kyc_status = data.status
-        elif "organizer" in user_roles or user.active_role == "organizer":
-            org_p = OrganizerProfile(
-                user_id=user.id,
-                company_name=user.organization_name or f"{user.name or 'Organizer'} Productions",
-                kyc_status=data.status
-            )
-            db.session.add(org_p)
-
         exh_p = db.session.scalars(select(ExhibitorProfile).where(ExhibitorProfile.user_id == user.id)).first()
-        if exh_p:
-            exh_p.kyc_status = data.status
-        elif "exhibitor" in user_roles or user.active_role == "exhibitor":
-            exh_p = ExhibitorProfile(
-                user_id=user.id,
-                company_name=user.organization_name or f"{user.name or 'Exhibitor'} Stalls",
-                kyc_status=data.status
-            )
-            db.session.add(exh_p)
+
+        if target_role == "organizer":
+            if org_p:
+                org_p.kyc_status = target_status
+            elif "organizer" in user_roles or user.active_role == "organizer":
+                org_p = OrganizerProfile(
+                    user_id=user.id,
+                    company_name=user.organization_name or f"{user.name or 'Organizer'} Productions",
+                    kyc_status=target_status
+                )
+                db.session.add(org_p)
+        elif target_role == "exhibitor":
+            if exh_p:
+                exh_p.kyc_status = target_status
+            elif "exhibitor" in user_roles or user.active_role == "exhibitor":
+                exh_p = ExhibitorProfile(
+                    user_id=user.id,
+                    company_name=user.organization_name or f"{user.name or 'Exhibitor'} Stalls",
+                    kyc_status=target_status
+                )
+                db.session.add(exh_p)
+        else:
+            # "both" or unspecified - update both
+            if org_p:
+                org_p.kyc_status = target_status
+            elif "organizer" in user_roles or user.active_role == "organizer":
+                org_p = OrganizerProfile(
+                    user_id=user.id,
+                    company_name=user.organization_name or f"{user.name or 'Organizer'} Productions",
+                    kyc_status=target_status
+                )
+                db.session.add(org_p)
+
+            if exh_p:
+                exh_p.kyc_status = target_status
+            elif "exhibitor" in user_roles or user.active_role == "exhibitor":
+                exh_p = ExhibitorProfile(
+                    user_id=user.id,
+                    company_name=user.organization_name or f"{user.name or 'Exhibitor'} Stalls",
+                    kyc_status=target_status
+                )
+                db.session.add(exh_p)
+
+        # Recalculate combined user.kyc_status
+        org_status = (org_p.kyc_status if org_p else None)
+        exh_status = (exh_p.kyc_status if exh_p else None)
+        relevant_statuses = [s for s in [org_status, exh_status] if s]
+
+        if relevant_statuses:
+            if all(s.upper() == "VERIFIED" for s in relevant_statuses):
+                user.kyc_status = "VERIFIED"
+            elif any(s.upper() == "REJECTED" for s in relevant_statuses):
+                user.kyc_status = "REJECTED"
+            else:
+                user.kyc_status = "PENDING"
+        else:
+            user.kyc_status = target_status
 
         db.session.commit()
-        return {"message": f"Organizer KYC status updated to {data.status}"}
+        return {
+            "message": f"KYC status updated to {target_status}" + (f" for {target_role}" if target_role else ""),
+            "user_kyc_status": user.kyc_status,
+            "organizer_kyc": org_p.kyc_status if org_p else None,
+            "exhibitor_kyc": exh_p.kyc_status if exh_p else None
+        }
 
     @staticmethod
     def get_all_users(
@@ -459,7 +548,11 @@ class AdminService:
         from app.common.pagination import build_pagination_metadata
         from sqlalchemy import or_, func, desc, asc, String
 
-        stmt = select(User)
+        stmt = select(User).where(
+            User.deleted_at.is_(None),
+            func.lower(User.email) != "bookmyevent2026@gmail.com",
+            ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"])
+        )
 
         if search and search.strip():
             clean_term = f"%{search.strip().lower()[:100]}%"
@@ -472,24 +565,38 @@ class AdminService:
 
         if role and role.strip().lower() != "all":
             r = role.strip().lower()
-            stmt = stmt.where(or_(
-                func.lower(func.cast(User.roles, String)).like(f"%{r}%"),
-                func.lower(func.coalesce(User.active_role, "")).like(f"%{r}%")
-            ))
+            if r in ["user", "attendee", "attendees"]:
+                stmt = stmt.where(
+                    ~func.lower(func.cast(User.roles, String)).like("%organizer%"),
+                    ~func.lower(func.cast(User.roles, String)).like("%exhibitor%"),
+                    ~func.lower(func.coalesce(User.active_role, "")).in_(["organizer", "exhibitor"])
+                )
+            else:
+                stmt = stmt.where(or_(
+                    func.lower(func.cast(User.roles, String)).like(f"%{r}%"),
+                    func.lower(func.coalesce(User.active_role, "")).like(f"%{r}%")
+                ))
 
         if kyc_status and kyc_status.strip().lower() != "all":
             k_val = kyc_status.strip().upper()
             stmt = stmt.outerjoin(OrganizerProfile, OrganizerProfile.user_id == User.id)\
                        .outerjoin(ExhibitorProfile, ExhibitorProfile.user_id == User.id)
             if k_val == "PENDING":
+                stmt = stmt.where(
+                    or_(
+                        func.lower(func.cast(User.roles, String)).like("%organizer%"),
+                        func.lower(func.cast(User.roles, String)).like("%exhibitor%"),
+                        func.lower(func.coalesce(User.active_role, "")).in_(["organizer", "exhibitor"])
+                    ),
+                    or_(
+                        func.upper(func.coalesce(OrganizerProfile.kyc_status, "PENDING")) == "PENDING",
+                        func.upper(func.coalesce(ExhibitorProfile.kyc_status, "PENDING")) == "PENDING"
+                    )
+                )
+            elif k_val == "VERIFIED":
                 stmt = stmt.where(or_(
-                    func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == "PENDING",
-                    func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == "PENDING"
-                ))
-            else:
-                stmt = stmt.where(or_(
-                    func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == k_val,
-                    func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == k_val
+                    func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == "VERIFIED",
+                    func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == "VERIFIED"
                 ))
 
         # Deterministic sort
@@ -500,7 +607,11 @@ class AdminService:
             safe_page = max(1, int(page or 1))
             safe_limit = min(max(1, int(limit or 20)), 100)
 
-            count_stmt = select(func.count(User.id))
+            count_stmt = select(func.count(User.id)).where(
+                User.deleted_at.is_(None),
+                func.lower(User.email) != "bookmyevent2026@gmail.com",
+                ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"])
+            )
             if search and search.strip():
                 clean_term = f"%{search.strip().lower()[:100]}%"
                 count_stmt = count_stmt.where(or_(
@@ -511,20 +622,34 @@ class AdminService:
                 ))
             if role and role.strip().lower() != "all":
                 r = role.strip().lower()
-                count_stmt = count_stmt.where(or_(
-                    func.lower(func.cast(User.roles, String)).like(f"%{r}%"),
-                    func.lower(func.coalesce(User.active_role, "")).like(f"%{r}%")
-                ))
+                if r in ["user", "attendee", "attendees"]:
+                    count_stmt = count_stmt.where(
+                        ~func.lower(func.cast(User.roles, String)).like("%organizer%"),
+                        ~func.lower(func.cast(User.roles, String)).like("%exhibitor%"),
+                        ~func.lower(func.coalesce(User.active_role, "")).in_(["organizer", "exhibitor"])
+                    )
+                else:
+                    count_stmt = count_stmt.where(or_(
+                        func.lower(func.cast(User.roles, String)).like(f"%{r}%"),
+                        func.lower(func.coalesce(User.active_role, "")).like(f"%{r}%")
+                    ))
             if kyc_status and kyc_status.strip().lower() != "all":
                 k_val = kyc_status.strip().upper()
                 count_stmt = count_stmt.outerjoin(OrganizerProfile, OrganizerProfile.user_id == User.id)\
                                        .outerjoin(ExhibitorProfile, ExhibitorProfile.user_id == User.id)
                 if k_val == "PENDING":
-                    count_stmt = count_stmt.where(or_(
-                        func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == "PENDING",
-                        func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == "PENDING"
-                    ))
-                else:
+                    count_stmt = count_stmt.where(
+                        or_(
+                            func.lower(func.cast(User.roles, String)).like("%organizer%"),
+                            func.lower(func.cast(User.roles, String)).like("%exhibitor%"),
+                            func.lower(func.coalesce(User.active_role, "")).in_(["organizer", "exhibitor"])
+                        ),
+                        or_(
+                            func.upper(func.coalesce(OrganizerProfile.kyc_status, "PENDING")) == "PENDING",
+                            func.upper(func.coalesce(ExhibitorProfile.kyc_status, "PENDING")) == "PENDING"
+                        )
+                    )
+                elif k_val == "VERIFIED":
                     count_stmt = count_stmt.where(or_(
                         func.upper(func.coalesce(OrganizerProfile.kyc_status, "")) == k_val,
                         func.upper(func.coalesce(ExhibitorProfile.kyc_status, "")) == k_val
@@ -543,78 +668,65 @@ class AdminService:
 
             roles_list = list(u.roles) if u.roles else [getattr(u, "role", "user") or "user"]
             roles_lower = [str(r).lower() for r in roles_list]
+            is_organizer = "organizer" in roles_lower or (u.active_role or "").lower() == "organizer"
+            is_exhibitor = "exhibitor" in roles_lower or (u.active_role or "").lower() == "exhibitor"
+            is_common_user = not is_organizer and not is_exhibitor
 
-            company = None
-            gst_pan = None
-            bank_acc = None
-            ifsc = None
-            kyc_st = None
-
-            if org_p:
-                company = org_p.company_name
-                gst_pan = f"{org_p.gstin or ''} / {org_p.pan_number or ''}".strip(" /")
-                bank_acc = org_p.account_number
-                ifsc = org_p.ifsc_code
-                kyc_st = org_p.kyc_status
-            elif "organizer" in roles_lower:
-                # Seed default organizer profile if none exists
-                company = u.organization_name or f"{u.name} Events"
-                gst_pan = "33ABCDE1234F1Z5 / ABCDE1234F"
-                bank_acc = "987654321098"
-                ifsc = "HDFC0001234"
-                kyc_st = "PENDING"
+            # Auto-create profile if missing for organizer/exhibitor role
+            if is_organizer and not org_p:
                 try:
-                    new_org = OrganizerProfile(
+                    org_p = OrganizerProfile(
                         user_id=u.id,
-                        company_name=company,
+                        company_name=u.organization_name or f"{u.name} Events",
                         gstin="33ABCDE1234F1Z5",
                         pan_number="ABCDE1234F",
-                        account_number=bank_acc,
-                        ifsc_code=ifsc,
-                        kyc_status=kyc_st
+                        account_number="987654321098",
+                        ifsc_code="HDFC0001234",
+                        kyc_status="PENDING"
                     )
-                    db.session.add(new_org)
+                    db.session.add(org_p)
                     db.session.commit()
                 except Exception:
                     db.session.rollback()
 
-            if exh_p:
-                company = company or exh_p.company_name
-                gst_pan = gst_pan or f"{exh_p.gstin or ''} / {exh_p.pan_number or ''}".strip(" /")
-                bank_acc = bank_acc or exh_p.account_number
-                ifsc = ifsc or exh_p.ifsc_code
-                kyc_st = kyc_st or exh_p.kyc_status
-            elif "exhibitor" in roles_lower and not org_p:
-                company = u.organization_name or f"{u.name} Expo Ltd"
-                gst_pan = "29ABCDE5678F1Z9 / ABCDE5678F"
-                bank_acc = "567812349012"
-                ifsc = "ICIC0002345"
-                kyc_st = kyc_st or "PENDING"
+            if is_exhibitor and not exh_p:
                 try:
-                    new_exh = ExhibitorProfile(
+                    exh_p = ExhibitorProfile(
                         user_id=u.id,
-                        company_name=company,
+                        company_name=u.organization_name or f"{u.name} Expo Ltd",
                         gstin="29ABCDE5678F1Z9",
                         pan_number="ABCDE5678F",
-                        account_number=bank_acc,
-                        ifsc_code=ifsc,
-                        kyc_status=kyc_st
+                        account_number="567812349012",
+                        ifsc_code="ICIC0002345",
+                        kyc_status="PENDING"
                     )
-                    db.session.add(new_exh)
+                    db.session.add(exh_p)
                     db.session.commit()
                 except Exception:
                     db.session.rollback()
 
-            company = company or getattr(u, "organization_name", None) or getattr(u, "company_name", None) or "Individual Account"
-            bank_acc = bank_acc or getattr(u, "bank_account", None) or "N/A"
-            ifsc = ifsc or getattr(u, "ifsc", None) or "N/A"
-            gst_pan = gst_pan or getattr(u, "gst_pan", None) or "N/A"
-            kyc_st = kyc_st or "VERIFIED"
+            org_kyc = (org_p.kyc_status or "PENDING") if (is_organizer and org_p) else (org_p.kyc_status if org_p else None)
+            exh_kyc = (exh_p.kyc_status or "PENDING") if (is_exhibitor and exh_p) else (exh_p.kyc_status if exh_p else None)
 
-            # Filter by KYC status if requested
-            if kyc_status and kyc_status.strip().lower() != "all":
-                if kyc_st.upper() != kyc_status.strip().upper():
-                    continue
+            if is_common_user:
+                combined_kyc = "NOT_REQUIRED"
+            else:
+                active_kycs = [k for k in [org_kyc, exh_kyc] if k is not None]
+                if any(str(k).upper() == "PENDING" for k in active_kycs):
+                    combined_kyc = "PENDING"
+                elif all(str(k).upper() == "VERIFIED" for k in active_kycs):
+                    combined_kyc = "VERIFIED"
+                elif any(str(k).upper() == "REJECTED" for k in active_kycs):
+                    combined_kyc = "REJECTED"
+                else:
+                    combined_kyc = "PENDING"
+
+            company = (org_p.company_name if org_p else None) or (exh_p.company_name if exh_p else None) or getattr(u, "organization_name", None) or getattr(u, "company_name", None) or ("Individual Account" if is_common_user else "Business Account")
+            gst_pan = (f"{org_p.gstin or ''} / {org_p.pan_number or ''}".strip(" /") if (org_p and (org_p.gstin or org_p.pan_number)) else None) or \
+                      (f"{exh_p.gstin or ''} / {exh_p.pan_number or ''}".strip(" /") if (exh_p and (exh_p.gstin or exh_p.pan_number)) else None) or \
+                      getattr(u, "gst_pan", "N/A")
+            bank_acc = (org_p.account_number if org_p else None) or (exh_p.account_number if exh_p else None) or getattr(u, "bank_account", "N/A")
+            ifsc = (org_p.ifsc_code if org_p else None) or (exh_p.ifsc_code if exh_p else None) or getattr(u, "ifsc", "N/A")
 
             user_list.append({
                 "id": str(u.id),
@@ -622,12 +734,19 @@ class AdminService:
                 "email": u.email,
                 "role": u.active_role or (roles_list[0] if roles_list else "user"),
                 "roles": roles_list,
+                "is_organizer": is_organizer,
+                "is_exhibitor": is_exhibitor,
+                "is_common_user": is_common_user,
+                "organizer_kyc": org_kyc,
+                "exhibitor_kyc": exh_kyc,
+                "organizer_company": org_p.company_name if org_p else None,
+                "exhibitor_company": exh_p.company_name if exh_p else None,
                 "mobile": getattr(u, "mobile", "") or "N/A",
                 "company_name": company,
-                "gst_pan": gst_pan,
-                "bank_account": bank_acc,
-                "ifsc": ifsc,
-                "kyc_status": kyc_st,
+                "gst_pan": gst_pan or "N/A",
+                "bank_account": bank_acc or "N/A",
+                "ifsc": ifsc or "N/A",
+                "kyc_status": combined_kyc,
                 "created_at": str(getattr(u, "created_at", "")) if getattr(u, "created_at", None) else None
             })
 

@@ -5,7 +5,7 @@ import { fetchEventsThunk } from "@/app/store/eventSlice";
 import {
   Eye, Pencil, Search, PlusCircle, Calendar, Ticket, IndianRupee, Users,
   QrCode, MapPin, Clock, RefreshCw, Trash2, Store, Utensils, Bell,
-  ChevronDown, ArrowUpRight, CheckCircle2, AlertCircle, X, ShieldCheck
+  ChevronDown, ArrowUpRight, CheckCircle2, AlertCircle, X, ShieldCheck, PlayCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -105,7 +105,8 @@ export default function OrganizerDashboardPage() {
     if (sDate) sDate.setHours(0, 0, 0, 0);
     if (eDate) eDate.setHours(23, 59, 59, 999);
 
-    if (e?.status === "Draft") return "Draft";
+    const rawSt = (e?.status || e?.approval_status || "").toUpperCase();
+    if (rawSt === "DRAFT") return "Draft";
     if (eDate && today > eDate) return "Past";
     if (sDate && today < sDate) return "Upcoming";
     return "Active";
@@ -141,6 +142,10 @@ export default function OrganizerDashboardPage() {
   };
 
   const handleView = (evt) => {
+    const rawSt = (evt.status || evt.approval_status || "").toUpperCase();
+    if (rawSt === "DRAFT") {
+      return handleEdit(evt);
+    }
     const eventCode = evt.event_code || evt.code || evt.id;
     navigate(`/OrganizerHome/ViewEvent/${eventCode}`, { state: { mode: "view", isReadOnly: true, eventData: evt, eventId: evt.id } });
   };
@@ -151,8 +156,8 @@ export default function OrganizerDashboardPage() {
   };
 
   const handleGateScanner = (evt) => {
-    const eventId = evt.id || evt.event_id || 1;
-    navigate(`/validate-booking/${eventId}`);
+    const eventId = evt.id || evt.event_code || evt.code;
+    navigate(`/OrganizerHome/EventCheckIn/${eventId}`, { state: { eventId, eventData: evt } });
   };
 
   return (
@@ -532,33 +537,48 @@ export default function OrganizerDashboardPage() {
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            <Can I="events.view">
-                              <button
-                                onClick={() => handleView(evt)}
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
-                                title="View Event Details"
-                              >
-                                <Eye size={15} />
-                              </button>
-                            </Can>
-                            <Can I="events.edit">
-                              <button
-                                onClick={() => handleEdit(evt)}
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
-                                title="Edit Event"
-                              >
-                                <Pencil size={15} />
-                              </button>
-                            </Can>
-                            <Can anyOf={["checkin.view", "checkin.scan"]}>
-                              <button
-                                onClick={() => handleGateScanner(evt)}
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer border border-slate-200"
-                                title="Gate Check In"
-                              >
-                                <QrCode size={15} />
-                              </button>
-                            </Can>
+                            {isDraft ? (
+                              <Can I="events.edit">
+                                <button
+                                  onClick={() => handleEdit(evt)}
+                                  className="px-3 py-1 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-xs shadow-cyan-500/25 cursor-pointer transition-all active:scale-95"
+                                  title="Resume Draft & Publish Event"
+                                >
+                                  <PlayCircle size={13} strokeWidth={2.5} />
+                                  <span>Resume Setup</span>
+                                </button>
+                              </Can>
+                            ) : (
+                              <>
+                                <Can I="events.view">
+                                  <button
+                                    onClick={() => handleView(evt)}
+                                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-cyan-50 text-slate-600 hover:text-cyan-600 transition-colors cursor-pointer border border-slate-200"
+                                    title="View Event Details"
+                                  >
+                                    <Eye size={15} />
+                                  </button>
+                                </Can>
+                                <Can I="events.edit">
+                                  <button
+                                    onClick={() => handleEdit(evt)}
+                                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 transition-colors cursor-pointer border border-slate-200"
+                                    title="Edit Event"
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
+                                </Can>
+                                <Can anyOf={["checkin.view", "checkin.scan"]}>
+                                  <button
+                                    onClick={() => handleGateScanner(evt)}
+                                    className="p-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer border border-slate-200"
+                                    title="Gate Check In"
+                                  >
+                                    <QrCode size={15} />
+                                  </button>
+                                </Can>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -644,33 +664,47 @@ export default function OrganizerDashboardPage() {
                 />
 
                 <MobileDataCard.Actions>
-                  <Can I="events.view">
-                    <button
-                      onClick={() => handleView(evt)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-cyan-50 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
-                    >
-                      <Eye size={13} />
-                      <span>View</span>
-                    </button>
-                  </Can>
-                  <Can I="events.edit">
-                    <button
-                      onClick={() => handleEdit(evt)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
-                    >
-                      <Pencil size={13} />
-                      <span>Edit</span>
-                    </button>
-                  </Can>
-                  <Can anyOf={["checkin.view", "checkin.scan"]}>
-                    <button
-                      onClick={() => handleGateScanner(evt)}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-extrabold inline-flex items-center gap-1.5 border border-emerald-200 cursor-pointer"
-                    >
-                      <QrCode size={13} />
-                      <span>Gate Scan</span>
-                    </button>
-                  </Can>
+                  {isDraft ? (
+                    <Can I="events.edit">
+                      <button
+                        onClick={() => handleEdit(evt)}
+                        className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <PlayCircle size={13} strokeWidth={2.5} />
+                        <span>Resume Setup</span>
+                      </button>
+                    </Can>
+                  ) : (
+                    <>
+                      <Can I="events.view">
+                        <button
+                          onClick={() => handleView(evt)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-cyan-50 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
+                        >
+                          <Eye size={13} />
+                          <span>View</span>
+                        </button>
+                      </Can>
+                      <Can I="events.edit">
+                        <button
+                          onClick={() => handleEdit(evt)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 text-xs font-extrabold inline-flex items-center gap-1 border border-slate-200 cursor-pointer"
+                        >
+                          <Pencil size={13} />
+                          <span>Edit</span>
+                        </button>
+                      </Can>
+                      <Can anyOf={["checkin.view", "checkin.scan"]}>
+                        <button
+                          onClick={() => handleGateScanner(evt)}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-extrabold inline-flex items-center gap-1.5 border border-emerald-200 cursor-pointer"
+                        >
+                          <QrCode size={13} />
+                          <span>Gate Scan</span>
+                        </button>
+                      </Can>
+                    </>
+                  )}
                 </MobileDataCard.Actions>
               </MobileDataCard>
             );

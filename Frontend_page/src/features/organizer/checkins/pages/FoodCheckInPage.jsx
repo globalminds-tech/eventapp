@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search, Utensils, QrCode, CheckCircle2, RefreshCw, X, LogIn,
   DoorOpen, Sparkles, Volume2, VolumeX, AlertTriangle, ShieldAlert,
@@ -18,11 +19,22 @@ import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveT
 
 
 export default function FoodCheckIn() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [search, setSearch] = useState("");
   const [showScanner, setShowScanner] = useState(false);
-  const [selectedEventId, setSelectedEventId] = useState("");
+  const [selectedEventId, setSelectedEventId] = useState(location.state?.eventId || "");
   const [scanResultAlert, setScanResultAlert] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.resetSelection || !location.state?.eventId) {
+      setSelectedEventId("");
+    } else if (location.state?.eventId) {
+      setSelectedEventId(location.state.eventId);
+    }
+  }, [location.pathname, location.key, location.state]);
 
   const [attendees, setAttendees] = useState([]);
   const [entriesLoading, setEntriesLoading] = useState(false);

@@ -134,6 +134,18 @@ export default function WebSidebar({ role }) {
         location.pathname.startsWith("/OrganizerHome/CreateEvent")
       );
     }
+    if (path === "/OrganizerHome/EventCheckIn") {
+      return (
+        location.pathname === "/OrganizerHome/EventCheckIn" ||
+        location.pathname.startsWith("/OrganizerHome/EventCheckIn/")
+      );
+    }
+    if (path === "/OrganizerHome/FoodCheckIn") {
+      return (
+        location.pathname === "/OrganizerHome/FoodCheckIn" ||
+        location.pathname.startsWith("/OrganizerHome/FoodCheckIn/")
+      );
+    }
     if (path === "/superuser/categories") {
       return (
         location.pathname === "/superuser/categories" ||
@@ -141,7 +153,7 @@ export default function WebSidebar({ role }) {
         location.pathname.startsWith("/superuser/category-requests")
       );
     }
-    return location.pathname === path && !location.search;
+    return (location.pathname === path || location.pathname.startsWith(path + "/")) && !location.search;
   }, [location.pathname, location.search]);
 
   // Initial loading state indicator for permission-gated navigation
@@ -176,6 +188,11 @@ export default function WebSidebar({ role }) {
     return "/";
   }, [activeRoleKey, hasPermission, visibleNavigationItems]);
 
+  const handleItemNavigation = (targetPath) => {
+    setIsMobileOpen(false);
+    navigate(targetPath, { state: { resetSelection: true, _ts: Date.now() } });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row h-screen w-screen overflow-hidden bg-slate-50">
       
@@ -189,7 +206,7 @@ export default function WebSidebar({ role }) {
           >
             <Menu size={20} />
           </button>
-          <div onClick={() => navigate(mainDashboardPath)} className="cursor-pointer">
+          <div onClick={() => handleItemNavigation(mainDashboardPath)} className="cursor-pointer">
             <BrandLogo isCollapsed={false} roleLabel={theme.roleLabel} textColor="text-white" />
           </div>
         </div>
@@ -239,7 +256,7 @@ export default function WebSidebar({ role }) {
 
         {/* Brand Header */}
         <div 
-          onClick={() => navigate(mainDashboardPath)}
+          onClick={() => handleItemNavigation(mainDashboardPath)}
           className={`h-16 flex items-center px-4 border-b border-slate-800/80 cursor-pointer transition-all duration-300 ${
             isCollapsed ? "justify-center px-0" : "justify-between"
           }`}
@@ -292,7 +309,7 @@ export default function WebSidebar({ role }) {
               return (
                 <button
                   key={item.path || itemIdx}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => handleItemNavigation(item.path)}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs cursor-pointer transition-all border-none bg-transparent group relative ${
                     isCollapsed ? "justify-center px-0" : ""
                   } ${

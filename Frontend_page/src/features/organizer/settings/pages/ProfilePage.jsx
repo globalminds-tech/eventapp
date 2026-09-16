@@ -11,6 +11,7 @@ import {
   Shield, CheckCircle2
 } from "lucide-react";
 import BrandLogo from "@/components/ui/BrandLogo";
+import { isTokenExpired } from "@/shared/utils/jwtUtils";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -22,7 +23,11 @@ export default function Profile() {
 
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
 
-  const isAuthenticated = Boolean(reduxAuth.isAuthenticated || reduxAuth.accessToken || reduxUser.id);
+  const isAuthenticated = Boolean(
+    reduxAuth.isAuthenticated &&
+    reduxAuth.accessToken &&
+    !isTokenExpired(reduxAuth.accessToken)
+  );
 
   // Initialize profile synchronously from all available client memory to prevent button flashing
   const getInitialProfile = () => {

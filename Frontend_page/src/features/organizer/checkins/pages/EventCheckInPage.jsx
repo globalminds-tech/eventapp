@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   getEventscheckin,
   getEventAttendees,
@@ -51,12 +52,32 @@ const GATE_PRESETS = [
 ];
 
 export default function EventCheckIn() {
+  const { eventId: routeEventId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const initialEventId = routeEventId || location.state?.eventId || location.state?.selectedEventId || "";
   const [events, setEvents] = useState([]);
-  const [selectedEventId, setSelectedEventId] = useState("");
+  const [selectedEventId, setSelectedEventId] = useState(initialEventId);
   const [attendees, setAttendees] = useState([]);
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [entriesLoading, setEntriesLoading] = useState(false);
+
+  useEffect(() => {
+    // If routeEventId exists in URL (e.g. /OrganizerHome/EventCheckIn/:eventId)
+    if (routeEventId) {
+      setSelectedEventId(routeEventId);
+      return;
+    }
+    // If incoming navigation state explicitly provided an eventId and didn't request reset:
+    if (!location.state?.resetSelection && (location.state?.eventId || location.state?.selectedEventId)) {
+      setSelectedEventId(location.state.eventId || location.state.selectedEventId);
+      return;
+    }
+    // Otherwise, we are at the main /EventCheckIn page, reset to the event list:
+    setSelectedEventId("");
+  }, [routeEventId, location.pathname, location.key, location.state]);
 
   // Turnstile Station Controls
   const [scanMode, setScanMode] = useState("CHECK_IN"); // "CHECK_IN" | "CHECK_OUT"
@@ -140,14 +161,33 @@ export default function EventCheckIn() {
   };
 
   const selectedEvent = useMemo(() => {
-    return events.find((e) => String(e.id) === String(selectedEventId)) || events[0] || null;
-  }, [events, selectedEventId]);
+    if (!selectedEventId) return null;
+    const found = events.find(
+      (e) =>
+        String(e.id) === String(selectedEventId) ||
+        (e.event_code && String(e.event_code) === String(selectedEventId)) ||
+        (e.code && String(e.code) === String(selectedEventId))
+    );
+    if (found) return found;
+    if (location.state?.eventData) {
+      const ed = location.state.eventData;
+      if (
+        String(ed.id) === String(selectedEventId) ||
+        (ed.event_code && String(ed.event_code) === String(selectedEventId)) ||
+        (ed.code && String(ed.code) === String(selectedEventId))
+      ) {
+        return ed;
+      }
+    }
+    return events.find((e) => String(e.id) === String(selectedEventId)) || null;
+  }, [events, selectedEventId, location.state]);
 
   useEffect(() => {
-    if (selectedEvent?.id) {
-      loadEventData(selectedEvent.id);
+    const idToLoad = selectedEvent?.id || selectedEventId;
+    if (idToLoad && selectedEventId) {
+      loadEventData(idToLoad);
     }
-  }, [selectedEvent?.id]);
+  }, [selectedEvent?.id, selectedEventId]);
 
   const loadEventData = async (eventId) => {
     setEntriesLoading(true);
@@ -380,7 +420,10 @@ export default function EventCheckIn() {
                           <td className="py-3.5 px-4 text-slate-600 font-medium">{formattedStart} - {formattedEnd}</td>
                           <td className="py-3.5 px-4 text-right">
                             <button
-                              onClick={() => setSelectedEventId(ev.id)}
+                              onClick={() => {
+                                setSelectedEventId(ev.id);
+                                navigate(`/OrganizerHome/EventCheckIn/${ev.id}`, { state: { eventId: ev.id, eventData: ev } });
+                              }}
                               className="px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200 text-xs font-bold inline-flex items-center gap-1.5"
                             >
                               <ArrowRight size={14} />
@@ -401,13 +444,20 @@ export default function EventCheckIn() {
               const formattedEnd = endDate ? new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
 
               return (
-                <MobileDataCard key={ev.id} onClick={() => setSelectedEventId(ev.id)}>
+                <MobileDataCard key={ev.id} onClick={() => {
+                  setSelectedEventId(ev.id);
+                  navigate(`/OrganizerHome/EventCheckIn/${ev.id}`, { state: { eventId: ev.id, eventData: ev } });
+                }}>
                   <MobileDataCard.Header
                     title={`${ev.event_code ? `[${ev.event_code}] ` : ""}${ev.event_name || ev.name || "Event"}`}
                     subtitle={`${formattedStart} - ${formattedEnd}`}
                     statusBadge={
                       <button
-                        onClick={() => setSelectedEventId(ev.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEventId(ev.id);
+                          navigate(`/OrganizerHome/EventCheckIn/${ev.id}`, { state: { eventId: ev.id, eventData: ev } });
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-extrabold inline-flex items-center gap-1 border border-cyan-200 cursor-pointer"
                       >
                         <span>Manage</span>
@@ -551,14 +601,24 @@ export default function EventCheckIn() {
             </Badge>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Real-time ticket pass verification, anti-fraud turnstile control, and venue capacity monitoring.
+            {selectedEvent?.event_name || selectedEvent?.name ? (
+              <>
+                Managing Check-Ins for: <span className="font-extrabold text-slate-900">{selectedEvent.event_name || selectedEvent.name}</span>
+                {selectedEvent.event_code && <span className="ml-2 font-mono text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-md">[{selectedEvent.event_code}]</span>}
+              </>
+            ) : (
+              "Real-time ticket pass verification, anti-fraud turnstile control, and venue capacity monitoring."
+            )}
           </p>
         </div>
 
         {/* Event Actions & Back Button */}
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            onClick={() => setSelectedEventId("")}
+            onClick={() => {
+              setSelectedEventId("");
+              navigate("/OrganizerHome/EventCheckIn");
+            }}
             variant="outline"
             className="h-10 px-3.5 border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer gap-2 rounded-xl"
           >

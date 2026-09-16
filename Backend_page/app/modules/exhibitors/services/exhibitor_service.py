@@ -27,6 +27,33 @@ class ExhibitorService:
         if check_event_concluded(event):
             raise ApiError("This event has already concluded. Stall reservations are closed.", 400)
 
+        # Enforce Exhibitor KYC Verification Check
+        user_id = form_data.get("user_id")
+        from app.models.exhibitor_profile import ExhibitorProfile
+        from app.models.user import User
+        from app.extensions.database import db
+        from sqlalchemy import select
+        import uuid
+
+        exh_p = None
+        if user_id:
+            try:
+                uid = uuid.UUID(str(user_id)) if isinstance(user_id, str) else user_id
+                exh_p = db.session.scalar(select(ExhibitorProfile).where(ExhibitorProfile.user_id == uid))
+            except Exception:
+                pass
+        if not exh_p and email:
+            u = db.session.scalar(select(User).where(User.email == email))
+            if u:
+                exh_p = db.session.scalar(select(ExhibitorProfile).where(ExhibitorProfile.user_id == u.id))
+
+        if exh_p and (exh_p.kyc_status or "").strip().upper() != "VERIFIED":
+            raise ApiError(
+                "Stall booking locked: Your Exhibitor business KYC is currently pending verification. "
+                "Stall reservations will unlock once your KYC application is approved by Super Admin.",
+                403
+            )
+
         if ExhibitorRepository.get_existing_booking(email, event_id):
             raise ApiError("You have already booked a stall for this event", 400)
 

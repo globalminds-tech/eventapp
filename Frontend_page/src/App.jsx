@@ -272,6 +272,7 @@ export default function App() {
               <Route path="PolicyPage" element={<PolicyPage />} />
               <Route path="Coupon" element={<Coupon />} />
               <Route path="EventCheckIn" element={<PermissionRoute required="checkin.view"><EventCheckIn /></PermissionRoute>} />
+              <Route path="EventCheckIn/:eventId" element={<PermissionRoute required="checkin.view"><EventCheckIn /></PermissionRoute>} />
               <Route path="FoodCheckIn" element={<PermissionRoute required="checkin.view"><FoodCheckIn /></PermissionRoute>} />
               <Route path="Messages" element={<Messagesgreeting />} />
               <Route path="Messages/:eventId" element={<Messagesgreeting />} />

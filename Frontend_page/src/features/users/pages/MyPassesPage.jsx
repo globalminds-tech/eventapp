@@ -240,6 +240,18 @@ export default function MyPassesPage() {
                             Single Pass
                           </Badge>
                         )}
+
+                        <Badge className={pass.entry_type === "Multi Entry" ? "bg-purple-50 text-purple-800 border-purple-200 text-[10px] font-extrabold" : "bg-cyan-50 text-cyan-800 border-cyan-200 text-[10px] font-extrabold"}>
+                          {pass.entry_type || "Single Entry"}
+                        </Badge>
+
+                        <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] font-bold">
+                          {pass.entry_type === "Single Entry"
+                            ? `Scans: ${pass.total_checkins || 0}/1`
+                            : (pass.max_reentries && pass.max_reentries !== "Unlimited"
+                              ? `Scans: ${pass.total_checkins || 0}/${pass.max_reentries}`
+                              : `Scans: ${pass.total_checkins || 0} (Unlimited)`)}
+                        </Badge>
                       </div>
                       <span className="text-[11px] font-mono font-black text-slate-700">
                         {pass.ticket_code || `REF-${String(pass.id).slice(0, 8)}`}
@@ -286,6 +298,9 @@ export default function MyPassesPage() {
                         )}
                         <span className="text-[9px] font-mono font-bold text-slate-500 mt-1 max-w-[120px] truncate">
                           {pass.ticket_code || pass.id}
+                        </span>
+                        <span className="text-[8.5px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded-md mt-1 text-center">
+                          {pass.entry_type === "Single Entry" ? "Single Entry (1-Use)" : `Multi-Entry (${pass.max_reentries || "Unlimited"})`}
                         </span>
                       </div>
 

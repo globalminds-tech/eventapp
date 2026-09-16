@@ -7,8 +7,10 @@ export const kycApi = {
     return res.data;
   },
 
-  updateKycStatus: async (userId, status) => {
-    const res = await axiosClient.put(KYC_ENDPOINTS.UPDATE_STATUS(userId), { status });
+  updateKycStatus: async (userId, status, role = null) => {
+    const payload = { status };
+    if (role) payload.role = role;
+    const res = await axiosClient.put(KYC_ENDPOINTS.UPDATE_STATUS(userId), payload);
     return res.data;
   },
 };

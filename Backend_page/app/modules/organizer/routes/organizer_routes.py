@@ -26,6 +26,7 @@ async def upload_image_alias(file: UploadFile = File(...)):
 # ── ORGANIZER EVENT CREATION & WIZARD ──
 
 @root_organizer_router.post("/superadmin/api/complete-event")
+@root_organizer_router.post("/superadmin/api/complete_event")
 @root_organizer_router.post("/superadmin/event/final-submit")
 async def complete_event_alias(request: Request):
     try:
@@ -95,7 +96,7 @@ def get_single_venue_detail_alias(venue_id: str):
 @root_organizer_router.post("/superadmin/api/create_venue")
 async def create_venue_route(request: Request):
     data = await request.json()
-    user_id = data.get("organizer_id")
+    user_id = data.get("created_by") or data.get("organizer_id") or data.get("user_id")
     result = OrganizerController.create_venue(data, user_id)
     return { "success": True, "message": "Venue created successfully", "data": result }
 
@@ -192,7 +193,8 @@ def delete_vendor_route(vendor_id: str):
 @root_organizer_router.patch("/superadmin/api/update-venue/{venue_id}")
 async def update_venue_route(venue_id: str, request: Request):
     data = await request.json()
-    result = OrganizerController.update_venue(venue_id, data)
+    user_id = data.get("updated_by") or data.get("organizer_id") or data.get("user_id")
+    result = OrganizerController.update_venue(venue_id, data, user_id)
     return result
 
 @root_organizer_router.delete("/superadmin/api/delete-venue/{venue_id}")

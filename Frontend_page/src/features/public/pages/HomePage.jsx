@@ -38,6 +38,7 @@ import { setUser } from "@/app/store/userSlice";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { categoryApi } from "@/features/catalog/api/category.api";
 import TextType from "@/components/ui/TextType";
+import { isTokenExpired } from "@/shared/utils/jwtUtils";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 import UserEventCard from "@/components/UserEventCard";
 
@@ -301,7 +302,11 @@ const App = () => {
   const dispatch = useDispatch();
   const reduxAuth = useSelector((state) => state.auth);
   const reduxUser = useSelector((state) => state.user);
-  const isAuthenticated = Boolean(reduxAuth?.isAuthenticated || reduxAuth?.accessToken || reduxUser?.id);
+  const isAuthenticated = Boolean(
+    reduxAuth?.isAuthenticated &&
+    reduxAuth?.accessToken &&
+    !isTokenExpired(reduxAuth?.accessToken)
+  );
   const currentUser = reduxAuth?.user || reduxUser;
 
   // Strict Super Admin portal isolation: redirect immediately if super admin reaches HomePage

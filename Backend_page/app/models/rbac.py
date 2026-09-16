@@ -1,8 +1,8 @@
 import uuid as uuid_pkg
 from typing import Optional, List
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, DateTime, func, ForeignKey, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import String, Text, Boolean, DateTime, func, ForeignKey, UniqueConstraint, Uuid
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.extensions.database import db
 
@@ -10,8 +10,8 @@ from app.extensions.database import db
 class Role(db.Model):
     __tablename__ = 'roles'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
-    organization_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('organizations.id', ondelete='CASCADE'), nullable=True)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
+    organization_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('organizations.id', ondelete='CASCADE'), nullable=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     code: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -19,11 +19,11 @@ class Role(db.Model):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     organization = relationship("Organization", back_populates="custom_roles")
     role_permissions = relationship("RolePermission", back_populates="role", cascade="all, delete-orphan")
@@ -48,7 +48,7 @@ class Role(db.Model):
 class Permission(db.Model):
     __tablename__ = 'permissions'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
     module: Mapped[str] = mapped_column(String(100), nullable=False, index=True) # events, stalls, checkin, finance, team, roles
     action: Mapped[str] = mapped_column(String(50), nullable=False)              # view, create, edit, delete, approve, scan, export
     code: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)  # events.view, events.create
@@ -72,11 +72,11 @@ class Permission(db.Model):
 class RolePermission(db.Model):
     __tablename__ = 'role_permissions'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
-    role_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('roles.id', ondelete='CASCADE'), nullable=False)
-    permission_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('permissions.id', ondelete='CASCADE'), nullable=False)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
+    role_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('roles.id', ondelete='CASCADE'), nullable=False)
+    permission_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('permissions.id', ondelete='CASCADE'), nullable=False)
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
 
     __table_args__ = (
         UniqueConstraint('role_id', 'permission_id', name='uq_role_permission'),

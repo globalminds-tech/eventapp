@@ -73,5 +73,14 @@
 ## 7. Universal Device Responsiveness
 - All layouts, headers, sidebars, grids, forms, and data tables must seamlessly adapt to all screen sizes (Desktops, Laptops, Tablets, Mobile Devices) without horizontal scroll clipping or element overlap.
 
+---
+
+## 8. Dual-Role KYC & Lifecycle Rules (See `KYC_AND_LIFECYCLE_DOCUMENTATION.md`)
+- **Single Account Dual-Role**: A user can be both Organizer and Exhibitor under one login (`users.id`). Each role maintains its own dedicated profile and independent KYC status.
+- **Editable Pre-filled Details**: Shared KYC data (GST, PAN, bank payout) is pre-filled on upgrading, but remains 100% editable.
+- **Common User (Attendee) No-KYC**: Ticket buyers/attendees require no KYC and are marked `Active Member` (`NOT_REQUIRED`).
+- **Event Approval Guard**: Super Admin cannot approve an event if the organizer's KYC is `PENDING`. Once verified, event approval unlocks.
+- **Stall Booking Guard**: Exhibitors cannot book stalls while their Exhibitor KYC is `PENDING`. Once verified, stall reservations unlock.
+
 <!-- Email: bookmyevent2026@gmail.com
 Password: admin@#$123 -->

@@ -1,8 +1,8 @@
 import uuid as uuid_pkg
 from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Text, Numeric, ForeignKey, DateTime, func
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+from sqlalchemy import String, Text, Numeric, ForeignKey, DateTime, func, Uuid, JSON
+
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
 
@@ -14,19 +14,21 @@ class EventTransaction(db.Model):
     """
     __tablename__ = 'event_transactions'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
-    transaction_ref: Mapped[str] = mapped_column(String(60), unique=True, nullable=False, index=True)
-    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True, index=True)
-    booking_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('user_booking_details.id', ondelete='SET NULL'), nullable=True, index=True)
-    stall_booking_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('exhibitor_stall_bookings.id', ondelete='SET NULL'), nullable=True, index=True)
-    payer_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    organizer_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
+    transaction_ref: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
 
-    # Type & Description
-    transaction_type: Mapped[str] = mapped_column(String(40), nullable=False)  # 'TICKET_SALE', 'STALL_BOOKING', 'REFUND', 'PAYOUT'
+    # Scopes
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('event_details_table.id', ondelete='SET NULL'), nullable=True, index=True)
+    booking_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('user_booking_details.id', ondelete='SET NULL'), nullable=True)
+    stall_booking_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('exhibitor_stall_bookings.id', ondelete='SET NULL'), nullable=True)
+    payer_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    organizer_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+
+    # Nature
+    transaction_type: Mapped[str] = mapped_column(String(50), nullable=False)  # 'TICKET_SALE', 'STALL_BOOKING', 'REFUND', 'PAYOUT'
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Financial breakdown
+    # Split Accounting
     currency: Mapped[str] = mapped_column(String(5), default='INR')
     gross_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.00)
     tax_amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0.00)
@@ -39,7 +41,7 @@ class EventTransaction(db.Model):
     gateway_order_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     gateway_payment_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     gateway_signature: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    raw_gateway_response: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    raw_gateway_response: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # Status
     status: Mapped[str] = mapped_column(String(30), default='SUCCESS')  # 'SUCCESS', 'PENDING', 'FAILED', 'REFUNDED'
@@ -78,10 +80,10 @@ class OrganizerPayout(db.Model):
     """
     __tablename__ = 'organizer_payouts'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
     payout_ref: Mapped[str] = mapped_column(String(60), unique=True, nullable=False, index=True)
-    organizer_user_id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='SET NULL'), nullable=True)
+    organizer_user_id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('event_details_table.id', ondelete='SET NULL'), nullable=True)
 
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(5), default='INR')
@@ -100,7 +102,7 @@ class OrganizerPayout(db.Model):
     status: Mapped[str] = mapped_column(String(30), default='REQUESTED')  # 'REQUESTED', 'PROCESSING', 'SETTLED', 'FAILED'
     failure_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    approved_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    approved_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     settled_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
@@ -132,13 +134,13 @@ class FinancialInvoice(db.Model):
     """
     __tablename__ = 'financial_invoices'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
     invoice_number: Mapped[str] = mapped_column(String(60), unique=True, nullable=False, index=True)
     invoice_type: Mapped[str] = mapped_column(String(40), nullable=False)  # 'TICKET_RECEIPT', 'STALL_INVOICE', 'PLATFORM_COMMISSION'
 
-    recipient_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
-    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
-    transaction_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), ForeignKey('event_transactions.id', ondelete='SET NULL'), nullable=True)
+    recipient_user_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
+    transaction_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('event_transactions.id', ondelete='SET NULL'), nullable=True)
 
     billing_name: Mapped[str] = mapped_column(String(150), nullable=False)
     billing_email: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)

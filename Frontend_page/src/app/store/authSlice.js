@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { isTokenExpired } from "@/shared/utils/jwtUtils";
 
 const getStoredUser = () => {
   try {
@@ -11,7 +12,11 @@ const getStoredUser = () => {
 
 const getStoredToken = () => {
   try {
-    return localStorage.getItem("token") || sessionStorage.getItem("token") || localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || null;
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token") || localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken") || null;
+    if (!token || isTokenExpired(token)) {
+      return null;
+    }
+    return token;
   } catch {
     return null;
   }
