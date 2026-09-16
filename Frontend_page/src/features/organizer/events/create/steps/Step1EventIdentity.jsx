@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Calendar, Clock, MapPin, Search, ChevronDown, Upload, X, Image as ImageIcon, Video, Crop } from "lucide-react";
+import { Calendar, Clock, MapPin, Search, ChevronDown, Upload, X, Image as ImageIcon, Video, Crop, Lightbulb } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
@@ -63,7 +63,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
         subcategory_name: categoryReqSub,
         reason: categoryReqReason
       });
-      setCategoryReqSuccess("✓ Category Request Submitted! Super Admin will review and add it.");
+      setCategoryReqSuccess("Category Request Submitted! Super Admin will review and add it.");
       setTimeout(() => {
         setShowCategoryModal(false);
         setCategoryReqName("");
@@ -73,7 +73,7 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
       }, 1800);
     } catch (err) {
       console.error("Category request submission failed:", err);
-      setCategoryReqSuccess("✗ Failed to submit request. Please try again.");
+      setCategoryReqSuccess("Failed to submit request. Please try again.");
       setTimeout(() => {
         setCategoryReqSuccess("");
       }, 3000);
@@ -153,19 +153,50 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
     const minISO = iso < todayLocal ? todayLocal : iso;
 
     setFormData((prev) => {
-      const next = { ...prev, eventDetails: { ...prev.eventDetails, startDate: minISO } };
-      if (next.eventDetails.endDate && next.eventDetails.endDate < minISO) {
-        next.eventDetails.endDate = minISO;
+      const currentEnd = prev.eventDetails?.endDate;
+      const newEnd = currentEnd && currentEnd < minISO ? minISO : currentEnd;
+      const next = {
+        ...prev,
+        eventDetails: {
+          ...prev.eventDetails,
+          startDate: minISO,
+          endDate: newEnd,
+        },
+      };
+
+      const isoToDDMMYYYY = (s) => {
+        if (!s) return "";
+        const parts = s.split("-");
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : "";
+      };
+      const ddmmyyyyToISO = (s) => {
+        if (!s) return "";
+        if (s.includes("/")) {
+          const parts = s.split("/");
+          return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : s;
+        }
+        return s;
+      };
+
+      const currentBooking = { ...(prev.booking || {}) };
+      const eventEndISO = newEnd || minISO;
+
+      // Initialize or adapt booking dates without rigid locking
+      if (!currentBooking.bookingStartDate) {
+        const todayFormatted = isoToDDMMYYYY(todayLocal);
+        currentBooking.bookingStartDate = todayLocal <= eventEndISO ? todayFormatted : isoToDDMMYYYY(minISO);
       }
-      // Prefill booking dates
-      const parts = minISO.split("-");
-      const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : "";
-      next.booking = { ...(prev.booking || {}), bookingStartDate: formatted, _lastEventStart: minISO };
-      if (next.eventDetails.endDate) {
-        const ep = next.eventDetails.endDate.split("-");
-        next.booking.bookingEndDate = ep.length === 3 ? `${ep[2]}/${ep[1]}/${ep[0]}` : "";
-        next.booking._lastEventEnd = next.eventDetails.endDate;
+
+      if (!currentBooking.bookingEndDate) {
+        currentBooking.bookingEndDate = isoToDDMMYYYY(eventEndISO);
+      } else {
+        const currBookingEndISO = ddmmyyyyToISO(currentBooking.bookingEndDate);
+        if (currBookingEndISO > eventEndISO) {
+          currentBooking.bookingEndDate = isoToDDMMYYYY(eventEndISO);
+        }
       }
+
+      next.booking = currentBooking;
       return next;
     });
   };
@@ -180,13 +211,22 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
     const minISO = iso < minEnd ? minEnd : iso;
 
     setFormData((prev) => {
-      const parts = minISO.split("-");
-      const formatted = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : "";
-      return {
+      const next = {
         ...prev,
         eventDetails: { ...prev.eventDetails, endDate: minISO },
-        booking: { ...(prev.booking || {}), bookingEndDate: formatted, _lastEventEnd: minISO },
       };
+      const currentBooking = { ...(prev.booking || {}) };
+      if (currentBooking.bookingEndDate) {
+        const parts = currentBooking.bookingEndDate.includes("/")
+          ? currentBooking.bookingEndDate.split("/").reverse().join("-")
+          : currentBooking.bookingEndDate;
+        if (parts > minISO) {
+          const isoParts = minISO.split("-");
+          currentBooking.bookingEndDate = `${isoParts[2]}/${isoParts[1]}/${isoParts[0]}`;
+        }
+      }
+      next.booking = currentBooking;
+      return next;
     });
   };
 
@@ -764,14 +804,16 @@ const Step1EventIdentity = ({ formData, setFormData, organizerId, showErrors, is
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
             <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 text-white flex items-center justify-between">
               <h3 className="font-bold text-sm flex items-center gap-2">
-                💡 Suggest Custom Category
+                <Lightbulb size={16} />
+                <span>Suggest Custom Category</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setShowCategoryModal(false)}
-                className="text-white/80 hover:text-white text-base font-bold bg-transparent border-none cursor-pointer"
+                className="text-white/80 hover:text-white p-1 bg-transparent border-none cursor-pointer flex items-center justify-center"
+                title="Close"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 

@@ -13,6 +13,7 @@ import {
   X,
   Eye,
   Edit,
+  Lightbulb,
 } from "lucide-react";
 import {
   getVendorTypes,
@@ -28,7 +29,7 @@ import AddSponsorModal from "../../../master-data/components/AddSponsorModal";
 
 const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   // ===========================
-  // ✅ STATE
+  // STATE
   // ===========================
 
   // Vendor
@@ -157,7 +158,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   }, []);
 
   // ===========================
-  // ✅ LOAD FROM formData (IMPORTANT FIX)
+  // LOAD FROM formData (IMPORTANT FIX)
   // ===========================
   useEffect(() => {
     const v = formData?.vendorSponsor || formData?.vendors;
@@ -169,7 +170,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   }, [formData?.vendorSponsor, formData?.vendors]);
 
   // ===========================
-  // ✅ SAVE TO formData (SYNC)
+  // SAVE TO formData (SYNC)
   // ===========================
   useEffect(() => {
     if (vendorList.length > 0 || sponsorList.length > 0 || guestList.length > 0) {
@@ -190,7 +191,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   }, [vendorList, sponsorList, guestList]);
 
   // ===========================
-  // ✅ API LOADS
+  // API LOADS
   // ===========================
 
   // Vendor Types
@@ -226,7 +227,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   );
 
   // ===========================
-  // ✅ ACTIONS
+  // ACTIONS
   // ===========================
 
   const addVendor = () => {
@@ -436,7 +437,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
 
 
   // ===========================
-  // ✅ VALIDATION HELPERS
+  // VALIDATION HELPERS
   // ===========================
   const handleNameChange = (e) => {
     const value = e.target.value;
@@ -464,7 +465,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
   };
 
   // ===========================
-  // ✅ UI STYLES
+  // UI STYLES
   // ===========================
   const inputClasses =
     "w-full h-9 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder:text-slate-400 text-xs font-semibold";
@@ -491,7 +492,7 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
           : "bg-rose-600 text-white border-rose-500 shadow-rose-200"
           }`}>
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold">
-            {toast.type === "success" ? "✓" : "!"}
+            {toast.type === "success" ? <Check size={16} strokeWidth={3} /> : <AlertCircle size={16} />}
           </div>
           <p className="font-bold text-sm tracking-wide">{toast.message}</p>
         </div>
@@ -1205,14 +1206,16 @@ const Step6VendorSponsor = ({ formData, setFormData, isReadOnly }) => {
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
             <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-4 text-white flex items-center justify-between">
               <h3 className="font-bold text-sm flex items-center gap-2">
-                💡 Suggest Custom Category
+                <Lightbulb size={16} />
+                <span>Suggest Custom Category</span>
               </h3>
               <button
                 type="button"
                 onClick={() => { setShowAddCategoryModal(false); setNewCategoryName(""); setNewCategoryDesc(""); }}
-                className="text-white/80 hover:text-white text-base font-bold bg-transparent border-none cursor-pointer"
+                className="text-white/80 hover:text-white p-1 bg-transparent border-none cursor-pointer flex items-center justify-center"
+                title="Close"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 

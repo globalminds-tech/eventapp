@@ -135,6 +135,10 @@ export default function EventInspectionDetail() {
   const layout = eventData?.layout || {};
   const documents = eventData?.documents || {};
   const vendorSponsor = eventData?.vendorSponsor || {};
+  const organizerInfo = eventData?.organizer || details?.organizer || {};
+
+  const orgKycStatus = (organizerInfo.kyc_status || eventData?.organizer_kyc_status || details?.organizer_kyc_status || "PENDING").toUpperCase();
+  const isOrgKycPending = orgKycStatus !== "VERIFIED";
 
   const statusStr = (details.status || eventData?.status || "ACTIVE").toUpperCase();
 
@@ -228,11 +232,16 @@ export default function EventInspectionDetail() {
                   </Button>
                   <Button
                     size="sm"
-                    disabled={actionLoading}
+                    disabled={actionLoading || isOrgKycPending}
                     onClick={() => handleStatusChange("Approved")}
-                    className="text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                    title={isOrgKycPending ? "Cannot approve: Organizer business KYC is pending verification in the KYC tab." : "Approve & Publish Event"}
+                    className={`text-xs font-extrabold ${
+                      isOrgKycPending
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed border-none"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                    }`}
                   >
-                    <Check size={13} className="mr-1" /> Approve & Publish
+                    <Check size={13} className="mr-1" /> {isOrgKycPending ? "KYC Pending" : "Approve & Publish"}
                   </Button>
                 </>
               )}
@@ -303,6 +312,32 @@ export default function EventInspectionDetail() {
         }`}>
           <span>{toast.message}</span>
           <button onClick={() => setToast(null)} className="border-none bg-transparent text-white font-bold cursor-pointer">✕</button>
+        </div>
+      )}
+
+      {/* Organizer KYC Pending Warning Banner */}
+      {!loading && ["PENDING", "SUBMITTED", "DRAFT"].includes(statusStr) && isOrgKycPending && (
+        <div className="p-4 bg-amber-50 border border-amber-200/90 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-xl text-amber-700 shrink-0 mt-0.5 sm:mt-0">
+              <AlertTriangle size={18} />
+            </div>
+            <div className="space-y-0.5">
+              <div className="font-extrabold text-amber-950 text-sm">
+                Organizer Business KYC Pending Verification
+              </div>
+              <div className="text-amber-800 font-medium">
+                This event cannot be approved or published because the organizer's legal KYC documents (GST, PAN, and Bank Payout details) are pending verification.
+              </div>
+            </div>
+          </div>
+          <Button
+            size="xs"
+            onClick={() => navigate("/superuser/kyc?tab=pending")}
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs h-8 px-3 rounded-xl border-none cursor-pointer"
+          >
+            Review Organizer KYC
+          </Button>
         </div>
       )}
 

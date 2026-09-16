@@ -99,7 +99,7 @@ class AuthRepository:
             ifsc_code=data.get("ifsc_code"),
             account_holder=data.get("account_holder"),
             upi_id=data.get("upi_id"),
-            kyc_status="VERIFIED"
+            kyc_status="PENDING"
         )
         db.session.add(profile)
         db.session.commit()
@@ -187,7 +187,7 @@ class AuthRepository:
             val = data.get(key)
             if val is not None and val != "":
                 setattr(profile, key, val)
-        profile.kyc_status = "VERIFIED"
+        profile.kyc_status = "PENDING"
 
         db.session.commit()
         return user
@@ -225,7 +225,7 @@ class AuthRepository:
             ifsc_code=data.get("ifsc_code"),
             account_holder=data.get("account_holder"),
             upi_id=data.get("upi_id"),
-            kyc_status="VERIFIED"
+            kyc_status="PENDING"
         )
         db.session.add(profile)
         db.session.commit()
@@ -294,7 +294,7 @@ class AuthRepository:
             val = data.get(key)
             if val is not None and val != "":
                 setattr(profile, key, val)
-        profile.kyc_status = "VERIFIED"
+        profile.kyc_status = "PENDING"
 
         db.session.commit()
         return user

@@ -13,3 +13,4 @@ class CategorySchema(BaseModel):
 
 class UpdateKycStatusSchema(BaseModel):
     status: str = Field(..., description="VERIFIED, REJECTED, PENDING")
+    role: Optional[str] = Field(None, description="Target role: organizer, exhibitor, or both")

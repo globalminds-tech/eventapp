@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Ticket, CreditCard, Search, ChevronDown, X } from "lucide-react";
+import { Ticket, CreditCard, Search, ChevronDown, X, Users, Smartphone } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import CustomTimePicker from "../TimePickerClock";
@@ -49,26 +49,54 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
     });
   }, [setFormData]);
 
-  // Sync booking dates from event dates
+  // Initialize booking dates from event dates if not already set or if invalid
   useEffect(() => {
     const eventStart = formData.eventDetails?.startDate;
-    const eventEnd = formData.eventDetails?.endDate;
-    if (eventStart || eventEnd) {
+    const eventEnd = formData.eventDetails?.endDate || eventStart;
+    const eventStartTime = formData.eventDetails?.startTime || "06:00 PM";
+    if (eventStart) {
       setFormData((prev) => {
         const nb = { ...(prev.booking || {}) };
         let updated = false;
-        const expectedStart = eventStart ? eventStart.split("-").reverse().join("/") : "";
-        const expectedEnd = eventEnd ? eventEnd.split("-").reverse().join("/") : "";
-        if (expectedStart && (!nb.bookingStartDate || nb._lastEventStart !== eventStart)) {
-          nb.bookingStartDate = expectedStart; nb._lastEventStart = eventStart; updated = true;
+        const expectedEnd = (eventEnd || eventStart).split("-").reverse().join("/");
+
+        // 1. Booking Start Date default: default to today if earlier than event end
+        if (!nb.bookingStartDate) {
+          const today = new Date();
+          const todayStr = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+          const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+          nb.bookingStartDate = todayISO <= (eventEnd || eventStart) ? todayStr : eventStart.split("-").reverse().join("/");
+          updated = true;
         }
-        if (expectedEnd && (!nb.bookingEndDate || nb._lastEventEnd !== eventEnd)) {
-          nb.bookingEndDate = expectedEnd; nb._lastEventEnd = eventEnd; updated = true;
+
+        // 2. Booking End Date default: CANNOT be after event end date
+        if (!nb.bookingEndDate) {
+          nb.bookingEndDate = expectedEnd;
+          updated = true;
+        } else {
+          const currentEndISO = nb.bookingEndDate.includes("/")
+            ? nb.bookingEndDate.split("/").reverse().join("-")
+            : nb.bookingEndDate;
+          if (currentEndISO > (eventEnd || eventStart)) {
+            nb.bookingEndDate = expectedEnd;
+            updated = true;
+          }
         }
+
+        // 3. Booking times defaults
+        if (!nb.bookingStartTime) {
+          nb.bookingStartTime = "12:00 AM";
+          updated = true;
+        }
+        if (!nb.bookingEndTime) {
+          nb.bookingEndTime = eventStartTime;
+          updated = true;
+        }
+
         return updated ? { ...prev, booking: nb } : prev;
       });
     }
-  }, [formData.eventDetails?.startDate, formData.eventDetails?.endDate, setFormData]);
+  }, [formData.eventDetails?.startDate, formData.eventDetails?.endDate, formData.eventDetails?.startTime, setFormData]);
 
   // Combine early bird date+time into ISO
   useEffect(() => {
@@ -137,18 +165,36 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
     if (!str) return null;
     if (typeof str === "string" && str.includes("-")) {
       const parts = str.split("-");
-      if (parts[0].length === 4) return new Date(str);
-      return new Date(parts.reverse().join("-"));
+      if (parts[0].length === 4) return new Date(`${parts[0]}-${parts[1]}-${parts[2]}T00:00:00`);
+      return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
     }
     if (typeof str === "string" && str.includes("/")) {
       const parts = str.split("/");
-      if (parts[2]?.length === 4) return new Date(parts.reverse().join("-"));
+      if (parts[2]?.length === 4) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
     }
     return new Date(str);
   };
 
-  const eventStartDate = formData.eventDetails?.startDate ? new Date(formData.eventDetails.startDate) : null;
-  const eventMaxDate = formData.eventDetails?.endDate ? new Date(formData.eventDetails.endDate) : eventStartDate;
+  const to24 = (t) => {
+    if (!t) return "00:00";
+    const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (!m) return t;
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    const mod = m[3]?.toUpperCase();
+    if (mod === "PM" && h < 12) h += 12;
+    if (mod === "AM" && h === 12) h = 0;
+    return `${h.toString().padStart(2, "0")}:${min}`;
+  };
+
+  const eventStartDateStr = formData.eventDetails?.startDate || "";
+  const eventEndDateStr = formData.eventDetails?.endDate || eventStartDateStr;
+  const eventStartTime = formData.eventDetails?.startTime || "06:00 PM";
+  const eventStartDate = eventStartDateStr ? parseDateStr(eventStartDateStr) : null;
+  const eventEndDate = eventEndDateStr ? parseDateStr(eventEndDateStr) : eventStartDate;
+
+  const bookingStartDateStr = formData.booking?.bookingStartDate || "";
+  const bookingEndDateStr = formData.booking?.bookingEndDate || "";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -172,9 +218,9 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
               <DatePicker
                 selected={parseDateStr(formData.booking?.bookingStartDate)}
                 onChange={(date) => updateBooking("bookingStartDate", formatDate(date))}
-                openToDate={eventStartDate || new Date()}
+                openToDate={parseDateStr(formData.booking?.bookingStartDate) || eventStartDate || new Date()}
                 minDate={new Date()}
-                maxDate={eventMaxDate || undefined}
+                maxDate={parseDateStr(formData.booking?.bookingEndDate) || eventEndDate || undefined}
                 dateFormat="dd/MM/yyyy"
                 placeholderText="Start Date"
                 className={`w-full h-9 bg-slate-50 border rounded-lg px-2 text-xs outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer ${
@@ -187,10 +233,17 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
               <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">End Date</span>
               <DatePicker
                 selected={parseDateStr(formData.booking?.bookingEndDate)}
-                onChange={(date) => updateBooking("bookingEndDate", formatDate(date))}
-                openToDate={eventMaxDate || new Date()}
+                onChange={(date) => {
+                  if (!date) {
+                    updateBooking("bookingEndDate", "");
+                    return;
+                  }
+                  const formatted = formatDate(date);
+                  updateBooking("bookingEndDate", formatted);
+                }}
+                openToDate={parseDateStr(formData.booking?.bookingEndDate) || eventEndDate || eventStartDate || new Date()}
                 minDate={parseDateStr(formData.booking?.bookingStartDate) || new Date()}
-                maxDate={eventMaxDate || undefined}
+                maxDate={eventEndDate || undefined}
                 dateFormat="dd/MM/yyyy"
                 placeholderText="End Date"
                 className={`w-full h-9 bg-slate-50 border rounded-lg px-2 text-xs outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer ${
@@ -200,48 +253,28 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
               />
             </div>
             <div>
-              <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Booking Start Time (24h/12h)</span>
+              <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Booking Start Time</span>
               <CustomTimePicker
                 value={formData.booking?.bookingStartTime || "12:00 AM"}
-                onChange={(val) => updateBooking("bookingStartTime", val)}
+                onChange={(val) => {
+                  updateBooking("bookingStartTime", val);
+                }}
               />
             </div>
             <div>
-              <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">Booking End Time (Max {formData.eventDetails?.startTime || "06:00 PM"})</span>
+              <span className="text-[10px] font-semibold text-slate-500 mb-0.5 block">
+                Booking End Time
+              </span>
               <CustomTimePicker
-                value={formData.booking?.bookingEndTime || formData.eventDetails?.startTime || "06:00 PM"}
+                value={formData.booking?.bookingEndTime || "06:00 PM"}
                 onChange={(val) => {
-                  const eventStartTime = formData.eventDetails?.startTime || "06:00 PM";
-                  const eventStartDateStr = formData.eventDetails?.startDate || "";
-                  const bookingEndDateStr = formData.booking?.bookingEndDate || "";
-                  const normBookingEnd = bookingEndDateStr ? bookingEndDateStr.split("/").reverse().join("-") : "";
-
-                  // Format times to 24h for comparison
-                  const to24 = (t) => {
-                    if (!t) return "00:00";
-                    const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-                    if (!m) return t;
-                    let h = parseInt(m[1], 10);
-                    if (m[3]?.toUpperCase() === "PM" && h < 12) h += 12;
-                    if (m[3]?.toUpperCase() === "AM" && h === 12) h = 0;
-                    return `${h.toString().padStart(2, "0")}:${m[2]}`;
-                  };
-
-                  const event24 = to24(eventStartTime);
-                  const selected24 = to24(val);
-
-                  if (normBookingEnd && eventStartDateStr && normBookingEnd === eventStartDateStr && selected24 > event24) {
-                    // Cap at eventStartTime if user tries to set time past event start
-                    updateBooking("bookingEndTime", eventStartTime);
-                  } else {
-                    updateBooking("bookingEndTime", val);
-                  }
+                  updateBooking("bookingEndTime", val);
                 }}
               />
             </div>
           </div>
           <p className="text-[10px] font-semibold text-cyan-700 bg-cyan-50 p-2 rounded-lg mt-2 border border-cyan-200/60 leading-tight">
-            ℹ️ <strong>Booking Time Rule:</strong> Bookings start at 12:00 AM (00:00) on Start Date and MUST end on or before Event Start Time ({formData.eventDetails?.startTime || "06:00 PM"}) on {formData.eventDetails?.startDate || "Event Date"}.
+            ℹ️ <strong>Booking Period:</strong> Customize your booking period & times freely from today up to the event conclusion ({eventEndDateStr ? eventEndDateStr.split("-").reverse().join("/") : "Event End Date"}).
           </p>
         </div>
 
@@ -294,8 +327,9 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                   className="w-full h-9 bg-white border border-cyan-300 rounded-lg px-3 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
-              <p className="text-[10px] text-cyan-800 font-medium leading-tight">
-                👥 <strong>Group Pass Rule:</strong> 1 purchase grants gate access for up to {formData.booking?.groupMemberLimit || formData.booking?.group_member_limit || 2} members under 1 master QR pass.
+              <p className="text-[10px] text-cyan-800 font-medium leading-tight flex items-center gap-1">
+                <Users size={12} className="shrink-0 text-cyan-700" />
+                <span><strong>Group Pass Rule:</strong> 1 purchase grants gate access for up to {formData.booking?.groupMemberLimit || formData.booking?.group_member_limit || 2} members under 1 master QR pass.</span>
               </p>
             </div>
           )}
@@ -340,8 +374,9 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                   <SelectItem value="5">Max 5 Scans per Event</SelectItem>
                 </Select>
               </div>
-              <p className="text-[10px] text-purple-800 font-medium leading-tight">
-                📲 <strong>Gate Tracking:</strong> Every entry scan is logged with live timestamps. Gate Scanner staff will see real-time counter: <em>"Scan #3 Logged"</em>.
+              <p className="text-[10px] text-purple-800 font-medium leading-tight flex items-center gap-1">
+                <Smartphone size={12} className="shrink-0 text-purple-700" />
+                <span><strong>Gate Tracking:</strong> Every entry scan is logged with live timestamps. Gate Scanner staff will see real-time counter: <em>"Scan #3 Logged"</em>.</span>
               </p>
             </div>
           )}
@@ -378,7 +413,7 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                     onChange={(e) => updateBooking("chargeType", e.target.value)}
                   />
                   <div className="text-center py-2 rounded-lg text-xs font-extrabold transition-all peer-checked:bg-gradient-to-r peer-checked:from-cyan-500 peer-checked:to-blue-600 peer-checked:text-white text-slate-500 hover:text-slate-900">
-                    {type === "Free" ? "🎟️ Free Entry Pass" : "💳 Paid Ticket Pass"}
+                    {type === "Free" ? "Free Entry Pass" : "Paid Ticket Pass"}
                   </div>
                 </label>
               ))}
@@ -428,8 +463,9 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                   }}
                   className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500"
                 />
-                <p className="text-[10px] text-slate-500 font-medium mt-1">
-                  🎟️ <strong>Attendee Limit:</strong> Maximum number of passes a single attendee can reserve in one booking order.
+                <p className="text-[10px] text-slate-500 font-medium mt-1 flex items-center gap-1">
+                  <Ticket size={12} className="shrink-0 text-slate-400" />
+                  <span><strong>Attendee Limit:</strong> Maximum number of passes a single attendee can reserve in one booking order.</span>
                 </p>
               </div>
 
@@ -522,8 +558,9 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                   }}
                   className="w-full h-9 bg-white border border-slate-200 rounded-xl px-3 text-xs font-semibold outline-none focus:ring-1 focus:ring-cyan-500"
                 />
-                <p className="text-[10px] text-slate-500 font-medium mt-1">
-                  🎟️ <strong>Attendee Limit:</strong> Maximum number of passes a single attendee can purchase in one booking order.
+                <p className="text-[10px] text-slate-500 font-medium mt-1 flex items-center gap-1">
+                  <Ticket size={12} className="shrink-0 text-slate-400" />
+                  <span><strong>Attendee Limit:</strong> Maximum number of passes a single attendee can purchase in one booking order.</span>
                 </p>
               </div>
 
@@ -565,21 +602,6 @@ const Step2TicketsPricing = ({ formData, setFormData, showErrors }) => {
                 />
                 <span className="text-xs font-bold text-slate-700">Include GST / Taxes (18%)</span>
               </label>
-
-              {/* Refund Policy */}
-              <div>
-                <Select
-                  label="Refund & Cancellation Terms"
-                  name="refundPolicy"
-                  value={formData.booking?.refundPolicy || "Standard"}
-                  onValueChange={(val) => updateBooking("refundPolicy", val)}
-                  triggerClassName="bg-white border-slate-200 rounded-xl h-9 text-xs font-semibold focus:ring-cyan-500"
-                >
-                  <SelectItem value="Standard">100% Refund until 48 hrs before event</SelectItem>
-                  <SelectItem value="Strict">50% Refund until 7 days before event</SelectItem>
-                  <SelectItem value="NoRefund">Non-Refundable Ticket</SelectItem>
-                </Select>
-              </div>
             </div>
           )}
         </div>

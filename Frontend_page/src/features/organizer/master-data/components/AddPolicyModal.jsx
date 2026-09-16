@@ -29,7 +29,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
 
-export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = null }) {
+export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = null, defaultGroup = "" }) {
   const isEditMode = !!editData;
   const reduxUser = useSelector((state) => state.user);
   const organizerId = reduxUser?.id || sessionStorage.getItem("userId") || localStorage.getItem("id") || "";
@@ -40,7 +40,7 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
   const blankForm = {
     policy_name: "",
     policy_type: "",
-    policy_group: "",
+    policy_group: defaultGroup || "",
     status: "Active",
     description: "",
   };
@@ -67,6 +67,12 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
         status: editData.status || "Active",
         description: editData.description || "",
       });
+      if (editData.policy_type) {
+        setPolicyTypes((prev) => Array.from(new Set([...prev, editData.policy_type])));
+      }
+      if (editData.policy_group) {
+        setPolicyGroups((prev) => Array.from(new Set([...prev, editData.policy_group])));
+      }
 
       const fileUrl =
         editData.document_file ||
@@ -77,11 +83,21 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
       setDocumentFile(fileUrl);
       setDocumentFileName(fileUrl ? (fileUrl.split("/").pop() || "Attached Document") : "");
     } else if (isOpen && !isEditMode) {
-      setFormData(blankForm);
+      setFormData({
+        ...blankForm,
+        policy_group: defaultGroup || "",
+      });
+      if (defaultGroup) {
+        setPolicyGroups((prev) => Array.from(new Set([...prev, defaultGroup])));
+      }
       setDocumentFile("");
       setDocumentFileName("");
+      setIsAddingNewType(false);
+      setIsAddingNewGroup(false);
+      setNewType("");
+      setNewGroup("");
     }
-  }, [isOpen]);
+  }, [isOpen, defaultGroup]);
 
   useEffect(() => {
     const fetchPolicyData = async () => {
@@ -159,6 +175,21 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
     if (!formData.policy_name || !formData.policy_type || !formData.policy_group) {
       alert("Please fill in all required fields (Policy Name, Policy Type, Policy Group).");
       return;
+    }
+
+    const isRefundOrCancellation =
+      formData.policy_group?.toLowerCase().includes("refund") ||
+      formData.policy_group?.toLowerCase().includes("cancel") ||
+      formData.policy_type?.toLowerCase().includes("refund") ||
+      formData.policy_type?.toLowerCase().includes("cancel");
+
+    if (isRefundOrCancellation) {
+      const hasText = formData.description && formData.description.trim().length > 0;
+      const hasDoc = Boolean(documentFile);
+      if (!hasText && !hasDoc) {
+        alert("Refund & Cancellation policies require either written terms in Description OR an uploaded document (or both).");
+        return;
+      }
     }
 
     if (uploadingDoc) {
@@ -308,9 +339,19 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
               ) : (
                 <Select
                   value={formData.policy_type}
-                  placeholder="Select Policy Type"
-                  options={policyTypes.map((t) => ({ value: t, label: t }))}
-                  onValueChange={(val) => setFormData((prev) => ({ ...prev, policy_type: val }))}
+                  placeholder={policyTypes.length === 0 ? 'Please add "Policy Type"' : "Select Policy Type"}
+                  options={
+                    policyTypes.length > 0
+                      ? policyTypes.map((t) => ({ value: t, label: t }))
+                      : [{ value: "__add_new_type__", label: 'Please add "Policy Type"' }]
+                  }
+                  onValueChange={(val) => {
+                    if (val === "__add_new_type__") {
+                      setIsAddingNewType(true);
+                    } else {
+                      setFormData((prev) => ({ ...prev, policy_type: val }));
+                    }
+                  }}
                 />
               )}
             </div>
@@ -379,9 +420,19 @@ export default function AddPolicyModal({ isOpen, onClose, onSuccess, editData = 
               ) : (
                 <Select
                   value={formData.policy_group}
-                  placeholder="Select Policy Group"
-                  options={policyGroups.map((g) => ({ value: g, label: g }))}
-                  onValueChange={(val) => setFormData((prev) => ({ ...prev, policy_group: val }))}
+                  placeholder={policyGroups.length === 0 ? 'Please add "Group"' : "Select Policy Group"}
+                  options={
+                    policyGroups.length > 0
+                      ? policyGroups.map((g) => ({ value: g, label: g }))
+                      : [{ value: "__add_new_group__", label: 'Please add "Group"' }]
+                  }
+                  onValueChange={(val) => {
+                    if (val === "__add_new_group__") {
+                      setIsAddingNewGroup(true);
+                    } else {
+                      setFormData((prev) => ({ ...prev, policy_group: val }));
+                    }
+                  }}
                 />
               )}
             </div>

@@ -5,7 +5,7 @@ from .event import (
     EventDetails, EventBookingDetails, EventLayout,
     EventFile, EventTerm, EventGuest
 )
-from .venue import Venue, VenueDocument
+from .venue import Venue
 from .stall import EventStall, StallAmenity
 from .exhibitor import ExhibitorStallBooking
 from .booking import UserBookingDetails, AttendeeCheckinLog
@@ -30,7 +30,7 @@ __all__ = [
     'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster', 'CategoryRequest',
     'EventDetails', 'EventBookingDetails', 'EventLayout',
     'EventFile', 'EventTerm', 'EventGuest',
-    'Venue', 'VenueDocument',
+    'Venue',
     'EventStall', 'StallAmenity',
     'ExhibitorStallBooking',
     'UserBookingDetails', 'AttendeeCheckinLog',

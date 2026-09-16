@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Upload, X, FileText, Trash2, Check, AlertCircle, Plus, Eye } from "lucide-react";
+import { Upload, X, FileText, Trash2, Check, AlertCircle, Plus, Eye, FileCheck } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
 
 const Step4Documents = ({ formData, setFormData }) => {
@@ -102,8 +102,9 @@ const Step4Documents = ({ formData, setFormData }) => {
 
   return (
     <div className="space-y-4 pt-1 relative z-20 overflow-visible">
-      <p className="text-[11px] text-slate-500 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
-        📌 <strong>Organizer Compliance Upload:</strong> Attach official permits, NOC clearances, and legal licenses required for hosting this event (e.g. Police Permission, Sound License, Safety Clearance, GST/PAN).
+      <p className="text-[11px] text-slate-500 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 flex items-center gap-1.5">
+        <FileCheck size={14} className="shrink-0 text-cyan-600" />
+        <span><strong>Organizer Compliance Upload:</strong> Attach official permits, NOC clearances, and legal licenses required for hosting this event (e.g. Police Permission, Sound License, Safety Clearance, GST/PAN).</span>
       </p>
 
       {/* Input Row */}

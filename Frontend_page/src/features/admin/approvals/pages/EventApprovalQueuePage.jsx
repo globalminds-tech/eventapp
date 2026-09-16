@@ -319,6 +319,8 @@ export default function EventApprovalQueuePage() {
                     const isPending = ["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"].includes(st);
                     const isActionBusy = actionLoadingId === ev.id;
 
+                    const isOrgKycPending = (ev.organizer_kyc_status || "PENDING").toUpperCase() !== "VERIFIED";
+
                     return (
                       <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3.5 pl-5">
@@ -328,6 +330,13 @@ export default function EventApprovalQueuePage() {
                           <div className="text-[10px] text-slate-400 font-mono">
                             Code: {ev.event_code || ev.code || `EVT-${ev.id}`}
                           </div>
+                          {isOrgKycPending && (
+                            <div className="mt-0.5">
+                              <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded inline-flex items-center gap-1" title="Organizer business KYC is pending approval in the KYC tab">
+                                ⚠️ Org KYC Pending
+                              </span>
+                            </div>
+                          )}
                         </td>
 
                         <td className="p-3.5">
@@ -376,11 +385,16 @@ export default function EventApprovalQueuePage() {
                               <>
                                 <Button
                                   size="xs"
-                                  disabled={isActionBusy}
+                                  disabled={isActionBusy || isOrgKycPending}
                                   onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none"
+                                  title={isOrgKycPending ? "Organizer business KYC is pending verification in the KYC tab. Verify organizer KYC first before approving this event." : "Approve & Publish"}
+                                  className={`${
+                                    isOrgKycPending
+                                      ? "bg-slate-200 text-slate-400 cursor-not-allowed border-none"
+                                      : "bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer border-none"
+                                  } text-[11px]`}
                                 >
-                                  <Check size={12} /> Approve
+                                  <Check size={12} /> {isOrgKycPending ? "KYC Pending" : "Approve"}
                                 </Button>
                                 <Button
                                   size="xs"
@@ -502,11 +516,16 @@ export default function EventApprovalQueuePage() {
                   <>
                     <Button
                       size="xs"
-                      disabled={isActionBusy}
+                      disabled={isActionBusy || isOrgKycPending}
                       onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] cursor-pointer border-none"
+                      title={isOrgKycPending ? "Organizer business KYC is pending verification in the KYC tab" : "Approve Event"}
+                      className={`${
+                        isOrgKycPending
+                          ? "bg-slate-200 text-slate-400 cursor-not-allowed border-none"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold cursor-pointer border-none"
+                      } text-[11px]`}
                     >
-                      <Check size={12} /> Approve
+                      <Check size={12} /> {isOrgKycPending ? "KYC Pending" : "Approve"}
                     </Button>
                     <Button
                       size="xs"

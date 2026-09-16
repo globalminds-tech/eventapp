@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Trash2, AlertCircle, X, Edit, Plus, Store, ChevronDown } from "lucide-react";
+import { Trash2, AlertCircle, X, Edit, Plus, Store, ChevronDown, Info, AlertTriangle, Check, Ruler, Zap } from "lucide-react";
 import { Select, SelectItem } from "@/components/ui/Select";
 
 const formatSizeRange = (val, unit, isDeleting) => {
@@ -38,11 +38,36 @@ const formatSizeRange = (val, unit, isDeleting) => {
 };
 
 const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
-  // ✅ ALWAYS take from formData (NO local state)
+  // ALWAYS take from formData (NO local state)
   const stallList = (formData.layout?.stalls && formData.layout.stalls.length > 0)
     ? formData.layout.stalls
     : (formData.layout?.stallList || []);
   const amenitiesList = formData.layout?.amenities || [];
+
+  // Determine if event spans multiple days
+  const isMultiDayEvent = (() => {
+    const start = formData.eventDetails?.startDate || formData.eventDetails?.start_date;
+    const end = formData.eventDetails?.endDate || formData.eventDetails?.end_date;
+    if (!start) return false;
+    if (!end || end === start) return false;
+    try {
+      const sDate = new Date(start).toDateString();
+      const eDate = new Date(end).toDateString();
+      return sDate !== eDate && new Date(end) > new Date(start);
+    } catch {
+      return false;
+    }
+  })();
+
+  // Reset dayBased if event is single-day
+  useEffect(() => {
+    if (!isMultiDayEvent && formData.layout?.dayBased) {
+      setFormData((prev) => ({
+        ...prev,
+        layout: { ...(prev.layout || {}), dayBased: false }
+      }));
+    }
+  }, [isMultiDayEvent, formData.layout?.dayBased, setFormData]);
 
   useEffect(() => {
     setFormData((prev) => {
@@ -71,6 +96,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
   const [amenity, setAmenity] = useState("");
   const [qty, setQty] = useState("");
+  const [draftAmenities, setDraftAmenities] = useState([]);
   const [showTips, setShowTips] = useState(false);
   const [viewData, setViewData] = useState(null); // { data, type }
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, index: null, type: "" }); // type: 'stall' | 'amenity'
@@ -205,7 +231,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
     if (currentAllocatedSqFt + totalNewStallAreaSqFt > overallSpaceLimit) {
       return showModal(
-        `🚫 Space Limit Exceeded! Adding ${totalNewStallAreaSqFt} sq.ft (${stallQty} stalls) would bring total allocated space to ${currentAllocatedSqFt + totalNewStallAreaSqFt} sq.ft, which exceeds the venue's overall space capacity of ${overallSpaceLimit} sq.ft.`
+        `Space Limit Exceeded! Adding ${totalNewStallAreaSqFt} sq.ft (${stallQty} stalls) would bring total allocated space to ${currentAllocatedSqFt + totalNewStallAreaSqFt} sq.ft, which exceeds the venue's overall space capacity of ${overallSpaceLimit} sq.ft.`
       );
     }
 
@@ -237,13 +263,21 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
     );
     if (isDuplicate) return showModal("Stall Name already exists");
 
+    // Commit staged draft amenities to the global amenities list for this stall
+    const committedAmenities = draftAmenities.map((a) => ({
+      ...a,
+      stallName: layout.stallName.trim(),
+    }));
+
     const updatedStalls = [...stallList, newStall];
+    const updatedAmenities = [...amenitiesList, ...committedAmenities];
 
     setFormData({
       ...formData,
       layout: {
         ...formData.layout,
         stalls: updatedStalls,
+        amenities: updatedAmenities,
         // Clear inputs after adding
         stallName: "",
         sizeRange: "",
@@ -256,36 +290,38 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
         width: "",
       },
     });
+
+    setDraftAmenities([]);
+    setAmenity("");
+    setQty("");
   };
 
-  // ADD AMENITIES
+  // ADD AMENITIES (STAGED FOR CURRENT STALL)
   const addAmenity = () => {
     if (!amenity.trim()) return showModal("Amenity Name is required");
-    if (!qty || qty <= 0) return showModal("Valid Quantity is required");
+    const numQty = parseInt(qty, 10);
+    if (isNaN(numQty) || numQty <= 0) return showModal("Valid Quantity is required");
     const currentStallName = formData.layout?.stallName?.trim();
     if (!currentStallName) return showModal("Please enter a Stall Name first before adding amenities");
 
-    const isDuplicate = amenitiesList.some(
-      (a) => a.amenity.toLowerCase() === amenity.trim().toLowerCase() && a.stallName.toLowerCase() === currentStallName.toLowerCase()
+    const isDuplicate = draftAmenities.some(
+      (a) => a.amenity.toLowerCase() === amenity.trim().toLowerCase()
     );
     if (isDuplicate) return showModal("This amenity is already added to this stall");
 
     const newAmenity = {
       stallName: currentStallName,
       amenity: amenity.trim(),
-      qty: qty
+      qty: numQty,
     };
 
-    setFormData((prev) => ({
-      ...prev,
-      layout: {
-        ...prev.layout,
-        amenities: [...(prev.layout?.amenities || []), newAmenity]
-      }
-    }));
-
+    setDraftAmenities((prev) => [...prev, newAmenity]);
     setAmenity("");
     setQty("");
+  };
+
+  const removeDraftAmenity = (idx) => {
+    setDraftAmenities((prev) => prev.filter((_, i) => i !== idx));
   };
 
   // EDIT STALL MODAL OPEN
@@ -508,7 +544,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                     </span>
                     <span className={isOverflow ? "text-red-600 font-extrabold" : "text-emerald-600 font-extrabold"}>
                       {isOverflow
-                        ? `⚠️ OVERFLOW by ${(totalProspectiveSqFt - limitSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft`
+                        ? `OVERFLOW by ${(totalProspectiveSqFt - limitSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft`
                         : `Available: ${(limitSqFt - totalProspectiveSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft`}
                     </span>
                   </div>
@@ -532,7 +568,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
           </div>
 
           {/* Flooring & Booking Options Side-by-Side */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid grid-cols-1 ${isMultiDayEvent ? "sm:grid-cols-2" : ""} gap-4 items-start`}>
             {/* Flooring Type */}
             <div className="space-y-2">
               <label className={labelClasses}>Flooring Type <span className="text-red-500">*</span></label>
@@ -544,39 +580,51 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
               </div>
             </div>
 
-            {/* Stall Booking */}
-            <div className="space-y-2">
-              <label className={`${labelClasses} flex items-center gap-1.5`}>
-                Stall Booking
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowTips(true);
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
-                  title="Info"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-              </label>
-              <div className="px-4">
-                <label className="flex items-center gap-2.5 cursor-pointer group mt-1">
-                  <input
-                    type="checkbox"
-                    name="dayBased"
-                    checked={formData.layout?.dayBased || false}
-                    onChange={handleChange}
-                    className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
-                  />
-                  <span className="text-sm font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">
-                    Is Day Based
-                  </span>
+            {/* Stall Booking (Only visible for multi-day events) */}
+            {isMultiDayEvent && (
+              <div className="space-y-2">
+                <label className={`${labelClasses} flex items-center gap-1.5`}>
+                  Stall Booking
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowTips(true);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none cursor-pointer"
+                    title="Info"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
                 </label>
+                <div className="px-4">
+                  <label className="flex items-center gap-2.5 cursor-pointer group mt-1">
+                    <input
+                      type="checkbox"
+                      name="dayBased"
+                      checked={formData.layout?.dayBased || false}
+                      onChange={handleChange}
+                      className="w-4 h-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
+                    />
+                    <span className="text-sm font-bold text-slate-700 group-hover:text-cyan-600 transition-colors">
+                      Is Day Based
+                    </span>
+                  </label>
+
+                  {/* Day-Based Notification Callout */}
+                  {Boolean(formData.layout?.dayBased) && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-cyan-50/80 border border-cyan-200 text-cyan-950 flex items-start gap-2 text-xs font-semibold animate-in fade-in duration-200">
+                      <Info size={15} className="text-cyan-600 shrink-0 mt-0.5" />
+                      <span className="leading-snug text-[11px]">
+                        <strong>Day-Based Pricing Active:</strong> Stall price entered below will apply per day. Exhibitors can reserve all event days or select specific days.
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Stall Name, Quantity & Size */}
@@ -676,7 +724,10 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                 return (
                   <div className="col-span-full mt-1 p-2 rounded-xl bg-slate-50 border border-cyan-200/60 flex flex-wrap items-center justify-between text-[11px] font-bold animate-in fade-in duration-200">
                     <div className="flex items-center gap-1.5 text-slate-700">
-                      <span className="text-cyan-700 font-extrabold">📐 Stall Footprint:</span>
+                      <span className="text-cyan-700 font-extrabold flex items-center gap-1">
+                        <Ruler size={13} className="text-cyan-700" />
+                        <span>Stall Footprint:</span>
+                      </span>
                       <span>
                         {inputLen > 0 ? `${inputLen} × ${inputWid || "?"} ${inputUnit}` : "—"}
                         {singleStallSqFt > 0 && ` = ${singleStallSqFt.toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft/stall`}
@@ -691,11 +742,13 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                       <div>
                         {isOver ? (
                           <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 font-black text-[10px] flex items-center gap-1">
-                            ⚠️ Exceeds limit by {(totalWithPending - limitSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft
+                            <AlertTriangle size={11} className="text-red-700" />
+                            <span>Exceeds limit by {(totalWithPending - limitSqFt).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft</span>
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-black text-[10px]">
-                            ✅ Fits in capacity ({(limitSqFt - totalWithPending).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft left)
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-black text-[10px] flex items-center gap-1">
+                            <Check size={11} strokeWidth={3} className="text-emerald-800" />
+                            <span>Fits in capacity ({(limitSqFt - totalWithPending).toLocaleString(undefined, { maximumFractionDigits: 1 })} sq.ft left)</span>
                           </span>
                         )}
                       </div>
@@ -705,7 +758,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
               })()}
 
             {/* Stall Visibility & Type */}
-            <div className="sm:col-span-2 pt-4 border-t border-gray-100 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="col-span-full pt-4 border-t border-gray-100 mt-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className={labelClasses}>Stall Visibility <span className="text-red-500">*</span></label>
                   <div className="flex gap-4 px-2">
@@ -751,13 +804,15 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
 
               {/* PRICE FIELDS FOR PAID STALLS */}
               {stallType === "Paid" && (
-                <div className="bg-gray-50 p-4 rounded-3xl border border-gray-100 space-y-4 animate-in slide-in-from-top-4 duration-300 sm:col-span-2">
+                <div className="bg-gray-50 p-4 rounded-3xl border border-gray-100 space-y-4 animate-in slide-in-from-top-4 duration-300 col-span-full">
                   <div className="grid grid-cols-2 gap">
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className="text-[12px] font-bold text-gray-500 ml-4">STALL PRICE (₹ INR)</label>
+                    <div className="space-y-2 col-span-full">
+                      <label className="text-[12px] font-bold text-gray-500 ml-4">
+                        STALL PRICE (₹ INR){formData.layout?.dayBased ? " • PER DAY" : ""}
+                      </label>
                       <input
                         name="priceINR"
-                        placeholder="₹ 0.00"
+                        placeholder={formData.layout?.dayBased ? "₹ 0.00 / day" : "₹ 0.00"}
                         value={formData.layout?.priceINR || ""}
                         maxLength={10}
                         onChange={(e) => {
@@ -798,7 +853,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
               )}
 
               {/* Person Pass */}
-              <div className="sm:col-span-2 pt-4 border-t border-gray-100 mt-1">
+              <div className="col-span-full pt-4 border-t border-gray-100 mt-1">
                 <label className={labelClasses}>No. of Person Passes Allowed <span className="text-red-500">*</span></label>
                 <input
                   name="personPass"
@@ -818,7 +873,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                 )}
               </div>
 
-              <div className="space-y-3 pt-3 border-t border-slate-100 sm:col-span-2">
+              <div className="space-y-3 pt-3 border-t border-slate-100 col-span-full">
                 <h3 className="text-xs font-extrabold text-slate-900 border-l-4 border-cyan-500 pl-2">
                   Add Amenities
                 </h3>
@@ -856,9 +911,35 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                   </button>
                 </div>
 
+                {/* Staged Draft Amenities Chips (Shown directly below the field) */}
+                {draftAmenities.length > 0 && (
+                  <div className="p-2.5 bg-cyan-50/70 rounded-xl border border-cyan-200 space-y-1.5 animate-in fade-in duration-200">
+                    <span className="text-[10px] font-extrabold uppercase text-cyan-800 tracking-wider block">
+                      Amenities for this Stall ({draftAmenities.length}) — Confirmed on &quot;Confirm &amp; Add Stall&quot;:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {draftAmenities.map((item, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 bg-white border border-cyan-300 text-cyan-900 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs"
+                        >
+                          <span>{item.amenity} × {item.qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeDraftAmenity(idx)}
+                            className="text-slate-400 hover:text-rose-600 bg-transparent border-none p-0 cursor-pointer flex items-center"
+                            title="Remove amenity"
+                          >
+                            <X size={13} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-3 border-t border-slate-100 space-y-3 sm:col-span-2">
+              <div className="pt-3 border-t border-slate-100 space-y-3 col-span-full">
                 <label className="flex items-center gap-2.5 cursor-pointer group">
                   <input
                     type="checkbox"
@@ -1558,7 +1639,7 @@ const Step3LayoutStall = ({ formData, setFormData, showStep3Errors }) => {
                 </div>
 
                 <div className="pt-4 border-t border-orange-200 mt-2 flex items-center gap-2 text-orange-800 font-bold">
-                  <span className="text-orange-500">⚡</span>
+                  <Zap size={14} className="text-orange-500" />
                   Choose wisely! Pricing & availability depend on your selection.
                 </div>
               </div>

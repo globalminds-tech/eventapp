@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Send, Upload, User, Mail, Phone, Building2, MapPin,
   X, ChevronDown, Briefcase, Package, Hash, Home,
-  CreditCard, MessageSquare, FileText, Store, ArrowLeft, Loader2, CheckCircle, AlertCircle
+  CreditCard, MessageSquare, FileText, Store, ArrowLeft, Loader2, CheckCircle, AlertCircle, CalendarDays
 } from "lucide-react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { bookStall, getEventById, getCountries, getStates, getCities } from "@/Services/api";
@@ -114,6 +114,9 @@ const Stall = () => {
 
   const isConcluded = isEventConcluded(eventData || location.state?.event);
   const isSuspended = eventStatus.toUpperCase() === "SUSPENDED" || (location.state?.event?.status || "").toUpperCase() === "SUSPENDED";
+  const exhibitorProfile = user?.profiles?.exhibitor || user?.exhibitor_profile;
+  const exhibitorKycStatus = (exhibitorProfile?.kyc_status || user?.exhibitor_kyc || user?.kyc_status || "PENDING").toUpperCase();
+  const isKycPending = exhibitorKycStatus !== "VERIFIED";
 
   const initial = {
     title: "Mr.", firstName: "", lastName: "", email: "", mobile: "",
@@ -125,6 +128,58 @@ const Stall = () => {
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
+  const [selectedDays, setSelectedDays] = useState([]);
+
+  // Calculate day-based schedule
+  const startDate = eventData?.start_date || eventData?.startDate || eventData?.event_details?.start_date || eventData?.eventDetails?.startDate || "";
+  const endDate = eventData?.end_date || eventData?.endDate || eventData?.event_details?.end_date || eventData?.eventDetails?.endDate || "";
+  const isDayBased = Boolean(eventData?.layout?.day_based || eventData?.layout?.dayBased || eventData?.day_based);
+
+  const getEventDays = (sDate, eDate) => {
+    if (!sDate) return [];
+    try {
+      const start = new Date(sDate);
+      const end = eDate ? new Date(eDate) : new Date(sDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+
+      const curr = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const finalDate = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+
+      const days = [];
+      let idx = 1;
+      while (curr <= finalDate) {
+        const yyyy = curr.getFullYear();
+        const mm = String(curr.getMonth() + 1).padStart(2, "0");
+        const dd = String(curr.getDate()).padStart(2, "0");
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const weekday = curr.toLocaleDateString("en-US", { weekday: "short" });
+        const monthDay = curr.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        days.push({
+          dateStr,
+          dayNum: idx,
+          label: `Day ${idx} • ${weekday}, ${monthDay}`,
+          shortLabel: `Day ${idx}`,
+        });
+        curr.setDate(curr.getDate() + 1);
+        idx++;
+        if (idx > 60) break;
+      }
+      return days;
+    } catch {
+      return [];
+    }
+  };
+
+  const eventDays = getEventDays(startDate, endDate);
+
+  // By default, select all days if day-based
+  useEffect(() => {
+    if (isDayBased && eventDays.length > 1) {
+      setSelectedDays(eventDays.map((d) => d.dateStr));
+    } else {
+      setSelectedDays([]);
+    }
+  }, [startDate, endDate, isDayBased]);
 
   useEffect(() => {
     if (location.state?.event) {
@@ -187,6 +242,13 @@ const Stall = () => {
       setToast({ message: "Stall reservations are currently paused for this event.", type: "error" });
       return;
     }
+    if (isKycPending) {
+      setToast({
+        message: "Stall booking locked: Your Exhibitor business KYC is currently pending verification. Stall reservations will unlock once approved by Super Admin.",
+        type: "error"
+      });
+      return;
+    }
     setLoading(true);
     const newErrors = {};
     const required = ["firstName", "lastName", "email", "mobile", "companyName", "country", "state", "city", "address", "stallArea", "products", "pinCode"];
@@ -194,6 +256,11 @@ const Stall = () => {
     required.forEach((f) => { if (!formData[f]?.toString().trim()) newErrors[f] = `${labels[f]} is required`; });
     if (formData.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) newErrors.email = "Invalid email";
     if (formData.mobile && !/^\d{10}$/.test(formData.mobile)) newErrors.mobile = "Must be 10 digits";
+
+    if (isDayBased && eventDays.length > 1 && selectedDays.length === 0) {
+      newErrors.selectedDays = "Please select at least one day for stall reservation";
+    }
+
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); setLoading(false); return; }
 
     const effectiveUserId = user?.id || getAuthUserId();
@@ -202,6 +269,15 @@ const Stall = () => {
     fd.append("event_id", id);
     if (effectiveUserId) fd.append("user_id", effectiveUserId);
     fd.append("eventName", eventName);
+
+    if (isDayBased && eventDays.length > 1) {
+      fd.append("selected_days", JSON.stringify(selectedDays));
+      const daySummaryText = selectedDays.length === eventDays.length
+        ? `[Day-Based Booking: All ${eventDays.length} Days Reserved]`
+        : `[Day-Based Booking: ${selectedDays.length} of ${eventDays.length} Days Reserved: ${selectedDays.join(", ")}]`;
+      const combinedMsg = (daySummaryText + (formData.message ? `\n${formData.message}` : "")).trim();
+      fd.set("message", combinedMsg);
+    }
 
     try {
       await bookStall(fd);
@@ -265,6 +341,22 @@ const Stall = () => {
           </div>
           <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-extrabold text-[10px] shrink-0">
             Bookings Paused
+          </Badge>
+        </div>
+      )}
+
+      {/* ── Exhibitor KYC Pending Notice Banner ── */}
+      {isKycPending && !isConcluded && !isSuspended && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center gap-3 text-amber-900 shrink-0 animate-fadeIn">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex-1 text-xs">
+            <span className="font-extrabold text-amber-950">Exhibitor Business KYC Verification Pending: </span>
+            <span className="text-amber-800 font-medium">
+              Your Exhibitor legal profile is currently awaiting administrator KYC verification. Stall reservations will automatically unlock once approved by the Super Admin.
+            </span>
+          </div>
+          <Badge className="bg-amber-200 text-amber-900 border-amber-300 font-extrabold text-[10px] shrink-0">
+            KYC Pending
           </Badge>
         </div>
       )}
@@ -351,6 +443,75 @@ const Stall = () => {
                     {errors.products && <span className="text-[10px] text-red-500">{errors.products}</span>}
                   </Field>
                 </div>
+
+                {/* Day-Based Booking Schedule Selection */}
+                {isDayBased && eventDays.length > 1 && (
+                  <div className="p-3 bg-sky-50/80 border border-sky-200/90 rounded-xl space-y-2 animate-in fade-in duration-200 mt-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-sky-950 uppercase tracking-wide flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5 text-sky-600" />
+                        Select Days ({selectedDays.length}/{eventDays.length} Selected)
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedDays.length === eventDays.length) {
+                            setSelectedDays([]);
+                          } else {
+                            setSelectedDays(eventDays.map((d) => d.dateStr));
+                          }
+                        }}
+                        className="text-[10px] font-extrabold text-sky-700 hover:text-sky-900 underline cursor-pointer"
+                      >
+                        {selectedDays.length === eventDays.length ? "Deselect All" : "Select All Days"}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+                      {eventDays.map((d) => {
+                        const isChecked = selectedDays.includes(d.dateStr);
+                        return (
+                          <label
+                            key={d.dateStr}
+                            className={`flex items-center justify-between px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-all ${
+                              isChecked
+                                ? "bg-sky-600 text-white border-sky-600 shadow-2xs"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-sky-300"
+                            }`}
+                          >
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  if (isChecked) {
+                                    setSelectedDays(selectedDays.filter((s) => s !== d.dateStr));
+                                  } else {
+                                    setSelectedDays([...selectedDays, d.dateStr]);
+                                  }
+                                }}
+                                className="w-3.5 h-3.5 rounded border-slate-300 text-sky-600 focus:ring-sky-500 accent-sky-500"
+                              />
+                              <span className="text-[11px]">{d.label}</span>
+                            </span>
+                            {isChecked && (
+                              <span className="text-[9px] font-black bg-white/25 px-1.5 py-0.5 rounded text-white uppercase tracking-wider">
+                                Selected
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {errors.selectedDays && (
+                      <span className="text-[10px] text-red-500 font-bold block">{errors.selectedDays}</span>
+                    )}
+                    <p className="text-[10px] text-sky-800 leading-tight">
+                      Stall pricing applies per day. All days are selected by default; choose individual days as required.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -480,6 +641,12 @@ const Stall = () => {
                       { label: "Exhibitor", val: formData.firstName ? `${formData.title} ${formData.firstName} ${formData.lastName}`.trim() : "—" },
                       { label: "Company", val: formData.companyName || "—" },
                       { label: "Stall", val: formData.stallArea || "—" },
+                      ...(isDayBased && eventDays.length > 1 ? [{
+                        label: "Reserved Days",
+                        val: selectedDays.length === eventDays.length
+                          ? `All ${eventDays.length} Days`
+                          : `${selectedDays.length} of ${eventDays.length} Days Selected`
+                      }] : [])
                     ].map(({ label, val }) => (
                       <div key={label} className="flex items-center justify-between gap-2">
                         <span className="text-[10px] text-slate-500">{label}</span>
@@ -494,13 +661,15 @@ const Stall = () => {
                   <Button type="button" variant="outline" size="default" onClick={() => navigate(-1)} className="gap-1.5 flex-1">
                     <ArrowLeft className="w-3.5 h-3.5" /> Cancel
                   </Button>
-                  <Button type="submit" variant="gradient" size="default" disabled={loading || isSuspended || isConcluded} className="gap-1.5 flex-[2]">
+                  <Button type="submit" variant="gradient" size="default" disabled={loading || isSuspended || isConcluded || isKycPending} className="gap-1.5 flex-[2]">
                     {loading ? (
                       <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing…</>
                     ) : isConcluded ? (
                       <><AlertCircle className="w-3.5 h-3.5" /> Event Concluded</>
                     ) : isSuspended ? (
                       <><AlertCircle className="w-3.5 h-3.5" /> Bookings Paused</>
+                    ) : isKycPending ? (
+                      <><AlertCircle className="w-3.5 h-3.5" /> KYC Pending Approval</>
                     ) : (
                       <><Send className="w-3.5 h-3.5" /> Reserve Stall</>
                     )}

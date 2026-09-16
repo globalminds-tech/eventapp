@@ -468,6 +468,8 @@ CREATE TABLE dbo.[event_booking_details] (
 [event_id] UNIQUEIDENTIFIER NULL,
 [booking_start_date] DATETIME2 NULL,
 [booking_end_date] DATETIME2 NULL,
+[booking_start_time] NVARCHAR(20) NULL,
+[booking_end_time] NVARCHAR(20) NULL,
 [price_inr] DECIMAL(10, 2) NULL,
 [capacity] INTEGER NULL,
 [pass_type] NVARCHAR(50) NULL,
@@ -830,17 +832,6 @@ CREATE TABLE dbo.[user_booking_details] (
     CONSTRAINT [fk_user_booking_details_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_user_booking_details_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_user_booking_details_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
-);
-GO
-
-CREATE TABLE dbo.[venue_documents] (
-[id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
-[venue_id] UNIQUEIDENTIFIER NULL,
-[document_type] NVARCHAR(100) NULL,
-[document_number] NVARCHAR(100) NULL,
-[document_file] NVARCHAR(MAX) NULL,
-[created_at] DATETIME2 NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT [fk_venue_documents_venue_id] FOREIGN KEY ([venue_id]) REFERENCES dbo.[venues]([id]) ON DELETE NO ACTION
 );
 GO
 

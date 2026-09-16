@@ -287,7 +287,7 @@ const ExhibitorEventDetailPage = () => {
                       {stall.stall_type || stall.type || "Paid"}
                     </span>
                     <p className="text-xs font-extrabold text-emerald-700">
-                      ₹{Number(stall.price_inr || stall.priceINR || 0).toLocaleString("en-IN")}
+                      ₹{Number(stall.price_inr || stall.priceINR || 0).toLocaleString("en-IN")}{Boolean(layout?.day_based || layout?.dayBased) ? " / day" : ""}
                     </p>
                   </div>
                   {stall.prime_seat && stall.prime_price_inr && (

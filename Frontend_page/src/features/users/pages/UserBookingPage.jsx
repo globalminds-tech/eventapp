@@ -17,6 +17,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Input } from "@/components/ui/Input";
 import { Dialog, DialogHeader, DialogTitle, DialogContent } from "@/components/ui/Dialog";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import apiClient from "@/shared/api/axiosClient";
+import { ENV } from "@/config/env";
 
 const Toast = ({ show, message, type, onClose }) => {
   if (!show) return null;
@@ -88,6 +90,7 @@ export function Userbooking() {
   const [toast, setToast]             = useState({ show: false, message: "", type: "info" });
   const [redirectTimer, setRedirectTimer] = useState(10);
   const [userId, setUserId]           = useState(initialUserId);
+  const [alreadyBookedCount, setAlreadyBookedCount] = useState(0);
 
   const showToast = (message, type = "info") => {
     setToast({ show: true, message, type });
@@ -114,6 +117,31 @@ export function Userbooking() {
         console.warn("Could not fetch remote profile, using cached user:", err);
       });
   }, [id]);
+
+  // 1b. Check how many passes the logged in user already reserved for this event
+  useEffect(() => {
+    const fetchExistingBookings = async () => {
+      const effUid = userId || auth?.user?.id || storedUser?.id || localStorage.getItem("userId");
+      const effEmail = form.email || auth?.user?.email || storedUser?.email;
+      if (!effUid && !effEmail) return;
+
+      const q = [];
+      if (effUid) q.push(`user_id=${effUid}`);
+      if (effEmail) q.push(`email=${encodeURIComponent(effEmail)}`);
+      try {
+        const res = await apiClient.get(`/user/my-bookings?${q.join("&")}`);
+        const list = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
+        const thisEventBookings = list.filter((b) => String(b.event_id) === String(id));
+        const totalPast = thisEventBookings.reduce((sum, b) => sum + Number(b.ticket_count || 1), 0);
+        setAlreadyBookedCount(totalPast);
+      } catch (err) {
+        console.warn("Could not check existing bookings count:", err);
+      }
+    };
+    if (id) {
+      fetchExistingBookings();
+    }
+  }, [id, userId, form.email]);
 
   // 2. Fetch Event Data
   useEffect(() => {
@@ -178,7 +206,16 @@ export function Userbooking() {
   const isGroupPass = rawPassType.toLowerCase().includes("group");
   const groupMemberLimit = Math.max(2, Number(booking?.group_member_limit || booking?.groupMemberLimit || 5));
   const maxPass = Math.max(1, Number(booking?.max_pass || booking?.maxPass || 4));
+  const remainingPassLimit = Math.max(0, maxPass - alreadyBookedCount);
+  const isPassLimitReached = alreadyBookedCount >= maxPass;
   const totalCapacity = Number(booking?.capacity || 0);
+
+  // Clamp quantity if it exceeds remaining pass limit
+  useEffect(() => {
+    if (remainingPassLimit > 0 && quantity > remainingPassLimit) {
+      setQuantity(remainingPassLimit);
+    }
+  }, [remainingPassLimit, quantity]);
 
   // Pricing calculations
   const rawPrice =
@@ -285,6 +322,16 @@ export function Userbooking() {
 
     if (isConcluded) {
       showToast("This event has already concluded. Ticket bookings are closed.", "error");
+      return;
+    }
+
+    if (isPassLimitReached) {
+      showToast(`Booking Limit Reached: You have already reserved ${alreadyBookedCount} pass(es) for this event (Max ${maxPass} per attendee).`, "warning");
+      return;
+    }
+
+    if (alreadyBookedCount + quantity > maxPass) {
+      showToast(`Limit Exceeded: You can only book ${remainingPassLimit} more pass(es) (Max ${maxPass} per attendee).`, "warning");
       return;
     }
 
@@ -568,9 +615,14 @@ export function Userbooking() {
           <Card className="w-full bg-white border-slate-200/90 shadow-xl rounded-3xl overflow-hidden mb-6">
             <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white p-6 space-y-2">
               <div className="flex justify-between items-center">
-                <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-extrabold text-[10px] border-none px-2.5 py-0.5">
-                  {isGroupPass ? `Group Entry Pass (${groupSize} Members)` : 'Single Entry Pass'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-gradient-to-r from-orange-500 to-amber-500 text-white font-extrabold text-[10px] border-none px-2.5 py-0.5">
+                    {isGroupPass ? `Group Entry Pass (${groupSize} Members)` : (booking?.entry_type || 'Single Entry Pass')}
+                  </Badge>
+                  <Badge className="bg-slate-800 text-amber-300 font-extrabold text-[10px] border border-slate-700 px-2 py-0.5">
+                    {booking?.entry_type === 'Multi Entry' ? `Multi-Entry (${booking?.max_reentries || 'Unlimited'} Scans)` : 'Single Entry (1 Scan Only)'}
+                  </Badge>
+                </div>
                 <span className="text-[11px] font-mono text-amber-300 font-bold">
                   REF: {successData.booking_id || successData.data?.booking_id || `BKG-${Date.now().toString().slice(-6)}`}
                 </span>
@@ -597,6 +649,9 @@ export function Userbooking() {
                   </div>
                 )}
                 <span className="text-[10px] font-mono text-slate-500 mt-2 font-bold">Scan at Entrance</span>
+                <span className="text-[9px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md mt-1">
+                  {booking?.entry_type === 'Multi Entry' ? `Multi-Entry (${booking?.max_reentries || 'Unlimited'})` : 'Single Entry (1 Scan)'}
+                </span>
               </div>
 
               <div className="space-y-2.5 text-xs text-slate-600 font-semibold text-center sm:text-left flex-1">
@@ -793,6 +848,29 @@ export function Userbooking() {
                       </div>
                     ) : null}
 
+                    {/* Pass Limit Notice if previously booked */}
+                    {isPassLimitReached ? (
+                      <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3 text-rose-900">
+                        <AlertTriangle size={18} className="text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-extrabold text-xs">Attendee Pass Limit Reached</h4>
+                          <p className="text-[11px] text-rose-800 font-medium leading-relaxed mt-0.5">
+                            You have already reserved <strong>{alreadyBookedCount} pass(es)</strong> for this event. The maximum allowed per attendee is <strong>{maxPass}</strong>.
+                          </p>
+                        </div>
+                      </div>
+                    ) : alreadyBookedCount > 0 ? (
+                      <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 text-amber-900">
+                        <div className="flex items-center gap-2 text-xs font-semibold">
+                          <Info size={16} className="text-amber-700 shrink-0" />
+                          <span>You hold <strong>{alreadyBookedCount} pass(es)</strong>. You can book up to <strong>{remainingPassLimit} more pass(es)</strong>.</span>
+                        </div>
+                        <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-extrabold text-[10px]">
+                          {remainingPassLimit} Left
+                        </Badge>
+                      </div>
+                    ) : null}
+
                     {/* Quantity Stepper */}
                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
                       <div>
@@ -800,23 +878,25 @@ export function Userbooking() {
                           Number of {isGroupPass ? 'Group Passes' : 'Tickets'}
                         </span>
                         <span className="text-[11px] text-slate-500 font-medium">
-                          Limit up to {maxPass} pass{maxPass > 1 ? 'es' : ''} per order
+                          {alreadyBookedCount > 0 
+                            ? `Allowance remaining: ${remainingPassLimit} pass${remainingPassLimit > 1 ? 'es' : ''}`
+                            : `Limit up to ${maxPass} pass${maxPass > 1 ? 'es' : ''} per attendee`}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
                           onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                          disabled={quantity <= 1}
+                          disabled={quantity <= 1 || isPassLimitReached}
                           className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center text-slate-700 font-black border border-slate-200 cursor-pointer shadow-xs transition"
                         >
                           <Minus size={16} />
                         </button>
-                        <span className="w-8 text-center font-black text-base text-slate-900">{quantity}</span>
+                        <span className="w-8 text-center font-black text-base text-slate-900">{isPassLimitReached ? 0 : quantity}</span>
                         <button
                           type="button"
-                          onClick={() => setQuantity((prev) => Math.min(maxPass, prev + 1))}
-                          disabled={quantity >= maxPass}
+                          onClick={() => setQuantity((prev) => Math.min(remainingPassLimit, prev + 1))}
+                          disabled={quantity >= remainingPassLimit || isPassLimitReached}
                           className="w-9 h-9 rounded-xl bg-white hover:bg-slate-100 disabled:opacity-40 flex items-center justify-center text-slate-700 font-black border border-slate-200 cursor-pointer shadow-xs transition"
                         >
                           <Plus size={16} />
@@ -1069,6 +1149,7 @@ export function Userbooking() {
                     onClick={() => {
                       if (isSuspended) return showToast("This event is suspended and cannot accept bookings", "error");
                       if (isBookingClosed) return showToast("Booking window is currently closed for this event", "error");
+                      if (isPassLimitReached) return showToast(`Pass limit reached (${alreadyBookedCount}/${maxPass}). You cannot book more passes.`, "warning");
                       if (!form.name.trim()) return showToast("Enter your full name", "warning");
                       if (!form.email || !validateEmail(form.email)) return showToast("Enter a valid email address", "warning");
                       if (ev?.vehicle_number && (selectedVehicles.length > 0 || selectedAddons.length > 0) && !vehicleNumber.trim()) {
@@ -1076,14 +1157,14 @@ export function Userbooking() {
                       }
                       setStep(2);
                     }}
-                    disabled={isSuspended || isBookingClosed}
+                    disabled={isSuspended || isBookingClosed || isPassLimitReached}
                     className={`w-full font-extrabold text-xs py-4 rounded-2xl shadow-md border-none gap-2 cursor-pointer transition ${
-                      isSuspended || isBookingClosed
+                      isSuspended || isBookingClosed || isPassLimitReached
                         ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                         : "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white"
                     }`}
                   >
-                    <span>Continue to Order Review</span>
+                    <span>{isPassLimitReached ? "Booking Limit Reached" : "Continue to Order Review"}</span>
                     <ChevronRight size={16} />
                   </Button>
                 </>
@@ -1273,11 +1354,13 @@ export function Userbooking() {
 
                     <Button
                       onClick={handleBook}
-                      disabled={loading || !agreed || dataLoading || isSuspended || isBookingClosed}
+                      disabled={loading || !agreed || dataLoading || isSuspended || isBookingClosed || isPassLimitReached}
                       className="w-full bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-white font-extrabold text-xs py-4 rounded-2xl shadow-md border-none cursor-pointer gap-2 disabled:opacity-50"
                     >
                       {loading ? (
                         <Loader2 size={16} className="animate-spin" />
+                      ) : isPassLimitReached ? (
+                        <span>Booking Limit Reached ({alreadyBookedCount}/{maxPass})</span>
                       ) : isPaidEvent ? (
                         <>
                           <CreditCard size={16} />
@@ -1318,17 +1401,53 @@ export function Userbooking() {
         <DialogContent className="space-y-4 max-h-[70vh] overflow-y-auto">
           {termsList.length > 0 ? (
             <div className="space-y-3">
-              {termsList.map((p, i) => (
-                <div key={i} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] font-bold">
-                      {p.policy_group || 'General Policy'}
-                    </Badge>
-                    <span className="text-[10px] font-bold text-slate-400">{p.policy_type}</span>
+              {termsList.map((p, i) => {
+                const grp = p.policy_group || p.policyGroup || 'General Policy';
+                const typ = p.policy_type || p.policyType || '';
+                const name = p.policy_name || p.policyName || '';
+                const desc = p.description || p.policy_text || '';
+                const docFile = p.document_file || p.file_path || (p.documents && p.documents[0]?.document_file);
+                const isRefund = grp.toLowerCase().includes("refund") || grp.toLowerCase().includes("cancel") || typ.toLowerCase().includes("refund") || typ.toLowerCase().includes("cancel");
+
+                const docUrl = docFile ? (docFile.startsWith("http") ? docFile : `${ENV.API_BASE_URL}${docFile}`) : null;
+
+                return (
+                  <div key={i} className={`p-4 rounded-2xl border space-y-2 ${isRefund ? 'bg-amber-50/60 border-amber-200' : 'bg-slate-50 border-slate-200/80'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge className={isRefund ? "bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-extrabold" : "bg-orange-50 text-orange-700 border-orange-200 text-[10px] font-bold"}>
+                          {grp}
+                        </Badge>
+                        {typ && <span className="text-[10px] font-bold text-slate-400">{typ}</span>}
+                      </div>
+                      {isRefund && (
+                        <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                          Refund Policy
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-xs font-black text-slate-900">{name}</h4>
+                    {desc && (
+                      <div
+                        className="text-xs text-slate-600 leading-relaxed font-medium bg-white/80 p-3 rounded-xl border border-slate-100 max-h-36 overflow-y-auto whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ __html: desc }}
+                      />
+                    )}
+                    {docUrl && (
+                      <a
+                        href={docUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-cyan-700 hover:bg-cyan-50 text-[11px] font-bold transition shadow-2xs"
+                      >
+                        <FileText size={13} />
+                        <span>View Attached Policy Document</span>
+                        <ExternalLink size={11} />
+                      </a>
+                    )}
                   </div>
-                  <h4 className="text-xs font-black text-slate-900">{p.policy_name}</h4>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-slate-500 font-medium">Standard event gate entry guidelines apply.</p>

@@ -167,7 +167,7 @@ class EventRepository:
                         "city": (getattr(org_profile, "city", None) if org_profile else None) or getattr(org_user, "city", "") or "",
                         "state": (getattr(org_profile, "state", None) if org_profile else None) or getattr(org_user, "state", "") or "",
                         "country": getattr(org_user, "country", "India") or "India",
-                        "kyc_status": (getattr(org_profile, "kyc_status", None) if org_profile else None) or "VERIFIED",
+                        "kyc_status": (getattr(org_profile, "kyc_status", None) if org_profile else None) or "PENDING",
                         "gstin": (getattr(org_profile, "gstin", "") if org_profile else "") or "",
                         "pan_number": (getattr(org_profile, "pan_number", "") if org_profile else "") or "",
                         "bank_name": (getattr(org_profile, "bank_name", "") if org_profile else "") or "",
@@ -275,6 +275,19 @@ class EventRepository:
             for a in vehicle_addons
         ]
 
+        # Deduplicate files by filename and filepath
+        seen_files = set()
+        deduped_existing_files = []
+        deduped_additional_docs = []
+        for f in files:
+            f_key = ((f.file_name or "").strip().lower(), (f.file_path or "").strip().lower())
+            if f_key not in seen_files:
+                seen_files.add(f_key)
+                file_dict = {"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type}
+                deduped_existing_files.append(file_dict)
+                if f.file_type == "document":
+                    deduped_additional_docs.append(file_dict)
+
         event_dict = {
             "id": event.id,
             "uuid": getattr(event, "uuid", None) or "",
@@ -299,6 +312,7 @@ class EventRepository:
             "banner_url": banner_preview,
             "banner_type": banner_type,
             "organizer": organizer_info,
+            "organizer_kyc_status": (organizer_info.get("kyc_status", "PENDING") if organizer_info else "PENDING") or "PENDING",
 
             "event_details": {
                 "event_name": event.event_name or "",
@@ -342,14 +356,14 @@ class EventRepository:
             },
             "booking": {
                 "price_inr": float(booking.price_inr) if booking and booking.price_inr is not None else 0,
-                "capacity": booking.capacity if booking and booking.capacity is not None else 500,
-                "max_pass": booking.max_pass if booking and booking.max_pass is not None else 4,
-                "entry_type": booking.entry_type if booking else "Paid",
-                "charge_type": booking.charge_type if booking else "Paid",
-                "pass_type": booking.pass_type if booking else "Single Pass",
-                "group_member_limit": booking.group_member_limit if booking and booking.group_member_limit is not None else 5,
-                "groupMemberLimit": booking.group_member_limit if booking and booking.group_member_limit is not None else 5,
-                "max_reentries": booking.max_reentries if booking and booking.max_reentries else "Unlimited",
+                "capacity": booking.capacity if booking and booking.capacity is not None else None,
+                "max_pass": booking.max_pass if booking and booking.max_pass is not None else None,
+                "entry_type": booking.entry_type if booking and booking.entry_type else "",
+                "charge_type": booking.charge_type if booking and booking.charge_type else "Free",
+                "pass_type": booking.pass_type if booking and booking.pass_type else "Single Pass",
+                "group_member_limit": booking.group_member_limit if booking and booking.group_member_limit is not None else None,
+                "groupMemberLimit": booking.group_member_limit if booking and booking.group_member_limit is not None else None,
+                "max_reentries": booking.max_reentries if booking and booking.max_reentries else "",
                 "title": booking.title if booking else "",
                 "title_type": booking.title_type if booking else "Editable",
                 "title_selection": booking.title_selection if booking else "",
@@ -365,7 +379,11 @@ class EventRepository:
                 "taxes": booking_taxes,
                 "early_bird_expire": str(booking.early_bird_expire) if booking and booking.early_bird_expire else "",
                 "booking_start_date": str(booking.booking_start_date) if booking and booking.booking_start_date else "",
-                "booking_end_date": str(booking.booking_end_date) if booking and booking.booking_end_date else ""
+                "booking_end_date": str(booking.booking_end_date) if booking and booking.booking_end_date else "",
+                "booking_start_time": booking.booking_start_time if booking and booking.booking_start_time else "",
+                "booking_end_time": booking.booking_end_time if booking and booking.booking_end_time else "",
+                "bookingStartTime": booking.booking_start_time if booking and booking.booking_start_time else "",
+                "bookingEndTime": booking.booking_end_time if booking and booking.booking_end_time else ""
             } if booking else {},
             "layout": {
                 "floor_type": layout.floor_type if layout else "",
@@ -396,8 +414,8 @@ class EventRepository:
             "documents": {
                 "banner_url": banner_preview,
                 "banner_type": banner_type,
-                "existing_files": [{"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type} for f in files],
-                "additional_docs": [{"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type} for f in files if f.file_type == "document"]
+                "existing_files": deduped_existing_files,
+                "additional_docs": deduped_additional_docs
             },
             "terms_details": {
                 "policies": term_dicts
@@ -550,6 +568,7 @@ class EventRepository:
             db.session.query(EventFoodItem).filter(EventFoodItem.event_id == event.id).delete(synchronize_session=False)
             db.session.query(EventVehicleDetail).filter(EventVehicleDetail.event_id == event.id).delete(synchronize_session=False)
             db.session.query(EventVehicleAddon).filter(EventVehicleAddon.event_id == event.id).delete(synchronize_session=False)
+            db.session.query(EventFile).filter(EventFile.event_id == event.id, EventFile.file_type != "banner").delete(synchronize_session=False)
 
         # 3. Save EventBookingDetails
         if booking_data:
@@ -614,6 +633,13 @@ class EventRepository:
                 booking.booking_start_date = parse_date(str(b_start).replace("/", "-"))
             if b_end:
                 booking.booking_end_date = parse_date(str(b_end).replace("/", "-"))
+
+            b_start_time = booking_data.get("booking_start_time") or booking_data.get("bookingStartTime")
+            b_end_time = booking_data.get("booking_end_time") or booking_data.get("bookingEndTime")
+            if b_start_time is not None:
+                booking.booking_start_time = str(b_start_time)
+            if b_end_time is not None:
+                booking.booking_end_time = str(b_end_time)
 
             eb_expire = booking_data.get("early_bird_expire") or booking_data.get("earlyBirdExpire")
             if eb_expire:
@@ -840,15 +866,21 @@ class EventRepository:
             # Additional documents
             doc_list = documents_data.get("additionalDocs") or documents_data.get("existingFiles") or documents_data.get("fileList") or []
             if isinstance(doc_list, list):
+                saved_keys = set()
                 for doc in doc_list:
                     if isinstance(doc, dict):
+                        f_name = doc.get("file_name") or doc.get("name") or "document"
                         f_path = doc.get("file_path") or doc.get("preview") or doc.get("url")
                         if f_path:
+                            key = ((f_name or "").strip().lower(), (f_path or "").strip().lower())
+                            if key in saved_keys:
+                                continue
+                            saved_keys.add(key)
                             if f_path.startswith("data:"):
                                 f_path = StorageService.upload_base64_data(f_path, folder="documents")
                             doc_obj = EventFile(
                                 event_id=event.id,
-                                file_name=doc.get("file_name") or doc.get("name") or "document",
+                                file_name=f_name,
                                 file_path=f_path,
                                 file_type="document",
                                 doc_type=doc.get("doc_type") or doc.get("type") or "file"

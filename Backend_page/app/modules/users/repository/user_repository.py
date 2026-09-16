@@ -59,7 +59,40 @@ class UserRepository:
         res = db.session.scalar(
             select(func.coalesce(func.sum(func.coalesce(UserBookingDetails.group_size, UserBookingDetails.ticket_count, 1)), 0))
             .where(UserBookingDetails.event_id == eid)
+            .where(UserBookingDetails.deleted_at.is_(None))
         )
+        return int(res or 0)
+
+    @staticmethod
+    def get_user_booked_passes_count(event_id, user_id=None, email: str = "") -> int:
+        import uuid
+        from sqlalchemy import func, or_
+        try:
+            eid = uuid.UUID(str(event_id))
+        except Exception:
+            eid = event_id
+
+        clean_email = email.strip().lower() if email else ""
+        user_ident_conditions = []
+        if user_id:
+            try:
+                parsed_uid = uuid.UUID(str(user_id))
+                user_ident_conditions.append(UserBookingDetails.user_id == parsed_uid)
+            except Exception:
+                user_ident_conditions.append(UserBookingDetails.user_id == user_id)
+        if clean_email:
+            user_ident_conditions.append(UserBookingDetails.email == clean_email)
+
+        if not user_ident_conditions:
+            return 0
+
+        stmt = (
+            select(func.coalesce(func.sum(func.coalesce(UserBookingDetails.ticket_count, 1)), 0))
+            .where(UserBookingDetails.event_id == eid)
+            .where(UserBookingDetails.deleted_at.is_(None))
+            .where(or_(*user_ident_conditions))
+        )
+        res = db.session.scalar(stmt)
         return int(res or 0)
 
     @staticmethod
@@ -215,11 +248,31 @@ class UserRepository:
                 if str(booking.event_id) != str(expected_event_id):
                     return False, booking, f"Wrong Event: Ticket is registered for '{event.event_name}', not this event.", "WRONG_EVENT"
 
-        # Check Duplicate Check-In (Anti-Fraud)
+        # Check Entry Type and Multi-Entry limits
+        booking_settings = UserRepository.get_event_booking_details(booking.event_id)
+        entry_type = (booking_settings.entry_type if booking_settings and booking_settings.entry_type else "Single Entry").strip()
+        max_reentries_str = (booking_settings.max_reentries if booking_settings and booking_settings.max_reentries else "Unlimited").strip()
+        current_checkins = int(booking.total_checkins or 0)
+
+        # 1. Single Entry Lock: Cannot scan again if already checked in once previously
+        if entry_type.lower() == "single entry" and current_checkins >= 1 and not override_duplicate:
+            checkin_time_str = booking.checkin_at.strftime("%d/%m/%Y %I:%M %p") if booking.checkin_at else "earlier"
+            return False, booking, f"Access Denied: This is a Single Entry pass and has already been used on {checkin_time_str}.", "SINGLE_ENTRY_EXHAUSTED"
+
+        # 2. Multi Entry Limit: Cannot exceed max_reentries if specified
+        if entry_type.lower() == "multi entry" and max_reentries_str.lower() != "unlimited" and not override_duplicate:
+            try:
+                allowed_entries = int(max_reentries_str)
+                if current_checkins >= allowed_entries:
+                    return False, booking, f"Access Denied: Multi-Entry scan limit of {allowed_entries} check-ins reached ({current_checkins}/{allowed_entries} used).", "ENTRY_LIMIT_EXCEEDED"
+            except (ValueError, TypeError):
+                pass
+
+        # 3. Duplicate Check-In (Anti-Fraud: currently inside without checking out)
         if booking.is_checked_in and not booking.is_checked_out and not override_duplicate:
             checkin_time_str = booking.checkin_at.strftime("%I:%M %p") if booking.checkin_at else "earlier"
             gate_str = booking.checkin_scanner_id or "Gate"
-            return False, booking, f"Duplicate Scan: Attendee already checked in at {checkin_time_str} ({gate_str}).", "ALREADY_CHECKED_IN"
+            return False, booking, f"Duplicate Scan: Attendee already inside (Checked in at {checkin_time_str} via {gate_str}).", "ALREADY_CHECKED_IN"
 
         now = datetime.utcnow()
         booking.is_scanned = True
@@ -360,6 +413,17 @@ class UserRepository:
                 except Exception:
                     pass
 
+            b_settings = UserRepository.get_event_booking_details(event.id)
+            entry_type = (b_settings.entry_type if b_settings and b_settings.entry_type else "Single Entry").strip()
+            max_reentries = (b_settings.max_reentries if b_settings and b_settings.max_reentries else "Unlimited").strip()
+            total_checkins = int(booking.total_checkins or 0)
+
+            remaining_entries = "Unlimited"
+            if entry_type.lower() == "single entry":
+                remaining_entries = max(0, 1 - total_checkins)
+            elif max_reentries.lower() != "unlimited" and max_reentries.isdigit():
+                remaining_entries = max(0, int(max_reentries) - total_checkins)
+
             booking_list.append({
                 "id": str(booking.id),
                 "booking_id": str(booking.id),
@@ -384,6 +448,11 @@ class UserRepository:
                 "is_checked_out": bool(booking.is_checked_out),
                 "checkin_at": booking.checkin_at.isoformat() if booking.checkin_at else None,
                 "checkout_at": booking.checkout_at.isoformat() if booking.checkout_at else None,
+                "total_checkins": total_checkins,
+                "total_checkouts": int(booking.total_checkouts or 0),
+                "entry_type": entry_type,
+                "max_reentries": max_reentries,
+                "remaining_entries": remaining_entries,
                 "created_at": str(booking.created_at or ""),
                 "ticket_count": booking.ticket_count or 1,
                 "pass_type": booking.pass_type or "Single Pass",

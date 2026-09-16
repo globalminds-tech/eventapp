@@ -25,7 +25,7 @@ import {
   Sparkles, FileSpreadsheet, Download, CheckCircle2,
   ArrowLeft, ChevronLeft, ChevronRight, Check,
   CalendarDays, Ticket, Settings2, Users, ScrollText,
-  Eye, Pencil, AlertTriangle, Layers
+  Eye, Pencil, AlertTriangle, Layers, Save, X
 } from "lucide-react";
 
 const STEPS = [
@@ -42,6 +42,8 @@ const CreateEvent = ({ onBack, editData, isView }) => {
   const location = useLocation();
   const { id: urlParamId } = useParams();
   const targetEventId = urlParamId || editData?.id || location.state?.eventData?.id || location.state?.eventId;
+  const [activeEventId, setActiveEventId] = useState(targetEventId || null);
+  useEffect(() => { if (targetEventId) setActiveEventId(targetEventId); }, [targetEventId]);
   const isEditRoute = location.pathname.includes("/EditEvent") || Boolean(editData) || Boolean(location.state?.mode === "edit");
   const isViewRoute = location.pathname.includes("/ViewEvent") || Boolean(isView) || Boolean(location.state?.isReadOnly);
 
@@ -55,6 +57,13 @@ const CreateEvent = ({ onBack, editData, isView }) => {
 
   const [isReadOnlyMode, setIsReadOnlyMode] = useState(initialReadOnly);
   const [isEditingAllowed, setIsEditingAllowed] = useState(initialEditAllowed);
+
+  useEffect(() => {
+    if (location.pathname.includes("/EditEvent") || location.state?.mode === "edit") {
+      setIsEditingAllowed(true);
+      setIsReadOnlyMode(false);
+    }
+  }, [location.pathname, location.state]);
 
   const handleBack = () => {
     if (onBack) {
@@ -178,10 +187,10 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         taxType: booking.taxType || "",
         bookingStartDate: booking.booking_start_date || booking.bookingStartDate || details.startDate || details.start_date || "",
         booking_start_date: booking.booking_start_date || booking.bookingStartDate || details.startDate || details.start_date || "",
-        bookingEndDate: booking.booking_end_date || booking.bookingEndDate || details.endDate || details.end_date || "",
-        booking_end_date: booking.booking_end_date || booking.bookingEndDate || details.endDate || details.end_date || "",
-        bookingStartTime: booking.bookingStartTime || booking.booking_start_time || details.startTime || details.start_time || "",
-        bookingEndTime: booking.bookingEndTime || booking.booking_end_time || details.endTime || details.end_time || "",
+        bookingEndDate: booking.booking_end_date || booking.bookingEndDate || details.startDate || details.start_date || "",
+        booking_end_date: booking.booking_end_date || booking.bookingEndDate || details.startDate || details.start_date || "",
+        bookingStartTime: booking.booking_start_time || booking.bookingStartTime || "12:00 AM",
+        bookingEndTime: booking.booking_end_time || booking.bookingEndTime || details.startTime || details.start_time || "06:00 PM",
       },
       layout: {
         floorType: raw.layout?.floorType || raw.layout?.floor_type || raw.floor_type || "Stall",
@@ -287,11 +296,29 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         })),
         guests: raw.vendorSponsor?.guests || raw.guests || [],
       },
+      status: raw.status || details.status || raw.approval_status || "",
     };
   };
 
   const initialRawData = editData || location.state?.eventData;
   const normalizedInitial = normalizeInitialFormData(initialRawData);
+
+  const rawEventStatus = String(
+    normalizedInitial?.status ||
+    initialRawData?.status || 
+    initialRawData?.approval_status || 
+    editData?.status || 
+    editData?.approval_status || 
+    location.state?.eventData?.status || 
+    ""
+  ).toUpperCase();
+
+  const isDraft = rawEventStatus === "DRAFT";
+  const isAlreadyPublished = ["APPROVED", "PENDING", "ACTIVE", "LIVE", "PUBLISHED", "REJECTED", "SUSPENDED"].includes(rawEventStatus);
+
+  const submitButtonText = isSubmitting
+    ? (isAlreadyPublished && !isDraft ? "Updating..." : "Publishing...")
+    : (isAlreadyPublished && !isDraft ? "Update Event" : "Publish Event");
 
   const [formData, setFormData] = useState(
     normalizedInitial || {
@@ -355,7 +382,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         setFormData(parsed);
         setPopup({
           show: true,
-          message: `📁 Imported "${parsed.eventDetails?.eventName || "Event"}" from Excel!`,
+          message: `Imported "${parsed.eventDetails?.eventName || "Event"}" from Excel!`,
           type: "success",
         });
       },
@@ -381,6 +408,306 @@ const CreateEvent = ({ onBack, editData, isView }) => {
     return errs;
   };
 
+  const buildEventPayload = (status = "Pending", finalBannerUrl = "") => {
+    const details = formData.eventDetails || {};
+    const booking = formData.booking || {};
+    const layout = formData.layout || {};
+    const food = formData.foodProvision || {};
+    const vehicle = formData.vehicleProvision || {};
+    const docs = formData.documents || {};
+    const terms = formData.termsDetails?.policies || (Array.isArray(formData.terms) ? formData.terms : []);
+    const vs = formData.vendorSponsor || {};
+
+    return {
+      event_name: details.eventName || details.event_name || (status === "Draft" ? "Draft Event" : ""),
+      event_code: details.eventCode || details.event_code || "",
+      category: details.category || "",
+      sub_category: details.subCategory || details.sub_category || "",
+      event_type: details.eventType || details.event_type || "OneTime",
+      start_date: details.startDate || details.start_date || "",
+      end_date: details.endDate || details.end_date || "",
+      start_time: details.startTime || details.start_time || "",
+      end_time: details.endTime || details.end_time || "",
+      venue: details.venue || "",
+      address: details.address || "",
+      description: details.description || "",
+      visibility: details.visibility || "Public",
+      status: status,
+      banner_url: finalBannerUrl || docs.bannerPreview || formData.banner_url || "",
+
+      eventDetails: {
+        eventName: details.eventName || details.event_name || (status === "Draft" ? "Draft Event" : ""),
+        event_name: details.eventName || details.event_name || (status === "Draft" ? "Draft Event" : ""),
+        eventCode: details.eventCode || details.event_code || "",
+        event_code: details.eventCode || details.event_code || "",
+        category: details.category || "",
+        subCategory: details.subCategory || details.sub_category || "",
+        sub_category: details.subCategory || details.sub_category || "",
+        eventType: details.eventType || details.event_type || "OneTime",
+        event_type: details.eventType || details.event_type || "OneTime",
+        occurrence: details.occurrence || "",
+        startDate: details.startDate || details.start_date || "",
+        start_date: details.startDate || details.start_date || "",
+        endDate: details.endDate || details.end_date || "",
+        end_date: details.endDate || details.end_date || "",
+        startTime: details.startTime || details.start_time || "",
+        start_time: details.startTime || details.start_time || "",
+        endTime: details.endTime || details.end_time || "",
+        end_time: details.endTime || details.end_time || "",
+        venue: details.venue || "",
+        address: details.address || "",
+        description: details.description || "",
+        visibility: details.visibility || "Public",
+        status: status,
+        mail: Boolean(details.mail),
+        whatsapp: Boolean(details.whatsapp),
+        print: Boolean(details.print),
+        visitorMail: Boolean(details.visitorMail ?? details.visitor_mail),
+        visitor_mail: Boolean(details.visitorMail ?? details.visitor_mail),
+        visitorName: Boolean(details.visitorName ?? details.visitor_name),
+        visitor_name: Boolean(details.visitorName ?? details.visitor_name),
+        visitorPhoto: Boolean(details.visitorPhoto ?? details.visitor_photo),
+        visitor_photo: Boolean(details.visitorPhoto ?? details.visitor_photo),
+        visitorMobile: Boolean(details.visitorMobile ?? details.visitor_mobile),
+        visitor_mobile: Boolean(details.visitorMobile ?? details.visitor_mobile),
+        documentProof: Boolean(details.documentProof ?? details.document_proof),
+        document_proof: Boolean(details.documentProof ?? details.document_proof),
+        dayPass: Boolean(details.dayPass ?? details.day_pass),
+        day_pass: Boolean(details.dayPass ?? details.day_pass),
+        isInternationalInclude: Boolean(details.isInternationalInclude ?? details.is_international_include),
+        is_international_include: Boolean(details.isInternationalInclude ?? details.is_international_include),
+        aadhar: Boolean(details.aadhar),
+        passport: Boolean(details.passport),
+        welcomeKit: Boolean(details.welcomeKit ?? details.welcome_kit),
+        welcome_kit: Boolean(details.welcomeKit ?? details.welcome_kit),
+        food: Boolean(details.food || (food.items && food.items.length > 0) || (food.foodItems && food.foodItems.length > 0) || food.catererName),
+        vehiclePass: Boolean(details.vehiclePass || details.vehicle_pass || (vehicle.details && vehicle.details.length > 0) || (vehicle.vehicles && vehicle.vehicles.length > 0) || (vehicle.addons && vehicle.addons.length > 0)),
+        vehicle_pass: Boolean(details.vehiclePass || details.vehicle_pass || (vehicle.details && vehicle.details.length > 0) || (vehicle.vehicles && vehicle.vehicles.length > 0) || (vehicle.addons && vehicle.addons.length > 0)),
+        vehicleNumber: Boolean(details.vehicleNumber ?? details.vehicle_number),
+        vehicle_number: Boolean(details.vehicleNumber ?? details.vehicle_number),
+        includeProgram: details.includeProgram || details.include_program || "No",
+        include_program: details.includeProgram || details.include_program || "No",
+        amenities: details.amenities || "",
+        tags: details.tags || "",
+        venue_total_area_sqft: details.venue_total_area_sqft || layout.overallSpaceSqFt || null,
+      },
+      booking: {
+        chargeType: booking.charge_type || booking.chargeType || "Free",
+        charge_type: booking.charge_type || booking.chargeType || "Free",
+        priceINR: booking.price_inr ?? booking.priceINR ?? booking.price ?? "",
+        price_inr: booking.price_inr ?? booking.priceINR ?? booking.price ?? "",
+        capacity: booking.capacity ?? booking.totalCapacity ?? 500,
+        totalCapacity: booking.capacity ?? booking.totalCapacity ?? 500,
+        maxPass: booking.max_pass ?? booking.maxPass ?? 4,
+        max_pass: booking.max_pass ?? booking.maxPass ?? 4,
+        maxPerUser: booking.max_pass ?? booking.maxPerUser ?? 4,
+        passType: booking.pass_type || booking.passType || "Single Pass",
+        pass_type: booking.pass_type || booking.passType || "Single Pass",
+        groupMemberLimit: booking.groupMemberLimit || booking.group_member_limit || 5,
+        group_member_limit: parseInt(booking.group_member_limit || booking.groupMemberLimit, 10) || 5,
+        entryType: booking.entry_type || booking.entryType || "Single Entry",
+        entry_type: booking.entry_type || booking.entryType || "Single Entry",
+        titleType: booking.title_type || booking.titleType || "Editable",
+        title_type: booking.title_type || booking.titleType || "Editable",
+        designationType: booking.designation_type || booking.designationType || "Editable",
+        designation_type: booking.designation_type || booking.designationType || "Editable",
+        companyType: booking.company_type || booking.companyType || "Editable",
+        company_type: booking.company_type || booking.companyType || "Editable",
+        currency: booking.currency || "INR",
+        taxType: booking.taxType || "",
+        includeTax: Boolean(booking.include_tax ?? booking.includeTax),
+        include_tax: Boolean(booking.include_tax ?? booking.includeTax),
+        taxes: booking.taxes || [],
+        bookingStartDate: booking.booking_start_date || booking.bookingStartDate || details.startDate || "",
+        booking_start_date: booking.booking_start_date || booking.bookingStartDate || details.startDate || "",
+        bookingEndDate: booking.booking_end_date || booking.bookingEndDate || details.startDate || "",
+        booking_end_date: booking.booking_end_date || booking.bookingEndDate || details.startDate || "",
+        bookingStartTime: booking.bookingStartTime || booking.booking_start_time || "12:00 AM",
+        booking_start_time: booking.bookingStartTime || booking.booking_start_time || "12:00 AM",
+        bookingEndTime: booking.bookingEndTime || booking.booking_end_time || details.startTime || "06:00 PM",
+        booking_end_time: booking.bookingEndTime || booking.booking_end_time || details.startTime || "06:00 PM",
+      },
+      layout: {
+        floorType: layout.floorType || layout.floor_type || "Stall",
+        floor_type: layout.floorType || layout.floor_type || "Stall",
+        overallSpaceSqFt: layout.overallSpaceSqFt || layout.overall_space_sqft || details.venue_total_area_sqft || null,
+        overall_space_sqft: layout.overall_space_sqft || layout.overallSpaceSqFt || details.venue_total_area_sqft || null,
+        dayBased: Boolean(layout.dayBased ?? layout.day_based),
+        day_based: Boolean(layout.dayBased ?? layout.day_based),
+        personPass: layout.personPass || layout.person_pass || 1,
+        person_pass: layout.personPass || layout.person_pass || 1,
+        includeTax: Boolean(layout.includeTax ?? layout.include_tax),
+        include_tax: Boolean(layout.includeTax ?? layout.include_tax),
+        taxes: layout.taxes || [],
+        stalls: (layout.stalls || layout.stallList || []).map((s) => ({
+          ...s,
+          stall_name: s.stall_name || s.stallName || "",
+          stallName: s.stall_name || s.stallName || "",
+          stall_size: s.stall_size || s.size || "",
+          size: s.stall_size || s.size || "",
+          price_inr: s.price_inr || s.priceINR || s.price || "0",
+          priceINR: s.price_inr || s.priceINR || s.price || "0",
+          stall_type: s.stall_type || s.type || "",
+          type: s.stall_type || s.type || "",
+          prime_seat: Boolean(s.prime_seat ?? s.primeSeat),
+          primeSeat: Boolean(s.prime_seat ?? s.primeSeat),
+          prime_price_inr: s.prime_price_inr || s.primePriceINR || "",
+          primePriceINR: s.prime_price_inr || s.primePriceINR || "",
+        })),
+        amenities: layout.amenities || [],
+      },
+      foodProvision: (() => {
+        const list = (food.items || food.foodItems || (food.catererName ? [food] : [])).map((fi) => ({
+          ...fi,
+          caterer_name: fi.caterer_name || fi.catererName || "",
+          catererName: fi.caterer_name || fi.catererName || "",
+          meal_type: fi.meal_type || fi.mealType || "",
+          mealType: fi.meal_type || fi.mealType || "",
+          food_type: fi.food_type || fi.foodType || "",
+          foodType: fi.food_type || fi.foodType || "",
+          price_inr: fi.price_inr ?? fi.priceINR ?? 0,
+          priceINR: fi.price_inr ?? fi.priceINR ?? 0,
+          menu_details: fi.menu_details || fi.menuDetails || "",
+          menuDetails: fi.menu_details || fi.menuDetails || "",
+        }));
+        return {
+          items: list,
+          foodItems: list,
+          food_items: list,
+          caterer_name: list[0]?.caterer_name || "",
+          catererName: list[0]?.catererName || "",
+          meal_type: list[0]?.meal_type || "",
+          mealType: list[0]?.mealType || "",
+          food_type: list[0]?.food_type || "",
+          foodType: list[0]?.foodType || "",
+          price_inr: list[0]?.price_inr ?? 0,
+          priceINR: list[0]?.priceINR ?? 0,
+          menu_details: list[0]?.menu_details || "",
+          menuDetails: list[0]?.menuDetails || "",
+        };
+      })(),
+      vehicleProvision: (() => {
+        const vList = (vehicle.details || vehicle.vehicles || []).map((v) => ({
+          ...v,
+          vehicle_type: v.vehicle_type || v.vehicleType || "",
+          vehicleType: v.vehicle_type || v.vehicleType || "",
+          price_inr: v.price_inr ?? v.priceINR ?? 0,
+          priceINR: v.price_inr ?? v.priceINR ?? 0,
+        }));
+        const aList = (vehicle.addons || vehicle.vehicle_addons || []).map((a) => ({
+          ...a,
+          is_parent: Boolean(a.is_parent ?? a.isParent),
+          isParent: Boolean(a.is_parent ?? a.isParent),
+          addon_name: a.addon_name || a.addOnName || a.name || "",
+          addOnName: a.addon_name || a.addOnName || a.name || "",
+          price: a.price ?? a.price_inr ?? 0,
+          price_inr: a.price ?? a.price_inr ?? 0,
+        }));
+        return {
+          details: vList,
+          vehicles: vList,
+          addons: aList,
+          vehicle_addons: aList,
+          vehicle_type: vList[0]?.vehicle_type || "",
+          vehicleType: vList[0]?.vehicleType || "",
+          price_inr: vList[0]?.price_inr ?? 0,
+          priceINR: vList[0]?.priceINR ?? 0,
+        };
+      })(),
+      documents: {
+        bannerPreview: finalBannerUrl || docs.bannerPreview || "",
+        bannerType: docs.bannerType || "image",
+        additionalDocs: docs.additionalDocs || [],
+      },
+      termsDetails: {
+        policies: terms,
+      },
+      vendorSponsor: {
+        vendors: (vs.vendors || (Array.isArray(formData.vendors) ? formData.vendors : [])).map((v) => ({
+          ...v,
+          vendor_name: v.vendor_name || v.vendorName || "",
+          vendorName: v.vendor_name || v.vendorName || "",
+          vendor_type: v.vendor_type || v.vendorType || "",
+          vendorType: v.vendor_type || v.vendorType || "",
+          pass_count: v.pass_count ?? v.passCount ?? 0,
+          passCount: v.pass_count ?? v.passCount ?? 0,
+        })),
+        sponsors: (vs.sponsors || (Array.isArray(formData.sponsors) ? formData.sponsors : [])).map((s) => ({
+          ...s,
+          sponsor_name: s.sponsor_name || s.sponsorName || "",
+          sponsorName: s.sponsor_name || s.sponsorName || "",
+          sponsorship_type: s.sponsorship_type || s.sponsorshipType || s.sponsorship || "",
+          sponsorshipType: s.sponsorship_type || s.sponsorshipType || s.sponsorship || "",
+        })),
+        guests: (vs.guests || formData.guests || []).map((g) => ({
+          ...g,
+          guest_name: g.guest_name || g.guestName || g.name || "",
+          guestName: g.guest_name || g.guestName || g.name || "",
+        })),
+      },
+      user_id: currentOrganizerId || organizer?.id,
+      created_by: currentOrganizerId || organizer?.id,
+    };
+  };
+
+  const uploadBannerIfPresent = async (docs) => {
+    let finalBannerUrl = docs.bannerPreview || formData.banner_url || "";
+    if (docs.bannerFile || (docs.banner && docs.banner instanceof File)) {
+      try {
+        const fileToUpload = docs.bannerFile || docs.banner;
+        const bodyFormData = new FormData();
+        bodyFormData.append("file", fileToUpload);
+        const uploadRes = await uploadImage(bodyFormData);
+        if (uploadRes?.url || uploadRes?.file_path) {
+          finalBannerUrl = uploadRes.url || uploadRes.file_path;
+        }
+      } catch (uploadErr) {
+        console.warn("Banner image upload note:", uploadErr);
+      }
+    }
+    return finalBannerUrl;
+  };
+
+  const handleSaveDraft = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+
+    try {
+      const docs = formData.documents || {};
+      const finalBannerUrl = await uploadBannerIfPresent(docs);
+      const payload = buildEventPayload("Draft", finalBannerUrl);
+      const effectiveId = activeEventId || targetEventId;
+
+      if (effectiveId) {
+        await updateEvent(effectiveId, payload);
+        clearEventsCache();
+        const successMessage = isDraft || !isAlreadyPublished
+          ? "Event Published & Submitted for Approval!"
+          : "Event Details Updated & Submitted for Approval!";
+        setPopup({ show: true, message: successMessage, type: "success" });
+      } else {
+        await completeEvent(payload);
+        clearEventsCache();
+        setPopup({ show: true, message: "Event Published & Submitted for Approval!", type: "success" });
+      }
+      setTimeout(() => {
+        if (onBack) onBack();
+        else navigate("/OrganizerHome");
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      setPopup({
+        show: true,
+        message: err.response?.data?.error || err.response?.data?.detail || "Failed to save draft!",
+        type: "error",
+      });
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (isSubmittingRef.current) return;
     
@@ -391,269 +718,54 @@ const CreateEvent = ({ onBack, editData, isView }) => {
       return;
     }
 
+    const booking = formData.booking || {};
+    const terms = formData.termsDetails?.policies || (Array.isArray(formData.terms) ? formData.terms : []);
+
+    const isPaidEvent =
+      booking.chargeType === "Paid" ||
+      booking.charge_type === "Paid" ||
+      Number(booking.priceINR || booking.price_inr || booking.price || 0) > 0;
+
+    if (isPaidEvent) {
+      const hasRefundPolicy = terms.some((p) => {
+        const grp = (p.policyGroup || p.policy_group || "").toLowerCase();
+        const typ = (p.policyType || p.policy_type || "").toLowerCase();
+        const isRefund = grp.includes("refund") || grp.includes("cancel") || typ.includes("refund") || typ.includes("cancel");
+        const hasText = Boolean(p.description && p.description.trim().length > 0);
+        const hasDoc = Boolean(p.document_file || (p.documents && p.documents.length > 0));
+        return isRefund && (hasText || hasDoc);
+      });
+
+      if (!hasRefundPolicy) {
+        setStep(5);
+        setPopup({
+          show: true,
+          message: "Paid events require a Refund & Cancellation Policy. Please add or select one in Step 5 with written terms or an attached document.",
+          type: "error",
+        });
+        return;
+      }
+    }
+
     isSubmittingRef.current = true;
     setIsSubmitting(true);
+
     try {
-      const details = formData.eventDetails || {};
-      const booking = formData.booking || {};
-      const layout = formData.layout || {};
-      const food = formData.foodProvision || {};
-      const vehicle = formData.vehicleProvision || {};
       const docs = formData.documents || {};
-      const terms = formData.termsDetails?.policies || (Array.isArray(formData.terms) ? formData.terms : []);
-      const vs = formData.vendorSponsor || {};
+      const finalBannerUrl = await uploadBannerIfPresent(docs);
+      const payload = buildEventPayload("Pending", finalBannerUrl);
+      const effectiveId = activeEventId || targetEventId;
 
-      let finalBannerUrl = docs.bannerPreview || formData.banner_url || "";
-      if (docs.bannerFile || (docs.banner && docs.banner instanceof File)) {
-        try {
-          const fileToUpload = docs.bannerFile || docs.banner;
-          const bodyFormData = new FormData();
-          bodyFormData.append("file", fileToUpload);
-          const uploadRes = await uploadImage(bodyFormData);
-          if (uploadRes?.url || uploadRes?.file_path) {
-            finalBannerUrl = uploadRes.url || uploadRes.file_path;
-          }
-        } catch (uploadErr) {
-          console.warn("Banner image upload note:", uploadErr);
-        }
-      }
-
-      const payload = {
-        event_name: details.eventName || details.event_name || "",
-        event_code: details.eventCode || details.event_code || "",
-        category: details.category || "",
-        sub_category: details.subCategory || details.sub_category || "",
-        event_type: details.eventType || details.event_type || "OneTime",
-        start_date: details.startDate || details.start_date || "",
-        end_date: details.endDate || details.end_date || "",
-        start_time: details.startTime || details.start_time || "",
-        end_time: details.endTime || details.end_time || "",
-        venue: details.venue || "",
-        address: details.address || "",
-        description: details.description || "",
-        visibility: details.visibility || "Public",
-        banner_url: finalBannerUrl,
-
-        eventDetails: {
-          eventName: details.eventName || details.event_name || "",
-          event_name: details.eventName || details.event_name || "",
-          eventCode: details.eventCode || details.event_code || "",
-          event_code: details.eventCode || details.event_code || "",
-          category: details.category || "",
-          subCategory: details.subCategory || details.sub_category || "",
-          sub_category: details.subCategory || details.sub_category || "",
-          eventType: details.eventType || details.event_type || "OneTime",
-          event_type: details.eventType || details.event_type || "OneTime",
-          occurrence: details.occurrence || "",
-          startDate: details.startDate || details.start_date || "",
-          start_date: details.startDate || details.start_date || "",
-          endDate: details.endDate || details.end_date || "",
-          end_date: details.endDate || details.end_date || "",
-          startTime: details.startTime || details.start_time || "",
-          start_time: details.startTime || details.start_time || "",
-          endTime: details.endTime || details.end_time || "",
-          end_time: details.endTime || details.end_time || "",
-          venue: details.venue || "",
-          address: details.address || "",
-          description: details.description || "",
-          visibility: details.visibility || "Public",
-          mail: Boolean(details.mail),
-          whatsapp: Boolean(details.whatsapp),
-          print: Boolean(details.print),
-          visitorMail: Boolean(details.visitorMail ?? details.visitor_mail),
-          visitor_mail: Boolean(details.visitorMail ?? details.visitor_mail),
-          visitorName: Boolean(details.visitorName ?? details.visitor_name),
-          visitor_name: Boolean(details.visitorName ?? details.visitor_name),
-          visitorPhoto: Boolean(details.visitorPhoto ?? details.visitor_photo),
-          visitor_photo: Boolean(details.visitorPhoto ?? details.visitor_photo),
-          visitorMobile: Boolean(details.visitorMobile ?? details.visitor_mobile),
-          visitor_mobile: Boolean(details.visitorMobile ?? details.visitor_mobile),
-          documentProof: Boolean(details.documentProof ?? details.document_proof),
-          document_proof: Boolean(details.documentProof ?? details.document_proof),
-          dayPass: Boolean(details.dayPass ?? details.day_pass),
-          day_pass: Boolean(details.dayPass ?? details.day_pass),
-          isInternationalInclude: Boolean(details.isInternationalInclude ?? details.is_international_include),
-          is_international_include: Boolean(details.isInternationalInclude ?? details.is_international_include),
-          aadhar: Boolean(details.aadhar),
-          passport: Boolean(details.passport),
-          welcomeKit: Boolean(details.welcomeKit ?? details.welcome_kit),
-          welcome_kit: Boolean(details.welcomeKit ?? details.welcome_kit),
-          food: Boolean(details.food || (food.items && food.items.length > 0) || (food.foodItems && food.foodItems.length > 0) || food.catererName),
-          vehiclePass: Boolean(details.vehiclePass || details.vehicle_pass || (vehicle.details && vehicle.details.length > 0) || (vehicle.vehicles && vehicle.vehicles.length > 0) || (vehicle.addons && vehicle.addons.length > 0)),
-          vehicle_pass: Boolean(details.vehiclePass || details.vehicle_pass || (vehicle.details && vehicle.details.length > 0) || (vehicle.vehicles && vehicle.vehicles.length > 0) || (vehicle.addons && vehicle.addons.length > 0)),
-          vehicleNumber: Boolean(details.vehicleNumber ?? details.vehicle_number),
-          vehicle_number: Boolean(details.vehicleNumber ?? details.vehicle_number),
-          includeProgram: details.includeProgram || details.include_program || "No",
-          include_program: details.includeProgram || details.include_program || "No",
-          amenities: details.amenities || "",
-          tags: details.tags || "",
-          venue_total_area_sqft: details.venue_total_area_sqft || layout.overallSpaceSqFt || null,
-        },
-        booking: {
-          chargeType: booking.charge_type || booking.chargeType || "Free",
-          charge_type: booking.charge_type || booking.chargeType || "Free",
-          priceINR: booking.price_inr ?? booking.priceINR ?? booking.price ?? "",
-          price_inr: booking.price_inr ?? booking.priceINR ?? booking.price ?? "",
-          capacity: booking.capacity ?? booking.totalCapacity ?? 500,
-          totalCapacity: booking.capacity ?? booking.totalCapacity ?? 500,
-          maxPass: booking.max_pass ?? booking.maxPass ?? 4,
-          max_pass: booking.max_pass ?? booking.maxPass ?? 4,
-          maxPerUser: booking.max_pass ?? booking.maxPerUser ?? 4,
-          passType: booking.pass_type || booking.passType || "Single Pass",
-          pass_type: booking.pass_type || booking.passType || "Single Pass",
-          groupMemberLimit: booking.groupMemberLimit || booking.group_member_limit || 5,
-          group_member_limit: parseInt(booking.group_member_limit || booking.groupMemberLimit, 10) || 5,
-          entryType: booking.entry_type || booking.entryType || "Single Entry",
-          entry_type: booking.entry_type || booking.entryType || "Single Entry",
-          titleType: booking.title_type || booking.titleType || "Editable",
-          title_type: booking.title_type || booking.titleType || "Editable",
-          designationType: booking.designation_type || booking.designationType || "Editable",
-          designation_type: booking.designation_type || booking.designationType || "Editable",
-          companyType: booking.company_type || booking.companyType || "Editable",
-          company_type: booking.company_type || booking.companyType || "Editable",
-          currency: booking.currency || "INR",
-          taxType: booking.taxType || "",
-          includeTax: Boolean(booking.include_tax ?? booking.includeTax),
-          include_tax: Boolean(booking.include_tax ?? booking.includeTax),
-          taxes: booking.taxes || [],
-          bookingStartDate: booking.booking_start_date || booking.bookingStartDate || details.startDate || "",
-          booking_start_date: booking.booking_start_date || booking.bookingStartDate || details.startDate || "",
-          bookingEndDate: booking.booking_end_date || booking.bookingEndDate || details.endDate || "",
-          booking_end_date: booking.booking_end_date || booking.bookingEndDate || details.endDate || "",
-          bookingStartTime: booking.bookingStartTime || details.startTime || "09:00 AM",
-          bookingEndTime: booking.bookingEndTime || details.endTime || "06:00 PM",
-        },
-        layout: {
-          floorType: layout.floorType || layout.floor_type || "Stall",
-          floor_type: layout.floorType || layout.floor_type || "Stall",
-          overallSpaceSqFt: layout.overallSpaceSqFt || layout.overall_space_sqft || details.venue_total_area_sqft || null,
-          overall_space_sqft: layout.overall_space_sqft || layout.overallSpaceSqFt || details.venue_total_area_sqft || null,
-          dayBased: Boolean(layout.dayBased ?? layout.day_based),
-          day_based: Boolean(layout.dayBased ?? layout.day_based),
-          personPass: layout.personPass || layout.person_pass || 1,
-          person_pass: layout.personPass || layout.person_pass || 1,
-          includeTax: Boolean(layout.includeTax ?? layout.include_tax),
-          include_tax: Boolean(layout.includeTax ?? layout.include_tax),
-          taxes: layout.taxes || [],
-          stalls: (layout.stalls || layout.stallList || []).map((s) => ({
-            ...s,
-            stall_name: s.stall_name || s.stallName || "",
-            stallName: s.stall_name || s.stallName || "",
-            stall_size: s.stall_size || s.size || "",
-            size: s.stall_size || s.size || "",
-            price_inr: s.price_inr || s.priceINR || s.price || "0",
-            priceINR: s.price_inr || s.priceINR || s.price || "0",
-            stall_type: s.stall_type || s.type || "",
-            type: s.stall_type || s.type || "",
-            prime_seat: Boolean(s.prime_seat ?? s.primeSeat),
-            primeSeat: Boolean(s.prime_seat ?? s.primeSeat),
-            prime_price_inr: s.prime_price_inr || s.primePriceINR || "",
-            primePriceINR: s.prime_price_inr || s.primePriceINR || "",
-          })),
-          amenities: layout.amenities || [],
-        },
-        foodProvision: (() => {
-          const list = (food.items || food.foodItems || (food.catererName ? [food] : [])).map((fi) => ({
-            ...fi,
-            caterer_name: fi.caterer_name || fi.catererName || "",
-            catererName: fi.caterer_name || fi.catererName || "",
-            meal_type: fi.meal_type || fi.mealType || "",
-            mealType: fi.meal_type || fi.mealType || "",
-            food_type: fi.food_type || fi.foodType || "",
-            foodType: fi.food_type || fi.foodType || "",
-            price_inr: fi.price_inr ?? fi.priceINR ?? 0,
-            priceINR: fi.price_inr ?? fi.priceINR ?? 0,
-            menu_details: fi.menu_details || fi.menuDetails || "",
-            menuDetails: fi.menu_details || fi.menuDetails || "",
-          }));
-          return {
-            items: list,
-            foodItems: list,
-            food_items: list,
-            caterer_name: list[0]?.caterer_name || "",
-            catererName: list[0]?.catererName || "",
-            meal_type: list[0]?.meal_type || "",
-            mealType: list[0]?.mealType || "",
-            food_type: list[0]?.food_type || "",
-            foodType: list[0]?.foodType || "",
-            price_inr: list[0]?.price_inr ?? 0,
-            priceINR: list[0]?.priceINR ?? 0,
-            menu_details: list[0]?.menu_details || "",
-            menuDetails: list[0]?.menuDetails || "",
-          };
-        })(),
-        vehicleProvision: (() => {
-          const vList = (vehicle.details || vehicle.vehicles || []).map((v) => ({
-            ...v,
-            vehicle_type: v.vehicle_type || v.vehicleType || "",
-            vehicleType: v.vehicle_type || v.vehicleType || "",
-            price_inr: v.price_inr ?? v.priceINR ?? 0,
-            priceINR: v.price_inr ?? v.priceINR ?? 0,
-          }));
-          const aList = (vehicle.addons || vehicle.vehicle_addons || []).map((a) => ({
-            ...a,
-            is_parent: Boolean(a.is_parent ?? a.isParent),
-            isParent: Boolean(a.is_parent ?? a.isParent),
-            addon_name: a.addon_name || a.addOnName || a.name || "",
-            addOnName: a.addon_name || a.addOnName || a.name || "",
-            price: a.price ?? a.price_inr ?? 0,
-            price_inr: a.price ?? a.price_inr ?? 0,
-          }));
-          return {
-            details: vList,
-            vehicles: vList,
-            addons: aList,
-            vehicle_addons: aList,
-            vehicle_type: vList[0]?.vehicle_type || "",
-            vehicleType: vList[0]?.vehicleType || "",
-            price_inr: vList[0]?.price_inr ?? 0,
-            priceINR: vList[0]?.priceINR ?? 0,
-          };
-        })(),
-        documents: {
-          bannerPreview: finalBannerUrl,
-          bannerType: docs.bannerType || "image",
-          additionalDocs: docs.additionalDocs || [],
-        },
-        termsDetails: {
-          policies: terms,
-        },
-        vendorSponsor: {
-          vendors: (vs.vendors || (Array.isArray(formData.vendors) ? formData.vendors : [])).map((v) => ({
-            ...v,
-            vendor_name: v.vendor_name || v.vendorName || "",
-            vendorName: v.vendor_name || v.vendorName || "",
-            vendor_type: v.vendor_type || v.vendorType || "",
-            vendorType: v.vendor_type || v.vendorType || "",
-            pass_count: v.pass_count ?? v.passCount ?? 0,
-            passCount: v.pass_count ?? v.passCount ?? 0,
-          })),
-          sponsors: (vs.sponsors || (Array.isArray(formData.sponsors) ? formData.sponsors : [])).map((s) => ({
-            ...s,
-            sponsor_name: s.sponsor_name || s.sponsorName || "",
-            sponsorName: s.sponsor_name || s.sponsorName || "",
-            sponsorship_type: s.sponsorship_type || s.sponsorshipType || s.sponsorship || "",
-            sponsorshipType: s.sponsorship_type || s.sponsorshipType || s.sponsorship || "",
-          })),
-          guests: (vs.guests || formData.guests || []).map((g) => ({
-            ...g,
-            guest_name: g.guest_name || g.guestName || g.name || "",
-            guestName: g.guest_name || g.guestName || g.name || "",
-          })),
-        },
-        user_id: currentOrganizerId || organizer?.id,
-        created_by: currentOrganizerId || organizer?.id,
-      };
-      if (targetEventId) {
-        await updateEvent(targetEventId, payload);
+      if (effectiveId) {
+        await updateEvent(effectiveId, payload);
         clearEventsCache();
-        setPopup({ show: true, message: "🎉 Event Details Updated Successfully!", type: "success" });
+        setPopup({ show: true, message: "Event Details Updated & Submitted for Approval!", type: "success" });
       } else {
         await completeEvent(payload);
         clearEventsCache();
-        setPopup({ show: true, message: "🎉 Event Published Successfully!", type: "success" });
+        setPopup({ show: true, message: "Event Published & Submitted for Approval!", type: "success" });
       }
-      setTimeout(() => { if (onBack) onBack(); }, 1500);
+      setTimeout(() => { if (onBack) onBack(); else navigate("/OrganizerHome"); }, 1500);
     } catch (err) {
       console.error(err);
       setPopup({
@@ -667,7 +779,31 @@ const CreateEvent = ({ onBack, editData, isView }) => {
     }
   };
 
-  const canEdit = !isReadOnlyMode || isEditingAllowed;
+  const canEdit = isEditingAllowed || (!isReadOnlyMode && !isView);
+
+  const handleEnableEdit = () => {
+    setIsEditingAllowed(true);
+    setIsReadOnlyMode(false);
+    const eventCode =
+      formData.eventDetails?.eventCode ||
+      formData.eventDetails?.event_code ||
+      editData?.event_code ||
+      editData?.code ||
+      activeEventId ||
+      targetEventId;
+
+    if (eventCode) {
+      navigate(`/OrganizerHome/EditEvent/${eventCode}`, {
+        state: { mode: "edit", isReadOnly: false, eventData: formData, eventId: activeEventId || targetEventId },
+        replace: true,
+      });
+    }
+    setPopup({
+      show: true,
+      message: "Edit Mode Enabled! Operational fields unlocked for editing.",
+      type: "success",
+    });
+  };
 
   const renderStepContent = () => {
     switch (step) {
@@ -746,15 +882,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
       <ViewEvent
         formData={formData}
         onBack={handleBack}
-        onEdit={() => {
-          setIsEditingAllowed(true);
-          setIsReadOnlyMode(false);
-          setPopup({
-            show: true,
-            message: "✏️ Edit Mode Enabled! Operational fields unlocked for editing.",
-            type: "success",
-          });
-        }}
+        onEdit={handleEnableEdit}
       />
     );
   }
@@ -773,21 +901,28 @@ const CreateEvent = ({ onBack, editData, isView }) => {
             <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">
               {isReadOnlyMode && !isEditingAllowed
                 ? "View Event (Read-Only)"
-                : isEditRoute || isEditingAllowed || editData || targetEventId
+                : isDraft
+                ? "Complete & Publish Draft Event"
+                : isAlreadyPublished
                 ? "Edit Event"
                 : "Create New Event"}
             </h1>
             <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold text-[10px]">
               6-Step Wizard
             </Badge>
-            {isReadOnlyMode && !isEditingAllowed && (
-              <Badge variant="secondary" className="font-semibold text-[10px] bg-amber-100 text-amber-800 border-amber-200">
-                👁️ Read Only Mode
+            {isDraft && (
+              <Badge variant="secondary" className="font-semibold text-[10px] bg-slate-100 text-slate-700 border-slate-300">
+                Draft Mode
               </Badge>
             )}
-            {(isEditingAllowed || isEditRoute || editData || targetEventId) && !isReadOnlyMode && (
+            {isReadOnlyMode && !isEditingAllowed && (
+              <Badge variant="secondary" className="font-semibold text-[10px] bg-amber-100 text-amber-800 border-amber-200">
+                Read Only Mode
+              </Badge>
+            )}
+            {isAlreadyPublished && (isEditingAllowed || isEditRoute || editData || targetEventId) && !isReadOnlyMode && !isDraft && (
               <Badge variant="secondary" className="font-semibold text-[10px] bg-emerald-100 text-emerald-800 border-emerald-200">
-                ✏️ Edit Mode Active
+                Edit Mode Active
               </Badge>
             )}
           </div>
@@ -796,11 +931,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
             {isReadOnlyMode && !isEditingAllowed && (
               <button
                 type="button"
-                onClick={() => {
-                  setIsEditingAllowed(true);
-                  setIsReadOnlyMode(false);
-                  setPopup({ show: true, message: "✏️ Edit Mode Enabled! Operational fields unlocked for editing.", type: "success" });
-                }}
+                onClick={handleEnableEdit}
                 className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold text-[11px] h-7 cursor-pointer border-none flex items-center gap-1.5 shadow-sm transition-all"
               >
                 <Pencil size={12} />
@@ -811,20 +942,20 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         </div>
 
         {/* ── ACTIVE BOOKINGS WARNING ALERT ── */}
-        {(formData.booking?.passesSold > 0 || formData.eventDetails?.passesSold > 0 || location.state?.eventData?.passesSold > 0) && (
+        {Boolean(Number(formData.booking?.passesSold || formData.eventDetails?.passesSold || location.state?.eventData?.passesSold || 0) > 0) && (
           <div className="mt-3 bg-amber-500/10 border-2 border-amber-500/40 rounded-2xl p-3.5 flex items-start gap-3 text-amber-950 shadow-sm animate-in fade-in">
             <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5 shadow-xs">
               <AlertTriangle size={18} strokeWidth={2.5} />
             </div>
             <div className="space-y-0.5">
               <h4 className="font-extrabold text-xs text-amber-950 flex items-center gap-2">
-                <span>⚠️ Active Attendee Bookings Warning</span>
+                <span>Active Attendee Bookings Warning</span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white font-extrabold text-[10px]">
-                  {formData.booking?.passesSold || formData.eventDetails?.passesSold || location.state?.eventData?.passesSold || 420} Attendees Booked
+                  {formData.booking?.passesSold || formData.eventDetails?.passesSold || location.state?.eventData?.passesSold} Attendees Booked
                 </span>
               </h4>
               <p className="text-[11px] font-semibold text-amber-900 leading-snug">
-                <strong>{formData.booking?.passesSold || formData.eventDetails?.passesSold || location.state?.eventData?.passesSold || 420} attendees have already booked passes for this show.</strong> Modifying venue location, event start dates/times, or pass pricing may impact registered ticket holders and entry QR badges.
+                <strong>{formData.booking?.passesSold || formData.eventDetails?.passesSold || location.state?.eventData?.passesSold} attendees have already booked passes for this show.</strong> Modifying venue location, event start dates/times, or pass pricing may impact registered ticket holders and entry QR badges.
               </p>
             </div>
           </div>
@@ -915,6 +1046,80 @@ const CreateEvent = ({ onBack, editData, isView }) => {
             Step <span className="text-slate-900">{step}</span> of <span className="text-slate-900">{STEPS.length}</span>
           </span>
 
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSaveDraft}
+                disabled={isSubmitting}
+                className="h-8 px-3.5 border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs cursor-pointer gap-1.5 rounded-xl shadow-2xs"
+                title="Save progress as draft (not visible to superadmin)"
+              >
+                <Save size={13} className="text-slate-500" />
+                <span>Save Draft</span>
+              </Button>
+            )}
+
+            {step < STEPS.length ? (
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (step === 1) setShowErrors(true);
+                  setStep(step + 1);
+                }}
+                className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs h-8 px-4 rounded-xl shadow-xs border-none cursor-pointer gap-1"
+              >
+                <span>Next Step</span>
+                <ChevronRight size={14} />
+              </Button>
+            ) : (
+              canEdit && (
+                <Button
+                  size="sm"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className={`h-8 px-5 font-bold text-xs rounded-xl border-none cursor-pointer transition-all ${
+                    isSubmitting
+                      ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs shadow-emerald-500/20"
+                  }`}
+                >
+                  <CheckCircle2 size={14} className="mr-1.5" />
+                  <span>{submitButtonText}</span>
+                </Button>
+              )
+            )}
+          </div>
+        </div>
+
+        <fieldset disabled={!canEdit} className={!canEdit ? "opacity-90 pointer-events-none" : ""}>
+          {renderStepContent()}
+        </fieldset>
+
+        {/* Validation Hint */}
+        {showErrors && !isFormValid() && (
+          <div className="mt-2 text-right">
+            <span className="text-[11px] text-amber-600 font-semibold flex items-center justify-end gap-1">
+              <AlertTriangle size={13} className="text-amber-500" />
+              <span>Missing: {getValidationErrors().join(", ")}</span>
+            </span>
+          </div>
+        )}
+
+        {/* ── IN-FLOW BOTTOM ACTION FOOTER ── */}
+        <div className="pt-4 mt-6 border-t border-slate-100 flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => (step === 1 ? handleBack() : setStep(step - 1))}
+            className="h-8 px-3 border-slate-200 text-slate-700 hover:text-slate-900 font-bold text-xs cursor-pointer gap-1"
+          >
+            <ChevronLeft size={14} />
+            <span>{step === 1 ? "Cancel" : "Previous"}</span>
+          </Button>
+
           {step < STEPS.length ? (
             <Button
               size="sm"
@@ -928,7 +1133,7 @@ const CreateEvent = ({ onBack, editData, isView }) => {
               <ChevronRight size={14} />
             </Button>
           ) : (
-            !isView && (
+            canEdit && (
               <Button
                 size="sm"
                 onClick={handleSubmit}
@@ -940,28 +1145,11 @@ const CreateEvent = ({ onBack, editData, isView }) => {
                 }`}
               >
                 <CheckCircle2 size={14} className="mr-1.5" />
-                <span>
-                  {isSubmitting
-                    ? (isEditRoute || editData || targetEventId ? "Updating..." : "Publishing...")
-                    : (isEditRoute || editData || targetEventId ? "Update Event" : "Publish Event")}
-                </span>
+                <span>{submitButtonText}</span>
               </Button>
             )
           )}
         </div>
-
-        <fieldset disabled={isView} className={isView ? "opacity-90" : ""}>
-          {renderStepContent()}
-        </fieldset>
-
-        {/* Validation Hint */}
-        {showErrors && !isFormValid() && (
-          <div className="mt-2 text-right">
-            <span className="text-[11px] text-amber-600 font-semibold">
-              ⚠ Missing: {getValidationErrors().join(", ")}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* ── POPUP NOTIFICATION ── */}
@@ -972,7 +1160,10 @@ const CreateEvent = ({ onBack, editData, isView }) => {
           }`}>
             <span>{popup.message}</span>
             <button onClick={() => setPopup({ show: false, message: "", type: "" })}
-              className="text-white hover:opacity-80 border-none bg-transparent cursor-pointer font-bold">✕</button>
+              className="text-white hover:opacity-80 border-none bg-transparent cursor-pointer font-bold flex items-center justify-center p-0.5"
+              title="Close">
+              <X size={14} />
+            </button>
           </div>
         </div>
       )}

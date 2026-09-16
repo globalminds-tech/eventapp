@@ -54,15 +54,7 @@ class Venue(db.Model):
             "longitude": float(self.longitude) if self.longitude else None,
             "google_place_id": self.google_place_id,
             "created_at": str(self.created_at) if self.created_at else None,
+            "created_by": str(self.created_by) if self.created_by else "",
+            "updated_at": str(self.updated_at) if self.updated_at else None,
+            "updated_by": str(self.updated_by) if self.updated_by else "",
         }
-
-
-class VenueDocument(db.Model):
-    __tablename__ = 'venue_documents'
-
-    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
-    venue_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('venues.id', ondelete='CASCADE'), nullable=True)
-    document_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    document_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    document_file: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())

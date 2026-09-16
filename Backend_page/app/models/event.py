@@ -77,6 +77,8 @@ class EventBookingDetails(db.Model):
     event_id: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, ForeignKey('event_details_table.id', ondelete='CASCADE'), nullable=True)
     booking_start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     booking_end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    booking_start_time: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    booking_end_time: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     price_inr: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     capacity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     pass_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
