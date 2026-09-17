@@ -11,6 +11,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { fetchEventsThunk } from "@/app/store/eventSlice";
 import apiClient from "@/Services/client";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
+import CreateEventButton from "@/components/ui/CreateEventButton";
 
 export const ManageStall = () => {
   const [applications, setApplications] = useState([]);
@@ -521,6 +522,7 @@ export const ManageStall = () => {
             { header: "Action", className: "py-3.5 px-4 text-right" },
           ]}
           emptyMessage="You haven't created any events with stall allocations yet."
+          emptyAction={<CreateEventButton size="sm" className="mt-2" />}
           renderDesktopTable={() => (
             <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
               <table className="w-full text-left border-collapse min-w-[600px]">

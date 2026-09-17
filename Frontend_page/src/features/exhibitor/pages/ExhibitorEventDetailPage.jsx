@@ -70,7 +70,7 @@ const ExhibitorEventDetailPage = () => {
   const handleReserveBooth = () => {
     const ed = event?.eventDetails || {};
     if (isEventConcluded(ed?.id ? ed : event)) return;
-    navigate(`/book-stall/${id}`, { state: { event: { id, title: event?.event_name || event?.eventDetails?.event_name } } });
+    navigate(`/exhibitor/book-stall/${id}`, { state: { event: { id, title: event?.event_name || event?.eventDetails?.event_name } } });
   };
 
   /* ── Loading ── */
@@ -136,17 +136,33 @@ const ExhibitorEventDetailPage = () => {
   return (
     <div className="space-y-6 pb-16 select-none font-sans text-slate-800">
 
-      {/* ── Back breadcrumb ── */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Upcoming Events
-        </button>
-        <span className="text-slate-300">/</span>
-        <span className="text-xs font-bold text-slate-700 truncate max-w-[260px]">{d?.event_name || ed?.event_name}</span>
+      {/* ── Top Header & Navigation ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/exhibitor/upcoming-events")}
+            className="rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs gap-1.5 shadow-2xs cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+            <span>Upcoming Events</span>
+          </Button>
+          <span className="text-slate-300">/</span>
+          <span className="text-xs font-bold text-slate-700 truncate max-w-[260px]">{d?.event_name || ed?.event_name}</span>
+        </div>
+
+        {/* Top Reserve Booth CTA */}
+        {!isConcluded && !isSuspended && (
+          <Button
+            onClick={handleReserveBooth}
+            className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md shadow-emerald-500/20 gap-2 shrink-0 self-start sm:self-auto cursor-pointer"
+          >
+            <Store className="w-4 h-4" />
+            <span>Reserve Booth</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        )}
       </div>
 
       {/* ── Concluded Notice Banner ── */}
@@ -190,40 +206,39 @@ const ExhibitorEventDetailPage = () => {
       )}
 
       {/* ── Hero Banner ── */}
-      {banner && (
-        <div className="relative w-full h-64 sm:h-80 rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+      {banner ? (
+        <div className="relative w-full h-56 sm:h-72 rounded-3xl overflow-hidden border border-slate-200/80 shadow-md">
           <img
             src={banner}
             alt={d?.event_name}
             className="w-full h-full object-cover"
             onError={(e) => { e.target.style.display = "none"; }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-5">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <Badge className="bg-emerald-500 text-white font-extrabold text-[10px] px-2.5 py-1 shadow">
-                {ed?.category || d?.category || "Exhibition"}
-              </Badge>
-              <Badge className={`font-extrabold text-[10px] px-2.5 py-1 shadow ${d?.status === "APPROVED" ? "bg-cyan-500 text-white" : "bg-amber-500 text-white"
-                }`}>
-                {d?.status || "Active"}
-              </Badge>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/35 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <Badge className="bg-emerald-500 text-slate-950 font-black text-[10px] px-2.5 py-0.5 shadow">
+                  {ed?.category || d?.category || "Exhibition"}
+                </Badge>
+                <Badge className="bg-white/20 backdrop-blur-md text-white border border-white/30 font-bold text-[10px] px-2.5 py-0.5">
+                  {ed?.event_type || d?.event_type || "Expo"}
+                </Badge>
+              </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white leading-tight">
+                {d?.event_name || ed?.event_name}
+              </h1>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white leading-tight">
-              {d?.event_name || ed?.event_name}
-            </h1>
           </div>
         </div>
-      )}
-
-      {!banner && (
-        <div>
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <Badge className="bg-emerald-500 text-white font-extrabold text-[10px] px-2.5 py-1">
+      ) : (
+        <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px] px-2.5 py-0.5 shadow-2xs">
               {ed?.category || d?.category || "Exhibition"}
             </Badge>
-            <Badge className="bg-cyan-500 text-white font-extrabold text-[10px] px-2.5 py-1">
-              {d?.status || "Active"}
+            <Badge className="bg-slate-100 text-slate-700 border-slate-200 font-bold text-[10px] px-2.5 py-0.5">
+              {ed?.event_type || d?.event_type || "Expo"}
             </Badge>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900">
@@ -232,238 +247,330 @@ const ExhibitorEventDetailPage = () => {
         </div>
       )}
 
-      {/* ── Key Details Grid ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <InfoChip icon={Calendar} label="Start Date" value={fmt(ed?.start_date || d?.start_date)} color="emerald" />
-        <InfoChip icon={Calendar} label="End Date" value={fmt(ed?.end_date || d?.end_date)} color="teal" />
-        <InfoChip icon={Clock} label="Timing" value={`${fmtTime(ed?.start_time)} – ${fmtTime(ed?.end_time)}`} color="sky" />
-        <InfoChip icon={Tag} label="Event Type" value={ed?.event_type || d?.event_type || "OneTime"} color="violet" />
-      </div>
+      {/* ── 2-Column Responsive Workspace Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <InfoChip icon={Building2} label="Venue" value={d?.venue || ed?.venue || "—"} color="amber" />
-        <InfoChip icon={MapPin} label="Address" value={d?.address || ed?.address || "—"} color="rose" />
-      </div>
+        {/* ══ LEFT MAIN SECTION (8 COLS) ══ */}
+        <div className="lg:col-span-8 space-y-6">
 
-      {/* ── Description ── */}
-      {(ed?.description || d?.description) && (
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-          <CardContent className="p-5">
-            <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-3">About This Event</p>
-            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-              {ed?.description || d?.description}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+          {/* Key Details Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <InfoChip icon={Calendar} label="Start Date" value={fmt(ed?.start_date || d?.start_date)} color="emerald" />
+            <InfoChip icon={Calendar} label="End Date" value={fmt(ed?.end_date || d?.end_date)} color="teal" />
+            <InfoChip icon={Clock} label="Timing" value={`${fmtTime(ed?.start_time)} – ${fmtTime(ed?.end_time)}`} color="sky" />
+            <InfoChip icon={Tag} label="Event Type" value={ed?.event_type || d?.event_type || "OneTime"} color="violet" />
+          </div>
 
-      {/* ── Stalls Available ── */}
-      {stalls.length > 0 && (
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <Store className="w-3.5 h-3.5 text-emerald-600" />
-              </div>
-              <p className="text-sm font-extrabold text-slate-800">Available Stalls</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {stalls.map((stall, i) => (
-                <div key={i} className="rounded-xl border border-emerald-100 bg-emerald-50 p-3.5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-extrabold text-slate-800">{stall.stall_name || stall.stallName}</p>
-                    {stall.prime_seat && (
-                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 font-bold text-[9px] gap-0.5">
-                        <Star className="w-2.5 h-2.5" /> Prime
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Size: <span className="font-bold text-slate-700">{stall.stall_size || stall.size || "—"}</span>
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stall.stall_type === "Paid" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"
-                      }`}>
-                      {stall.stall_type || stall.type || "Paid"}
-                    </span>
-                    <p className="text-xs font-extrabold text-emerald-700">
-                      ₹{Number(stall.price_inr || stall.priceINR || 0).toLocaleString("en-IN")}{Boolean(layout?.day_based || layout?.dayBased) ? " / day" : ""}
-                    </p>
-                  </div>
-                  {stall.prime_seat && stall.prime_price_inr && (
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      Prime Seat: <span className="font-bold text-amber-600">₹{Number(stall.prime_price_inr || stall.primePriceINR).toLocaleString("en-IN")}</span>
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <InfoChip icon={Building2} label="Venue" value={d?.venue || ed?.venue || "—"} color="amber" />
+            <InfoChip icon={MapPin} label="Address" value={d?.address || ed?.address || "—"} color="rose" />
+          </div>
 
-      {/* ── Bottom grid: Amenities + Food + Vehicles ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Description */}
+          {(ed?.description || d?.description) && (
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+              <CardContent className="p-5">
+                <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">About This Exhibition</p>
+                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+                  {ed?.description || d?.description}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Amenities */}
-        {amenities.length > 0 && (
-          <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Package className="w-4 h-4 text-violet-500" />
-                <p className="text-xs font-extrabold text-slate-800">Stall Amenities</p>
-              </div>
-              <div className="space-y-2">
-                {amenities.map((a, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-600 font-medium">{a.amenity}</span>
-                    <span className="font-extrabold text-slate-800">×{a.qty}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Food */}
-        {foodItems.length > 0 && (
-          <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Utensils className="w-4 h-4 text-orange-500" />
-                <p className="text-xs font-extrabold text-slate-800">Food Provision</p>
-              </div>
-              {foodItems.map((f, i) => (
-                <div key={i} className="space-y-1 text-xs">
-                  <p className="font-bold text-slate-800">{f.caterer_name || f.catererName}</p>
-                  <p className="text-slate-500">{f.meal_type || f.mealType} · {f.food_type || f.foodType}</p>
-                  <p className="text-slate-500">Menu: {f.menu_details || f.menuDetails}</p>
-                  <p className="font-extrabold text-orange-600">₹{Number(f.price_inr || f.priceINR || 0).toLocaleString("en-IN")}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Vehicles */}
-        {vehicles.length > 0 && (
-          <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Car className="w-4 h-4 text-sky-500" />
-                <p className="text-xs font-extrabold text-slate-800">Vehicle Pass</p>
-              </div>
-              {vehicles.map((v, i) => (
-                <div key={i} className="space-y-1 text-xs">
-                  <p className="font-bold text-slate-800">{v.vehicle_type || v.vehicleType}</p>
-                  <p className="font-extrabold text-sky-600">₹{Number(v.price_inr || v.priceINR || 0).toLocaleString("en-IN")}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* ── Guests, Sponsors, Vendors ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-        {guests.length > 0 && (
-          <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="w-4 h-4 text-teal-500" />
-                <p className="text-xs font-extrabold text-slate-800">Guests</p>
-              </div>
-              <div className="space-y-2">
-                {guests.map((g, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-600 flex items-center justify-center text-[10px] font-black shrink-0">
-                      {(g.guest_name || g.guestName || g.name || "?")[0]?.toUpperCase()}
+          {/* Available Stalls */}
+          {stalls.length > 0 && (
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <Store className="w-4 h-4 text-emerald-700" />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-800">{g.guest_name || g.guestName || g.name}</p>
-                      {g.designation && <p className="text-[10px] text-slate-400">{g.designation}</p>}
+                      <p className="text-sm font-extrabold text-slate-900">Available Stall Configurations</p>
+                      <p className="text-[11px] text-slate-500">Commercial booths open for exhibitor reservations</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-xs">
+                    {stalls.length} Configurations
+                  </Badge>
+                </div>
 
-        {sponsors.length > 0 && (
-          <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <Star className="w-4 h-4 text-amber-500" />
-                <p className="text-xs font-extrabold text-slate-800">Sponsors</p>
-              </div>
-              <div className="space-y-2">
-                {sponsors.map((s, i) => (
-                  <div key={i} className="text-xs">
-                    <p className="font-bold text-slate-800">{s.sponsor_name || s.sponsorName}</p>
-                    <p className="text-[10px] text-slate-400">{s.sponsorship_type || s.sponsorshipType}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {stalls.map((stall, i) => {
+                    const priceVal = Number(stall.price_inr || stall.priceINR || stall.price || 0);
+                    const qtyVal = parseInt(stall.quantity !== undefined ? stall.quantity : (stall.stallQty !== undefined ? stall.stallQty : (stall.qty !== undefined ? stall.qty : 1)), 10) || 1;
+                    return (
+                      <div
+                        key={i}
+                        className="rounded-2xl border border-slate-200/90 hover:border-emerald-300 bg-slate-50/50 hover:bg-emerald-50/20 p-4 space-y-2.5 transition-all shadow-2xs group"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-xs font-black text-slate-900 group-hover:text-emerald-900 transition-colors">
+                              {stall.stall_name || stall.stallName || `Stall #${i + 1}`}
+                            </p>
+                            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                              Size: <span className="font-bold text-slate-700">{stall.stall_size || stall.size || "10x10 Feet"}</span>
+                            </p>
+                          </div>
+                          {stall.prime_seat && (
+                            <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-black text-[9px] gap-1 shrink-0">
+                              <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" /> Prime
+                            </Badge>
+                          )}
+                        </div>
 
-        {vendors.length > 0 && (
-          <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <ShieldCheck className="w-4 h-4 text-indigo-500" />
-                <p className="text-xs font-extrabold text-slate-800">Vendors</p>
-              </div>
-              <div className="space-y-2">
-                {vendors.map((v, i) => (
-                  <div key={i} className="text-xs">
-                    <p className="font-bold text-slate-800">{v.vendor_name || v.vendorName}</p>
-                    <p className="text-[10px] text-slate-400">{v.vendor_type || v.vendorType}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${stall.stall_type === "Paid" ? "bg-sky-100 text-sky-700" : "bg-emerald-100 text-emerald-700"}`}>
+                            {stall.stall_type || stall.type || "Paid"}
+                          </span>
+                          <div className="text-right">
+                            <p className="text-sm font-black text-emerald-700">
+                              ₹{priceVal.toLocaleString("en-IN")}{Boolean(layout?.day_based || layout?.dayBased) ? " / day" : ""}
+                            </p>
+                            <span className="text-[10px] font-semibold text-slate-400">
+                              {qtyVal} Units Configured
+                            </span>
+                          </div>
+                        </div>
 
-      {/* ── Sticky Reserve Booth CTA ── */}
-      <div className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 shadow-xl rounded-t-2xl px-4 sm:px-5 py-3.5 sm:py-4 pb-safe flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-6 -mx-2 z-30">
-        <div>
-          <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Ready to Exhibit?</p>
-          <p className="text-xs sm:text-sm font-extrabold text-slate-900 leading-tight mt-0.5">
-            Secure your booth at <span className="text-emerald-600">{d?.event_name || ed?.event_name}</span>
-          </p>
+                        {stall.prime_seat && stall.prime_price_inr && (
+                          <div className="text-[10px] bg-amber-50/80 px-2 py-1 rounded-lg border border-amber-200/60 text-amber-900 flex items-center justify-between">
+                            <span>Prime Placement Add-on:</span>
+                            <span className="font-extrabold">+₹{Number(stall.prime_price_inr || stall.primePriceINR).toLocaleString("en-IN")}</span>
+                          </div>
+                        )}
+
+                        {!isConcluded && !isSuspended && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleReserveBooth}
+                            className="w-full h-8 rounded-xl bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/80 font-bold text-xs gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <span>Book This Stall</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Amenities + Food + Vehicles Strip */}
+          {(amenities.length > 0 || foodItems.length > 0 || vehicles.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {amenities.length > 0 && (
+                <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Package className="w-4 h-4 text-violet-600" />
+                      <p className="text-xs font-extrabold text-slate-800">Stall Amenities</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      {amenities.map((a, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600 font-medium">{a.amenity}</span>
+                          <span className="font-extrabold text-slate-800">×{a.qty}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {foodItems.length > 0 && (
+                <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Utensils className="w-4 h-4 text-orange-600" />
+                      <p className="text-xs font-extrabold text-slate-800">Food Catering</p>
+                    </div>
+                    <div className="space-y-2">
+                      {foodItems.map((f, i) => (
+                        <div key={i} className="text-xs">
+                          <p className="font-bold text-slate-800">{f.caterer_name || f.catererName}</p>
+                          <p className="text-[11px] text-slate-500">{f.meal_type || f.mealType} · {f.food_type || f.foodType}</p>
+                          <p className="font-extrabold text-orange-600 text-xs">₹{Number(f.price_inr || f.priceINR || 0).toLocaleString("en-IN")}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {vehicles.length > 0 && (
+                <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Car className="w-4 h-4 text-sky-600" />
+                      <p className="text-xs font-extrabold text-slate-800">Vehicle Pass</p>
+                    </div>
+                    <div className="space-y-2">
+                      {vehicles.map((v, i) => (
+                        <div key={i} className="text-xs">
+                          <p className="font-bold text-slate-800">{v.vehicle_type || v.vehicleType}</p>
+                          <p className="font-extrabold text-sky-600 text-xs">₹{Number(v.price_inr || v.priceINR || 0).toLocaleString("en-IN")}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Guests, Sponsors, Vendors */}
+          {(guests.length > 0 || sponsors.length > 0 || vendors.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {guests.length > 0 && (
+                <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Users className="w-4 h-4 text-teal-600" />
+                      <p className="text-xs font-extrabold text-slate-800">VIP Guests</p>
+                    </div>
+                    <div className="space-y-2">
+                      {guests.map((g, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs">
+                          <div className="w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-[10px] font-black shrink-0">
+                            {(g.guest_name || g.guestName || g.name || "?")[0]?.toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800">{g.guest_name || g.guestName || g.name}</p>
+                            {g.designation && <p className="text-[10px] text-slate-400">{g.designation}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {sponsors.length > 0 && (
+                <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Star className="w-4 h-4 text-amber-500" />
+                      <p className="text-xs font-extrabold text-slate-800">Sponsors</p>
+                    </div>
+                    <div className="space-y-1.5 text-xs">
+                      {sponsors.map((s, i) => (
+                        <div key={i}>
+                          <p className="font-bold text-slate-800">{s.sponsor_name || s.sponsorName}</p>
+                          <p className="text-[10px] text-slate-400">{s.sponsorship_type || s.sponsorshipType}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {vendors.length > 0 && (
+                <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                      <p className="text-xs font-extrabold text-slate-800">Vendors</p>
+                    </div>
+                    <div className="space-y-1.5 text-xs">
+                      {vendors.map((v, i) => (
+                        <div key={i}>
+                          <p className="font-bold text-slate-800">{v.vendor_name || v.vendorName}</p>
+                          <p className="text-[10px] text-slate-400">{v.vendor_type || v.vendorType}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
         </div>
-        {isConcluded ? (
-          <Button
-            disabled
-            className="bg-slate-200 text-slate-500 font-extrabold text-sm px-6 py-2.5 rounded-xl border-none cursor-not-allowed gap-2 shrink-0"
-          >
-            <Store className="w-4 h-4" />
-            Event Concluded
-          </Button>
-        ) : isSuspended ? (
-          <Button
-            disabled
-            className="bg-slate-200 text-slate-500 font-extrabold text-sm px-6 py-2.5 rounded-xl border-none cursor-not-allowed gap-2 shrink-0"
-          >
-            <Store className="w-4 h-4" />
-            Bookings Paused
-          </Button>
-        ) : (
-          <Button
-            onClick={handleReserveBooth}
-            className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm px-6 py-2.5 rounded-xl shadow-lg border-none cursor-pointer gap-2 shrink-0"
-          >
-            <Store className="w-4 h-4" />
-            Reserve Booth
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        )}
+
+        {/* ══ RIGHT SIDEBAR ACTION COLUMN (4 COLS) ══ */}
+        <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-4">
+
+          {/* In-Flow "Ready to Exhibit?" Card (Clean Light Theme) */}
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-emerald-100 ring-1 ring-emerald-500/10 space-y-5">
+            <div className="space-y-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-[10px] font-black uppercase tracking-wider">
+                <Store className="w-3.5 h-3.5 text-emerald-600" />
+                Exhibitor Booth Booking
+              </span>
+              <h3 className="text-xl font-black text-slate-900">Ready to Exhibit?</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Secure your commercial space at <span className="text-emerald-700 font-bold">{d?.event_name || ed?.event_name}</span>. Immediate slot validation.
+              </p>
+            </div>
+
+            {/* Pricing / Floor Specs Preview */}
+            <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Floor Structure:</span>
+                <span className="font-extrabold text-slate-900">{layout?.floor_type || layout?.floorType || "Stall"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Staff Badges:</span>
+                <span className="font-extrabold text-emerald-700">{parseInt(layout?.person_pass || layout?.personPass || 2, 10)} Badges / Stall</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Booking Model:</span>
+                <span className="font-extrabold text-slate-900">{Boolean(layout?.day_based || layout?.dayBased) ? "Daily Selection" : "Full Event"}</span>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            {isConcluded ? (
+              <Button
+                disabled
+                className="w-full h-12 rounded-xl bg-slate-100 text-slate-400 font-black text-xs cursor-not-allowed border border-slate-200"
+              >
+                Event Concluded
+              </Button>
+            ) : isSuspended ? (
+              <Button
+                disabled
+                className="w-full h-12 rounded-xl bg-slate-100 text-slate-400 font-black text-xs cursor-not-allowed border border-slate-200"
+              >
+                Bookings Paused
+              </Button>
+            ) : (
+              <Button
+                onClick={handleReserveBooth}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-600 via-green-600 to-teal-700 hover:from-emerald-500 hover:to-green-500 text-white font-black text-sm shadow-md shadow-emerald-600/25 border-none cursor-pointer flex items-center justify-center gap-2 transition-all transform active:scale-98"
+              >
+                <Store className="w-4 h-4" />
+                <span>Reserve Booth Now</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            )}
+
+            <p className="text-[10px] text-slate-400 text-center leading-tight">
+              Verified platform booking · Commercial invoice generated on organizer confirmation
+            </p>
+          </div>
+
+          {/* Venue & Location Specs Card */}
+          <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-600" />
+              <p className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">Event Location</p>
+            </div>
+            <div className="space-y-1 text-xs">
+              <p className="font-extrabold text-slate-900">{d?.venue || ed?.venue || "Exhibition Grounds"}</p>
+              <p className="text-slate-500 leading-relaxed">{d?.address || ed?.address || "Address details on confirmation"}</p>
+            </div>
+          </Card>
+
+        </div>
+
       </div>
     </div>
   );

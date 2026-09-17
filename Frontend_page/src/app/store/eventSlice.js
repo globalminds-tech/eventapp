@@ -26,7 +26,7 @@ export const fetchEventsThunk = createAsyncThunk(
         return { data: state.events.list, organizerId };
       }
 
-      const data = await eventApi.getEventshow(organizerId, force);
+      const data = await eventApi.getEventshow(organizerId, {});
       return { data: ensureArray(data), organizerId };
     } catch (err) {
       return rejectWithValue(err.response?.data || "Failed to fetch events");

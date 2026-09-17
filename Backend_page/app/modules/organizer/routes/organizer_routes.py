@@ -57,6 +57,8 @@ async def complete_event_alias(request: Request):
 @root_organizer_router.get("/superadmin/get-event/{event_id}")
 @root_organizer_router.get("/superadmin/api/event-full-details/{event_id}")
 @root_organizer_router.get("/superuser/event-full-details/{event_id}")
+@root_organizer_router.get("/superadmin/api/events/{event_id}/full-details")
+@root_organizer_router.get("/api/v1/events/{event_id}/full-details")
 def get_event_detail_alias(event_id: str):
     return OrganizerController.get_event(event_id)
 

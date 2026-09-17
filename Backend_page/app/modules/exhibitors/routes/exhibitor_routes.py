@@ -84,6 +84,7 @@ def get_booking_by_id_alias(booking_id: str, request: Request = None):
 
 @root_admin_router.get("/superadmin/api/organizer/exhibitor-applications")
 @root_admin_router.get("/api/v1/organizer/exhibitor-applications")
+@root_admin_router.get("/superadmin/api/exhibitor/bookings_details")
 def get_all_exhibitor_applications():
     from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
     rows = ExhibitorRepository.get_all_applications()

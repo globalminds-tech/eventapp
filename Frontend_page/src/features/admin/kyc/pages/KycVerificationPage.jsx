@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { UserCheck, CheckCircle2, ShieldCheck, X, Users, Building2, Store, RefreshCw, Search } from "lucide-react";
+import {
+  UserCheck, CheckCircle2, ShieldCheck, X, Users, Building2, Store,
+  RefreshCw, Search, Eye, Phone, Mail, CreditCard, Landmark, Clock, User
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -14,7 +17,13 @@ import { fetchKycUsersThunk, updateKycStatusInStore } from "@/app/store/adminSli
 
 export default function KycVerificationPage() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const getInitials = (name) => {
+    if (!name) return "U";
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  };
 
   // Connect to Redux store
   const { kycUsers, kycPagination, kycLoading } = useSelector((state) => state.admin);
@@ -43,8 +52,8 @@ export default function KycVerificationPage() {
 
   // Trigger server-side API query whenever debounced search, active tab, page, or limit changes
   useEffect(() => {
-    const roleParam = (activeTab === "all" || activeTab === "pending") ? undefined : activeTab;
-    const kycParam = activeTab === "pending" ? "PENDING" : undefined;
+    const roleParam = ["all", "pending", "verified"].includes(activeTab) ? undefined : activeTab;
+    const kycParam = activeTab === "pending" ? "PENDING" : activeTab === "verified" ? "VERIFIED" : undefined;
 
     dispatch(fetchKycUsersThunk({
       search: debouncedSearch,
@@ -57,8 +66,8 @@ export default function KycVerificationPage() {
   }, [dispatch, debouncedSearch, activeTab, page, limit]);
 
   const handleRefresh = () => {
-    const roleParam = (activeTab === "all" || activeTab === "pending") ? undefined : activeTab;
-    const kycParam = activeTab === "pending" ? "PENDING" : undefined;
+    const roleParam = ["all", "pending", "verified"].includes(activeTab) ? undefined : activeTab;
+    const kycParam = activeTab === "pending" ? "PENDING" : activeTab === "verified" ? "VERIFIED" : undefined;
 
     dispatch(fetchKycUsersThunk({
       search: debouncedSearch,
@@ -96,8 +105,9 @@ export default function KycVerificationPage() {
     { key: "all", label: "All Users" },
     { key: "organizer", label: "Organizers" },
     { key: "exhibitor", label: "Exhibitors" },
-    { key: "user", label: "Attendees" },
     { key: "pending", label: "Pending KYC" },
+    { key: "verified", label: "Verified KYC" },
+    { key: "user", label: "Attendees" },
   ];
 
   const totalCount = kycPagination?.total ?? kycUsers.length;
@@ -251,15 +261,15 @@ export default function KycVerificationPage() {
           }
           renderDesktopTable={() => (
             <div className="responsive-table-wrap">
-              <table className="w-full min-w-[720px] text-left border-collapse text-xs">
+              <table className="w-full min-w-[760px] text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                    <th className="p-3.5 pl-5">User Details</th>
-                    <th className="p-3.5">Role</th>
-                    <th className="p-3.5">Company / GST</th>
+                  <tr className="bg-slate-50 text-slate-700 font-extrabold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                    <th className="p-3.5 pl-5">User &amp; Contact</th>
+                    <th className="p-3.5">Account Role</th>
+                    <th className="p-3.5">Organization / Legal ID</th>
                     <th className="p-3.5">Bank Payout Info</th>
                     <th className="p-3.5 text-center">KYC Status</th>
-                    <th className="p-3.5 pr-5 text-right">Verification Action</th>
+                    <th className="p-3.5 pr-5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -273,165 +283,212 @@ export default function KycVerificationPage() {
 
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/70 transition-colors">
+                        {/* 1. User & Contact Column */}
                         <td className="p-3.5 pl-5">
-                          <div className="font-extrabold text-slate-900 text-sm">{u.name}</div>
-                          <div className="text-[11px] text-slate-400 font-mono">{u.email}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-[11px] flex items-center justify-center shrink-0 shadow-xs">
+                              {getInitials(u.name)}
+                            </div>
+                            <div>
+                              <div
+                                onClick={() => navigate(`/superuser/kyc/${u.id}`)}
+                                className="font-extrabold text-slate-900 text-sm hover:text-purple-700 transition-colors cursor-pointer"
+                                title="Click to inspect full details"
+                              >
+                                {u.name}
+                              </div>
+                              <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5">
+                                <span>{u.email}</span>
+                                {u.mobile && u.mobile !== "N/A" && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-0.5 text-slate-500">
+                                      <Phone size={10} className="text-slate-400" /> {u.mobile}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </td>
 
+                        {/* 2. Role Column (Zero Emojis) */}
                         <td className="p-3.5">
                           <div className="flex flex-wrap items-center gap-1">
                             {isCommonUser && (
-                              <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 font-bold text-[10px]">
-                                👤 Attendee
+                              <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 font-bold text-[10px] gap-1 py-0.5">
+                                <User size={11} className="text-slate-500" /> Attendee
                               </Badge>
                             )}
                             {isOrg && (
-                              <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-extrabold text-[10px]">
-                                🎪 Organizer
+                              <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-extrabold text-[10px] gap-1 py-0.5">
+                                <Building2 size={11} className="text-cyan-600" /> Organizer
                               </Badge>
                             )}
                             {isExh && (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-extrabold text-[10px]">
-                                🏪 Exhibitor
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-extrabold text-[10px] gap-1 py-0.5">
+                                <Store size={11} className="text-emerald-600" /> Exhibitor
                               </Badge>
                             )}
                           </div>
                         </td>
 
-                        <td className="p-3.5 space-y-0.5">
+                        {/* 3. Company & Legal Column (Zero Emojis) */}
+                        <td className="p-3.5 space-y-1">
                           {isCommonUser ? (
-                            <div className="font-extrabold text-slate-800">Individual Attendee</div>
+                            <div className="font-extrabold text-slate-700 text-xs">Individual Account</div>
                           ) : (
                             <>
                               {isOrg && u.organizer_company && (
-                                <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1">
-                                  <span className="text-[10px] text-cyan-600 font-bold">🎪</span> {u.organizer_company}
+                                <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                                  <Building2 size={12} className="text-cyan-600 shrink-0" />
+                                  <span>{u.organizer_company}</span>
                                 </div>
                               )}
                               {isExh && u.exhibitor_company && (
-                                <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1">
-                                  <span className="text-[10px] text-emerald-600 font-bold">🏪</span> {u.exhibitor_company}
+                                <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                                  <Store size={12} className="text-emerald-600 shrink-0" />
+                                  <span>{u.exhibitor_company}</span>
                                 </div>
                               )}
                               {!u.organizer_company && !u.exhibitor_company && (
-                                <div className="font-extrabold text-slate-800 text-xs">{u.company_name || "Business Account"}</div>
+                                <div className="font-extrabold text-slate-900 text-xs">
+                                  {u.company_name || "Business Account"}
+                                </div>
                               )}
                             </>
                           )}
-                          <div className="text-[10px] text-slate-400 font-mono">GST/PAN: {u.gst_pan || "N/A"}</div>
+                          <div className="font-mono text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200/80 w-fit">
+                            GST/PAN: {u.gst_pan || "Not Provided"}
+                          </div>
                         </td>
 
+                        {/* 4. Bank Payout Column */}
                         <td className="p-3.5 space-y-0.5">
-                          <div className="font-bold text-slate-700 font-mono">Acc: {u.bank_account || "N/A"}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">IFSC: {u.ifsc || "N/A"}</div>
+                          <div className="font-bold text-slate-700 font-mono text-xs flex items-center gap-1">
+                            <CreditCard size={11} className="text-slate-400" />
+                            <span>{u.bank_account || "N/A"}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                            <Landmark size={10} className="text-slate-400" />
+                            <span>IFSC: {u.ifsc || "N/A"}</span>
+                          </div>
                         </td>
 
+                        {/* 5. Modern KYC Status Showing (Zero Emojis, Sleek Pill Design) */}
                         <td className="p-3.5 text-center">
                           {isCommonUser ? (
-                            <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
-                              Not Required
+                            <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-slate-100 text-slate-600 border border-slate-200 inline-flex items-center gap-1">
+                              <UserCheck size={11} className="text-slate-400" />
+                              <span>Not Required</span>
                             </span>
                           ) : isOrg && isExh ? (
                             <div className="flex flex-col items-center gap-1">
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-slate-500 font-semibold">Org:</span>
-                                <span className={`px-1.5 py-0.2 rounded-md font-extrabold text-[10px] ${
-                                  orgKyc === "VERIFIED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-0.5">
+                                  <Building2 size={10} className="text-cyan-600" /> Org:
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] inline-flex items-center gap-1 ${
+                                  orgKyc === "VERIFIED"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200/90 shadow-2xs"
                                 }`}>
-                                  {orgKyc}
+                                  <span className={`w-1.5 h-1.5 rounded-full ${orgKyc === "VERIFIED" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+                                  {orgKyc === "VERIFIED" ? "Verified" : "Pending"}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <span className="text-[10px] text-slate-500 font-semibold">Exh:</span>
-                                <span className={`px-1.5 py-0.2 rounded-md font-extrabold text-[10px] ${
-                                  exhKyc === "VERIFIED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-0.5">
+                                  <Store size={10} className="text-emerald-600" /> Exh:
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] inline-flex items-center gap-1 ${
+                                  exhKyc === "VERIFIED"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs"
+                                    : "bg-amber-50 text-amber-700 border border-amber-200/90 shadow-2xs"
                                 }`}>
-                                  {exhKyc}
+                                  <span className={`w-1.5 h-1.5 rounded-full ${exhKyc === "VERIFIED" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+                                  {exhKyc === "VERIFIED" ? "Verified" : "Pending"}
                                 </span>
                               </div>
                             </div>
                           ) : (
-                            <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] ${
+                            <span className={`px-2.5 py-1 rounded-full font-extrabold text-[11px] inline-flex items-center gap-1.5 ${
                               (isOrg ? orgKyc : exhKyc) === "VERIFIED"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200/90 shadow-xs"
+                                : "bg-amber-50 text-amber-800 border border-amber-200/90 shadow-xs"
                             }`}>
-                              {isOrg ? orgKyc : exhKyc}
+                              <span className={`w-1.5 h-1.5 rounded-full ${(isOrg ? orgKyc : exhKyc) === "VERIFIED" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+                              {(isOrg ? orgKyc : exhKyc) === "VERIFIED" ? <ShieldCheck size={12} className="text-emerald-600" /> : <Clock size={12} className="text-amber-600" />}
+                              <span>{(isOrg ? orgKyc : exhKyc) === "VERIFIED" ? "Verified" : "Pending Review"}</span>
                             </span>
                           )}
                         </td>
 
+                        {/* 6. Action Column: Eye Button + Fast Action */}
                         <td className="p-3.5 pr-5 text-right">
-                          {isCommonUser ? (
-                            <span className="text-[11px] font-bold text-slate-400">Active Member</span>
-                          ) : isOrg && isExh ? (
-                            <div className="flex flex-col items-end gap-1">
-                              {orgKyc !== "VERIFIED" && (
-                                <Button
-                                  size="xs"
-                                  disabled={actionLoadingId === `${u.id}-organizer`}
-                                  onClick={() => handleUpdateKyc(u.id, "VERIFIED", "organizer")}
-                                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-[10px] cursor-pointer border-none shadow-xs h-6 px-2"
-                                >
-                                  <ShieldCheck size={11} className="mr-0.5" /> Approve Org
-                                </Button>
-                              )}
-                              {exhKyc !== "VERIFIED" && (
-                                <Button
-                                  size="xs"
-                                  disabled={actionLoadingId === `${u.id}-exhibitor`}
-                                  onClick={() => handleUpdateKyc(u.id, "VERIFIED", "exhibitor")}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] cursor-pointer border-none shadow-xs h-6 px-2"
-                                >
-                                  <ShieldCheck size={11} className="mr-0.5" /> Approve Exh
-                                </Button>
-                              )}
-                              {orgKyc !== "VERIFIED" && exhKyc !== "VERIFIED" && (
-                                <Button
-                                  size="xs"
-                                  disabled={actionLoadingId === `${u.id}-both`}
-                                  onClick={() => handleUpdateKyc(u.id, "VERIFIED", "both")}
-                                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-[10px] cursor-pointer border-none shadow-xs h-6 px-2"
-                                >
-                                  Approve Both
-                                </Button>
-                              )}
-                              {orgKyc === "VERIFIED" && exhKyc === "VERIFIED" && (
-                                <Button
-                                  size="xs"
-                                  variant="outline"
-                                  disabled={actionLoadingId === `${u.id}-both`}
-                                  onClick={() => handleUpdateKyc(u.id, "PENDING", "both")}
-                                  className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[10px] cursor-pointer h-6 px-2"
-                                >
-                                  Mark Pending
-                                </Button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-end gap-1.5">
-                              {(isOrg ? orgKyc : exhKyc) !== "VERIFIED" ? (
-                                <Button
-                                  size="xs"
-                                  disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
-                                  onClick={() => handleUpdateKyc(u.id, "VERIFIED", isOrg ? "organizer" : "exhibitor")}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none shadow-xs"
-                                >
-                                  <ShieldCheck size={13} /> Approve KYC
-                                </Button>
-                              ) : (
-                                <Button
-                                  size="xs"
-                                  variant="outline"
-                                  disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
-                                  onClick={() => handleUpdateKyc(u.id, "PENDING", isOrg ? "organizer" : "exhibitor")}
-                                  className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[11px] cursor-pointer"
-                                >
-                                  Mark Pending
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              onClick={() => navigate(`/superuser/kyc/${u.id}`)}
+                              className="text-[11px] font-extrabold gap-1 cursor-pointer hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200 h-7"
+                              title="Inspect full details, banking, and associated events"
+                            >
+                              <Eye size={12} /> Inspect
+                            </Button>
+
+                            {!isCommonUser && (
+                              <>
+                                {isOrg && isExh ? (
+                                  <div className="flex items-center gap-1">
+                                    {(orgKyc !== "VERIFIED" || exhKyc !== "VERIFIED") ? (
+                                      <Button
+                                        size="xs"
+                                        disabled={actionLoadingId === `${u.id}-both`}
+                                        onClick={() => handleUpdateKyc(u.id, "VERIFIED", "both")}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-[10px] cursor-pointer border-none shadow-xs h-7 px-2"
+                                      >
+                                        Approve All
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="xs"
+                                        variant="outline"
+                                        disabled={actionLoadingId === `${u.id}-both`}
+                                        onClick={() => handleUpdateKyc(u.id, "PENDING", "both")}
+                                        className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[10px] cursor-pointer h-7 px-2"
+                                      >
+                                        Mark Pending
+                                      </Button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <>
+                                    {(isOrg ? orgKyc : exhKyc) !== "VERIFIED" ? (
+                                      <Button
+                                        size="xs"
+                                        disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
+                                        onClick={() => handleUpdateKyc(u.id, "VERIFIED", isOrg ? "organizer" : "exhibitor")}
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none shadow-xs h-7"
+                                      >
+                                        <ShieldCheck size={12} className="mr-0.5" /> Approve
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        size="xs"
+                                        variant="outline"
+                                        disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
+                                        onClick={() => handleUpdateKyc(u.id, "PENDING", isOrg ? "organizer" : "exhibitor")}
+                                        className="text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-[11px] cursor-pointer h-7"
+                                      >
+                                        Mark Pending
+                                      </Button>
+                                    )}
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -451,7 +508,27 @@ export default function KycVerificationPage() {
             return (
               <MobileDataCard key={u.id}>
                 <MobileDataCard.Header
+                  badge={
+                    <div className="flex items-center gap-1">
+                      {isCommonUser && (
+                        <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 font-bold text-[10px] gap-1">
+                          <User size={10} /> Attendee
+                        </Badge>
+                      )}
+                      {isOrg && (
+                        <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-extrabold text-[10px] gap-1">
+                          <Building2 size={10} /> Organizer
+                        </Badge>
+                      )}
+                      {isExh && (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-extrabold text-[10px] gap-1">
+                          <Store size={10} /> Exhibitor
+                        </Badge>
+                      )}
+                    </div>
+                  }
                   title={u.name}
+                  onTitleClick={() => navigate(`/superuser/kyc/${u.id}`)}
                   subtitle={u.email}
                   statusBadge={
                     isCommonUser ? (
@@ -477,84 +554,71 @@ export default function KycVerificationPage() {
                 <MobileDataCard.Grid
                   items={[
                     {
-                      label: "Role",
-                      value: isCommonUser ? "Attendee" : [isOrg && "Organizer", isExh && "Exhibitor"].filter(Boolean).join(", ")
-                    },
-                    {
                       label: "Company",
-                      value: (isOrg && u.organizer_company) || (isExh && u.exhibitor_company) || u.company_name || (isCommonUser ? "Individual Attendee" : "Business Account")
+                      value: (isOrg && u.organizer_company) || (isExh && u.exhibitor_company) || u.company_name || (isCommonUser ? "Individual Account" : "Business Account")
                     },
                     { label: "GST / PAN", value: u.gst_pan || "N/A" },
-                    { label: "Bank Account", value: u.bank_account || "N/A" }
+                    { label: "Bank Account", value: u.bank_account || "N/A" },
+                    { label: "IFSC Code", value: u.ifsc || "N/A" }
                   ]}
                 />
                 <MobileDataCard.Actions>
-                  {isCommonUser ? (
-                    <div className="text-center text-xs font-bold text-slate-400 py-1">Attendee Account (KYC Not Required)</div>
-                  ) : isOrg && isExh ? (
-                    <div className="flex flex-col gap-1.5 w-full">
-                      {orgKyc !== "VERIFIED" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate(`/superuser/kyc/${u.id}`)}
+                    className="w-full text-xs font-extrabold gap-1.5 h-8 rounded-xl"
+                  >
+                    <Eye size={13} /> Inspect Full Details
+                  </Button>
+
+                  {!isCommonUser && (
+                    <>
+                      {isOrg && isExh ? (
+                        <div className="flex flex-col gap-1.5 w-full">
+                          {(orgKyc !== "VERIFIED" || exhKyc !== "VERIFIED") ? (
+                            <Button
+                              size="sm"
+                              disabled={actionLoadingId === `${u.id}-both`}
+                              onClick={() => handleUpdateKyc(u.id, "VERIFIED", "both")}
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs h-8 rounded-xl flex items-center justify-center gap-1"
+                            >
+                              <ShieldCheck size={13} /> Approve Both Profiles
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={actionLoadingId === `${u.id}-both`}
+                              onClick={() => handleUpdateKyc(u.id, "PENDING", "both")}
+                              className="w-full text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-xs h-8 rounded-xl"
+                            >
+                              Mark All Pending
+                            </Button>
+                          )}
+                        </div>
+                      ) : (isOrg ? orgKyc : exhKyc) !== "VERIFIED" ? (
                         <Button
                           size="sm"
-                          disabled={actionLoadingId === `${u.id}-organizer`}
-                          onClick={() => handleUpdateKyc(u.id, "VERIFIED", "organizer")}
-                          className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs h-8 rounded-xl flex items-center justify-center gap-1"
+                          disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
+                          onClick={() => handleUpdateKyc(u.id, "VERIFIED", isOrg ? "organizer" : "exhibitor")}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer border-none shadow-xs h-8 rounded-xl flex items-center justify-center gap-1.5"
                         >
-                          <ShieldCheck size={13} /> Approve Organizer KYC
+                          <ShieldCheck size={14} />
+                          <span>Approve KYC Verification</span>
                         </Button>
-                      )}
-                      {exhKyc !== "VERIFIED" && (
-                        <Button
-                          size="sm"
-                          disabled={actionLoadingId === `${u.id}-exhibitor`}
-                          onClick={() => handleUpdateKyc(u.id, "VERIFIED", "exhibitor")}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 rounded-xl flex items-center justify-center gap-1"
-                        >
-                          <ShieldCheck size={13} /> Approve Exhibitor KYC
-                        </Button>
-                      )}
-                      {orgKyc !== "VERIFIED" && exhKyc !== "VERIFIED" && (
-                        <Button
-                          size="sm"
-                          disabled={actionLoadingId === `${u.id}-both`}
-                          onClick={() => handleUpdateKyc(u.id, "VERIFIED", "both")}
-                          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs h-8 rounded-xl flex items-center justify-center gap-1"
-                        >
-                          Approve Both Profiles
-                        </Button>
-                      )}
-                      {orgKyc === "VERIFIED" && exhKyc === "VERIFIED" && (
+                      ) : (
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={actionLoadingId === `${u.id}-both`}
-                          onClick={() => handleUpdateKyc(u.id, "PENDING", "both")}
-                          className="w-full text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-xs h-8 rounded-xl"
+                          disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
+                          onClick={() => handleUpdateKyc(u.id, "PENDING", isOrg ? "organizer" : "exhibitor")}
+                          className="w-full text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-xs cursor-pointer h-8 rounded-xl"
                         >
-                          Mark All Pending
+                          <span>Mark as Pending</span>
                         </Button>
                       )}
-                    </div>
-                  ) : (isOrg ? orgKyc : exhKyc) !== "VERIFIED" ? (
-                    <Button
-                      size="sm"
-                      disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
-                      onClick={() => handleUpdateKyc(u.id, "VERIFIED", isOrg ? "organizer" : "exhibitor")}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer border-none shadow-xs h-9 rounded-xl flex items-center justify-center gap-1.5"
-                    >
-                      <ShieldCheck size={14} />
-                      <span>Approve KYC Verification</span>
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={actionLoadingId === `${u.id}-${isOrg ? "organizer" : "exhibitor"}`}
-                      onClick={() => handleUpdateKyc(u.id, "PENDING", isOrg ? "organizer" : "exhibitor")}
-                      className="w-full text-amber-700 hover:bg-amber-50 border-amber-200 font-bold text-xs cursor-pointer h-9 rounded-xl"
-                    >
-                      <span>Mark as Pending</span>
-                    </Button>
+                    </>
                   )}
                 </MobileDataCard.Actions>
               </MobileDataCard>

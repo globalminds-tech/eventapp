@@ -130,6 +130,14 @@ class AdminController:
         }
 
     @staticmethod
+    def get_user_details(user_id: str):
+        data = AdminService.get_user_details(user_id)
+        return {
+            "success": True,
+            "data": data
+        }
+
+    @staticmethod
     def get_category_requests():
         requests = AdminService.get_category_requests()
         return {

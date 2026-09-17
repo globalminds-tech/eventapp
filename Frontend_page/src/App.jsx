@@ -49,6 +49,7 @@ import EventInspectionDetail from "./features/superuser/pages/EventInspectionDet
 import CategoryMaster from "./features/catalog/pages/CategoryMasterPage";
 import CategoryRequestsPage from "./features/catalog/pages/CategoryRequestsPage";
 import KycVerification from "./features/admin/kyc/pages/KycVerificationPage";
+import KycUserDetailPage from "./features/admin/kyc/pages/KycUserDetailPage";
 import PayoutsQueue from "./features/superuser/pages/PayoutsQueuePage";
 import { ExhibitorBillingPage } from "./features/exhibitor/pages/ExhibitorBillingPage";
 import { AdminPayoutsPage } from "./features/admin/pages/AdminPayoutsPage";
@@ -174,6 +175,11 @@ function ExhibitorIndexRedirect() {
     return <Navigate to="/exhibitor/team" replace />;
   }
   return <Navigate to="/profile" replace />;
+}
+
+function BookStallRedirect() {
+  const { id } = useParams();
+  return <Navigate to={id ? `/exhibitor/book-stall/${id}` : "/exhibitor/upcoming-events"} replace />;
 }
 
 export default function App() {
@@ -307,18 +313,14 @@ export default function App() {
               <Route path="my-bookings/:id" element={<PermissionRoute required="exhibitor.stalls.view"><ExhibitorBookingDetail /></PermissionRoute>} />
               <Route path="upcoming-events" element={<PermissionRoute required="exhibitor.events.browse"><ExhibitorUpcomingEvent /></PermissionRoute>} />
               <Route path="event/:id" element={<PermissionRoute required="exhibitor.events.browse"><ExhibitorEventDetail /></PermissionRoute>} />
+              <Route path="book-stall/:id" element={<PermissionRoute required="exhibitor.events.browse"><Exhibitorstall /></PermissionRoute>} />
+              <Route path="book-stall" element={<PermissionRoute required="exhibitor.events.browse"><Exhibitorstall /></PermissionRoute>} />
               <Route path="leads" element={<PermissionRoute required="exhibitor.leads.view"><ExhibitorLeadsPage /></PermissionRoute>} />
               <Route path="billing" element={<PermissionRoute required="exhibitor.billing.view"><ExhibitorBillingPage /></PermissionRoute>} />
               <Route path="team" element={<PermissionRoute required="exhibitor.team.view"><TeamManagementPage userScope="exhibitor" /></PermissionRoute>} />
             </Route>
-            <Route
-              path="/book-stall/:id"
-              element={
-                <ProtectedRoute allowedRoles={["exhibitor"]}>
-                  <Exhibitorstall />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/book-stall/:id" element={<BookStallRedirect />} />
+            <Route path="/book-stall" element={<BookStallRedirect />} />
 
             {/* ── TIER 5: SUPERUSER / PLATFORM ADMIN ── */}
             <Route
@@ -339,6 +341,9 @@ export default function App() {
               <Route path="categories/requests" element={<CategoryRequestsPage />} />
               <Route path="category-requests" element={<CategoryRequestsPage />} />
               <Route path="kyc" element={<KycVerification />} />
+              <Route path="kyc/:userId" element={<KycUserDetailPage />} />
+              <Route path="users/:userId" element={<KycUserDetailPage />} />
+              <Route path="organization/:userId" element={<KycUserDetailPage />} />
               <Route path="payouts" element={<AdminPayoutsPage />} />
             </Route>
             <Route path="/superadmin/*" element={<Navigate to="/superuser/dashboard" replace />} />

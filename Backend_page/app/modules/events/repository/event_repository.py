@@ -126,6 +126,11 @@ class EventRepository:
         vehicles = list(db.session.scalars(select(EventVehicleDetail).where(EventVehicleDetail.event_id == event_id)).all())
         vehicle_addons = list(db.session.scalars(select(EventVehicleAddon).where(EventVehicleAddon.event_id == event_id)).all())
         guests = list(db.session.scalars(select(EventGuest).where(EventGuest.event_id == event_id)).all())
+        try:
+            from app.models.program import EventProgram
+            programs = list(db.session.scalars(select(EventProgram).where(EventProgram.event_id == event_id)).all())
+        except Exception:
+            programs = []
 
         banner_file = next((f for f in files if f.file_type == "banner"), None)
         banner_preview = banner_file.file_path if banner_file else ""
@@ -235,16 +240,54 @@ class EventRepository:
 
         stall_dicts = [
             {
+                "id": str(s.id),
                 "stall_name": s.stall_name,
+                "stallName": s.stall_name,
                 "stall_size": s.stall_size,
+                "stallSize": s.stall_size,
+                "size": s.stall_size,
                 "size_range": s.size_range,
+                "sizeRange": s.size_range,
                 "price_inr": s.price_inr,
+                "priceINR": s.price_inr,
+                "price": s.price_inr,
+                "price_usd": s.price_usd,
                 "visibility": s.visibility or "Public",
                 "stall_type": s.stall_type or "",
+                "stallType": s.stall_type or "",
+                "type": s.stall_type or "",
                 "prime_seat": bool(s.prime_seat),
-                "prime_price_inr": s.prime_price_inr or ""
+                "primeSeat": bool(s.prime_seat),
+                "prime_price_inr": s.prime_price_inr or "",
+                "primePriceINR": s.prime_price_inr or "",
+                "quantity": s.quantity if s.quantity is not None else 1,
+                "stallQty": s.quantity if s.quantity is not None else 1,
+                "qty": s.quantity if s.quantity is not None else 1,
+                "single_area_sqft": float(s.single_area_sqft) if s.single_area_sqft else None,
+                "total_area_sqft": float(s.total_area_sqft) if s.total_area_sqft else None,
+                "currency_code": s.currency_code or "INR"
             }
             for s in stalls
+        ]
+
+        program_dicts = [
+            {
+                "id": str(p.id),
+                "program_name": p.program_name,
+                "program_code": p.program_code,
+                "category": p.category,
+                "type": p.type,
+                "start_date": str(p.start_date) if p.start_date else None,
+                "end_date": str(p.end_date) if p.end_date else None,
+                "venue": p.venue,
+                "max_participants": p.max_participants or 0,
+                "budget": float(p.budget) if p.budget is not None else 0.0,
+                "coordinator_name": p.coordinator_name,
+                "coordinator_email": p.coordinator_email,
+                "description": p.description,
+                "status": p.status
+            }
+            for p in programs
         ]
 
         food_dicts = [
@@ -283,10 +326,69 @@ class EventRepository:
             f_key = ((f.file_name or "").strip().lower(), (f.file_path or "").strip().lower())
             if f_key not in seen_files:
                 seen_files.add(f_key)
-                file_dict = {"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type, "doc_type": f.doc_type}
+                file_dict = {
+                    "file_name": f.file_name,
+                    "file_path": f.file_path,
+                    "file_type": f.file_type,
+                    "doc_type": f.doc_type,
+                    "doc_number": getattr(f, "doc_number", "") or ""
+                }
                 deduped_existing_files.append(file_dict)
                 if f.file_type == "document":
                     deduped_additional_docs.append(file_dict)
+
+        # ── Compute Individual Event Performance Stats ──
+        passes_sold_count = 0
+        gate_scans_count = 0
+        try:
+            from app.models.booking import UserBookingDetails
+            user_bookings = list(db.session.scalars(select(UserBookingDetails).where(
+                UserBookingDetails.event_id == event_id,
+                UserBookingDetails.deleted_at.is_(None)
+            )).all())
+            passes_sold_count = len(user_bookings)
+            gate_scans_count = sum(1 for ub in user_bookings if ub.is_scanned or ub.is_checked_in)
+        except Exception as e:
+            print(f"[get_full_event_by_id] UserBookingDetails query error: {e}")
+
+        total_stalls_count = sum(int(s.quantity or 1) for s in stalls)
+        stalls_booked_count = 0
+        stall_revenue_val = 0.0
+        try:
+            from app.models.exhibitor import ExhibitorStallBooking
+            exhibitor_bookings = list(db.session.scalars(select(ExhibitorStallBooking).where(
+                ExhibitorStallBooking.event_id == event_id
+            )).all())
+            for eb in exhibitor_bookings:
+                eb_status = str(eb.status or "").lower()
+                if eb_status in ["approved", "confirmed", "paid"]:
+                    stalls_booked_count += 1
+                    stall_revenue_val += float(getattr(eb, "amount", 0) or getattr(eb, "price", 0) or 0)
+        except Exception as e:
+            print(f"[get_full_event_by_id] ExhibitorStallBooking query error: {e}")
+
+        booking_price = float(booking.price_inr) if booking and booking.price_inr is not None else 0.0
+        booking_capacity = int(booking.capacity) if booking and booking.capacity is not None else 0
+        ticket_revenue_val = booking_price * passes_sold_count
+        gross_revenue_val = ticket_revenue_val + stall_revenue_val
+
+        individual_stats = {
+            "passes_sold": passes_sold_count,
+            "passesSold": passes_sold_count,
+            "total_capacity": booking_capacity,
+            "totalCapacity": booking_capacity,
+            "gate_scans": gate_scans_count,
+            "gateScans": gate_scans_count,
+            "total_stalls": total_stalls_count,
+            "stalls_booked": stalls_booked_count,
+            "stallsBooked": stalls_booked_count,
+            "ticket_revenue": ticket_revenue_val,
+            "ticketRevenue": ticket_revenue_val,
+            "stall_revenue": stall_revenue_val,
+            "stallRevenue": stall_revenue_val,
+            "gross_revenue": gross_revenue_val,
+            "grossRevenue": gross_revenue_val,
+        }
 
         event_dict = {
             "id": event.id,
@@ -433,7 +535,13 @@ class EventRepository:
             "files": [{"file_name": f.file_name, "file_path": f.file_path, "file_type": f.file_type} for f in files],
             "food_items": food_dicts,
             "vehicles": vehicle_dicts,
-            "vehicle_addons": addon_dicts
+            "vehicle_addons": addon_dicts,
+            "programs": program_dicts,
+            "program_details": program_dicts,
+            "created_at": str(event.created_at) if event.created_at else None,
+            "updated_at": str(event.updated_at) if event.updated_at else None,
+            "approved_at": str(event.approved_at) if event.approved_at else None,
+            "rejected_at": str(event.rejected_at) if event.rejected_at else None
         }
 
         # Top-level section aliases for backward compatibility across modules
@@ -442,6 +550,10 @@ class EventRepository:
         event_dict["vehicleProvision"] = event_dict["vehicle_provision"]
         event_dict["termsDetails"] = event_dict["terms_details"]
         event_dict["vendorSponsor"] = event_dict["vendor_sponsor"]
+        event_dict["individual_stats"] = individual_stats
+        event_dict["individualStats"] = individual_stats
+        event_dict["programs"] = program_dicts
+        event_dict["programDetails"] = program_dicts
 
         return event_dict
 
@@ -684,16 +796,42 @@ class EventRepository:
                     if isinstance(st, dict):
                         s_name = st.get("stall_name") or st.get("stallName")
                         if s_name:
+                            qty_val = (
+                                st.get("quantity")
+                                if st.get("quantity") is not None and str(st.get("quantity")).strip() != ""
+                                else (
+                                    st.get("stallQty")
+                                    if st.get("stallQty") is not None and str(st.get("stallQty")).strip() != ""
+                                    else (
+                                        st.get("qty")
+                                        if st.get("qty") is not None and str(st.get("qty")).strip() != ""
+                                        else 1
+                                    )
+                                )
+                            )
+                            try:
+                                parsed_qty = max(1, int(qty_val))
+                            except Exception:
+                                parsed_qty = 1
+
+                            s_area = st.get("single_area_sqft") or st.get("singleAreaSqFt") or 100.0
+                            t_area = st.get("total_area_sqft") or st.get("totalAreaSqFt") or (float(s_area) * parsed_qty if s_area else 100.0)
+
                             stall_obj = EventStall(
                                 event_id=event.id,
                                 stall_name=s_name,
-                                stall_size=st.get("stall_size") or st.get("size") or "",
+                                stall_size=st.get("stall_size") or st.get("stallSize") or st.get("size") or "",
                                 size_range=st.get("size_range") or st.get("sizeRange") or "",
                                 price_inr=str(st.get("price_inr") or st.get("priceINR") or st.get("price") or "0"),
+                                price_usd=str(st.get("price_usd") or st.get("priceUSD") or "") if (st.get("price_usd") or st.get("priceUSD")) else None,
                                 visibility=st.get("visibility") or "Public",
-                                stall_type=st.get("stall_type") or st.get("type") or "",
+                                stall_type=st.get("stall_type") or st.get("stallType") or st.get("type") or "",
                                 prime_seat=bool(st.get("prime_seat") or st.get("primeSeat")),
-                                prime_price_inr=str(st.get("prime_price_inr") or st.get("primePriceINR") or "")
+                                prime_price_inr=str(st.get("prime_price_inr") or st.get("primePriceINR") or ""),
+                                quantity=parsed_qty,
+                                single_area_sqft=float(s_area) if s_area else 100.0,
+                                total_area_sqft=float(t_area) if t_area else (float(s_area) * parsed_qty if s_area else 100.0),
+                                currency_code=st.get("currency_code") or st.get("currency") or "INR"
                             )
                             db.session.add(stall_obj)
 

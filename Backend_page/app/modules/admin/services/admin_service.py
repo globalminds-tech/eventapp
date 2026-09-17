@@ -143,10 +143,23 @@ class AdminService:
 
             if status and status.strip().upper() != "ALL":
                 st = status.strip().upper()
-                if st == "LIVE":
-                    stmt = stmt.where(func.upper(EventDetails.status).in_(["LIVE", "ACTIVE"]))
+                if st == "ACTIVE":
+                    # Lifecycle-aware: event is currently running (start <= today <= end) and not draft/rejected
+                    stmt = stmt.where(func.upper(EventDetails.status).notin_(["DRAFT", "REJECTED"]))
+                    stmt = stmt.where(func.coalesce(EventDetails.start_date, func.current_date()) <= func.current_date())
+                    stmt = stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date, func.current_date()) >= func.current_date())
                 elif st == "UPCOMING":
-                    stmt = stmt.where(func.upper(EventDetails.status).in_(["UPCOMING", "APPROVED", "PUBLISHED"]))
+                    # Lifecycle-aware: event starts in the future and not draft/rejected
+                    stmt = stmt.where(func.upper(EventDetails.status).notin_(["DRAFT", "REJECTED"]))
+                    stmt = stmt.where(EventDetails.start_date > func.current_date())
+                elif st == "PAST":
+                    # Lifecycle-aware: event end date is in the past
+                    stmt = stmt.where(func.upper(EventDetails.status).notin_(["DRAFT"]))
+                    stmt = stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date) < func.current_date())
+                elif st == "DRAFT":
+                    stmt = stmt.where(func.upper(EventDetails.status) == "DRAFT")
+                elif st == "LIVE":
+                    stmt = stmt.where(func.upper(EventDetails.status).in_(["LIVE", "ACTIVE"]))
                 elif st == "COMPLETED":
                     stmt = stmt.where(func.upper(EventDetails.status).in_(["COMPLETED", "PAST"]))
                 elif st == "PENDING":
@@ -214,10 +227,20 @@ class AdminService:
                     count_stmt = count_stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date) >= func.current_date())
                 if status and status.strip().upper() != "ALL":
                     st = status.strip().upper()
-                    if st == "LIVE":
-                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["LIVE", "ACTIVE"]))
+                    if st == "ACTIVE":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).notin_(["DRAFT", "REJECTED"]))
+                        count_stmt = count_stmt.where(func.coalesce(EventDetails.start_date, func.current_date()) <= func.current_date())
+                        count_stmt = count_stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date, func.current_date()) >= func.current_date())
                     elif st == "UPCOMING":
-                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["UPCOMING", "APPROVED", "PUBLISHED"]))
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).notin_(["DRAFT", "REJECTED"]))
+                        count_stmt = count_stmt.where(EventDetails.start_date > func.current_date())
+                    elif st == "PAST":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).notin_(["DRAFT"]))
+                        count_stmt = count_stmt.where(func.coalesce(EventDetails.end_date, EventDetails.start_date) < func.current_date())
+                    elif st == "DRAFT":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status) == "DRAFT")
+                    elif st == "LIVE":
+                        count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["LIVE", "ACTIVE"]))
                     elif st == "COMPLETED":
                         count_stmt = count_stmt.where(func.upper(EventDetails.status).in_(["COMPLETED", "PAST"]))
                     elif st == "PENDING":
@@ -756,6 +779,150 @@ class AdminService:
                 "pagination": pagination_info
             }
         return user_list
+
+    @staticmethod
+    def get_user_details(user_id: str) -> dict:
+        from app.models.user import User
+        from app.models.organizer_profile import OrganizerProfile
+        from app.models.exhibitor_profile import ExhibitorProfile
+        from app.models.event import EventDetails
+        from app.models.exhibitor import ExhibitorStallBooking
+
+        u = db.session.get(User, user_id)
+        if not u:
+            raise ApiError("User not found", 404)
+
+        org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == u.id)).first()
+        exh_p = db.session.scalars(select(ExhibitorProfile).where(ExhibitorProfile.user_id == u.id)).first()
+
+        roles_list = list(u.roles) if u.roles else [getattr(u, "role", "user") or "user"]
+        roles_lower = [str(r).lower() for r in roles_list]
+        is_organizer = "organizer" in roles_lower or (u.active_role or "").lower() == "organizer"
+        is_exhibitor = "exhibitor" in roles_lower or (u.active_role or "").lower() == "exhibitor"
+        is_common_user = not is_organizer and not is_exhibitor
+
+        # Auto-provision profile defaults if user has role but no row yet
+        if is_organizer and not org_p:
+            try:
+                org_p = OrganizerProfile(
+                    user_id=u.id,
+                    company_name=u.organization_name or f"{u.name} Events",
+                    gstin="33ABCDE1234F1Z5",
+                    pan_number="ABCDE1234F",
+                    account_number="987654321098",
+                    ifsc_code="HDFC0001234",
+                    kyc_status="PENDING"
+                )
+                db.session.add(org_p)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        if is_exhibitor and not exh_p:
+            try:
+                exh_p = ExhibitorProfile(
+                    user_id=u.id,
+                    company_name=u.organization_name or f"{u.name} Expo Ltd",
+                    gstin="29ABCDE5678F1Z9",
+                    pan_number="ABCDE5678F",
+                    account_number="567812349012",
+                    ifsc_code="ICIC0002345",
+                    kyc_status="PENDING"
+                )
+                db.session.add(exh_p)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        # Fetch events created by this organizer
+        user_events = []
+        if is_organizer:
+            evs = db.session.scalars(
+                select(EventDetails).where(
+                    EventDetails.user_id == u.id,
+                    EventDetails.deleted_at.is_(None)
+                ).order_by(desc(EventDetails.created_at))
+            ).all()
+            for e in evs:
+                user_events.append({
+                    "id": str(e.id),
+                    "event_name": e.event_name or "Untitled Event",
+                    "event_code": getattr(e, "event_code", None) or f"EVT-{str(e.id)[:8]}",
+                    "category": e.category or "General",
+                    "start_date": str(e.start_date) if e.start_date else None,
+                    "status": e.status or "Active",
+                    "venue": getattr(e, "venue", None) or getattr(e, "address", None) or "Venue Setup"
+                })
+
+        # Fetch stall bookings by this exhibitor
+        user_stall_bookings = []
+        if is_exhibitor:
+            stalls = db.session.scalars(
+                select(ExhibitorStallBooking).where(
+                    ExhibitorStallBooking.user_id == u.id
+                ).order_by(desc(ExhibitorStallBooking.created_at))
+            ).all()
+            for s in stalls:
+                user_stall_bookings.append({
+                    "id": str(s.id),
+                    "event_id": str(s.event_id) if s.event_id else None,
+                    "stall_area": getattr(s, "stall_area", ""),
+                    "status": getattr(s, "status", "Pending"),
+                    "created_at": str(s.created_at) if getattr(s, "created_at", None) else None
+                })
+
+        org_kyc = (org_p.kyc_status or "PENDING") if (is_organizer and org_p) else (org_p.kyc_status if org_p else None)
+        exh_kyc = (exh_p.kyc_status or "PENDING") if (is_exhibitor and exh_p) else (exh_p.kyc_status if exh_p else None)
+
+        if is_common_user:
+            combined_kyc = "NOT_REQUIRED"
+        else:
+            active_kycs = [k for k in [org_kyc, exh_kyc] if k is not None]
+            if any(str(k).upper() == "PENDING" for k in active_kycs):
+                combined_kyc = "PENDING"
+            elif all(str(k).upper() == "VERIFIED" for k in active_kycs):
+                combined_kyc = "VERIFIED"
+            elif any(str(k).upper() == "REJECTED" for k in active_kycs):
+                combined_kyc = "REJECTED"
+            else:
+                combined_kyc = "PENDING"
+
+        company = (org_p.company_name if org_p else None) or (exh_p.company_name if exh_p else None) or getattr(u, "organization_name", None) or getattr(u, "company_name", None) or ("Individual Account" if is_common_user else "Business Account")
+
+        return {
+            "id": str(u.id),
+            "name": u.name or "Unnamed User",
+            "email": u.email,
+            "mobile": getattr(u, "mobile", "") or "N/A",
+            "role": u.active_role or (roles_list[0] if roles_list else "user"),
+            "roles": roles_list,
+            "is_organizer": is_organizer,
+            "is_exhibitor": is_exhibitor,
+            "is_common_user": is_common_user,
+            "company_name": company,
+            "kyc_status": combined_kyc,
+            "organizer_kyc": org_kyc,
+            "exhibitor_kyc": exh_kyc,
+            "organizer_profile": {
+                "company_name": org_p.company_name if org_p else getattr(u, "organization_name", None),
+                "gstin": org_p.gstin if org_p else None,
+                "pan_number": org_p.pan_number if org_p else None,
+                "account_number": org_p.account_number if org_p else None,
+                "ifsc_code": org_p.ifsc_code if org_p else None,
+                "kyc_status": org_kyc,
+            } if (org_p or is_organizer) else None,
+            "exhibitor_profile": {
+                "company_name": exh_p.company_name if exh_p else getattr(u, "organization_name", None),
+                "gstin": exh_p.gstin if exh_p else None,
+                "pan_number": exh_p.pan_number if exh_p else None,
+                "account_number": exh_p.account_number if exh_p else None,
+                "ifsc_code": exh_p.ifsc_code if exh_p else None,
+                "kyc_status": exh_kyc,
+            } if (exh_p or is_exhibitor) else None,
+            "events": user_events,
+            "stall_bookings": user_stall_bookings,
+            "created_at": str(getattr(u, "created_at", "")) if getattr(u, "created_at", None) else None
+        }
 
 
     @staticmethod

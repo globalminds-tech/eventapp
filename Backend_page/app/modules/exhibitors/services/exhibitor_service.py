@@ -57,6 +57,20 @@ class ExhibitorService:
         if ExhibitorRepository.get_existing_booking(email, event_id):
             raise ApiError("You have already booked a stall for this event", 400)
 
+        # Check total configured stall inventory capacity
+        from app.models.stall import EventStall
+        from app.models.exhibitor import ExhibitorStallBooking
+        from sqlalchemy import func
+        stalls = list(db.session.scalars(select(EventStall).where(EventStall.event_id == event.id, EventStall.deleted_at.is_(None))).all())
+        total_event_stalls = sum(int(s.quantity or 1) for s in stalls)
+        if total_event_stalls > 0:
+            booked_count = db.session.scalar(select(func.count(ExhibitorStallBooking.id)).where(
+                ExhibitorStallBooking.event_id == event.id,
+                func.lower(ExhibitorStallBooking.status).in_(["approved", "confirmed", "paid", "pending"])
+            )) or 0
+            if booked_count >= total_event_stalls:
+                raise ApiError("All exhibition stalls for this event have been fully booked.", 400)
+
         visiting_card_path = None
         if file_obj:
             os.makedirs(upload_folder, exist_ok=True)

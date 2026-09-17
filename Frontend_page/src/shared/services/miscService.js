@@ -30,8 +30,16 @@ export const getEventscheckin = async () => {
   }
 };
 
-export const getEventAttendees = async (eventId) => {
-  const res = await apiClient.get(`/api/v1/checkins/events/${eventId}/attendees`);
+export const getEventAttendees = async (eventId, params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.search) queryParams.append("search", params.search);
+  if (params.status && params.status !== "ALL") queryParams.append("status", params.status);
+  if (params.page) queryParams.append("page", params.page);
+  if (params.limit) queryParams.append("limit", params.limit);
+
+  const qs = queryParams.toString();
+  const url = `/api/v1/checkins/events/${eventId}/attendees${qs ? `?${qs}` : ""}`;
+  const res = await apiClient.get(url);
   return res.data;
 };
 
@@ -94,6 +102,21 @@ export const addGatePreset = async (name) => {
 
 export const deleteGatePreset = async (gateId) => {
   const res = await apiClient.delete(`/api/v1/checkins/gates/${gateId}`);
+  return res.data;
+};
+
+export const getFoodCounterPresets = async () => {
+  const res = await apiClient.get("/api/v1/checkins/food/counters");
+  return res.data;
+};
+
+export const addFoodCounterPreset = async (name) => {
+  const res = await apiClient.post("/api/v1/checkins/food/counters", { name });
+  return res.data;
+};
+
+export const deleteFoodCounterPreset = async (counterId) => {
+  const res = await apiClient.delete(`/api/v1/checkins/food/counters/${counterId}`);
   return res.data;
 };
 

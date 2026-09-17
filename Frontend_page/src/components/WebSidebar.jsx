@@ -59,7 +59,7 @@ const MASTER_NAVIGATION_ITEMS = {
   exhibitor: [
     { label: "Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard, permission: "exhibitor.dashboard.view" },
     { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store, permission: "exhibitor.stalls.view" },
-    { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
+    { label: "Upcoming Events", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
     { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users, permission: "exhibitor.leads.view" },
     { label: "Billings & Invoices", path: "/exhibitor/billing", icon: Receipt, permission: "exhibitor.billing.view" },
     { label: "Team & Roles", path: "/exhibitor/team", icon: Shield, permission: "exhibitor.team.view" },

@@ -263,6 +263,13 @@ def get_all_users_alias(
         sort_order=sort_order
     )
 
+@root_admin_router.get("/superadmin/api/users/{user_id}")
+@root_admin_router.get("/superuser/users/{user_id}")
+@root_admin_router.get("/admin/users/{user_id}")
+@admin_router.get("/users/{user_id}")
+def get_user_details(user_id: str):
+    return AdminController.get_user_details(user_id)
+
 @root_admin_router.put("/admin/users/{user_id}/kyc-status")
 @root_admin_router.put("/admin/organizers/{user_id}/kyc-status")
 @root_admin_router.put("/superuser/organizers/{user_id}/kyc-status")
