@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import apiClient from "@/shared/api/axiosClient";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import { useSelector } from "react-redux";
+import { getAuthUserId } from "@/shared/services/authHelper";
+import { getEventBookingStatus } from "@/shared/services/bookingService";
 
 /* ── Helpers ────────────────────────────────────────────── */
 const fmt = (d) => {
@@ -41,13 +44,18 @@ const ExhibitorEventDetailPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const reduxAuthUser = useSelector((state) => state.auth?.user);
+  const reduxUser = useSelector((state) => state.user);
+  const effectiveUserId = getAuthUserId(reduxAuthUser || reduxUser);
+
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [existingBooking, setExistingBooking] = useState(null);
 
   useEffect(() => {
     fetchEventDetail();
-  }, [id]);
+  }, [id, effectiveUserId]);
 
   const fetchEventDetail = async () => {
     setLoading(true);
@@ -59,6 +67,19 @@ const ExhibitorEventDetailPage = () => {
       } else {
         setError("Event details not found.");
       }
+
+      if (effectiveUserId) {
+        try {
+          const bStatus = await getEventBookingStatus(id, effectiveUserId);
+          if (bStatus?.has_booking && bStatus?.booking) {
+            setExistingBooking(bStatus.booking);
+          } else {
+            setExistingBooking(null);
+          }
+        } catch (bErr) {
+          console.warn("Could not check event booking status:", bErr);
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch event details:", err);
       setError("Failed to load event details. Please try again.");
@@ -68,6 +89,10 @@ const ExhibitorEventDetailPage = () => {
   };
 
   const handleReserveBooth = () => {
+    if (existingBooking) {
+      navigate(`/exhibitor/my-bookings/${existingBooking.id}`);
+      return;
+    }
     const ed = event?.eventDetails || {};
     if (isEventConcluded(ed?.id ? ed : event)) return;
     navigate(`/exhibitor/book-stall/${id}`, { state: { event: { id, title: event?.event_name || event?.eventDetails?.event_name } } });
@@ -153,7 +178,16 @@ const ExhibitorEventDetailPage = () => {
         </div>
 
         {/* Top Reserve Booth CTA */}
-        {!isConcluded && !isSuspended && (
+        {existingBooking ? (
+          <Button
+            onClick={() => navigate(`/exhibitor/my-bookings/${existingBooking.id}`)}
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md shadow-amber-500/20 gap-2 shrink-0 self-start sm:self-auto cursor-pointer"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Application Submitted ({(existingBooking.status || "Pending").toUpperCase()})</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        ) : !isConcluded && !isSuspended && (
           <Button
             onClick={handleReserveBooth}
             className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-md shadow-emerald-500/20 gap-2 shrink-0 self-start sm:self-auto cursor-pointer"
@@ -343,7 +377,17 @@ const ExhibitorEventDetailPage = () => {
                           </div>
                         )}
 
-                        {!isConcluded && !isSuspended && (
+                        {existingBooking ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => navigate(`/exhibitor/my-bookings/${existingBooking.id}`)}
+                            className="w-full h-8 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <span>View Your Application</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Button>
+                        ) : !isConcluded && !isSuspended && (
                           <Button
                             type="button"
                             size="sm"
@@ -527,7 +571,26 @@ const ExhibitorEventDetailPage = () => {
             </div>
 
             {/* Action Button */}
-            {isConcluded ? (
+            {existingBooking ? (
+              <div className="space-y-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-1.5">
+                  <div className="flex items-center gap-2 text-amber-800 font-extrabold text-xs">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <span>Application Under Review</span>
+                  </div>
+                  <p className="text-xs text-amber-900 leading-relaxed">
+                    You have already applied for this event ({existingBooking.stall_area || "Reserved Stall"}). Status: <strong className="uppercase">{(existingBooking.status || "Pending")}</strong>
+                  </p>
+                </div>
+                <Button
+                  onClick={() => navigate(`/exhibitor/my-bookings/${existingBooking.id}`)}
+                  className="w-full h-12 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-sm shadow-md shadow-amber-500/20 border-none cursor-pointer flex items-center justify-center gap-2 transition-all transform active:scale-98"
+                >
+                  <span>View Your Booking Application</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : isConcluded ? (
               <Button
                 disabled
                 className="w-full h-12 rounded-xl bg-slate-100 text-slate-400 font-black text-xs cursor-not-allowed border border-slate-200"

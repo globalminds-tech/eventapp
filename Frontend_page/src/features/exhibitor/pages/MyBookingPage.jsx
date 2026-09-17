@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { getMyBookings, getBookingById, updateBooking } from "@/Services/api";
+import { fetchExhibitorBookings } from "@/app/store/exhibitorSlice";
+import { getAuthUserId } from "@/shared/services/authHelper";
 import {
   Store, Search, CheckCircle2, Clock, Eye, Pencil, CreditCard,
   MapPin, XCircle, Phone, Mail, Building, AlertCircle, ShieldCheck
@@ -10,47 +11,44 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCardSkeleton } from "@/components/ui/StatCardSkeleton";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 const MyBookings = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatusTab, setSelectedStatusTab] = useState("all");
+
+  const reduxAuthUser = useSelector((state) => state.auth?.user);
+  const reduxUser = useSelector((state) => state.user);
+  const effectiveUserId = getAuthUserId(reduxAuthUser || reduxUser);
+
+  const { list: bookings, loading, statusFilter, search } = useSelector((state) => state.exhibitor.bookings);
+  const [searchTerm, setSearchTerm] = useState(search || "");
+  const [selectedStatusTab, setSelectedStatusTab] = useState(statusFilter || "all");
   const [toastMessage, setToastMessage] = useState("");
 
-  const reduxUser = useSelector((state) => state.user);
-  const storedUser = {
-    id: sessionStorage.getItem("userId"),
-    name: sessionStorage.getItem("userName"),
-  };
-  const user = reduxUser?.id ? reduxUser : storedUser;
+  useEffect(() => {
+    if (effectiveUserId) {
+      dispatch(fetchExhibitorBookings({
+        userId: effectiveUserId,
+        status: selectedStatusTab,
+        search: searchTerm
+      }));
+    }
+  }, [dispatch, effectiveUserId, selectedStatusTab]);
 
   useEffect(() => {
-    fetchBookings();
-  }, [user?.id]);
-
-  const fetchBookings = async () => {
-    setLoading(true);
-    try {
-      if (user?.id) {
-        const res = await getMyBookings(user.id);
-        if (res.success && Array.isArray(res.data)) {
-          setBookings(res.data);
-        } else {
-          setBookings([]);
-        }
-      } else {
-        setBookings([]);
+    const timer = setTimeout(() => {
+      if (effectiveUserId) {
+        dispatch(fetchExhibitorBookings({
+          userId: effectiveUserId,
+          status: selectedStatusTab,
+          search: searchTerm
+        }));
       }
-    } catch (err) {
-      console.error("Failed to fetch stall bookings:", err);
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handlePayNow = (b) => {
     setToastMessage(`✓ Redirecting to payment portal for ${b.event_name}...`);
@@ -116,38 +114,44 @@ const MyBookings = () => {
 
       {/* KPI Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Stall Applications</p>
-            <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{totalCount} Reservations</h3>
-            <p className="text-[11px] font-medium text-slate-400 mt-0.5">Across active expos</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-            <Store size={22} />
-          </div>
-        </Card>
+        {loading && bookings.length === 0 ? (
+          <StatCardSkeleton count={3} />
+        ) : (
+          <>
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Stall Applications</p>
+                <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{totalCount} Reservations</h3>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">Across active expos</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+                <Store size={22} />
+              </div>
+            </Card>
 
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved & Payment Locked</p>
-            <h3 className="text-2xl font-extrabold text-cyan-600 mt-1">{approvedCount} Active Locks</h3>
-            <p className="text-[11px] font-medium text-cyan-600 mt-0.5">Complete payment to confirm</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100 shrink-0">
-            <Clock size={22} className="animate-pulse" />
-          </div>
-        </Card>
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved & Payment Locked</p>
+                <h3 className="text-2xl font-extrabold text-cyan-600 mt-1">{approvedCount} Active Locks</h3>
+                <p className="text-[11px] font-medium text-cyan-600 mt-0.5">Complete payment to confirm</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100 shrink-0">
+                <Clock size={22} className="animate-pulse" />
+              </div>
+            </Card>
 
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed & Paid Booths</p>
-            <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{confirmedCount} Confirmed</h3>
-            <p className="text-[11px] font-medium text-emerald-600 mt-0.5">Stall space reserved</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-            <CheckCircle2 size={22} />
-          </div>
-        </Card>
+            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed & Paid Booths</p>
+                <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{confirmedCount} Confirmed</h3>
+                <p className="text-[11px] font-medium text-emerald-600 mt-0.5">Stall space reserved</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+                <CheckCircle2 size={22} />
+              </div>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Main Table Card (Shadcn Table standard matching Screenshot 4) */}

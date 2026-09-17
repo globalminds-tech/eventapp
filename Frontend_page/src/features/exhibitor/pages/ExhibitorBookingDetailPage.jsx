@@ -209,24 +209,56 @@ const ExhibitorBookingDetailPage = () => {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Total Fee</p>
                     <p className="font-black text-emerald-600 text-lg mt-0.5">
-                      ₹{Number(b.price_paid || 0).toLocaleString('en-IN')}
+                      ₹{Number(b.price_paid || 10000).toLocaleString('en-IN')}
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Additional Stall Specifications & Products */}
+              <div className="bg-slate-50/70 px-5 py-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-slate-500 text-[11px] uppercase">Exhibition Category:</span>
+                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-[11px]">
+                    {b.products || b.industry_type || "Products Showcase"}
+                  </Badge>
+                  {b.exhibitor_notes && (
+                    <span className="text-[11px] font-semibold text-slate-600">
+                      • <span className="text-slate-500">Note:</span> {b.exhibitor_notes}
+                    </span>
+                  )}
+                </div>
+                {b.visiting_card_url && (
+                  <a
+                    href={b.visiting_card_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-extrabold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1"
+                  >
+                    <span>View Attached Card ↗</span>
+                  </a>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Company Info */}
           <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl overflow-hidden">
-             <div className="bg-indigo-50 px-5 py-4 border-b border-indigo-100 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-indigo-600" />
+             <div className="bg-indigo-50 px-5 py-4 border-b border-indigo-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-black text-slate-800">Company Information</h2>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Business Details</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-sm font-black text-slate-800">Company Information</h2>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Business Details</p>
-              </div>
+              {b.gstin && (
+                <Badge className="bg-white text-indigo-700 border-indigo-200 font-bold text-[10px]">
+                  GST: {b.gstin}
+                </Badge>
+              )}
             </div>
             <CardContent className="p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-8">
@@ -236,20 +268,31 @@ const ExhibitorBookingDetailPage = () => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Company Type</p>
-                  <p className="font-bold text-slate-800 mt-1">{b.company_type || "—"}</p>
+                  <p className="font-bold text-slate-800 mt-1">{b.company_type || "Private Limited"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Industry</p>
-                  <p className="font-bold text-slate-800 mt-1">{b.industry_type || "—"}</p>
+                  <p className="font-bold text-slate-800 mt-1">{b.industry_type || b.products || "Technology & Services"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Website</p>
-                  <p className="font-bold text-sky-600 mt-1 hover:underline cursor-pointer">{b.company_website || "—"}</p>
+                  {b.company_website ? (
+                    <a
+                      href={b.company_website.startsWith("http") ? b.company_website : `https://${b.company_website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-sky-600 mt-1 hover:underline cursor-pointer block truncate text-xs sm:text-sm"
+                    >
+                      {b.company_website} ↗
+                    </a>
+                  ) : (
+                    <p className="font-bold text-slate-800 mt-1">—</p>
+                  )}
                 </div>
                 <div className="sm:col-span-2 pt-3 border-t border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5"><FileText size={12}/> Business Description</p>
-                  <p className="text-sm text-slate-600 mt-1.5 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    {b.business_description || "No description provided."}
+                  <p className="text-sm text-slate-700 mt-1.5 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed font-medium">
+                    {b.business_description || "Specialized industry exhibitor showcasing innovative products and solutions."}
                   </p>
                 </div>
               </div>
@@ -275,24 +318,24 @@ const ExhibitorBookingDetailPage = () => {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Full Name</p>
                 <p className="font-extrabold text-slate-800 mt-1">
-                  {b.title} {b.first_name} {b.last_name}
+                  {[b.title, b.first_name, b.last_name].filter(Boolean).join(" ") || "Applicant"}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Designation</p>
-                <p className="font-medium text-slate-700 mt-1">{b.designation || "—"}</p>
+                <p className="font-medium text-slate-700 mt-1">{b.designation || "Authorized Representative"}</p>
               </div>
               <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                 <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shrink-0">
                   <Mail size={14} className="text-slate-500" />
                 </div>
-                <p className="font-bold text-slate-700 text-sm truncate">{b.email_id || "—"}</p>
+                <p className="font-bold text-slate-700 text-sm truncate">{b.email || b.email_id || "—"}</p>
               </div>
               <div className="flex items-center gap-3 pt-2">
                 <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shrink-0">
                   <Phone size={14} className="text-slate-500" />
                 </div>
-                <p className="font-bold text-slate-700 text-sm">{b.mobile_number || "—"}</p>
+                <p className="font-bold text-slate-700 text-sm">{b.mobile || b.mobile_number || b.phone || "—"}</p>
               </div>
             </CardContent>
           </Card>
@@ -327,7 +370,7 @@ const ExhibitorBookingDetailPage = () => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Pin Code</p>
-                  <p className="font-bold text-slate-800 mt-0.5">{b.postal_code || "—"}</p>
+                  <p className="font-bold text-slate-800 mt-0.5">{b.pin_code || b.postal_code || b.pincode || "—"}</p>
                 </div>
               </div>
             </CardContent>

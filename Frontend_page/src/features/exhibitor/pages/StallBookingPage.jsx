@@ -30,7 +30,8 @@ import {
   CheckCircle2,
   FileCheck,
   ChevronDown,
-  Search
+  Search,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -52,6 +53,7 @@ import {
 } from "@/Services/api";
 import { getAuthUserId } from "@/shared/services/authHelper";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import { getEventBookingStatus } from "@/shared/services/bookingService";
 
 /* ── Modern Shadcn Custom Select Component ─────────────────────── */
 function ShadcnSelect({
@@ -61,9 +63,10 @@ function ShadcnSelect({
   options = [],
   disabled = false,
   error = false,
+  align = "full",
+  className = "",
   renderTrigger,
-  renderOption,
-  className = ""
+  renderOption
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
@@ -112,7 +115,15 @@ function ShadcnSelect({
       </button>
 
       {open && (
-        <div className="absolute z-50 left-0 right-0 top-[calc(100%+6px)] min-w-[12rem] max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in-80 zoom-in-95 duration-100">
+        <div
+          className={`absolute z-50 top-[calc(100%+6px)] max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in-80 zoom-in-95 duration-100 ${
+            align === "full"
+              ? "left-0 right-0 w-full"
+              : align === "right"
+              ? "right-0 left-auto min-w-full w-36 sm:w-44 max-w-[calc(100vw-2rem)]"
+              : "left-0 right-auto min-w-full w-36 sm:w-44 max-w-[calc(100vw-2rem)]"
+          }`}
+        >
           {options.length === 0 ? (
             <div className="py-3 px-3 text-center text-xs text-slate-400 font-medium">
               No options available
@@ -157,6 +168,7 @@ function ShadcnCombobox({
   disabled = false,
   loading = false,
   error = false,
+  align = "full",
   className = ""
 }) {
   const [open, setOpen] = useState(false);
@@ -230,7 +242,15 @@ function ShadcnCombobox({
       </button>
 
       {open && (
-        <div className="absolute z-50 left-0 right-0 top-[calc(100%+6px)] min-w-[14rem] rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in-80 zoom-in-95 duration-100 flex flex-col">
+        <div
+          className={`absolute z-50 top-[calc(100%+6px)] rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in-80 zoom-in-95 duration-100 flex flex-col ${
+            align === "right"
+              ? "right-0 left-auto min-w-full w-48 sm:w-60 max-w-[calc(100vw-2rem)]"
+              : align === "left"
+              ? "left-0 right-auto min-w-full w-48 sm:w-60 max-w-[calc(100vw-2rem)]"
+              : "left-0 right-0 w-full min-w-full"
+          }`}
+        >
           {/* Search Bar inside popover */}
           <div className="flex items-center gap-2 px-2.5 py-1.5 border-b border-slate-100 mb-1">
             <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -323,6 +343,7 @@ export default function StallBookingPage() {
   const [eventData, setEventData] = useState(location.state?.event || null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [existingBooking, setExistingBooking] = useState(null);
   const [toast, setToast] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -333,6 +354,10 @@ export default function StallBookingPage() {
     mobile: "",
     designation: "",
     companyName: "",
+    companyType: "Private Limited",
+    companyWebsite: "",
+    industryType: "",
+    businessDescription: "",
     country: "",
     state: "",
     city: "",
@@ -376,6 +401,9 @@ export default function StallBookingPage() {
         email: prev.email || user.email || "",
         mobile: prev.mobile || user.phone || user.mobile || "",
         companyName: prev.companyName || exhProfile.company_name || user.company || "",
+        companyType: prev.companyType || exhProfile.company_type || "Private Limited",
+        companyWebsite: prev.companyWebsite || exhProfile.website_url || "",
+        industryType: prev.industryType || exhProfile.vendor_category || "",
         designation: prev.designation || exhProfile.designation || "",
         city: prev.city || exhProfile.city || "",
         state: prev.state || exhProfile.state || "",
@@ -410,6 +438,21 @@ export default function StallBookingPage() {
           setFormData((p) => ({ ...p, stallArea: stallDesc }));
         }
       }
+
+      const effectiveUserId = getAuthUserId(user);
+      const effectiveEmail = formData.email || user?.email || user?.email_id;
+      if (id && (effectiveUserId || effectiveEmail)) {
+        try {
+          const bStatus = await getEventBookingStatus(id, effectiveUserId, effectiveEmail);
+          if (bStatus?.has_booking && bStatus?.booking) {
+            setExistingBooking(bStatus.booking);
+          } else {
+            setExistingBooking(null);
+          }
+        } catch (bErr) {
+          console.warn("[StallBookingPage] Booking status check error:", bErr);
+        }
+      }
     } catch (e) {
       console.error("[StallBookingPage] Failed to fetch full event:", e);
     } finally {
@@ -428,29 +471,61 @@ export default function StallBookingPage() {
 
   const loadStatesForCountry = async (countryName) => {
     try {
-      const match = countries.find((c) => c.country_name === countryName);
-      if (match) {
-        const s = await getStates(match.id);
-        setStates(Array.isArray(s) ? s : []);
-        setCities([]);
-      }
+      const targetCountry = countryName || formData.country || "India";
+      const match = countries.find(
+        (c) => c.country_name?.toLowerCase() === targetCountry.toLowerCase() || c.id?.toLowerCase() === targetCountry.toLowerCase()
+      );
+      const countryCode = match ? match.id : "IN";
+      const s = await getStates(countryCode);
+      setStates(Array.isArray(s) ? s : []);
     } catch (e) {
       console.error("[StallBookingPage] States load error:", e);
     }
   };
 
-  const loadCitiesForState = async (stateName) => {
+  const loadCitiesForState = async (stateName, countryName = null) => {
     try {
-      const matchCountry = countries.find((c) => c.country_name === formData.country);
-      const matchState = states.find((s) => s.state_name === stateName);
-      if (matchCountry && matchState) {
-        const ci = await getCities(matchCountry.id, matchState.id);
+      const targetCountry = countryName || formData.country || "India";
+      const matchCountry = countries.find(
+        (c) => c.country_name?.toLowerCase() === targetCountry.toLowerCase() || c.id?.toLowerCase() === targetCountry.toLowerCase()
+      );
+      const countryCode = matchCountry ? matchCountry.id : "IN";
+
+      let matchState = states.find(
+        (s) => s.state_name?.toLowerCase() === (stateName || "").toLowerCase() || s.id?.toLowerCase() === (stateName || "").toLowerCase()
+      );
+
+      let stateCode = matchState?.id;
+      if (!stateCode && countryCode) {
+        const directStates = await getStates(countryCode);
+        if (Array.isArray(directStates) && directStates.length > 0) {
+          setStates(directStates);
+          matchState = directStates.find(
+            (s) => s.state_name?.toLowerCase() === (stateName || "").toLowerCase() || s.id?.toLowerCase() === (stateName || "").toLowerCase()
+          );
+          stateCode = matchState?.id;
+        }
+      }
+
+      if (countryCode && stateCode) {
+        const ci = await getCities(countryCode, stateCode);
         setCities(Array.isArray(ci) ? ci : []);
       }
     } catch (e) {
       console.error("[StallBookingPage] Cities load error:", e);
     }
   };
+
+  // Automatically sync states and cities when countries load or when profile pre-populates country/state
+  useEffect(() => {
+    if (countries.length > 0) {
+      const c = formData.country || "India";
+      loadStatesForCountry(c);
+      if (formData.state) {
+        loadCitiesForState(formData.state, c);
+      }
+    }
+  }, [countries.length, formData.country, formData.state]);
 
   // ── Extract Event Configuration Attributes ─────────────────
   const eventName = eventData?.event_name || eventData?.event_details?.event_name || eventData?.name || "Exhibition Show";
@@ -636,7 +711,7 @@ export default function StallBookingPage() {
 
     const newErrors = {};
     const required = [
-      "firstName", "lastName", "email", "mobile",
+      "firstName", "email", "mobile",
       "companyName", "country", "state", "city",
       "address", "stallArea", "products", "pinCode"
     ];
@@ -702,7 +777,7 @@ export default function StallBookingPage() {
   };
 
   return (
-    <div className="space-y-6 pb-16 select-none font-sans text-slate-800">
+    <div className="space-y-6 pb-16 select-none font-sans text-slate-800 w-full max-w-full overflow-x-hidden">
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {/* ── BREADCRUMB & IN-FLOW PAGE HEADER ─────────────────────── */}
@@ -803,6 +878,97 @@ export default function StallBookingPage() {
         </div>
       )}
 
+      {/* ── ALREADY SUBMITTED / PENDING REVIEW STATE ── */}
+      {existingBooking && (
+        <Card className="border-amber-200 bg-gradient-to-b from-amber-50/70 via-white to-white rounded-3xl shadow-sm overflow-hidden animate-in fade-in duration-300">
+          <div className="p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-amber-100">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <FileCheck className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-lg sm:text-xl font-black text-slate-900">
+                      Stall Reservation Application Already Submitted
+                    </h2>
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-extrabold text-xs px-2.5 py-0.5 uppercase tracking-wide">
+                      {(existingBooking.status || "Pending").toUpperCase()}
+                    </Badge>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-600">
+                    You have already applied for a stall at <span className="font-bold text-slate-800">{eventName}</span>. Multiple applications for the same exhibition are not permitted while your application is under review.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Application Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reserved Stall</span>
+                <p className="text-sm font-black text-slate-900">{existingBooking.stall_area || "Standard Booth"}</p>
+                <p className="text-[11px] text-slate-500">Ref ID: {existingBooking.id?.slice(0, 8)}...</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company / Exhibitor</span>
+                <p className="text-sm font-black text-slate-900">{existingBooking.company_name || formData.companyName || "Your Company"}</p>
+                <p className="text-[11px] text-slate-500">{existingBooking.first_name} {existingBooking.last_name} ({existingBooking.designation || "Representative"})</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Contact & Location</span>
+                <p className="text-sm font-black text-slate-900">{existingBooking.email || formData.email}</p>
+                <p className="text-[11px] text-slate-500">{[existingBooking.city, existingBooking.state].filter(Boolean).join(", ") || "Location Confirmed"}</p>
+              </div>
+            </div>
+
+            {/* Notice Alert */}
+            <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/80 flex items-start gap-3">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-900 space-y-1">
+                <p className="font-bold">What happens next?</p>
+                <p className="text-amber-800 leading-relaxed">
+                  The event organizer is reviewing your booth allocation and credentials. You can track your status, download invoice drafts, or review stall specifications directly from your bookings dashboard. You can also explore all event schedules, floor plans, and amenities on the event details page.
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <Button
+                type="button"
+                onClick={() => navigate(`/exhibitor/my-bookings/${existingBooking.id}`)}
+                className="w-full sm:w-auto h-11 px-6 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md shadow-emerald-500/20 border-none cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>View My Booking Application</span>
+                <ArrowRight size={14} />
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(`/exhibitor/event/${id}`)}
+                className="w-full sm:w-auto h-11 px-6 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Store size={14} className="text-slate-500" />
+                <span>View Event Details & Floor Plan</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => navigate("/exhibitor/upcoming-events")}
+                className="w-full sm:w-auto h-11 px-4 rounded-xl text-slate-500 hover:text-slate-800 font-semibold text-xs"
+              >
+                Browse Other Events
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* ── CARD 1: EVENT CREATION CONFIGURATION AUDIT BAR ────────── */}
       <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
@@ -875,7 +1041,8 @@ export default function StallBookingPage() {
       </Card>
 
       {/* ── FORM CONTAINER (3-COLUMN RESPONSIVE LAYOUT) ──────────── */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      {!existingBooking && (
+        <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
           {/* ════════ COLUMN 1: BOOTH & STALL SELECTION ════════ */}
@@ -1076,6 +1243,7 @@ export default function StallBookingPage() {
                         value={formData.title}
                         onValueChange={(val) => setFormData({ ...formData, title: val })}
                         placeholder="Title"
+                        align="left"
                         options={[
                           { value: "Mr.", label: "Mr." },
                           { value: "Ms.", label: "Ms." },
@@ -1100,7 +1268,7 @@ export default function StallBookingPage() {
                   </div>
                 </div>
 
-                <Field label="Last Name" required error={errors.lastName}>
+                <Field label="Last Name (Optional)" error={errors.lastName}>
                   <input
                     name="lastName"
                     value={formData.lastName}
@@ -1167,6 +1335,38 @@ export default function StallBookingPage() {
                   />
                 </Field>
 
+                {/* Company Type + Website in a clean 2-column grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Company Type">
+                    <Select
+                      value={formData.companyType}
+                      onValueChange={(val) => setFormData(prev => ({ ...prev, companyType: val }))}
+                    >
+                      <SelectTrigger className="flex h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:border-slate-400 font-semibold cursor-pointer">
+                        <SelectValue placeholder="Select Company Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Private Limited">Private Limited</SelectItem>
+                        <SelectItem value="LLP">LLP</SelectItem>
+                        <SelectItem value="Partnership">Partnership</SelectItem>
+                        <SelectItem value="Sole Proprietorship">Sole Proprietorship</SelectItem>
+                        <SelectItem value="Public Limited">Public Limited</SelectItem>
+                        <SelectItem value="Other / Startup">Other / Startup</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  <Field label="Company Website">
+                    <input
+                      name="companyWebsite"
+                      value={formData.companyWebsite}
+                      placeholder="https://company.com"
+                      onChange={handleChange}
+                      className="flex h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/10 focus-visible:border-slate-400"
+                    />
+                  </Field>
+                </div>
+
                 {/* Special Message / Requirements */}
                 <Field label="Special Requirements / Inquiries">
                   <textarea
@@ -1205,6 +1405,7 @@ export default function StallBookingPage() {
                     searchPlaceholder="Search country..."
                     loading={countries.length === 0}
                     error={Boolean(errors.country)}
+                    align="full"
                     options={countries.map((c) => ({
                       value: c.country_name,
                       label: c.country_name,
@@ -1219,7 +1420,7 @@ export default function StallBookingPage() {
                 </Field>
 
                 {/* State & City Shadcn Comboboxes */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="State" required error={errors.state}>
                     <ShadcnCombobox
                       value={formData.state}
@@ -1227,6 +1428,7 @@ export default function StallBookingPage() {
                       searchPlaceholder="Search state..."
                       disabled={!formData.country}
                       error={Boolean(errors.state)}
+                      align="left"
                       options={states.map((s) => ({
                         value: s.state_name,
                         label: s.state_name,
@@ -1235,7 +1437,7 @@ export default function StallBookingPage() {
                       onValueChange={(val) => {
                         setFormData((p) => ({ ...p, state: val, city: "" }));
                         setErrors((p) => ({ ...p, state: "" }));
-                        loadCitiesForState(val);
+                        loadCitiesForState(val, formData.country);
                       }}
                     />
                   </Field>
@@ -1247,6 +1449,7 @@ export default function StallBookingPage() {
                       searchPlaceholder="Search city..."
                       disabled={!formData.state}
                       error={Boolean(errors.city)}
+                      align="right"
                       options={cities.map((ci) => ({
                         value: ci.city_name,
                         label: ci.city_name,
@@ -1370,12 +1573,12 @@ export default function StallBookingPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate(-1)}
-                  className="h-12 px-4 rounded-xl text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer shadow-2xs"
+                  className="h-12 px-4 rounded-xl text-xs font-bold border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer shadow-2xs flex-1 sm:flex-initial"
                 >
                   Cancel
                 </Button>
@@ -1383,7 +1586,7 @@ export default function StallBookingPage() {
                 <Button
                   type="submit"
                   disabled={loading || isSuspended || isConcluded || isKycPending}
-                  className={`h-12 px-6 rounded-xl text-white font-black text-xs sm:text-sm border-none cursor-pointer flex items-center justify-center gap-2 transition-all transform active:scale-98 shadow-md ${
+                  className={`h-12 px-6 rounded-xl text-white font-black text-xs sm:text-sm border-none cursor-pointer flex items-center justify-center gap-2 transition-all transform active:scale-98 shadow-md flex-1 sm:flex-initial ${
                     isKycPending
                       ? "bg-amber-600 hover:bg-amber-600 cursor-not-allowed opacity-90 shadow-amber-600/20"
                       : isConcluded || isSuspended
@@ -1409,6 +1612,7 @@ export default function StallBookingPage() {
           </div>
         </Card>
       </form>
+      )}
     </div>
   );
 }

@@ -1,79 +1,88 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin, Calendar, LayoutGrid, Grid, LayoutList, List, Menu,
   ChevronLeft, ChevronRight, ArrowRight, Store, Search, Filter, Sparkles
 } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
-import { getHomeEventshow } from "@/Services/api";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchExhibitorEvents, setEventsFilter } from "@/app/store/exhibitorSlice";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import { getAuthUserId } from "@/shared/services/authHelper";
 
 export const UpcomingEventsPage = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const reduxAuthUser = useSelector((state) => state.auth?.user);
+  const reduxUser = useSelector((state) => state.user);
+  const effectiveUserId = getAuthUserId(reduxAuthUser || reduxUser);
+
+  const { list: rawEvents, loading: reduxLoading, categoryFilter, search } = useSelector((state) => state.exhibitor.upcomingEvents);
+  const userBookings = useSelector((state) => state.exhibitor.bookings.list);
+
+  const [searchTerm, setSearchTerm] = useState(search || "");
+  const [selectedCategory, setSelectedCategory] = useState(categoryFilter || "all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
-  const navigate = useNavigate();
-  const user = useSelector((state) => state.user);
-
   useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      // Force refresh to get newly created and approved events without stale cache
-      const data = await getHomeEventshow(true);
-      const rawList = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.events) ? data.events : []));
-      const activeList = rawList.filter((e) => !isEventConcluded(e));
-
-      const formatted = activeList.map((e) => {
-        const totalStalls = parseInt(e.total_stalls || 0, 10);
-        const stallsBooked = parseInt(e.stalls_booked || 0, 10);
-        const stallsAvailable = Math.max(0, totalStalls - stallsBooked);
-
-        const venuePart = (e.venue || "").trim();
-        const addressPart = (e.address || e.city || "").trim();
-        const fullLocation = [venuePart, addressPart].filter(Boolean).join(", ") || "Exhibition Center";
-
-        return {
-          id: e.id,
-          title: e.event_name || e.name || "Exhibition Show",
-          location: fullLocation,
-          venue: venuePart || "Exhibition Center",
-          city: e.city || "",
-          date: e.start_date || "",
-          endDate: e.end_date || e.start_date || "",
-          startTime: e.start_time || "",
-          endTime: e.end_time || "",
-          image: e.banner_url || e.banner || e.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
-          banner_type: e.banner_type,
-          category: e.category || "General",
-          subCategory: e.sub_category || "",
-          stallsAvailable,
-          totalStalls,
-          stallsBooked,
-          status: (e.status || "APPROVED").toUpperCase(),
-          is_suspended: (e.status || "").toUpperCase() === "SUSPENDED",
-          raw: e
-        };
-      });
-
-      setEvents(formatted);
-    } catch (err) {
-      console.log("Error fetching events:", err);
-    } finally {
-      setLoading(false);
+    dispatch(fetchExhibitorEvents());
+    if (effectiveUserId && userBookings.length === 0) {
+      dispatch(fetchExhibitorBookings({ userId: effectiveUserId }));
     }
-  };
+  }, [dispatch, effectiveUserId]);
+
+  const userBookingsMap = useMemo(() => {
+    const bMap = {};
+    (userBookings || []).forEach((b) => {
+      const evId = b.event_id || b.eventId;
+      const status = (b.status || "").toLowerCase();
+      if (evId && ["pending", "approved", "confirmed", "paid"].includes(status)) {
+        bMap[evId] = b;
+      }
+    });
+    return bMap;
+  }, [userBookings]);
+
+  const events = useMemo(() => {
+    const activeList = (rawEvents || []).filter((e) => !isEventConcluded(e));
+    return activeList.map((e) => {
+      const totalStalls = parseInt(e.total_stalls || 0, 10);
+      const stallsBooked = parseInt(e.stalls_booked || 0, 10);
+      const stallsAvailable = Math.max(0, totalStalls - stallsBooked);
+
+      const venuePart = (e.venue || "").trim();
+      const addressPart = (e.address || e.city || "").trim();
+      const fullLocation = [venuePart, addressPart].filter(Boolean).join(", ") || "Exhibition Center";
+
+      return {
+        id: e.id,
+        title: e.event_name || e.name || "Exhibition Show",
+        location: fullLocation,
+        venue: venuePart || "Exhibition Center",
+        city: e.city || "",
+        date: e.start_date || "",
+        endDate: e.end_date || e.start_date || "",
+        startTime: e.start_time || "",
+        endTime: e.end_time || "",
+        image: e.banner_url || e.banner || e.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
+        banner_type: e.banner_type,
+        category: e.category || "General",
+        subCategory: e.sub_category || "",
+        stallsAvailable,
+        totalStalls,
+        stallsBooked,
+        status: (e.status || "APPROVED").toUpperCase(),
+        is_suspended: (e.status || "").toUpperCase() === "SUSPENDED",
+        raw: e
+      };
+    });
+  }, [rawEvents]);
+
+  const loading = reduxLoading && events.length === 0;
 
   const handleBookStall = (event) => {
     navigate(`/exhibitor/book-stall/${event.id}`, { state: { event } });
@@ -269,7 +278,18 @@ export const UpcomingEventsPage = () => {
                     >
                       Details
                     </Button>
-                    {event.is_suspended || event.status === "SUSPENDED" ? (
+                    {userBookingsMap[event.id] ? (
+                      <Button
+                        onClick={() => navigate(`/exhibitor/my-bookings/${userBookingsMap[event.id].id}`)}
+                        className={`font-extrabold text-xs px-3 py-2 rounded-xl shadow-xs border-none cursor-pointer flex items-center gap-1.5 ${
+                          (userBookingsMap[event.id].status || "").toLowerCase() === "approved" || (userBookingsMap[event.id].status || "").toLowerCase() === "confirmed"
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            : "bg-amber-500 hover:bg-amber-600 text-white"
+                        }`}
+                      >
+                        <span>{(userBookingsMap[event.id].status || "").toLowerCase() === "approved" || (userBookingsMap[event.id].status || "").toLowerCase() === "confirmed" ? "✓ Reserved" : "⏳ Pending"}</span>
+                      </Button>
+                    ) : event.is_suspended || event.status === "SUSPENDED" ? (
                       <span
                         title="Currently not accepting new stall reservations"
                         className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[11px] px-3.5 py-2 rounded-xl uppercase tracking-wider text-center"

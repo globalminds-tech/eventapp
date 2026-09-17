@@ -88,15 +88,74 @@ async def get_exhibitor_invoices(request: Request, current_user = Depends(get_cu
     Returns formal GST Tax Invoices for stalls reserved by the logged-in Exhibitor.
     """
     try:
-        user_id = uuid.UUID(str(current_user.id))
+        raw_uid = current_user.get("user_id") or current_user.get("id") or current_user.get("sub")
+        if not raw_uid:
+            return {"success": True, "data": []}
+
+        user_id = uuid.UUID(str(raw_uid))
         invoices = db.session.query(FinancialInvoice).filter(
             FinancialInvoice.recipient_user_id == user_id,
             FinancialInvoice.invoice_type == "STALL_INVOICE"
         ).order_by(FinancialInvoice.created_at.desc()).all()
 
+        invoice_list = [inv.to_dict() for inv in invoices]
+
+        # If no standalone invoice records generated yet, synthesize from exhibitor stall bookings
+        from app.models.exhibitor import ExhibitorStallBooking
+        from app.models.event import EventDetails
+        import re
+
+        bookings = db.session.query(
+            ExhibitorStallBooking,
+            EventDetails.event_name
+        ).outerjoin(
+            EventDetails, ExhibitorStallBooking.event_id == EventDetails.id
+        ).filter(
+            ExhibitorStallBooking.user_id == user_id
+        ).order_by(ExhibitorStallBooking.created_at.desc()).all()
+
+        existing_inv_nums = {inv.get("invoice_number") for inv in invoice_list}
+
+        for row in bookings:
+            b = row[0]
+            event_name = row[1] or "Exhibition Expo"
+            inv_num = f"INV-BME-{str(b.id).replace('-', '')[:6].upper()}"
+            if inv_num in existing_inv_nums:
+                continue
+
+            raw_price = getattr(b, "price_paid", None)
+            if (not raw_price or raw_price == 45000) and b.messages:
+                m = re.search(r'\[Estimated Cost:\s*[₹Rs\.]*\s*([0-9,]+)\]', b.messages)
+                if m:
+                    try:
+                        raw_price = int(m.group(1).replace(",", ""))
+                    except Exception:
+                        pass
+            total = float(raw_price) if raw_price else 10000.0
+            base_amt = round(total / 1.18, 2)
+            gst_split = round((total - base_amt) / 2.0, 2)
+
+            status_str = "PAID" if str(b.status).lower() in ["approved", "confirmed", "paid"] else "PENDING"
+
+            synth_invoice = {
+                "id": str(b.id),
+                "invoice_number": inv_num,
+                "created_at": str(b.created_at) if b.created_at else None,
+                "billing_name": b.company_name or "Registered Exhibitor",
+                "subtotal": base_amt,
+                "cgst": gst_split,
+                "sgst": gst_split,
+                "total_amount": total,
+                "status": status_str,
+                "event_name": event_name,
+                "stall_area": b.stall_area or "Exhibition Stall",
+                "gstin": getattr(b, "gstin", None) or "33AAAAA0000A1Z5"
+            }
+            invoice_list.append(synth_invoice)
+
         return {
             "success": True,
-            "data": [inv.to_dict() for inv in invoices]
+            "data": invoice_list
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

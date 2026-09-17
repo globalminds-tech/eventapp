@@ -26,6 +26,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        '/exhibitor/api': {
+          target: backendTarget,
+          changeOrigin: true,
+          secure: false,
+        },
         '/superadmin': {
           target: backendTarget,
           changeOrigin: true,
