@@ -1,8 +1,16 @@
 import apiClient from "./client";
 
 export const validateQr = async (id) => {
-  const res = await apiClient.get(`/user/validate-qr/${id}`);
-  return res.data;
+  try {
+    const res = await apiClient.get(`/api/v1/user/validate-qr/${id}`);
+    return res.data;
+  } catch (err) {
+    if (err?.response?.status === 404) {
+      const fallbackRes = await apiClient.get(`/user/validate-qr/${id}`);
+      return fallbackRes.data;
+    }
+    throw err;
+  }
 };
 
 export const getTasks = async () => {

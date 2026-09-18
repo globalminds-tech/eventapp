@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 from datetime import datetime
 from sqlalchemy import select
@@ -79,7 +80,9 @@ class UserRepository:
                 parsed_uid = uuid.UUID(str(user_id))
                 user_ident_conditions.append(UserBookingDetails.user_id == parsed_uid)
             except Exception:
-                user_ident_conditions.append(UserBookingDetails.user_id == user_id)
+                # In SQL Server, UserBookingDetails.user_id is UNIQUEIDENTIFIER.
+                # Never query with an invalid non-UUID string as it causes SQL Server Error 8169.
+                pass
         if clean_email:
             user_ident_conditions.append(UserBookingDetails.email == clean_email)
 
@@ -364,8 +367,8 @@ class UserRepository:
         return success, booking
 
     @staticmethod
-    def get_user_bookings(email: Optional[str] = None, user_id: Optional[int] = None):
-        from sqlalchemy import or_
+    def get_user_bookings(email: Optional[str] = None, user_id: Optional[int] = None, search: Optional[str] = None):
+        from sqlalchemy import or_, func
         import qrcode
         import io
         import base64
@@ -375,14 +378,33 @@ class UserRepository:
         )
 
         clean_email = email.strip().lower() if email else None
-        if user_id and clean_email:
-            stmt = stmt.where(or_(UserBookingDetails.user_id == user_id, UserBookingDetails.email == clean_email))
-        elif user_id:
-            stmt = stmt.where(UserBookingDetails.user_id == user_id)
+        parsed_uid = None
+        if user_id:
+            try:
+                parsed_uid = uuid.UUID(str(user_id))
+            except Exception:
+                parsed_uid = None
+
+        if parsed_uid and clean_email:
+            stmt = stmt.where(or_(UserBookingDetails.user_id == parsed_uid, UserBookingDetails.email == clean_email))
+        elif parsed_uid:
+            stmt = stmt.where(UserBookingDetails.user_id == parsed_uid)
         elif clean_email:
             stmt = stmt.where(UserBookingDetails.email == clean_email)
         else:
             return []
+
+        # API-driven search across event name, venue, category, ticket code, and attendee name
+        if search and search.strip():
+            term = f"%{search.strip().lower()}%"
+            stmt = stmt.where(or_(
+                func.lower(EventDetails.event_name).like(term),
+                func.lower(EventDetails.venue).like(term),
+                func.lower(EventDetails.category).like(term),
+                func.lower(UserBookingDetails.ticket_code).like(term),
+                func.lower(UserBookingDetails.name).like(term),
+                func.lower(UserBookingDetails.pass_type).like(term),
+            ))
 
         stmt = stmt.order_by(UserBookingDetails.created_at.desc())
         results = db.session.execute(stmt).all()
