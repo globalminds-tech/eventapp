@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useCallback
 } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -306,30 +307,80 @@ export const SelectContent = ({
   className = "",
   position = "popper",
   children,
+  style = {},
   ...props
 }) => {
-  const { open, contentRef } = useSelect();
+  const { open, contentRef, triggerRef } = useSelect();
+
+  const getPositionCoords = useCallback(() => {
+    if (!triggerRef?.current) return null;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 220;
+    const isTop =
+      position === "top" ||
+      position === "above" ||
+      (position !== "bottom" && spaceBelow < dropdownHeight && rect.top > spaceBelow);
+
+    const minW = Math.max(rect.width, 160);
+    const maxAllowedLeft = Math.max(8, window.innerWidth - minW - 12);
+    const left = Math.max(8, Math.min(rect.left, maxAllowedLeft));
+
+    return {
+      top: isTop ? undefined : rect.bottom + 4,
+      bottom: isTop ? window.innerHeight - rect.top + 4 : undefined,
+      left: left,
+      minWidth: Math.max(rect.width, 160),
+      isTop
+    };
+  }, [triggerRef, position]);
+
+  const [coords, setCoords] = useState(getPositionCoords);
+
+  useEffect(() => {
+    if (!open) return;
+    setCoords(getPositionCoords());
+
+    const handleUpdate = () => {
+      setCoords(getPositionCoords());
+    };
+
+    window.addEventListener("scroll", handleUpdate, true);
+    window.addEventListener("resize", handleUpdate);
+    return () => {
+      window.removeEventListener("scroll", handleUpdate, true);
+      window.removeEventListener("resize", handleUpdate);
+    };
+  }, [open, getPositionCoords]);
 
   if (!open) return null;
 
-  const isTop = position === "top" || position === "above";
-
-  return (
+  const contentElement = (
     <div
       ref={contentRef}
       className={cn(
-        "absolute z-[100] left-0 right-0 min-w-[8rem] rounded-xl border border-slate-200/90 bg-white p-1 text-slate-800 shadow-2xl animate-in fade-in-80 zoom-in-95 duration-100 max-h-48 overflow-y-auto overscroll-contain",
-        isTop ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]",
+        "fixed z-[99999] min-w-[8rem] max-w-[min(90vw,420px)] rounded-xl border border-slate-200/90 bg-white p-1 text-slate-800 shadow-2xl animate-in fade-in-80 zoom-in-95 duration-100 max-h-56 overflow-y-auto overscroll-contain",
         className
       )}
       style={{
+        ...(coords
+          ? {
+              top: coords.top !== undefined ? `${coords.top}px` : undefined,
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
+              left: `${coords.left}px`,
+              minWidth: `${coords.minWidth}px`,
+            }
+          : {}),
         scrollbarWidth: "thin",
+        ...style
       }}
       {...props}
     >
       <div className="flex flex-col gap-0.5">{children}</div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(contentElement, document.body) : contentElement;
 };
 
 export const SelectItem = ({
