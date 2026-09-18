@@ -13,7 +13,8 @@ import {
   Printer,
   XCircle,
   Sparkles,
-  Store
+  Store,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -38,7 +39,9 @@ export const ExhibitorBillingPage = () => {
     (item.event_name || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalSpent = (invoices || []).reduce((acc, curr) => acc + (Number(curr.total_amount) || 0), 0);
+  const paidInvoices = (invoices || []).filter(item => (item.status || "").toUpperCase() === "PAID");
+  const pendingInvoices = (invoices || []).filter(item => (item.status || "").toUpperCase() !== "PAID");
+  const totalSpent = paidInvoices.reduce((acc, curr) => acc + (Number(curr.total_amount) || 0), 0);
 
   const handlePrintInvoice = () => {
     window.print();
@@ -74,49 +77,73 @@ export const ExhibitorBillingPage = () => {
         </div>
       </div>
 
-      {/* ── KPI METRICS ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* ── 4 EXECUTIVE KPI METRICS (MATCHING REFERENCE DESIGN) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading && invoices.length === 0 ? (
-          <StatCardSkeleton count={3} />
+          <StatCardSkeleton count={4} />
         ) : (
           <>
-            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
+            {/* Card 1: Total Stall Spend */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Stall Spend</span>
+                <div className="w-9 h-9 bg-emerald-50 rounded-xl text-emerald-600 flex items-center justify-center border border-emerald-100/70 shrink-0">
+                  <IndianRupee size={18} />
+                </div>
+              </div>
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Stall Spend</span>
-                <div className="text-2xl font-black text-slate-900 mt-1">
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   ₹{totalSpent.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </div>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5">Paid for exhibition space &amp; amenities</p>
-              </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-                <IndianRupee size={22} />
+                <p className="text-xs font-medium text-slate-500 mt-1">Paid for exhibition stalls</p>
               </div>
             </Card>
 
-            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Invoices</span>
-                <div className="text-2xl font-black text-purple-600 mt-1">
-                  {invoices.length} Invoices
+            {/* Card 2: Settled Invoices */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Paid Invoices</span>
+                <div className="w-9 h-9 bg-sky-50 rounded-xl text-sky-600 flex items-center justify-center border border-sky-100/70 shrink-0">
+                  <Receipt size={18} />
                 </div>
-                <p className="text-[11px] font-medium text-purple-600 mt-0.5">Stall payment receipts generated</p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 shrink-0">
-                <Receipt size={22} />
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {paidInvoices.length}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Payment receipts confirmed</p>
               </div>
             </Card>
 
-            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">GST Input Credit Status</span>
-                <div className="flex items-center gap-2 text-emerald-600 font-bold text-lg mt-1">
-                  <CheckCircle2 size={20} />
-                  <span>Eligible for 18% ITC</span>
+            {/* Card 3: Pending Invoices */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pending Settlements</span>
+                <div className="w-9 h-9 bg-amber-50 rounded-xl text-amber-600 flex items-center justify-center border border-amber-100/70 shrink-0">
+                  <Clock size={18} className="animate-pulse" />
                 </div>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5">Tax breakdown itemized on each invoice</p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-                <Building2 size={22} />
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {pendingInvoices.length}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Awaiting invoice payment</p>
+              </div>
+            </Card>
+
+            {/* Card 4: Total Invoices */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Invoices</span>
+                <div className="w-9 h-9 bg-purple-50 rounded-xl text-purple-600 flex items-center justify-center border border-purple-100/70 shrink-0">
+                  <FileText size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {invoices.length}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Generated billing receipts</p>
               </div>
             </Card>
           </>

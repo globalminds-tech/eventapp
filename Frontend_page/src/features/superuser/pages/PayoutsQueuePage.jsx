@@ -170,7 +170,7 @@ export default function PayoutsQueue() {
                     const totalVal = price * sold;
                     return (
                       <tr key={e.id} className="hover:bg-slate-50/60 transition">
-                        <td className="py-3 px-4 font-mono font-bold text-purple-700">{e.event_code || e.code || `EVT-${e.id}`}</td>
+                        <td className="py-3 px-4 font-mono font-bold text-purple-700">{e.event_code || e.code || (e.id ? `EVT-${String(e.id).replace(/-/g, '').slice(0, 6).toUpperCase()}` : "EVT-EXP")}</td>
                         <td className="py-3 px-4 font-bold text-slate-900">{e.event_name || e.name}</td>
                         <td className="py-3 px-4 font-semibold text-slate-800">₹{price.toLocaleString("en-IN")}</td>
                         <td className="py-3 px-4 font-bold text-slate-800">{sold}</td>
@@ -203,7 +203,7 @@ export default function PayoutsQueue() {
                       <MobileDataCard
                         key={e.id}
                         title={e.event_name || e.name}
-                        subtitle={e.event_code || e.code || `EVT-${e.id}`}
+                        subtitle={e.event_code || e.code || (e.id ? `EVT-${String(e.id).replace(/-/g, '').slice(0, 6).toUpperCase()}` : "EVT-EXP")}
                         badge={<Badge variant="outline" className="border-purple-200 text-purple-700 font-mono text-[10px]">₹{totalVal.toLocaleString("en-IN")}</Badge>}
                         fields={[
                           { label: "Pass Fee", value: `₹${price.toLocaleString("en-IN")}` },

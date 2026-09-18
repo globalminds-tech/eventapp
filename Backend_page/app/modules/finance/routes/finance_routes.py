@@ -123,19 +123,21 @@ async def get_exhibitor_invoices(request: Request, current_user = Depends(get_cu
             if inv_num in existing_inv_nums:
                 continue
 
-            raw_price = getattr(b, "price_paid", None)
-            if (not raw_price or raw_price == 45000) and b.messages:
-                m = re.search(r'\[Estimated Cost:\s*[₹Rs\.]*\s*([0-9,]+)\]', b.messages)
-                if m:
-                    try:
-                        raw_price = int(m.group(1).replace(",", ""))
-                    except Exception:
-                        pass
-            total = float(raw_price) if raw_price else 10000.0
+            from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
+            pricing = ExhibitorRepository.get_stall_pricing(b)
+            total = float(pricing.get("total_price", 0.0) or 0.0)
             base_amt = round(total / 1.18, 2)
             gst_split = round((total - base_amt) / 2.0, 2)
 
-            status_str = "PAID" if str(b.status).lower() in ["approved", "confirmed", "paid"] else "PENDING"
+            b_st = str(b.status or "").lower()
+            if b_st in ["confirmed", "paid"]:
+                status_str = "PAID"
+            elif b_st == "approved":
+                status_str = "PAYMENT PENDING"
+            elif b_st == "rejected":
+                status_str = "REJECTED"
+            else:
+                status_str = "PENDING APPROVAL"
 
             synth_invoice = {
                 "id": str(b.id),

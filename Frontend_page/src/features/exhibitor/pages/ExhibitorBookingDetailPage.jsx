@@ -124,9 +124,6 @@ const ExhibitorBookingDetailPage = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
               Booking Details
             </h1>
-            <Badge className="bg-slate-100 text-slate-600 border-slate-200 font-bold text-[10px]">
-              ID: {b.id}
-            </Badge>
           </div>
         </div>
         <div className="shrink-0">
@@ -209,7 +206,7 @@ const ExhibitorBookingDetailPage = () => {
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Total Fee</p>
                     <p className="font-black text-emerald-600 text-lg mt-0.5">
-                      ₹{Number(b.price_paid || 10000).toLocaleString('en-IN')}
+                      ₹{Number(b.total_price || b.rental_price || b.price || b.price_paid || 0).toLocaleString('en-IN')}
                     </p>
                   </div>
                 </div>

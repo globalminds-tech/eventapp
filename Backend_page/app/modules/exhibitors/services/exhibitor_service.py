@@ -137,18 +137,9 @@ class ExhibitorService:
             booking = row[0]
             event_name = row[1] if len(row) > 1 else ""
             ev_status = row[2] if len(row) > 2 else "ACTIVE"
-            # Extract price paid or estimated cost from notes
-            raw_price = getattr(booking, "price_paid", None)
-            if (not raw_price or raw_price == 45000) and booking.messages:
-                import re
-                m = re.search(r'\[Estimated Cost:\s*[₹Rs\.]*\s*([0-9,]+)\]', booking.messages)
-                if m:
-                    try:
-                        raw_price = int(m.group(1).replace(",", ""))
-                    except Exception:
-                        pass
-            if not raw_price:
-                raw_price = 10000
+            # Extract stall pricing from configured EventStall
+            pricing = ExhibitorRepository.get_stall_pricing(booking)
+            raw_price = pricing.get("total_price", 0.0)
 
             comp_type = getattr(booking, "company_type", None) or "Private Limited"
             ind_type = getattr(booking, "industry_type", None) or booking.products or "Technology & Services"
@@ -189,11 +180,17 @@ class ExhibitorService:
                 "pin_code": booking.pin_code,
                 "postal_code": booking.pin_code,
                 "stall_area": booking.stall_area,
+                "stall_size": pricing.get("stall_size", ""),
                 "products": booking.products,
                 "messages": booking.messages,
                 "status": booking.status,
                 "visiting_card": booking.visiting_card,
                 "price_paid": raw_price,
+                "price": raw_price,
+                "rental_price": raw_price,
+                "base_price": pricing.get("base_price", 0.0),
+                "prime_price": pricing.get("prime_price", 0.0),
+                "total_price": raw_price,
                 "created_at": str(booking.created_at) if booking.created_at else None
             }
 
@@ -218,9 +215,7 @@ class ExhibitorService:
         from app.models.event import EventDetails
         from app.extensions.database import db
         
-        event = None
-        if booking.event_id:
-            event = db.session.get(EventDetails, booking.event_id)
+        event = db.session.get(EventDetails, booking.event_id) if booking.event_id else None
 
         # Resolve associated exhibitor profile for rich enrichments
         exh_p = None
@@ -234,18 +229,9 @@ class ExhibitorService:
             if u:
                 exh_p = db.session.query(ExhibitorProfile).filter(ExhibitorProfile.user_id == u.id).first()
 
-        # Parse price paid / estimated cost
-        raw_price = getattr(booking, "price_paid", None)
-        if (not raw_price or raw_price == 45000) and booking.messages:
-            import re
-            m = re.search(r'\[Estimated Cost:\s*[₹Rs\.]*\s*([0-9,]+)\]', booking.messages)
-            if m:
-                try:
-                    raw_price = int(m.group(1).replace(",", ""))
-                except Exception:
-                    pass
-        if not raw_price:
-            raw_price = 10000
+        # Parse exact stall configuration from EventStall
+        pricing = ExhibitorRepository.get_stall_pricing(booking)
+        raw_price = pricing.get("total_price", 0.0)
 
         # Parse exhibitor notes from messages
         notes = ""
@@ -298,9 +284,15 @@ class ExhibitorService:
             "pin_code": booking.pin_code or "600028",
             "postal_code": booking.pin_code or "600028",
             "stall_area": booking.stall_area,
+            "stall_size": pricing.get("stall_size", ""),
             "products": booking.products,
             "messages": booking.messages,
             "price_paid": raw_price,
+            "price": raw_price,
+            "rental_price": raw_price,
+            "base_price": pricing.get("base_price", 0.0),
+            "prime_price": pricing.get("prime_price", 0.0),
+            "total_price": raw_price,
             "status": booking.status,
             "visiting_card": booking.visiting_card,
             "created_at": str(booking.created_at) if booking.created_at else None

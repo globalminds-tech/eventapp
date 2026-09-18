@@ -170,31 +170,78 @@ async def update_booking_alias(booking_id: str, request: Request = None):
 
 @root_admin_router.get("/superadmin/api/organizer/exhibitor-applications")
 @root_admin_router.get("/api/v1/organizer/exhibitor-applications")
+@root_admin_router.get("/api/v1/organizer/stalls/applications")
 @root_admin_router.get("/superadmin/api/exhibitor/bookings_details")
-def get_all_exhibitor_applications():
+def get_all_exhibitor_applications(
+    request: Request,
+    event_id: Optional[str] = None,
+    status: Optional[str] = None,
+    search: Optional[str] = None
+):
     from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
-    rows = ExhibitorRepository.get_all_applications()
+    organizer_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and "Bearer" in auth_header:
+        try:
+            from app.middleware.auth import decode_access_token
+            token = auth_header.split(" ")[1].strip()
+            payload = decode_access_token(token)
+            roles = payload.get("roles", [])
+            # Superadmin/superuser sees all, organizer sees their own events
+            if "superadmin" not in roles and "superuser" not in roles:
+                organizer_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
+        except Exception:
+            pass
+
+    # Allow query param overrides if passed from client
+    query_evt = event_id or request.query_params.get("event_id")
+    query_st = status or request.query_params.get("status")
+    query_q = search or request.query_params.get("search")
+
+    rows = ExhibitorRepository.get_all_applications(
+        organizer_id=organizer_id,
+        event_id=query_evt,
+        status=query_st,
+        search=query_q
+    )
     res = []
     for row in rows:
-        # get_all_applications returns (ExhibitorStallBooking, event_name, event_status)
         b = row[0]
         evt_name = row[1] if len(row) > 1 else None
-        d = b.to_dict() if hasattr(b, "to_dict") else {
-            "id": str(b.id), "event_id": str(b.event_id) if b.event_id else None,
-            "company_name": getattr(b, "company_name", ""),
-            "first_name": getattr(b, "first_name", ""),
-            "last_name": getattr(b, "last_name", ""),
-            "email": b.email, "mobile": getattr(b, "mobile", ""),
-            "stall_area": getattr(b, "stall_area", ""),
-            "status": getattr(b, "status", "Pending"),
-            "created_at": str(b.created_at) if getattr(b, "created_at", None) else None,
-        }
-        d["event_name"] = evt_name or "Exhibition Show"
-        res.append(d)
-    return {"success": True, "data": res}
+        evt_status = row[2] if len(row) > 2 else None
+        res.append(ExhibitorRepository.serialize_application(b, evt_name, evt_status))
+
+    return {"success": True, "data": res, "total": len(res)}
+
+
+@root_admin_router.get("/api/v1/organizer/exhibitors/directory")
+@root_admin_router.get("/superadmin/api/organizer/exhibitors/directory")
+def get_organizer_exhibitor_directory(request: Request, search: Optional[str] = None):
+    from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
+    organizer_id = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and "Bearer" in auth_header:
+        try:
+            from app.middleware.auth import decode_access_token
+            token = auth_header.split(" ")[1].strip()
+            payload = decode_access_token(token)
+            roles = payload.get("roles", [])
+            if "superadmin" not in roles and "superuser" not in roles:
+                organizer_id = payload.get("user_id") or payload.get("id") or payload.get("sub")
+        except Exception:
+            pass
+
+    query_q = search or request.query_params.get("search")
+    directory_data = ExhibitorRepository.get_exhibitor_directory(
+        organizer_id=organizer_id,
+        search=query_q
+    )
+    return {"success": True, "data": directory_data}
+
 
 @root_admin_router.put("/superadmin/api/organizer/exhibitor-applications/{application_id}/status")
 @root_admin_router.put("/api/v1/organizer/exhibitor-applications/{application_id}/status")
+@root_admin_router.put("/api/v1/organizer/stalls/applications/{application_id}/status")
 async def update_exhibitor_application_status(application_id: str, request: Request):
     from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
     body = await request.json()
@@ -204,4 +251,36 @@ async def update_exhibitor_application_status(application_id: str, request: Requ
     if not booking:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail=f"Application {application_id} not found")
-    return {"success": True, "message": f"Stall application {status_val.lower()} successfully", "data": booking.to_dict() if hasattr(booking, 'to_dict') else None}
+
+    # Financial synchronization if stall payment is confirmed
+    if status_val.lower() in ["confirmed", "paid"]:
+        try:
+            from app.modules.finance.services.finance_service import FinanceService
+            from app.models.financial import EventTransaction
+            from app.extensions.database import db
+
+            # Check if transaction already exists for this stall booking
+            existing_txn = db.session.query(EventTransaction).filter(
+                EventTransaction.stall_booking_id == booking.id
+            ).first()
+
+            if not existing_txn:
+                pricing = ExhibitorRepository.get_stall_pricing(booking)
+                gross = float(pricing.get("total_price", 0.0) or 0.0)
+                FinanceService.record_transaction(
+                    event_id=booking.event_id,
+                    transaction_type="STALL_BOOKING",
+                    gross_amount=gross,
+                    payer_user_id=booking.user_id,
+                    stall_booking_id=booking.id,
+                    description=f"Stall Booking - {booking.company_name or 'Exhibitor'} ({booking.stall_area or 'Standard Space'})"
+                )
+        except Exception as e:
+            print(f"[Finance Sync Warning] Could not create transaction record: {e}")
+
+    serialized = ExhibitorRepository.serialize_application(booking)
+    return {
+        "success": True,
+        "message": f"Stall application {status_val.lower()} successfully",
+        "data": serialized
+    }

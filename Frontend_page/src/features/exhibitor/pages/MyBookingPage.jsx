@@ -72,6 +72,7 @@ const MyBookings = () => {
   });
 
   const totalCount = bookings.length;
+  const pendingCount = bookings.filter(b => (b.status || "").toLowerCase() === "pending").length;
   const approvedCount = bookings.filter(b => (b.status || "").toLowerCase() === "approved").length;
   const confirmedCount = bookings.filter(b => ["confirmed", "paid"].includes((b.status || "").toLowerCase())).length;
 
@@ -112,42 +113,73 @@ const MyBookings = () => {
         </div>
       </div>
 
-      {/* KPI Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* ── 4 EXECUTIVE KPI STAT CARDS (MATCHING REFERENCE DESIGN) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading && bookings.length === 0 ? (
-          <StatCardSkeleton count={3} />
+          <StatCardSkeleton count={4} />
         ) : (
           <>
-            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Stall Applications</p>
-                <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{totalCount} Reservations</h3>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5">Across active expos</p>
+            {/* Card 1: Total Applications */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Applications</span>
+                <div className="w-9 h-9 bg-blue-50 rounded-xl text-blue-600 flex items-center justify-center border border-blue-100/70 shrink-0">
+                  <Store size={18} />
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-                <Store size={22} />
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {totalCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Across active expos</p>
               </div>
             </Card>
 
-            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved & Payment Locked</p>
-                <h3 className="text-2xl font-extrabold text-cyan-600 mt-1">{approvedCount} Active Locks</h3>
-                <p className="text-[11px] font-medium text-cyan-600 mt-0.5">Complete payment to confirm</p>
+            {/* Card 2: Pending Approval */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pending Review</span>
+                <div className="w-9 h-9 bg-amber-50 rounded-xl text-amber-600 flex items-center justify-center border border-amber-100/70 shrink-0">
+                  <Clock size={18} className="animate-pulse" />
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100 shrink-0">
-                <Clock size={22} className="animate-pulse" />
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {pendingCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Requires organizer approval</p>
               </div>
             </Card>
 
-            <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed & Paid Booths</p>
-                <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{confirmedCount} Confirmed</h3>
-                <p className="text-[11px] font-medium text-emerald-600 mt-0.5">Stall space reserved</p>
+            {/* Card 3: Approved & Payment Locked */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Approved &amp; Locked</span>
+                <div className="w-9 h-9 bg-sky-50 rounded-xl text-sky-600 flex items-center justify-center border border-sky-100/70 shrink-0">
+                  <CreditCard size={18} />
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-                <CheckCircle2 size={22} />
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {approvedCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">24-hour payment lock active</p>
+              </div>
+            </Card>
+
+            {/* Card 4: Confirmed & Paid */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Confirmed &amp; Allocated</span>
+                <div className="w-9 h-9 bg-emerald-50 rounded-xl text-emerald-600 flex items-center justify-center border border-emerald-100/70 shrink-0">
+                  <ShieldCheck size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {confirmedCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Stall space secured</p>
               </div>
             </Card>
           </>
@@ -251,7 +283,7 @@ const MyBookings = () => {
                           </div>
                         </td>
                         <td className="py-3.5 px-4 font-bold text-slate-900 text-xs">
-                          ₹{Number(b.price_paid || 45000).toLocaleString('en-IN')}
+                          ₹{Number(b.total_price || b.rental_price || b.price || b.price_paid || 0).toLocaleString('en-IN')}
                         </td>
                         <td className="py-3.5 px-4">
                           {status === 'pending' && (
@@ -362,7 +394,7 @@ const MyBookings = () => {
                   items={[
                     { label: "Booth Space", value: b.stall_area || 'Standard Booth' },
                     { label: "Location", value: `${b.city || 'Chennai'}, ${b.state || 'TN'}` },
-                    { label: "Fee Paid", value: `₹${Number(b.price_paid || 45000).toLocaleString('en-IN')}` },
+                    { label: "Booth Fee", value: `₹${Number(b.total_price || b.rental_price || b.price || b.price_paid || 0).toLocaleString('en-IN')}` },
                     { label: "Status Info", value: status === 'approved' ? "Pay before lock expires" : (b.status || 'Active') },
                   ]}
                 />

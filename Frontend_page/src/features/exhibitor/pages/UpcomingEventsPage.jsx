@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchExhibitorEvents, setEventsFilter } from "@/app/store/exhibitorSlice";
+import { fetchExhibitorEvents, fetchExhibitorBookings, setEventsFilter } from "@/app/store/exhibitorSlice";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";

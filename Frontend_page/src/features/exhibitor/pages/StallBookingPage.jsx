@@ -908,7 +908,7 @@ export default function StallBookingPage() {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1.5">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reserved Stall</span>
                 <p className="text-sm font-black text-slate-900">{existingBooking.stall_area || "Standard Booth"}</p>
-                <p className="text-[11px] text-slate-500">Ref ID: {existingBooking.id?.slice(0, 8)}...</p>
+                <p className="text-[11px] font-medium text-emerald-600">Application Submitted</p>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1.5">

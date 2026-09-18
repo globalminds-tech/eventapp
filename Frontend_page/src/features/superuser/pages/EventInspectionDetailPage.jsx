@@ -505,7 +505,7 @@ export default function EventInspectionDetail() {
                 />
                 <div className="absolute top-3 right-3 bg-slate-900/70 backdrop-blur-xs text-white text-[11px] font-mono px-2.5 py-1 rounded-lg flex items-center gap-1.5">
                   <Badge className="bg-purple-600 border-none text-white text-[10px]">MAIN BANNER</Badge>
-                  <span>{details.event_code || details.eventCode || `EVT-${details.id}`}</span>
+                  <span>{details.event_code || details.eventCode || (details.id ? `EVT-${String(details.id).replace(/-/g, '').slice(0, 6).toUpperCase()}` : "EVT-EXP")}</span>
                 </div>
               </div>
             ) : (
