@@ -42,8 +42,27 @@ class CheckinController:
         }
 
     @staticmethod
-    def get_event_attendees(event_id: str):
-        result = CheckinService.get_event_attendees(event_id)
+    def get_event_attendees(
+        event_id: str,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
+        page: Optional[int] = None,
+        limit: Optional[int] = None
+    ):
+        result = CheckinService.get_event_attendees(
+            event_id,
+            search=search,
+            status=status,
+            page=page,
+            limit=limit
+        )
+        if isinstance(result, dict):
+            return {
+                "success": True,
+                "data": result.get("attendees", []),
+                "counts": result.get("counts", {}),
+                "total": result.get("total", 0)
+            }
         return {
             "success": True,
             "data": result
@@ -58,8 +77,8 @@ class CheckinController:
         }
 
     @staticmethod
-    def redeem_food_token(code_or_id: str, event_id: Optional[str] = None):
-        result = CheckinService.redeem_food_token(code_or_id, event_id=event_id)
+    def redeem_food_token(code_or_id: str, event_id: Optional[str] = None, counter_name: Optional[str] = None):
+        result = CheckinService.redeem_food_token(code_or_id, event_id=event_id, counter_name=counter_name)
         return {
             "success": True,
             "data": result
@@ -96,3 +115,28 @@ class CheckinController:
             "success": True,
             "message": "Gate deleted successfully"
         }
+
+    @staticmethod
+    def get_food_counter_presets(organizer_id: str):
+        result = CheckinService.get_food_counter_presets(organizer_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def add_food_counter_preset(name: str, organizer_id: str):
+        result = CheckinService.add_food_counter_preset(name, organizer_id)
+        return {
+            "success": True,
+            "data": result
+        }
+
+    @staticmethod
+    def delete_food_counter_preset(counter_id: str, organizer_id: str):
+        result = CheckinService.delete_food_counter_preset(counter_id, organizer_id)
+        return {
+            "success": True,
+            "message": "Food counter deleted successfully"
+        }
+

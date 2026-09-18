@@ -8,8 +8,17 @@ export const eventApi = {
     return res.data;
   },
 
-  getEventshow: async (organizerId) => {
-    const url = organizerId ? `${EVENT_ENDPOINTS.GET_EVENTS_SHOW}?organizer_id=${organizerId}` : EVENT_ENDPOINTS.GET_EVENTS_SHOW;
+  getEventshow: async (organizerId, { search, status, page, limit } = {}) => {
+    const params = new URLSearchParams();
+    if (organizerId) params.append("organizer_id", organizerId);
+    if (search && search.trim()) params.append("search", search.trim());
+    if (status && status.toLowerCase() !== "all") params.append("status", status);
+    if (page) params.append("page", String(page));
+    if (limit) params.append("limit", String(limit));
+    const queryString = params.toString();
+    const url = queryString
+      ? `${EVENT_ENDPOINTS.GET_EVENTS_SHOW}?${queryString}`
+      : EVENT_ENDPOINTS.GET_EVENTS_SHOW;
     const res = await axiosClient.get(url);
     return res.data;
   },

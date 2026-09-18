@@ -176,22 +176,33 @@ class AuthService:
         if not check_password_hash(user.password, data.password):
             raise ApiError("Invalid password", 401)
 
-        user_full = AuthService.get_current_user(user.id)
+        user_id = str(user.id)
+        user_email = str(user.email).lower()
+        must_change_pwd = bool(getattr(user, "must_change_password", False))
+
+        # Auto-accept any pending team invitations for this user email
+        try:
+            from app.modules.rbac.services.tenant_service import TenantService
+            TenantService.auto_accept_pending_invitations_for_user(user_id, user_email)
+        except Exception as e:
+            print(f"[WARN] Auto-accept invitation on login error: {e}")
+
+        user_full = AuthService.get_current_user(user_id)
         all_roles = user_full.get("roles") or ["user"]
         active_role = user_full.get("active_role") or (all_roles[0] if all_roles else "user")
 
         # Security Guard: Only the genuine designated email can log in with superadmin privileges
-        is_super = any(r in ["superuser", "superadmin", "admin"] for r in all_roles) or user.active_role in ["superuser", "superadmin", "admin"]
-        if is_super and user.email.lower() != "bookmyevent2026@gmail.com":
+        is_super = any(r in ["superuser", "superadmin", "admin"] for r in all_roles) or active_role in ["superuser", "superadmin", "admin"]
+        if is_super and user_email != "bookmyevent2026@gmail.com":
             raise ApiError("Unauthorized administrative access.", 403)
 
-        access_token = generate_access_token(user.id, role=active_role, roles=all_roles)
-        refresh_token = generate_refresh_token(user.id, role=active_role, roles=all_roles)
+        access_token = generate_access_token(user_id, role=active_role, roles=all_roles)
+        refresh_token = generate_refresh_token(user_id, role=active_role, roles=all_roles)
         return {
             "token": access_token,
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "must_change_password": bool(user.must_change_password),
+            "must_change_password": bool(user_full.get("must_change_password", must_change_pwd)),
             "user": user_full,
             "message": "Login successful"
         }
@@ -203,9 +214,10 @@ class AuthService:
             raise ApiError("User not found", 404)
         
         user_dict = user.to_dict()
-
+        user_id_str = str(user.id)
+        raw_active_role = str(user.active_role or "")
         roles = list(user.roles) if user.roles else ["user"]
-        is_admin_user = any(r in ["superuser", "superadmin", "admin"] for r in roles) or user.active_role in ["superuser", "superadmin", "admin"]
+        is_admin_user = any(r in ["superuser", "superadmin", "admin"] for r in roles) or raw_active_role in ["superuser", "superadmin", "admin"]
 
         # Super administrators are strictly isolated to platform administration
         if is_admin_user:
@@ -217,8 +229,8 @@ class AuthService:
             }
             return user_dict
 
-        org_profile = AuthRepository.get_organizer_profile_by_user_id(user.id)
-        exh_profile = AuthRepository.get_exhibitor_profile_by_user_id(user.id)
+        org_profile = AuthRepository.get_organizer_profile_by_user_id(user_id_str)
+        exh_profile = AuthRepository.get_exhibitor_profile_by_user_id(user_id_str)
 
         if org_profile and org_profile.kyc_status in ["VERIFIED", "IN_PROGRESS"]:
             if "organizer" not in roles:
@@ -234,7 +246,7 @@ class AuthService:
             member_orgs = db.session.query(Organization.org_type).join(
                 OrganizationMember, OrganizationMember.organization_id == Organization.id
             ).filter(
-                OrganizationMember.user_id == user.id,
+                OrganizationMember.user_id == user_id_str,
                 OrganizationMember.status == 'ACTIVE',
                 OrganizationMember.deleted_at.is_(None)
             ).all()
@@ -250,16 +262,19 @@ class AuthService:
         if set(roles) != set(user.roles or []):
             user.roles = roles
             from app.extensions.database import db
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
-        if user.active_role and user.active_role in roles and user.active_role != "user":
-            active_role = user.active_role
+        if raw_active_role and raw_active_role in roles and raw_active_role != "user":
+            active_role = raw_active_role
         elif "organizer" in roles:
             active_role = "organizer"
         elif "exhibitor" in roles:
             active_role = "exhibitor"
         else:
-            active_role = user.active_role or (roles[0] if roles else "user")
+            active_role = raw_active_role or (roles[0] if roles else "user")
         user_dict["roles"] = roles
         user_dict["active_role"] = active_role
         user_dict["profiles"] = {
@@ -268,7 +283,7 @@ class AuthService:
         }
 
         # Attach prefilled shared KYC fields for upgrade convenience
-        shared_kyc = AuthRepository.get_shared_kyc_data(user.id)
+        shared_kyc = AuthRepository.get_shared_kyc_data(user_id_str)
         user_dict["shared_kyc"] = shared_kyc
 
         # Backward compatible flat field overlays
@@ -286,6 +301,41 @@ class AuthService:
 
         has_bank = bool(user_dict.get("bank_name") and user_dict.get("account_number"))
         user_dict["onboarding_completed"] = has_bank
+
+        # Attach tenant organization & inherited profile for team members
+        try:
+            from app.modules.rbac.services.tenant_service import TenantService
+            tenant_ctx = TenantService.resolve_tenant_context(user_id_str, active_role)
+            user_dict["organization_id"] = tenant_ctx.get("organization_id")
+            user_dict["organization_name"] = tenant_ctx.get("organization_name")
+            user_dict["organization_owner_id"] = tenant_ctx.get("organization_owner_id")
+            user_dict["is_team_member"] = tenant_ctx.get("is_team_member", False)
+            user_dict["team_role_name"] = tenant_ctx.get("role_name")
+            user_dict["permissions"] = tenant_ctx.get("permissions", [])
+
+            # Inherit parent company profile & KYC status if member has no personal profile
+            inh = tenant_ctx.get("inherited_profile")
+            if inh:
+                if active_role == "exhibitor" and not user_dict["profiles"].get("exhibitor"):
+                    user_dict["profiles"]["exhibitor"] = inh
+                    for k, v in inh.items():
+                        if v and not user_dict.get(k):
+                            user_dict[k] = v
+                elif active_role == "organizer" and not user_dict["profiles"].get("organizer"):
+                    user_dict["profiles"]["organizer"] = inh
+                    for k, v in inh.items():
+                        if v and not user_dict.get(k):
+                            user_dict[k] = v
+
+            if user_dict.get("is_team_member"):
+                user_dict["onboarding_completed"] = True
+                user_dict["kyc_status"] = "VERIFIED"
+                if active_role == "exhibitor":
+                    user_dict["exhibitor_kyc"] = "VERIFIED"
+                elif active_role == "organizer":
+                    user_dict["organizer_kyc"] = "VERIFIED"
+        except Exception as e:
+            print(f"[WARN] Tenant attachment error: {e}")
 
         return user_dict
 

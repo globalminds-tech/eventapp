@@ -16,6 +16,14 @@ export default function Register() {
   const eventBanner = searchParams.get("eventBanner");
   const isBookingFlow = Boolean(returnUrl && returnUrl.includes("/usersbooking"));
 
+  const handleBack = () => {
+    if (isBookingFlow && returnUrl) {
+      navigate(returnUrl);
+    } else {
+      navigate("/");
+    }
+  };
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -240,7 +248,7 @@ export default function Register() {
             <div className="flex items-center justify-between mb-5 lg:hidden">
               <button
                 type="button"
-                onClick={() => navigate(-1)}
+                onClick={handleBack}
                 className="p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition flex items-center gap-1 text-xs font-bold bg-transparent border-none cursor-pointer"
               >
                 <ArrowLeft size={16} />
@@ -256,7 +264,7 @@ export default function Register() {
             <div className="hidden lg:flex items-center justify-between mb-4">
               <button
                 type="button"
-                onClick={() => navigate(-1)}
+                onClick={handleBack}
                 className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-500 hover:text-orange-600 transition-colors cursor-pointer bg-transparent border-none"
               >
                 <ArrowLeft size={14} />

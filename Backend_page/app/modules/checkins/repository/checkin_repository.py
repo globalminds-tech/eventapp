@@ -54,8 +54,107 @@ class CheckinRepository:
         return results
 
     @staticmethod
-    def get_event_attendees(event_id: str):
-        stmt = select(UserBookingDetails).where(UserBookingDetails.event_id == event_id).order_by(UserBookingDetails.created_at.desc())
+    def get_event_attendees(
+        event_id: str,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
+        page: Optional[int] = None,
+        limit: Optional[int] = None
+    ):
+        import uuid
+        try:
+            parsed_id = uuid.UUID(str(event_id))
+        except Exception:
+            evt = db.session.scalar(select(EventDetails).where(or_(EventDetails.event_code == str(event_id), EventDetails.id == str(event_id))))
+            parsed_id = evt.id if evt else event_id
+
+        base_filter = [UserBookingDetails.event_id == parsed_id, UserBookingDetails.deleted_at.is_(None)]
+
+        # 1. Compute aggregate live counts for this event
+        total_stmt = select(func.count(UserBookingDetails.id)).where(*base_filter)
+        total_count = db.session.scalar(total_stmt) or 0
+
+        inside_stmt = select(func.count(UserBookingDetails.id)).where(*base_filter, UserBookingDetails.is_checked_in == True)
+        inside_count = db.session.scalar(inside_stmt) or 0
+
+        departed_stmt = select(func.count(UserBookingDetails.id)).where(*base_filter, UserBookingDetails.is_checked_out == True)
+        departed_count = db.session.scalar(departed_stmt) or 0
+
+        arrived_stmt = select(func.count(UserBookingDetails.id)).where(
+            *base_filter,
+            or_(
+                UserBookingDetails.is_checked_in == True,
+                UserBookingDetails.is_scanned == True,
+                UserBookingDetails.total_checkins > 0
+            )
+        )
+        arrived_count = db.session.scalar(arrived_stmt) or 0
+
+        not_arrived_stmt = select(func.count(UserBookingDetails.id)).where(
+            *base_filter,
+            UserBookingDetails.is_checked_in == False,
+            UserBookingDetails.is_checked_out == False,
+            or_(UserBookingDetails.is_scanned == False, UserBookingDetails.is_scanned.is_(None)),
+            or_(UserBookingDetails.total_checkins == 0, UserBookingDetails.total_checkins.is_(None))
+        )
+        not_arrived_count = db.session.scalar(not_arrived_stmt) or 0
+
+        redeemed_stmt = select(func.count(UserBookingDetails.id)).where(
+            *base_filter,
+            or_(
+                UserBookingDetails.is_checked_in == True,
+                UserBookingDetails.is_scanned == True,
+                UserBookingDetails.total_checkins > 0
+            )
+        )
+        redeemed_count = db.session.scalar(redeemed_stmt) or 0
+        pending_count = max(0, total_count - redeemed_count)
+
+        # 2. Build filtered query
+        filter_conditions = list(base_filter)
+
+        if status:
+            st = status.strip().upper()
+            if st == "INSIDE":
+                filter_conditions.append(UserBookingDetails.is_checked_in == True)
+            elif st == "DEPARTED":
+                filter_conditions.append(UserBookingDetails.is_checked_out == True)
+            elif st == "NOT_ARRIVED":
+                filter_conditions.append(UserBookingDetails.is_checked_in == False)
+                filter_conditions.append(UserBookingDetails.is_checked_out == False)
+                filter_conditions.append(or_(UserBookingDetails.is_scanned == False, UserBookingDetails.is_scanned.is_(None)))
+                filter_conditions.append(or_(UserBookingDetails.total_checkins == 0, UserBookingDetails.total_checkins.is_(None)))
+            elif st == "REDEEMED":
+                filter_conditions.append(
+                    or_(
+                        UserBookingDetails.is_checked_in == True,
+                        UserBookingDetails.is_scanned == True,
+                        UserBookingDetails.total_checkins > 0
+                    )
+                )
+            elif st == "PENDING":
+                filter_conditions.append(UserBookingDetails.is_checked_in == False)
+                filter_conditions.append(or_(UserBookingDetails.is_scanned == False, UserBookingDetails.is_scanned.is_(None)))
+                filter_conditions.append(or_(UserBookingDetails.total_checkins == 0, UserBookingDetails.total_checkins.is_(None)))
+
+        if search and search.strip():
+            term = f"%{search.strip()}%"
+            filter_conditions.append(
+                or_(
+                    UserBookingDetails.name.ilike(term),
+                    UserBookingDetails.email.ilike(term),
+                    UserBookingDetails.phone.ilike(term),
+                    UserBookingDetails.ticket_code.ilike(term)
+                )
+            )
+
+        stmt = select(UserBookingDetails).where(*filter_conditions).order_by(UserBookingDetails.created_at.desc())
+
+        if limit and limit > 0:
+            if page and page > 0:
+                stmt = stmt.offset((page - 1) * limit)
+            stmt = stmt.limit(limit)
+
         bookings = db.session.scalars(stmt).all()
         data = []
         for b in bookings:
@@ -75,7 +174,20 @@ class CheckinRepository:
                 "total_checkouts": b.total_checkouts or 0,
                 "created_at": b.created_at.isoformat() if b.created_at else ""
             })
-        return data
+
+        return {
+            "attendees": data,
+            "counts": {
+                "total": total_count,
+                "inside": inside_count,
+                "departed": departed_count,
+                "arrived": arrived_count,
+                "not_arrived": not_arrived_count,
+                "redeemed": redeemed_count,
+                "pending": pending_count
+            },
+            "total": len(data)
+        }
 
     @staticmethod
     def get_event_checkin_logs(event_id: str, limit: int = 30):

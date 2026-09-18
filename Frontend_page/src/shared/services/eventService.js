@@ -123,7 +123,38 @@ export const getApprovedEvents = async () => {
 let homeEventsCache = null;
 let homeEventsCacheTimestamp = 0;
 
-export const getHomeEventshow = async (forceRefresh = false) => {
+export const getHomeEventshow = async (params = {}) => {
+  const isBool = typeof params === "boolean";
+  const forceRefresh = isBool ? params : Boolean(params?.forceRefresh);
+
+  const search = !isBool && params?.search ? String(params.search).trim() : "";
+  const category = !isBool && params?.category && params.category !== "All" ? String(params.category).trim() : "";
+  const location = !isBool && (params?.location || params?.city) ? String(params.location || params.city).trim() : "";
+  const page = !isBool && params?.page ? params.page : undefined;
+  const limit = !isBool && params?.limit ? params.limit : undefined;
+  const sortBy = !isBool && params?.sort_by ? params.sort_by : undefined;
+  const sortOrder = !isBool && params?.sort_order ? params.sort_order : undefined;
+
+  const queryParams = new URLSearchParams();
+  if (search) queryParams.append("search", search);
+  if (category) queryParams.append("category", category);
+  if (location) queryParams.append("location", location);
+  if (page) queryParams.append("page", String(page));
+  if (limit) queryParams.append("limit", String(limit));
+  if (sortBy) queryParams.append("sort_by", sortBy);
+  if (sortOrder) queryParams.append("sort_order", sortOrder);
+
+  const queryString = queryParams.toString();
+  const endpoint = queryString
+    ? `/superadmin/home/get-events?${queryString}`
+    : "/superadmin/home/get-events";
+
+  // When filtering or searching, bypass static home cache and fetch fresh from API
+  if (queryString) {
+    const res = await apiClient.get(endpoint);
+    return res.data;
+  }
+
   const now = Date.now();
   if (!forceRefresh && homeEventsCache && (now - homeEventsCacheTimestamp < 180000)) {
     return homeEventsCache;
@@ -134,7 +165,7 @@ export const getHomeEventshow = async (forceRefresh = false) => {
       homeEventsCache = JSON.parse(stored);
       homeEventsCacheTimestamp = now;
       // Return cached immediately and refresh in background
-      apiClient.get("/superadmin/home/get-events").then((res) => {
+      apiClient.get(endpoint).then((res) => {
         if (res?.data) {
           homeEventsCache = res.data;
           sessionStorage.setItem("home_events_cache", JSON.stringify(res.data));
@@ -144,7 +175,7 @@ export const getHomeEventshow = async (forceRefresh = false) => {
     }
   } catch (err) {}
 
-  const res = await apiClient.get("/superadmin/home/get-events");
+  const res = await apiClient.get(endpoint);
   if (res?.data) {
     homeEventsCache = res.data;
     homeEventsCacheTimestamp = now;
@@ -153,6 +184,10 @@ export const getHomeEventshow = async (forceRefresh = false) => {
     } catch (e) {}
   }
   return res.data;
+};
+
+export const searchCustomerEvents = async (filters = {}) => {
+  return getHomeEventshow(filters);
 };
 
 export const getAllEvents = async () => {

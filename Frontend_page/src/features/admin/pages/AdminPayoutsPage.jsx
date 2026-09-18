@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import {
   ShieldCheck,
   Search,
@@ -21,6 +22,7 @@ export const AdminPayoutsPage = () => {
   const [queue, setQueue] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm.trim(), 300);
   const [selectedOrg, setSelectedOrg] = useState(null);
   const [payoutAmount, setPayoutAmount] = useState("");
   const [manualUtr, setManualUtr] = useState("");
@@ -28,10 +30,11 @@ export const AdminPayoutsPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedField, setCopiedField] = useState("");
 
-  const fetchPayoutQueue = async () => {
+  const fetchPayoutQueue = async (search = "") => {
     setIsLoading(true);
     try {
-      const res = await axiosClient.get("/api/v1/finances/admin/payouts");
+      const params = search ? { search } : {};
+      const res = await axiosClient.get("/api/v1/finances/admin/payouts", { params });
       if (res.data && res.data.success) {
         setQueue(res.data.data || []);
       }
@@ -43,8 +46,8 @@ export const AdminPayoutsPage = () => {
   };
 
   useEffect(() => {
-    fetchPayoutQueue();
-  }, []);
+    fetchPayoutQueue(debouncedSearch);
+  }, [debouncedSearch]);
 
   const handleCopy = (text, field) => {
     navigator.clipboard.writeText(text);
@@ -84,11 +87,7 @@ export const AdminPayoutsPage = () => {
   const totalEscrow = queue.reduce((acc, curr) => acc + (curr.available_balance || 0), 0);
   const totalSettled = queue.reduce((acc, curr) => acc + (curr.settled_amount || 0), 0);
 
-  const filteredQueue = queue.filter(item =>
-    (item.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.company_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (item.email || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredQueue = queue;
 
   return (
     <div className="space-y-6 pb-12 w-full">

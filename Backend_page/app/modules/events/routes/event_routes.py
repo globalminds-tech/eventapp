@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from app.modules.events.controllers.event_controller import EventController
+from app.modules.admin.controllers.admin_controller import AdminController
 from app.modules.events.schemas.event_schema import CreateEventSchema, UpdateEventSchema
 from app.middleware.auth import get_current_user
 
@@ -13,6 +14,42 @@ def get_all_events():
 @event_router.get("/summary")
 def get_events_summary():
     return EventController.get_events_summary()
+
+@event_router.get("/search")
+@root_events_router.get("/api/events/search")
+def search_events(
+    request: Request,
+    search: str = None,
+    category: str = None,
+    city: str = None,
+    location: str = None,
+    page: int = None,
+    limit: int = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+):
+    host_url = str(request.base_url)
+    req_params = request.query_params
+    q_search = search if search is not None else req_params.get("search")
+    q_category = category if category is not None else req_params.get("category")
+    q_city = city if city is not None else req_params.get("city")
+    q_location = location if location is not None else (req_params.get("location") or q_city)
+    q_page = page if page is not None else req_params.get("page")
+    q_limit = limit if limit is not None else req_params.get("limit")
+
+    return AdminController.get_events(
+        host_url=host_url,
+        organizer_id=None,
+        only_approved=True,
+        search=q_search,
+        category=q_category,
+        city=q_city,
+        location=q_location,
+        page=int(q_page) if q_page is not None else None,
+        limit=int(q_limit) if q_limit is not None else None,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
 
 @event_router.get("/{event_id}")
 @root_events_router.get("/superadmin/booking/event/{event_id}")

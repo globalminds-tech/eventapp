@@ -10,14 +10,14 @@ const DEFAULT_ORGANIZER_PERMS = [
   "stalls.view", "stalls.create", "stalls.edit", "stalls.approve", "stalls.delete",
   "checkin.view", "checkin.scan", "finance.view", "team.view", "roles.view", "roles.manage",
   "master_data.view", "master_data.create", "master_data.edit", "master_data.delete",
-  "venues.view", "venues.manage", "organizer.*"
+  "venues.view", "venues.manage"
 ];
 
 const DEFAULT_EXHIBITOR_PERMS = [
   "exhibitor.dashboard.view", "exhibitor.events.browse", "exhibitor.stalls.book", "exhibitor.stalls.view", "exhibitor.stalls.manage",
   "exhibitor.leads.view", "exhibitor.leads.export", "exhibitor.leads.scan",
   "exhibitor.booth.manage", "exhibitor.billing.view",
-  "exhibitor.team.view", "exhibitor.team.invite", "exhibitor.team.edit", "exhibitor.team.remove", "exhibitor.roles.manage", "exhibitor.*"
+  "exhibitor.team.view", "exhibitor.team.invite", "exhibitor.team.edit", "exhibitor.team.remove", "exhibitor.roles.manage"
 ];
 
 const PermissionContext = createContext({
@@ -29,21 +29,55 @@ const PermissionContext = createContext({
 
 export function PermissionProvider({ children }) {
   const location = useLocation();
-  const { accessToken, user, role } = useSelector((state) => state.auth);
+  const reduxAuth = useSelector((state) => state.auth);
+  const reduxUser = useSelector((state) => state.user);
+  const accessToken = reduxAuth?.accessToken;
+  const authUser = reduxAuth?.user;
+  const role = reduxAuth?.role;
 
-  const rolesSignature = Array.isArray(user?.roles) ? user.roles.slice().sort().join(",") : "user";
-  const userId = user?.id || "";
+  const storedUser = useMemo(() => {
+    try {
+      const u = localStorage.getItem("user") || sessionStorage.getItem("user");
+      return u ? JSON.parse(u) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const effectiveUser = useMemo(() => {
+    return {
+      ...(storedUser || {}),
+      ...(reduxUser || {}),
+      ...(authUser || {}),
+    };
+  }, [storedUser, reduxUser, authUser]);
+
+  // Robust check for invited team member status
+  const isTeamMember = Boolean(
+    effectiveUser?.is_team_member ||
+    authUser?.is_team_member ||
+    reduxUser?.is_team_member ||
+    storedUser?.is_team_member ||
+    (effectiveUser?.organization_owner_id && effectiveUser?.id && String(effectiveUser.organization_owner_id) !== String(effectiveUser.id)) ||
+    effectiveUser?.team_role_name
+  );
+
+  const rolesSignature = Array.isArray(effectiveUser?.roles) ? effectiveUser.roles.slice().sort().join(",") : "user";
+  const userId = effectiveUser?.id || "";
 
   // Determine current active workspace scope based on route or role
   const isExhibitorPortal = location.pathname.toLowerCase().startsWith("/exhibitor") || String(role || "").toLowerCase() === "exhibitor";
   const activeScope = isExhibitorPortal ? "exhibitor" : "organizer";
 
-  // Pre-seed permissions if user is organizer or exhibitor to prevent any lockout
+  // Pre-seed permissions: owners get full defaults, team members use explicit assigned permissions
   const [permissions, setPermissions] = useState(() => {
-    const rawRole = String(role || user?.active_role || user?.role || "").toLowerCase();
-    const hasOrg = rawRole === "organizer" || (Array.isArray(user?.roles) && user.roles.includes("organizer"));
+    if (isTeamMember) {
+      return Array.isArray(effectiveUser?.permissions) ? effectiveUser.permissions : [];
+    }
+    const rawRole = String(role || effectiveUser?.active_role || effectiveUser?.role || "").toLowerCase();
+    const hasOrg = rawRole === "organizer" || (Array.isArray(effectiveUser?.roles) && effectiveUser.roles.includes("organizer"));
     if (hasOrg && !isExhibitorPortal) return DEFAULT_ORGANIZER_PERMS;
-    const hasExh = rawRole === "exhibitor" || (Array.isArray(user?.roles) && user.roles.includes("exhibitor"));
+    const hasExh = rawRole === "exhibitor" || (Array.isArray(effectiveUser?.roles) && effectiveUser.roles.includes("exhibitor"));
     if (hasExh && isExhibitorPortal) return DEFAULT_EXHIBITOR_PERMS;
     return [];
   });
@@ -53,17 +87,21 @@ export function PermissionProvider({ children }) {
   const isFetchingRef = useRef(false);
 
   const allUserRoles = useMemo(() => {
-    const fromHelper = getUserAvailableRoles(user);
-    const active = String(role || user?.active_role || user?.role || "").toLowerCase();
+    const fromHelper = getUserAvailableRoles(effectiveUser);
+    const active = String(role || effectiveUser?.active_role || effectiveUser?.role || "").toLowerCase();
     const list = new Set([
       ...fromHelper,
-      ...(Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [])
+      ...(Array.isArray(effectiveUser?.roles) ? effectiveUser.roles.map((r) => String(r).toLowerCase()) : [])
     ]);
     if (active) list.add(active);
     return Array.from(list);
-  }, [user, role]);
+  }, [effectiveUser, role]);
 
   const applyDefaults = useCallback((cacheKey) => {
+    if (isTeamMember) {
+      // Team members must strictly adhere to their assigned role permissions
+      return;
+    }
     if (allUserRoles.includes("organizer") && !isExhibitorPortal) {
       setPermissions(DEFAULT_ORGANIZER_PERMS);
       if (cacheKey) lastFetchedKeyRef.current = cacheKey;
@@ -71,7 +109,7 @@ export function PermissionProvider({ children }) {
       setPermissions(DEFAULT_EXHIBITOR_PERMS);
       if (cacheKey) lastFetchedKeyRef.current = cacheKey;
     }
-  }, [allUserRoles, isExhibitorPortal]);
+  }, [allUserRoles, isExhibitorPortal, isTeamMember]);
 
   const fetchPermissions = useCallback(async (force = false) => {
     if (!accessToken) {
@@ -114,21 +152,23 @@ export function PermissionProvider({ children }) {
           "X-Workspace-Scope": activeScope
         },
       });
-      if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         setPermissions(res.data.data);
         lastFetchedKeyRef.current = cacheKey;
-      } else {
-        // Apply robust default workspace permissions if backend returned empty array
+      } else if (!isTeamMember) {
+        // Apply default workspace permissions ONLY if backend returned empty array and user is genuine owner
         applyDefaults(cacheKey);
       }
     } catch (err) {
       console.warn("[PermissionContext] Failed to load permissions:", err);
-      applyDefaults(cacheKey);
+      if (!isTeamMember) {
+        applyDefaults(cacheKey);
+      }
     } finally {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [accessToken, userId, activeScope, rolesSignature, allUserRoles, applyDefaults]);
+  }, [accessToken, userId, activeScope, rolesSignature, allUserRoles, applyDefaults, isTeamMember]);
 
   useEffect(() => {
     fetchPermissions();
@@ -154,11 +194,6 @@ export function PermissionProvider({ children }) {
         return true;
       }
 
-      // Fallback: If user has confirmed organizer role and is accessing organizer portal, grant organizer-scoped permissions
-      if (allUserRoles.includes("organizer") && !isExhibitorPortal && !String(requiredPermission).startsWith("exhibitor.")) {
-        return true;
-      }
-
       // Direct match
       if (permissions.includes(requiredPermission)) return true;
 
@@ -166,9 +201,19 @@ export function PermissionProvider({ children }) {
       const [module] = String(requiredPermission).split(".");
       if (module && permissions.includes(`${module}.*`)) return true;
 
+      // Primary Organization Owner fallback: ONLY genuine primary owners (never invited team members)
+      if (!isTeamMember && effectiveUser?.id && (!effectiveUser?.organization_owner_id || String(effectiveUser.organization_owner_id) === String(effectiveUser.id))) {
+        if (allUserRoles.includes("organizer") && !isExhibitorPortal && !String(requiredPermission).startsWith("exhibitor.")) {
+          return true;
+        }
+        if (allUserRoles.includes("exhibitor") && isExhibitorPortal && String(requiredPermission).startsWith("exhibitor.")) {
+          return true;
+        }
+      }
+
       return false;
     },
-    [permissions, allUserRoles, isExhibitorPortal]
+    [permissions, allUserRoles, isExhibitorPortal, isTeamMember, effectiveUser]
   );
 
   return (

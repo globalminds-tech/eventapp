@@ -85,6 +85,22 @@ export const getAuthUserId = (reduxUser) => {
 };
 
 /**
+ * Universal Multi-Tenant Helper: Resolves the tenant/owner ID for data querying.
+ * For invited team members, this returns the inviter's organization_owner_id.
+ */
+export const getEffectiveTenantUserId = (reduxUser) => {
+  if (reduxUser?.organization_owner_id) return reduxUser.organization_owner_id;
+  const storedUserStr = localStorage.getItem("user") || sessionStorage.getItem("user");
+  if (storedUserStr) {
+    try {
+      const u = JSON.parse(storedUserStr);
+      if (u?.organization_owner_id) return u.organization_owner_id;
+    } catch (e) {}
+  }
+  return getAuthUserId(reduxUser);
+};
+
+/**
  * Derives uppercase initials from user's full name (e.g. "John Doe" -> "JD", "Admin" -> "A")
  */
 export const getUserInitials = (name) => {

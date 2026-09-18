@@ -26,15 +26,40 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        '/exhibitor/api': {
+          target: backendTarget,
+          changeOrigin: true,
+          secure: false,
+        },
         '/superadmin': {
           target: backendTarget,
           changeOrigin: true,
           secure: false,
+          bypass: (req) => {
+            if (req.headers.accept && req.headers.accept.includes('text/html')) {
+              return '/index.html';
+            }
+          },
         },
         '/superuser': {
           target: backendTarget,
           changeOrigin: true,
           secure: false,
+          bypass: (req) => {
+            if (req.headers.accept && req.headers.accept.includes('text/html')) {
+              return '/index.html';
+            }
+          },
+        },
+        '/admin': {
+          target: backendTarget,
+          changeOrigin: true,
+          secure: false,
+          bypass: (req) => {
+            if (req.headers.accept && req.headers.accept.includes('text/html')) {
+              return '/index.html';
+            }
+          },
         },
         '/uploads': {
           target: backendTarget,

@@ -1,110 +1,140 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchEventsThunk } from "@/app/store/eventSlice";
+import { eventApi } from "@/features/events/api/event.api";
 import {
-  Eye, Pencil, Search, PlusCircle, Calendar, Ticket, IndianRupee, Users,
-  QrCode, MapPin, Clock, RefreshCw, Trash2, Store, Utensils, Bell,
-  ChevronDown, ArrowUpRight, CheckCircle2, AlertCircle, X, ShieldCheck, PlayCircle
+  Eye, Pencil, Search, PlusCircle, Calendar,
+  QrCode, RefreshCw, ShieldCheck, PlayCircle,
+  AlertCircle, CheckCircle2, Clock, ArrowUpRight, FileEdit, Store
 } from "lucide-react";
+import apiClient from "@/Services/client";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Select, SelectItem } from "@/components/ui/Select";
 import Can from "@/components/Can";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
+import CreateEventButton from "@/components/ui/CreateEventButton";
 
 export default function OrganizerDashboardPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const reduxUser = useSelector((state) => state.user);
   const eventsState = useSelector((state) => state.events?.list);
-  const events = Array.isArray(eventsState) ? eventsState : (Array.isArray(eventsState?.data) ? eventsState.data : []);
-  const { loading, loaded } = useSelector((state) => state.events);
-  
+  const allEvents = Array.isArray(eventsState) ? eventsState : (Array.isArray(eventsState?.data) ? eventsState.data : []);
+  const { loading: reduxLoading, loaded } = useSelector((state) => state.events);
+
   const organizerName = reduxUser.name || sessionStorage.getItem("name") || localStorage.getItem("name") || "Organizer";
   const organizerCompany = reduxUser.organization_name || sessionStorage.getItem("organization_name") || localStorage.getItem("organization_name") || "";
+  const organizerKycStatus = reduxUser.kyc_status || reduxUser.organizer_kyc_status || sessionStorage.getItem("kyc_status") || "PENDING";
 
+  const userId = reduxUser.id || sessionStorage.getItem("userId") || sessionStorage.getItem("id") || localStorage.getItem("userId") || localStorage.getItem("id") || "";
+
+  // ── Table-specific state (API-driven) ──
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedTab, setSelectedTab] = useState("all");
-  const [selectedEventId, setSelectedEventId] = useState("all");
-  const [activeModal, setActiveModal] = useState(null);
+  const [tableEvents, setTableEvents] = useState([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
+  const latestRequestIdRef = useRef(0);
+  const searchTimerRef = useRef(null);
+
+  // ── Stall Applications state ──
+  const [stallApplications, setStallApplications] = useState([]);
+  const [loadingStalls, setLoadingStalls] = useState(true);
+
+  const fetchStallApplications = useCallback(async () => {
+    try {
+      setLoadingStalls(true);
+      const res = await apiClient.get('/api/v1/organizer/stalls/applications');
+      const data = res?.data;
+      if (data?.success && Array.isArray(data.data)) {
+        setStallApplications(data.data);
+      } else if (Array.isArray(data)) {
+        setStallApplications(data);
+      } else {
+        setStallApplications([]);
+      }
+    } catch (err) {
+      console.error("Error fetching stall applications for dashboard:", err);
+      setStallApplications([]);
+    } finally {
+      setLoadingStalls(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const userId = reduxUser.id || sessionStorage.getItem("userId") || sessionStorage.getItem("id") || localStorage.getItem("userId") || localStorage.getItem("id") || "";
+    fetchStallApplications();
+  }, [fetchStallApplications]);
+
+  // Fetch all events for KPI cards on mount
+  useEffect(() => {
     if (userId) {
       dispatch(fetchEventsThunk({ organizerId: userId, force: true }));
     }
-  }, [dispatch, reduxUser.id]);
+  }, [dispatch, userId]);
 
-  // Filter events by selected scope dropdown
-  const scopedEvents = selectedEventId === "all" 
-    ? events 
-    : events.filter(e => String(e.id) === String(selectedEventId) || String(e.event_code) === String(selectedEventId));
+  // Debounce search input (300ms)
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
 
-  const selectedEventObj = events.find(e => String(e.id) === String(selectedEventId));
-
-  // --- Dynamic KPI Calculations ---
-  const totalCapacitySum = scopedEvents.reduce((acc, e) => acc + Number(e?.totalCapacity || e?.capacity || e?.total_capacity || 0), 0);
-  const totalPassesSold = scopedEvents.reduce((acc, e) => acc + Number(e?.passesSold || e?.passes_sold || e?.booking?.capacity || 0), 0);
-  const ticketsPercentage = totalCapacitySum > 0 ? Math.min(100, Math.round((totalPassesSold / totalCapacitySum) * 100)) : 0;
-
-  const ticketRevenue = scopedEvents.reduce((acc, e) => {
-    const price = Number(e?.price_inr || e?.priceINR || e?.price || e?.pass_fee || 0);
-    const sold = Number(e?.passesSold || e?.passes_sold || 0);
-    return acc + (price * sold);
-  }, 0);
-
-  const stallsCapacitySum = scopedEvents.reduce((acc, e) => acc + Number(e?.total_stalls || e?.stalls_capacity || 0), 0);
-  const stallsBookedCount = scopedEvents.reduce((acc, e) => acc + Number(e?.stalls_booked || e?.stallsBooked || e?.reserved_stalls || (e?.stalls ? e.stalls.length : 0)), 0);
-  const stallsAvailable = Math.max(0, stallsCapacitySum - stallsBookedCount);
-  const stallsPercentage = stallsCapacitySum > 0 ? Math.min(100, Math.round((stallsBookedCount / stallsCapacitySum) * 100)) : 0;
-
-  const stallRevenue = scopedEvents.reduce((acc, e) => acc + Number(e?.stall_revenue || e?.stallRevenue || 0), 0);
-  const totalGrossRevenue = ticketRevenue + stallRevenue;
-
-  const totalGateScans = scopedEvents.reduce((acc, e) => acc + Number(e?.gateScans || e?.arrived || 0), 0);
-  const checkInPercentage = totalPassesSold > 0 ? Math.min(100, Math.round((totalGateScans / totalPassesSold) * 100)) : 0;
-
-  const mealsGivenCount = scopedEvents.reduce((acc, e) => acc + Number(e?.food_passes || e?.foodPasses || e?.food_issued || (e?.food ? totalPassesSold : 0)), 0);
-  const totalMealPassesSum = totalPassesSold > 0 ? totalPassesSold : 0;
-  const mealsPercentage = totalMealPassesSum > 0 ? Math.min(100, Math.round((mealsGivenCount / totalMealPassesSum) * 100)) : 0;
-
-  const upcomingEventsList = events.filter((e) => {
-    const sDate = e?.event_date ? new Date(e.event_date) : (e?.start_date ? new Date(e.start_date) : null);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return sDate && sDate >= today;
-  });
-
-  const nextUpcomingEvent = upcomingEventsList.length > 0 
-    ? (upcomingEventsList[0].name || upcomingEventsList[0].event_name) 
-    : null;
-
-  const pendingApprovalsCount = events.filter((e) => ["Pending", "Draft"].includes(e?.status || e?.event_status)).length;
-  const thingsToDoCount = pendingApprovalsCount > 0 ? pendingApprovalsCount : 0;
-
-  // Format Lakhs helper (e.g. ₹8.42 L or ₹45,000)
-  const formatLakhs = (amount) => {
-    const num = Math.round(Number(amount) || 0);
-    if (num >= 100000) {
-      const lakh = (num / 100000).toFixed(2);
-      return `₹${lakh.endsWith(".00") ? lakh.slice(0, -3) : lakh} L`;
+  // API-driven table fetch on tab change or debounced search change
+  const fetchTableEvents = useCallback(async () => {
+    if (!userId) return;
+    const currentRequestId = ++latestRequestIdRef.current;
+    if (!hasLoadedOnceRef.current) {
+      setInitialLoading(true);
+    } else {
+      setIsFiltering(true);
     }
-    return `₹${num.toLocaleString("en-IN")}`;
-  };
 
-  const getEventTabStatus = (e) => {
+    try {
+      const data = await eventApi.getEventshow(userId, {
+        search: debouncedSearch || undefined,
+        status: selectedTab,
+      });
+
+      // Guard against race conditions from fast tab switching
+      if (currentRequestId !== latestRequestIdRef.current) return;
+
+      const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+      setTableEvents(arr);
+      hasLoadedOnceRef.current = true;
+    } catch (err) {
+      if (currentRequestId === latestRequestIdRef.current) {
+        console.error("[Dashboard] Table fetch error:", err);
+        setTableEvents([]);
+      }
+    } finally {
+      if (currentRequestId === latestRequestIdRef.current) {
+        setInitialLoading(false);
+        setIsFiltering(false);
+      }
+    }
+  }, [userId, selectedTab, debouncedSearch]);
+
+  useEffect(() => {
+    fetchTableEvents();
+  }, [fetchTableEvents]);
+
+  // ── KPI Calculations (from Redux full events list) ──
+  const getEventLifecycle = (e) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const sDate = e?.event_date ? new Date(e.event_date) : (e?.start_date ? new Date(e.start_date) : null);
     const eDate = e?.end_date ? new Date(e.end_date) : (sDate ? new Date(sDate) : null);
-
     if (sDate) sDate.setHours(0, 0, 0, 0);
     if (eDate) eDate.setHours(23, 59, 59, 999);
-
     const rawSt = (e?.status || e?.approval_status || "").toUpperCase();
     if (rawSt === "DRAFT") return "Draft";
     if (eDate && today > eDate) return "Past";
@@ -112,33 +142,54 @@ export default function OrganizerDashboardPage() {
     return "Active";
   };
 
-  const filteredEvents = scopedEvents.filter((evt) => {
-    if (!evt) return false;
-    const evtName = evt.name || evt.event_name || "";
-    const evtCode = evt.code || evt.event_code || "";
-    const evtCat = evt.category || evt.main_category_name || "";
-    const evtCity = evt.city || evt.venue || "";
+  const totalEventsCount = allEvents.length;
+  const activeEventsCount = allEvents.filter(e => getEventLifecycle(e) === "Active").length;
+  const upcomingEventsList = allEvents.filter(e => getEventLifecycle(e) === "Upcoming");
+  const upcomingEventsCount = upcomingEventsList.length;
+  const pastEventsCount = allEvents.filter(e => getEventLifecycle(e) === "Past").length;
+  const draftEventsCount = allEvents.filter(e => getEventLifecycle(e) === "Draft").length;
+  const pendingApprovalCount = allEvents.filter(e => ["PENDING", "SUBMITTED"].includes((e?.status || "").toUpperCase())).length;
 
-    const matchesSearch = searchQuery === "" || 
-      evtName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      evtCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      evtCat.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      evtCity.toLowerCase().includes(searchQuery.toLowerCase());
+  const pendingActionsCount = draftEventsCount + pendingApprovalCount;
 
-    const tabStatus = getEventTabStatus(evt).toLowerCase();
-    if (selectedTab === "all") return matchesSearch;
-    if (selectedTab === "active") return matchesSearch && tabStatus === "active";
-    if (selectedTab === "upcoming") return matchesSearch && tabStatus === "upcoming";
-    if (selectedTab === "past") return matchesSearch && tabStatus === "past";
-    if (selectedTab === "draft") return matchesSearch && tabStatus === "draft";
-    return matchesSearch;
+  // Next upcoming event
+  const sortedUpcoming = [...upcomingEventsList].sort((a, b) => {
+    const aDate = new Date(a.start_date || a.event_date);
+    const bDate = new Date(b.start_date || b.event_date);
+    return aDate - bDate;
   });
+  const nextEvent = sortedUpcoming[0] || null;
+  const nextEventName = nextEvent ? (nextEvent.name || nextEvent.event_name) : null;
+  const nextEventDate = nextEvent ? (nextEvent.start_date || nextEvent.event_date) : null;
+  const daysUntilNext = nextEventDate ? Math.max(0, Math.ceil((new Date(nextEventDate).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24))) : null;
+  const pendingStallsCount = useMemo(() => {
+    return stallApplications.filter(a => (a.status || '').toLowerCase() === 'pending').length;
+  }, [stallApplications]);
 
+  const approvedStallsCount = useMemo(() => {
+    return stallApplications.filter(a => (a.status || '').toLowerCase() === 'approved').length;
+  }, [stallApplications]);
+
+  // ── Table helpers ──
   const formatDate = (dateString) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getEventTabStatus = (e) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sDate = e?.event_date ? new Date(e.event_date) : (e?.start_date ? new Date(e.start_date) : null);
+    const eDate = e?.end_date ? new Date(e.end_date) : (sDate ? new Date(sDate) : null);
+    if (sDate) sDate.setHours(0, 0, 0, 0);
+    if (eDate) eDate.setHours(23, 59, 59, 999);
+    const rawSt = (e?.status || e?.approval_status || "").toUpperCase();
+    if (rawSt === "DRAFT") return "Draft";
+    if (eDate && today > eDate) return "Past";
+    if (sDate && today < sDate) return "Upcoming";
+    return "Active";
   };
 
   const handleView = (evt) => {
@@ -160,6 +211,15 @@ export default function OrganizerDashboardPage() {
     navigate(`/OrganizerHome/EventCheckIn/${eventId}`, { state: { eventId, eventData: evt } });
   };
 
+  const formatLakhs = (amount) => {
+    const num = Math.round(Number(amount) || 0);
+    if (num >= 100000) {
+      const lakh = (num / 100000).toFixed(2);
+      return `₹${lakh.endsWith(".00") ? lakh.slice(0, -3) : lakh} L`;
+    }
+    return `₹${num.toLocaleString("en-IN")}`;
+  };
+
   return (
     <div className="space-y-6 pb-12 select-none text-slate-800 font-sans max-w-full">
       
@@ -178,193 +238,198 @@ export default function OrganizerDashboardPage() {
             )}
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Here's how your events are doing.
+            Your organizer command center — overview & quick actions.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {/* Event Scope Selector Dropdown */}
-          <Select
-            value={selectedEventId}
-            onValueChange={(val) => setSelectedEventId(val)}
-            className="w-auto min-w-[210px]"
-            triggerClassName="h-9 font-extrabold text-xs bg-white hover:bg-slate-50 border-slate-200 text-slate-800 shadow-2xs rounded-xl focus:ring-cyan-500 focus:border-cyan-500"
-          >
-            <SelectItem value="all">Overview — All Events</SelectItem>
-            {events.map((e) => (
-              <SelectItem key={e.id} value={String(e.id)}>
-                {e.name || e.event_name || `Event #${e.id}`}
-              </SelectItem>
-            ))}
-          </Select>
-
           <Button
-            onClick={() => dispatch(fetchEventsThunk({ organizerId: reduxUser.id || sessionStorage.getItem("userId") || localStorage.getItem("id"), force: true }))}
+            onClick={() => {
+              dispatch(fetchEventsThunk({ organizerId: userId, force: true }));
+              fetchTableEvents();
+              fetchStallApplications();
+            }}
             variant="outline"
             className="bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs gap-1.5 cursor-pointer"
           >
-            <RefreshCw size={14} className={loading ? "animate-spin text-cyan-600" : "text-slate-500"} />
+            <RefreshCw size={14} className={(reduxLoading || isFiltering || initialLoading) ? "animate-spin text-cyan-600" : "text-slate-500"} />
             <span>Refresh Data</span>
           </Button>
 
-          <Can I="events.create">
-            <Button
-              onClick={() => navigate("/OrganizerHome/CreateEvent")}
-              className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-extrabold text-xs px-4 py-2 rounded-xl border-none cursor-pointer gap-2 shadow-md shadow-cyan-500/25 hover:opacity-95 transition-all"
-            >
-              <PlusCircle size={16} />
-              <span>+ Create New Event</span>
-            </Button>
-          </Can>
+          <CreateEventButton />
         </div>
       </div>
 
-      {/* ── 2. 8 HUMAN-READABLE KPI CARDS GRID (4x2 Desktop, 2x4 Tablet, 1x8 Mobile) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── 2. ORGANIZER-LEVEL COMMON STAT CARDS (4 cards - Equally Aligned) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
         
-        {/* CARD 1 — TICKETS SOLD */}
+        {/* CARD 1 — TOTAL EVENTS */}
         <Card 
-          onClick={() => setActiveModal('tickets')}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-blue-300 transition-all group"
+          onClick={() => setSelectedTab("all")}
+          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden cursor-pointer hover:border-cyan-300 transition-all group"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tickets Sold</span>
-            <div className="p-2 rounded-xl bg-blue-50 text-blue-600 group-hover:scale-105 transition-transform">
-              <Ticket size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{totalPassesSold.toLocaleString()}</div>
-          <p className="text-[11px] font-semibold text-slate-500">{ticketsPercentage}% of available tickets</p>
-          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${ticketsPercentage}%` }} />
-          </div>
-        </Card>
-
-        {/* CARD 2 — MONEY COLLECTED */}
-        <Card 
-          onClick={() => setActiveModal('money')}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-emerald-300 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Money Collected</span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 group-hover:scale-105 transition-transform">
-              <IndianRupee size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{formatLakhs(ticketRevenue)}</div>
-          <p className="text-[11px] font-semibold text-emerald-600">From ticket sales</p>
-        </Card>
-
-        {/* CARD 3 — STALLS BOOKED */}
-        <Card 
-          onClick={() => setActiveModal('stalls')}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-purple-300 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stalls Booked</span>
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-600 group-hover:scale-105 transition-transform">
-              <Store size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{stallsBookedCount} / {stallsCapacitySum}</div>
-          <p className="text-[11px] font-semibold text-purple-600">{stallsAvailable} stalls still available</p>
-          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-purple-600 h-full rounded-full transition-all duration-500" style={{ width: `${stallsPercentage}%` }} />
-          </div>
-        </Card>
-
-        {/* CARD 4 — TOTAL EARNINGS */}
-        <Card 
-          onClick={() => setActiveModal('earnings')}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-emerald-400 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Earnings</span>
-            <div className="p-2 rounded-xl bg-emerald-100 text-emerald-700 group-hover:scale-105 transition-transform">
-              <IndianRupee size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{formatLakhs(totalGrossRevenue)}</div>
-          <p className="text-[11px] font-semibold text-emerald-700">Tickets + stall bookings</p>
-        </Card>
-
-        {/* CARD 5 — PEOPLE CHECKED IN (CONTEXT-AWARE) */}
-        <Card 
-          onClick={() => setActiveModal('checkin')}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-cyan-300 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">People Checked In</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Events</span>
             <div className="p-2 rounded-xl bg-cyan-50 text-cyan-600 group-hover:scale-105 transition-transform">
-              <QrCode size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{totalGateScans.toLocaleString()}</div>
-          <p className="text-[11px] font-semibold text-slate-500">
-            {totalPassesSold > 0 ? `${totalGateScans.toLocaleString()} / ${totalPassesSold.toLocaleString()} checked in (${checkInPercentage}%)` : "Event check-in ready"}
-          </p>
-        </Card>
-
-        {/* CARD 6 — MEALS GIVEN OUT */}
-        <Card 
-          onClick={() => setActiveModal('meals')}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-amber-300 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Meals Given Out</span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-600 group-hover:scale-105 transition-transform">
-              <Utensils size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">{mealsGivenCount.toLocaleString()}</div>
-          <p className="text-[11px] font-semibold text-amber-600">{mealsPercentage}% of meal passes used</p>
-        </Card>
-
-        {/* CARD 7 — UPCOMING EVENTS */}
-        <Card 
-          onClick={() => { setSelectedTab("upcoming"); }}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-indigo-300 transition-all group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Upcoming Events</span>
-            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:scale-105 transition-transform">
               <Calendar size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900">{upcomingEventsList.length}</div>
-          <p className="text-[11px] font-semibold text-indigo-600 truncate">
-            {nextUpcomingEvent ? `Next: ${nextUpcomingEvent}` : "No upcoming events"}
-          </p>
+          <div className="my-auto">
+            <div className="text-3xl font-black text-slate-900 leading-none">{totalEventsCount}</div>
+            <div className="h-5 flex items-center flex-wrap gap-1.5 mt-2 overflow-hidden">
+              {activeEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {activeEventsCount} Live
+                </span>
+              )}
+              {upcomingEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {upcomingEventsCount} Upcoming
+                </span>
+              )}
+              {pastEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {pastEventsCount} Past
+                </span>
+              )}
+              {draftEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {draftEventsCount} Draft
+                </span>
+              )}
+              {totalEventsCount === 0 && (
+                <span className="text-[11px] font-medium text-slate-400">No events yet</span>
+              )}
+            </div>
+          </div>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-cyan-600 group-hover:text-cyan-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>View all events</span>
+          </div>
         </Card>
 
-        {/* CARD 8 — THINGS TO DO (ALERT / ZERO STATE) */}
+        {/* CARD 2 — NEXT UPCOMING EVENT */}
         <Card 
-          onClick={() => setActiveModal('tasks')}
-          className={`border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer transition-all group ${
-            thingsToDoCount > 0 ? "hover:border-amber-400 ring-2 ring-amber-100" : "hover:border-slate-300"
+          onClick={() => {
+            if (nextEvent) handleView(nextEvent);
+            else navigate("/OrganizerHome/CreateEvent");
+          }}
+          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden cursor-pointer hover:border-indigo-300 transition-all group"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Next Upcoming</span>
+            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 group-hover:scale-105 transition-transform">
+              <Clock size={18} />
+            </div>
+          </div>
+          <div className="my-auto">
+            {nextEvent ? (
+              <>
+                <div className="text-sm font-black text-slate-900 truncate leading-tight" title={nextEventName}>
+                  {nextEventName}
+                </div>
+                <div className="h-5 flex items-center gap-1.5 text-[11px] text-slate-500 mt-2 overflow-hidden">
+                  <span className="font-bold text-indigo-600">
+                    {daysUntilNext === 0 ? "Starts today!" : daysUntilNext === 1 ? "Starts tomorrow" : `In ${daysUntilNext} days`}
+                  </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-slate-500 font-medium truncate">{formatDate(nextEventDate)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl font-black text-slate-400 leading-none">0</div>
+                <div className="h-5 flex items-center mt-2 text-[11px] font-medium text-slate-400">
+                  No upcoming events
+                </div>
+              </>
+            )}
+          </div>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-indigo-600 group-hover:text-indigo-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>{nextEvent ? "View details" : "Create event"}</span>
+          </div>
+        </Card>
+
+        {/* CARD 3 — PENDING ACTIONS */}
+        <Card 
+          onClick={() => {
+            if (draftEventsCount > 0) setSelectedTab("draft");
+          }}
+          className={`border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden transition-all group ${
+            pendingActionsCount > 0 ? "hover:border-amber-400 ring-2 ring-amber-100/70 cursor-pointer" : "hover:border-slate-300"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Things To Do</span>
-            <div className={`p-2 rounded-xl ${thingsToDoCount > 0 ? "bg-amber-100 text-amber-700 animate-pulse" : "bg-emerald-50 text-emerald-600"}`}>
-              <Bell size={18} />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Actions</span>
+            <div className={`p-2 rounded-xl ${pendingActionsCount > 0 ? "bg-amber-100 text-amber-700 animate-pulse" : "bg-emerald-50 text-emerald-600"}`}>
+              <AlertCircle size={18} />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900">{thingsToDoCount}</div>
-          <p className={`text-[11px] font-bold ${thingsToDoCount > 0 ? "text-amber-700" : "text-emerald-600"}`}>
-            {thingsToDoCount > 0 ? `${thingsToDoCount} item${thingsToDoCount > 1 ? 's' : ''} needs your attention` : "You're all caught up ✓"}
-          </p>
+          <div className="my-auto">
+            <div className="text-3xl font-black text-slate-900 leading-none">{pendingActionsCount}</div>
+            <div className="h-5 flex items-center mt-2 overflow-hidden">
+              {pendingActionsCount > 0 ? (
+                <span className="text-[11px] font-bold text-amber-700 truncate">
+                  {draftEventsCount > 0 ? `${draftEventsCount} draft${draftEventsCount > 1 ? 's' : ''} to complete` : `${pendingApprovalCount} awaiting approval`}
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> All caught up
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-amber-600 group-hover:text-amber-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>{pendingActionsCount > 0 ? "Resolve pending" : "No pending items"}</span>
+          </div>
+        </Card>
+
+        {/* CARD 4 — PENDING STALL REQUESTS */}
+        <Card 
+          onClick={() => navigate("/OrganizerHome/Manage_Stall")}
+          className={`border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden cursor-pointer transition-all group ${
+            pendingStallsCount > 0 ? "hover:border-amber-400 ring-2 ring-amber-100/70" : "hover:border-cyan-300"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Stalls</span>
+            <div className={`p-2 rounded-xl ${pendingStallsCount > 0 ? "bg-amber-100 text-amber-700 animate-pulse" : "bg-cyan-50 text-cyan-600"} group-hover:scale-105 transition-transform`}>
+              <Store size={18} />
+            </div>
+          </div>
+          <div className="my-auto">
+            <div className="text-3xl font-black text-slate-900 leading-none">
+              {loadingStalls ? "..." : pendingStallsCount}
+            </div>
+            <div className="h-5 flex items-center mt-2 overflow-hidden">
+              {pendingStallsCount > 0 ? (
+                <span className="text-[11px] font-bold text-amber-700 truncate">
+                  {pendingStallsCount} waiting review · {stallApplications.length} total
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> All caught up ({stallApplications.length} total)
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-cyan-600 group-hover:text-cyan-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>Manage Stalls</span>
+          </div>
         </Card>
 
       </div>
 
-      {/* ── 3. MY EVENTS PORTFOLIO SECTION ── */}
+      {/* ── 3. MY EVENTS PORTFOLIO TABLE (API-DRIVEN) ── */}
       <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-extrabold text-slate-900">My Events</h2>
             <Badge variant="outline" className="bg-slate-50 text-slate-700 font-bold border-slate-200">
-              {filteredEvents.length} Events
+              {tableEvents.length} Events
             </Badge>
           </div>
 
@@ -377,19 +442,25 @@ export default function OrganizerDashboardPage() {
                 { label: "Upcoming", value: "upcoming" },
                 { label: "Past", value: "past" },
                 { label: "Draft", value: "draft" },
-              ].map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setSelectedTab(t.value)}
-                  className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
-                    selectedTab === t.value
-                      ? "bg-white text-slate-900 shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+              ].map((t) => {
+                const isActive = selectedTab === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    onClick={() => setSelectedTab(t.value)}
+                    className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isActive
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <span>{t.label}</span>
+                    {isActive && isFiltering && (
+                      <RefreshCw size={10} className="animate-spin text-cyan-600 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Search Input */}
@@ -406,30 +477,35 @@ export default function OrganizerDashboardPage() {
           </div>
         </div>
 
-        <ResponsiveTableView
-          data={filteredEvents}
-          keyField="id"
-          loading={loading && !loaded}
-          columnCount={8}
-          columns={[
-            { header: "Event Details", className: "py-3 px-4" },
-            { header: "Date & Time", className: "py-3 px-4" },
-            { header: "Tickets Sold", className: "py-3 px-4" },
-            { header: "Stalls Booked", className: "py-3 px-4" },
-            { header: "Total Earnings", className: "py-3 px-4" },
-            { header: "Approval Status", className: "py-3 px-4 text-center" },
-            { header: "Lifecycle", className: "py-3 px-4 text-center" },
-            { header: "Actions", className: "py-3 px-4 text-right" },
-          ]}
-          emptyMessage="No events found matching your criteria."
-          emptyAction={
-            <Button
-              onClick={() => navigate("/OrganizerHome/CreateEvent")}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl border-none cursor-pointer mt-2"
-            >
-              + Create New Event
-            </Button>
-          }
+        {/* ── TABLE CONTAINER WITH ZERO-FLICKER TRANSITION ── */}
+        <div className="relative min-h-[360px]">
+          {/* Subtle smooth progress bar during tab switch / search */}
+          {isFiltering && (
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-100 overflow-hidden z-20 rounded-t-xl">
+              <div className="w-full h-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 animate-pulse" />
+            </div>
+          )}
+
+          <div className={`transition-opacity duration-200 ${isFiltering ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
+            <ResponsiveTableView
+              data={tableEvents}
+              keyField="id"
+              loading={initialLoading}
+              columnCount={8}
+              columns={[
+                { header: "Event Details", className: "py-3 px-4" },
+                { header: "Date & Time", className: "py-3 px-4" },
+                { header: "Tickets Sold", className: "py-3 px-4" },
+                { header: "Stalls Booked", className: "py-3 px-4" },
+                { header: "Total Earnings", className: "py-3 px-4" },
+                { header: "Approval Status", className: "py-3 px-4 text-center" },
+                { header: "Lifecycle", className: "py-3 px-4 text-center" },
+                { header: "Actions", className: "py-3 px-4 text-right" },
+              ]}
+              emptyMessage="No events found matching your criteria."
+              emptyAction={
+                <CreateEventButton size="sm" className="mt-2" />
+              }
           renderDesktopTable={() => (
             <div className="rounded-xl border border-slate-200 overflow-hidden responsive-table-wrap">
               <table className="w-full text-left border-collapse min-w-[760px]">
@@ -446,7 +522,7 @@ export default function OrganizerDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
-                  {filteredEvents.map((evt) => {
+                  {tableEvents.map((evt) => {
                     const eventStatus = getEventTabStatus(evt);
                     const sold = Number(evt.passesSold || evt.passes_sold || 0);
                     const capacity = Number(evt.totalCapacity || evt.capacity || evt.total_capacity || 500);
@@ -592,8 +668,6 @@ export default function OrganizerDashboardPage() {
             const eventStatus = getEventTabStatus(evt);
             const sold = Number(evt.passesSold || evt.passes_sold || 0);
             const capacity = Number(evt.totalCapacity || evt.capacity || evt.total_capacity || 500);
-            const stallsBooked = Number(evt.stalls_booked || evt.stallsBooked || 0);
-            const stallsTotal = Number(evt.total_stalls || 50);
             const price = Number(evt.price_inr || evt.priceINR || evt.price || evt.pass_fee || 0);
             const earnings = price * sold;
 
@@ -710,161 +784,9 @@ export default function OrganizerDashboardPage() {
             );
           }}
         />
-      </Card>
-
-      {/* ── 4. INTERACTIVE CARD DETAIL MODAL ── */}
-      {activeModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 relative">
-            <button
-              onClick={() => setActiveModal(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-
-            {activeModal === 'tickets' && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Ticket Sales Details</h3>
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Total Tickets Sold</span>
-                    <span className="font-extrabold text-slate-900">{totalPassesSold.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Tickets Available</span>
-                    <span className="font-extrabold text-slate-900">{totalCapacitySum.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Remaining Tickets</span>
-                    <span className="font-extrabold text-cyan-600">{Math.max(0, totalCapacitySum - totalPassesSold).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeModal === 'money' && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Ticket Revenue Details</h3>
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Ticket Revenue</span>
-                    <span className="font-extrabold text-emerald-600">{formatLakhs(ticketRevenue)}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Platform Convenience Fees</span>
-                    <span className="font-extrabold text-slate-600">₹0.00 (Zero Fee)</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 pt-3 font-extrabold text-sm border-t border-slate-200">
-                    <span>Final Collected Amount</span>
-                    <span className="text-emerald-700">{formatLakhs(ticketRevenue)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeModal === 'stalls' && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Stalls & Exhibitors</h3>
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Booked Stalls</span>
-                    <span className="font-extrabold text-purple-700">{stallsBookedCount}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Available Stalls</span>
-                    <span className="font-extrabold text-slate-900">{stallsAvailable}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Floor Space Occupancy</span>
-                    <span className="font-extrabold text-purple-600">{stallsPercentage}% Booked</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeModal === 'earnings' && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Earnings & Payments Breakdown</h3>
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Ticket Sales</span>
-                    <span className="font-extrabold text-slate-900">{formatLakhs(ticketRevenue)}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Stall Bookings</span>
-                    <span className="font-extrabold text-purple-700">{formatLakhs(stallRevenue)}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 pt-3 font-extrabold text-sm border-t border-slate-200">
-                    <span>Total Earnings</span>
-                    <span className="text-emerald-600">{formatLakhs(totalGrossRevenue)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeModal === 'checkin' && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Event Check-In Gate Details</h3>
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Checked-in People</span>
-                    <span className="font-extrabold text-cyan-600">{totalGateScans.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Not Checked In Yet</span>
-                    <span className="font-extrabold text-slate-900">{Math.max(0, totalPassesSold - totalGateScans).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Check-In Conversion</span>
-                    <span className="font-extrabold text-cyan-700">{checkInPercentage}% Arrived</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeModal === 'meals' && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Food & Catering Distribution</h3>
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Total Meals Given Out</span>
-                    <span className="font-extrabold text-amber-600">{mealsGivenCount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-100">
-                    <span className="font-semibold text-slate-500">Pass Utilization</span>
-                    <span className="font-extrabold text-slate-900">{mealsPercentage}% Used</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeModal === 'tasks' && (
-              <div className="space-y-3">
-                <h3 className="text-lg font-black text-slate-900">Things To Do</h3>
-                {thingsToDoCount === 0 ? (
-                  <p className="text-xs font-bold text-emerald-600 py-4 text-center bg-emerald-50 rounded-xl">
-                    You're all caught up ✓
-                  </p>
-                ) : (
-                  <div className="space-y-2 text-xs text-slate-700">
-                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 font-bold flex justify-between">
-                      <span>Events Awaiting Approval</span>
-                      <span>{pendingApprovalsCount}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="pt-2 text-right">
-              <Button onClick={() => setActiveModal(null)} className="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-xl">
-                Close
-              </Button>
-            </div>
           </div>
         </div>
-      )}
+      </Card>
 
     </div>
   );

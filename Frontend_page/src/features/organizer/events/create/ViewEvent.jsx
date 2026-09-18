@@ -5,7 +5,7 @@ import {
   Store, Sparkles, Check, Paperclip, ChevronLeft, ChevronRight,
   CalendarDays, Layers, Mail, MessageSquare, Printer, User,
   Phone, Camera, FileCheck, Globe, ClipboardList, Gift,
-  CreditCard, Shield, Star, Tag, PhoneCall
+  CreditCard, Shield, Star, Tag, PhoneCall, IndianRupee, QrCode
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -207,7 +207,86 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
           </Button>
         </div>
 
-        {/* Row 2: Precision-Aligned Tracking Status Bar */}
+        {/* Row 2: Event Performance Stats Bar */}
+        {(() => {
+          const stats = formData?.individual_stats || formData?.individualStats || {};
+          const bk = formData?.booking || {};
+          const pSold = Number(stats.passes_sold ?? stats.passesSold ?? 0);
+          const tCap = Number(stats.total_capacity ?? stats.totalCapacity ?? bk.capacity ?? bk.totalCapacity ?? 0);
+          const gScans = Number(stats.gate_scans ?? stats.gateScans ?? 0);
+          const tStalls = Number(stats.total_stalls ?? 0);
+          const sBooked = Number(stats.stalls_booked ?? stats.stallsBooked ?? 0);
+          const tRevenue = Number(stats.ticket_revenue ?? stats.ticketRevenue ?? 0);
+          const gRevenue = Number(stats.gross_revenue ?? stats.grossRevenue ?? 0);
+          const ticketPct = tCap > 0 ? Math.min(100, Math.round((pSold / tCap) * 100)) : 0;
+          const stallPct = tStalls > 0 ? Math.min(100, Math.round((sBooked / tStalls) * 100)) : 0;
+          const checkinPct = pSold > 0 ? Math.min(100, Math.round((gScans / pSold) * 100)) : 0;
+          const fmtMoney = (v) => { const n = Math.round(Number(v) || 0); if (n >= 100000) { const l = (n / 100000).toFixed(2); return `₹${l.endsWith(".00") ? l.slice(0, -3) : l} L`; } return `₹${n.toLocaleString("en-IN")}`; };
+          const hasStats = pSold > 0 || tCap > 0 || tStalls > 0 || gRevenue > 0;
+          if (!hasStats) return null;
+          return (
+            <div className="pt-3 border-t border-slate-100">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {/* Tickets Sold */}
+                <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Tickets Sold</span>
+                    <Ticket size={14} className="text-blue-500" />
+                  </div>
+                  <div className="text-base font-black text-slate-900">{pSold.toLocaleString()} <span className="text-[10px] font-semibold text-slate-400">/ {tCap.toLocaleString()}</span></div>
+                  <div className="w-full bg-blue-100 h-1 rounded-full overflow-hidden">
+                    <div className="bg-blue-600 h-full rounded-full transition-all" style={{ width: `${ticketPct}%` }} />
+                  </div>
+                  <span className="text-[10px] font-semibold text-blue-600">{ticketPct}% sold</span>
+                </div>
+                {/* Ticket Revenue */}
+                <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Ticket Revenue</span>
+                    <IndianRupee size={14} className="text-emerald-500" />
+                  </div>
+                  <div className="text-base font-black text-slate-900">{fmtMoney(tRevenue)}</div>
+                  <span className="text-[10px] font-semibold text-emerald-600">From ticket sales</span>
+                </div>
+                {/* Stalls Booked */}
+                <div className="bg-purple-50/60 border border-purple-100 rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Stalls Booked</span>
+                    <Store size={14} className="text-purple-500" />
+                  </div>
+                  <div className="text-base font-black text-slate-900">{sBooked} <span className="text-[10px] font-semibold text-slate-400">/ {tStalls}</span></div>
+                  <div className="w-full bg-purple-100 h-1 rounded-full overflow-hidden">
+                    <div className="bg-purple-600 h-full rounded-full transition-all" style={{ width: `${stallPct}%` }} />
+                  </div>
+                  <span className="text-[10px] font-semibold text-purple-600">{stallPct}% occupied</span>
+                </div>
+                {/* Total Earnings */}
+                <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Total Earnings</span>
+                    <IndianRupee size={14} className="text-emerald-600" />
+                  </div>
+                  <div className="text-base font-black text-slate-900">{fmtMoney(gRevenue)}</div>
+                  <span className="text-[10px] font-semibold text-emerald-700">Tickets + Stalls</span>
+                </div>
+                {/* Gate Check-In */}
+                <div className="bg-cyan-50/60 border border-cyan-100 rounded-xl p-3 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-cyan-600 uppercase tracking-wider">Gate Check-In</span>
+                    <QrCode size={14} className="text-cyan-500" />
+                  </div>
+                  <div className="text-base font-black text-slate-900">{gScans.toLocaleString()} <span className="text-[10px] font-semibold text-slate-400">/ {pSold.toLocaleString()}</span></div>
+                  <div className="w-full bg-cyan-100 h-1 rounded-full overflow-hidden">
+                    <div className="bg-cyan-600 h-full rounded-full transition-all" style={{ width: `${checkinPct}%` }} />
+                  </div>
+                  <span className="text-[10px] font-semibold text-cyan-600">{checkinPct}% arrived</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Row 3: Precision-Aligned Tracking Status Bar */}
         <div className="pt-2 border-t border-slate-100">
           <div className="flex items-start justify-between w-full max-w-4xl mx-auto">
             {VIEW_STEPS.map((s, idx) => {
@@ -577,17 +656,23 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
             {/* Stalls List */}
             <div className="space-y-2">
               <span className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                <Store size={14} className="text-emerald-600" /> Configured Stalls ({stalls.length})
+                <Store size={14} className="text-emerald-600" /> Configured Stalls ({stalls.reduce((sum, s) => sum + (parseInt(s.quantity || s.stallQty || s.qty || 1, 10) || 1), 0)} Total Units / {stalls.length} Types)
               </span>
               {stalls.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {stalls.map((st, i) => {
                     const isPrime = Boolean(st.prime_seat || st.primeSeat);
                     const primeFee = st.prime_price_inr || st.primePriceINR;
+                    const stQty = parseInt(st.quantity || st.stallQty || st.qty || 1, 10) || 1;
                     return (
                       <div key={i} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
                         <div>
-                          <h4 className="font-extrabold text-slate-800 text-xs">{st.stall_name || st.stallName || `Stall #${i+1}`}</h4>
+                          <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                            <span>{st.stall_name || st.stallName || `Stall #${i+1}`}</span>
+                            <span className="px-1.5 py-0.5 bg-cyan-100 text-cyan-800 text-[10px] font-bold rounded-md">
+                              Qty: {stQty}
+                            </span>
+                          </h4>
                           <span className="text-slate-500 text-[11px] font-semibold">{st.stall_size || st.size || st.size_range || "Not Specified"}</span>
                         </div>
                         <div className="text-right">

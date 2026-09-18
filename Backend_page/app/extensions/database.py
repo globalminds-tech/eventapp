@@ -48,7 +48,7 @@ def create_app_engine():
 
 engine = create_app_engine()
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, expire_on_commit=False, bind=engine)
 db_session = scoped_session(SessionLocal)
 
 Base = declarative_base()

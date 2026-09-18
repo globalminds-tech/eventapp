@@ -10,8 +10,8 @@ class ExhibitorController:
         }
 
     @staticmethod
-    def get_user_bookings(user_id, host_url: str = ""):
-        bookings = ExhibitorService.get_user_bookings(user_id, host_url)
+    def get_user_bookings(user_id, host_url: str = "", status: str = None, search: str = None):
+        bookings = ExhibitorService.get_user_bookings(user_id, host_url, status=status, search=search)
         return {
             "success": True,
             "data": bookings
@@ -34,9 +34,17 @@ class ExhibitorController:
         }
 
     @staticmethod
-    def get_visitor_leads(event_id: str, user_id: str):
-        leads = ExhibitorService.get_visitor_leads(event_id, user_id)
+    def get_visitor_leads(event_id: str, user_id: str, search: str = None):
+        leads = ExhibitorService.get_visitor_leads(event_id, user_id, search=search)
         return {
             "success": True,
             "data": leads
+        }
+
+    @staticmethod
+    def get_event_booking_status(event_id: str, user_id: str = None, email: str = None):
+        res = ExhibitorService.get_event_booking_status(event_id, user_id, email)
+        return {
+            "success": True,
+            "data": res
         }

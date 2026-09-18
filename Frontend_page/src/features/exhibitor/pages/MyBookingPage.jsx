@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { getMyBookings, getBookingById, updateBooking } from "@/Services/api";
+import { fetchExhibitorBookings, fetchExhibitorInvoices } from "@/app/store/exhibitorSlice";
+import apiClient from "@/Services/client";
+import { getAuthUserId, getEffectiveTenantUserId } from "@/shared/services/authHelper";
+import { usePermissions } from "@/shared/context/PermissionContext";
 import {
   Store, Search, CheckCircle2, Clock, Eye, Pencil, CreditCard,
   MapPin, XCircle, Phone, Mail, Building, AlertCircle, ShieldCheck
@@ -10,51 +13,80 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { StatCardSkeleton } from "@/components/ui/StatCardSkeleton";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 const MyBookings = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatusTab, setSelectedStatusTab] = useState("all");
+  const { hasPermission } = usePermissions();
+
+  const reduxAuthUser = useSelector((state) => state.auth?.user);
+  const reduxUser = useSelector((state) => state.user);
+  const effectiveUserId = getEffectiveTenantUserId(reduxAuthUser || reduxUser);
+  const canPay = hasPermission(["exhibitor.billing.pay", "exhibitor.billing.view", "exhibitor.*"]);
+
+  const { list: bookings, loading, statusFilter, search } = useSelector((state) => state.exhibitor.bookings);
+  const [searchTerm, setSearchTerm] = useState(search || "");
+  const [selectedStatusTab, setSelectedStatusTab] = useState(statusFilter || "all");
   const [toastMessage, setToastMessage] = useState("");
 
-  const reduxUser = useSelector((state) => state.user);
-  const storedUser = {
-    id: sessionStorage.getItem("userId"),
-    name: sessionStorage.getItem("userName"),
-  };
-  const user = reduxUser?.id ? reduxUser : storedUser;
+  useEffect(() => {
+    if (effectiveUserId) {
+      dispatch(fetchExhibitorBookings({
+        userId: effectiveUserId,
+        status: selectedStatusTab,
+        search: searchTerm
+      }));
+    }
+  }, [dispatch, effectiveUserId, selectedStatusTab]);
 
   useEffect(() => {
-    fetchBookings();
-  }, [user?.id]);
-
-  const fetchBookings = async () => {
-    setLoading(true);
-    try {
-      if (user?.id) {
-        const res = await getMyBookings(user.id);
-        if (res.success && Array.isArray(res.data)) {
-          setBookings(res.data);
-        } else {
-          setBookings([]);
-        }
-      } else {
-        setBookings([]);
+    const timer = setTimeout(() => {
+      if (effectiveUserId) {
+        dispatch(fetchExhibitorBookings({
+          userId: effectiveUserId,
+          status: selectedStatusTab,
+          search: searchTerm
+        }));
       }
-    } catch (err) {
-      console.error("Failed to fetch stall bookings:", err);
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const [selectedPayBooking, setSelectedPayBooking] = useState(null);
+  const [isPaying, setIsPaying] = useState(false);
 
   const handlePayNow = (b) => {
-    setToastMessage(`✓ Redirecting to payment portal for ${b.event_name}...`);
-    setTimeout(() => setToastMessage(""), 3000);
+    setSelectedPayBooking(b);
+  };
+
+  const handleExecutePayment = async () => {
+    if (!selectedPayBooking) return;
+    try {
+      setIsPaying(true);
+      await apiClient.put(`/api/v1/organizer/stalls/applications/${selectedPayBooking.id}/status`, {
+        status: "Confirmed"
+      });
+      if (effectiveUserId) {
+        dispatch(fetchExhibitorBookings({
+          userId: effectiveUserId,
+          status: selectedStatusTab,
+          search: searchTerm,
+          force: true
+        }));
+      }
+      dispatch(fetchExhibitorInvoices({ force: true }));
+      setToastMessage(`✓ Payment confirmed! Stall allocated for ${selectedPayBooking.event_name}.`);
+      setSelectedPayBooking(null);
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Stall payment execution failed:", err);
+      setToastMessage("✗ Payment failed. Please try again.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const filteredBookings = bookings.filter((b) => {
@@ -74,6 +106,7 @@ const MyBookings = () => {
   });
 
   const totalCount = bookings.length;
+  const pendingCount = bookings.filter(b => (b.status || "").toLowerCase() === "pending").length;
   const approvedCount = bookings.filter(b => (b.status || "").toLowerCase() === "approved").length;
   const confirmedCount = bookings.filter(b => ["confirmed", "paid"].includes((b.status || "").toLowerCase())).length;
 
@@ -114,40 +147,77 @@ const MyBookings = () => {
         </div>
       </div>
 
-      {/* KPI Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Stall Applications</p>
-            <h3 className="text-2xl font-extrabold text-slate-900 mt-1">{totalCount} Reservations</h3>
-            <p className="text-[11px] font-medium text-slate-400 mt-0.5">Across active expos</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-            <Store size={22} />
-          </div>
-        </Card>
+      {/* ── 4 EXECUTIVE KPI STAT CARDS (MATCHING REFERENCE DESIGN) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {loading && bookings.length === 0 ? (
+          <StatCardSkeleton count={4} />
+        ) : (
+          <>
+            {/* Card 1: Total Applications */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Applications</span>
+                <div className="w-9 h-9 bg-blue-50 rounded-xl text-blue-600 flex items-center justify-center border border-blue-100/70 shrink-0">
+                  <Store size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {totalCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Across active expos</p>
+              </div>
+            </Card>
 
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Approved & Payment Locked</p>
-            <h3 className="text-2xl font-extrabold text-cyan-600 mt-1">{approvedCount} Active Locks</h3>
-            <p className="text-[11px] font-medium text-cyan-600 mt-0.5">Complete payment to confirm</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100 shrink-0">
-            <Clock size={22} className="animate-pulse" />
-          </div>
-        </Card>
+            {/* Card 2: Pending Approval */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pending Review</span>
+                <div className="w-9 h-9 bg-amber-50 rounded-xl text-amber-600 flex items-center justify-center border border-amber-100/70 shrink-0">
+                  <Clock size={18} className="animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {pendingCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Requires organizer approval</p>
+              </div>
+            </Card>
 
-        <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirmed & Paid Booths</p>
-            <h3 className="text-2xl font-extrabold text-emerald-600 mt-1">{confirmedCount} Confirmed</h3>
-            <p className="text-[11px] font-medium text-emerald-600 mt-0.5">Stall space reserved</p>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
-            <CheckCircle2 size={22} />
-          </div>
-        </Card>
+            {/* Card 3: Approved & Payment Locked */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Approved &amp; Locked</span>
+                <div className="w-9 h-9 bg-sky-50 rounded-xl text-sky-600 flex items-center justify-center border border-sky-100/70 shrink-0">
+                  <CreditCard size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {approvedCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">24-hour payment lock active</p>
+              </div>
+            </Card>
+
+            {/* Card 4: Confirmed & Paid */}
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Confirmed &amp; Allocated</span>
+                <div className="w-9 h-9 bg-emerald-50 rounded-xl text-emerald-600 flex items-center justify-center border border-emerald-100/70 shrink-0">
+                  <ShieldCheck size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {confirmedCount}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Stall space secured</p>
+              </div>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Main Table Card (Shadcn Table standard matching Screenshot 4) */}
@@ -247,7 +317,7 @@ const MyBookings = () => {
                           </div>
                         </td>
                         <td className="py-3.5 px-4 font-bold text-slate-900 text-xs">
-                          ₹{Number(b.price_paid || 45000).toLocaleString('en-IN')}
+                          ₹{Number(b.total_price || b.rental_price || b.price || b.price_paid || 0).toLocaleString('en-IN')}
                         </td>
                         <td className="py-3.5 px-4">
                           {status === 'pending' && (
@@ -287,13 +357,23 @@ const MyBookings = () => {
                             </button>
 
                             {status === 'approved' && (
-                              <button
-                                onClick={() => handlePayNow(b)}
-                                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-sm"
-                              >
-                                <CreditCard size={13} />
-                                <span>Pay Now</span>
-                              </button>
+                              canPay ? (
+                                <button
+                                  onClick={() => handlePayNow(b)}
+                                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-sm"
+                                >
+                                  <CreditCard size={13} />
+                                  <span>Pay Now</span>
+                                </button>
+                              ) : (
+                                <span
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200 inline-flex items-center gap-1"
+                                  title="Payment action restricted for your assigned role"
+                                >
+                                  <CreditCard size={11} />
+                                  <span>Payment Restricted</span>
+                                </span>
+                              )
                             )}
                           </div>
                         </td>
@@ -358,7 +438,7 @@ const MyBookings = () => {
                   items={[
                     { label: "Booth Space", value: b.stall_area || 'Standard Booth' },
                     { label: "Location", value: `${b.city || 'Chennai'}, ${b.state || 'TN'}` },
-                    { label: "Fee Paid", value: `₹${Number(b.price_paid || 45000).toLocaleString('en-IN')}` },
+                    { label: "Booth Fee", value: `₹${Number(b.total_price || b.rental_price || b.price || b.price_paid || 0).toLocaleString('en-IN')}` },
                     { label: "Status Info", value: status === 'approved' ? "Pay before lock expires" : (b.status || 'Active') },
                   ]}
                 />
@@ -372,13 +452,23 @@ const MyBookings = () => {
                     <span>View Details</span>
                   </button>
                   {status === 'approved' && (
-                    <button
-                      onClick={() => handlePayNow(b)}
-                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs inline-flex items-center gap-1 shadow-sm cursor-pointer"
-                    >
-                      <CreditCard size={13} />
-                      <span>Pay Now</span>
-                    </button>
+                    canPay ? (
+                      <button
+                        onClick={() => handlePayNow(b)}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                      >
+                        <CreditCard size={13} />
+                        <span>Pay Now</span>
+                      </button>
+                    ) : (
+                      <span
+                        className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200 inline-flex items-center gap-1"
+                        title="Payment action restricted for your assigned role"
+                      >
+                        <CreditCard size={11} />
+                        <span>Payment Restricted</span>
+                      </span>
+                    )
                   )}
                 </MobileDataCard.Actions>
               </MobileDataCard>
@@ -387,7 +477,101 @@ const MyBookings = () => {
         />
       </Card>
 
+      {/* ── STALL CHECKOUT / PAYMENT CONFIRMATION MODAL ── */}
+      {selectedPayBooking && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                    <CreditCard size={18} />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">Complete Stall Settlement</h3>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  24-hour payment lock active for {selectedPayBooking.event_name || 'Exhibition Expo'}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedPayBooking(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
 
+            {/* Booth Info Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium">Event:</span>
+                <span className="font-bold text-slate-900">{selectedPayBooking.event_name || 'Exhibition Expo'}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium">Allocated Booth:</span>
+                <span className="font-bold text-slate-900">{selectedPayBooking.stall_area || 'Standard Space'}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium">Company Name:</span>
+                <span className="font-bold text-slate-900">{selectedPayBooking.company_name || 'Registered Exhibitor'}</span>
+              </div>
+            </div>
+
+            {/* Financial Breakdown */}
+            {(() => {
+              const total = Number(selectedPayBooking.total_price || selectedPayBooking.price || selectedPayBooking.rental_price || 11000);
+              const baseAmt = (total / 1.18).toFixed(2);
+              const gst = (total - Number(baseAmt)).toFixed(2);
+              return (
+                <div className="space-y-2 border-t border-slate-100 pt-3">
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>Base Stall Rental:</span>
+                    <span>₹{Number(baseAmt).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>GST (18% ITC Eligible):</span>
+                    <span>₹{Number(gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline text-base font-black text-slate-900 pt-2 border-t border-slate-200">
+                    <span>Total Amount Payable:</span>
+                    <span className="text-xl text-emerald-700">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedPayBooking(null)}
+                disabled={isPaying}
+                className="rounded-xl border-slate-200 text-slate-700 font-bold text-xs h-10 px-4"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleExecutePayment}
+                disabled={isPaying}
+                className="rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs h-10 px-6 gap-2 shadow-md shadow-emerald-900/20 cursor-pointer"
+              >
+                {isPaying ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Processing Payment...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={15} />
+                    <span>Pay &amp; Confirm Stall</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

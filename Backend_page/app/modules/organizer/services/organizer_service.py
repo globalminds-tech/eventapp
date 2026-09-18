@@ -29,8 +29,16 @@ class OrganizerService:
             if organizer_id:
                 try:
                     import uuid as uuid_mod
-                    org_uuid = uuid_mod.UUID(str(organizer_id))
-                    stmt = stmt.where((Venue.organizer_id == org_uuid) | (Venue.organizer_id.is_(None)))
+                    from app.modules.rbac.services.tenant_service import TenantService
+                    t_uids = TenantService.resolve_tenant_user_ids(organizer_id, "ORGANIZER")
+                    parsed_uids = []
+                    for u in t_uids:
+                        try:
+                            parsed_uids.append(uuid_mod.UUID(str(u)))
+                        except Exception:
+                            pass
+                    if parsed_uids:
+                        stmt = stmt.where((Venue.organizer_id.in_(parsed_uids)) | (Venue.organizer_id.is_(None)))
                 except Exception:
                     pass
             stmt = stmt.order_by(Venue.created_at.desc())
@@ -114,8 +122,16 @@ class OrganizerService:
             if organizer_id:
                 try:
                     import uuid as uuid_mod
-                    org_uuid = uuid_mod.UUID(str(organizer_id))
-                    stmt = stmt.where((SponsorDetails.organizer_id == org_uuid) | (SponsorDetails.organizer_id.is_(None)))
+                    from app.modules.rbac.services.tenant_service import TenantService
+                    t_uids = TenantService.resolve_tenant_user_ids(organizer_id, "ORGANIZER")
+                    parsed_uids = []
+                    for u in t_uids:
+                        try:
+                            parsed_uids.append(uuid_mod.UUID(str(u)))
+                        except Exception:
+                            pass
+                    if parsed_uids:
+                        stmt = stmt.where((SponsorDetails.organizer_id.in_(parsed_uids)) | (SponsorDetails.organizer_id.is_(None)))
                 except Exception:
                     pass
             stmt = stmt.order_by(SponsorDetails.created_at.desc())
@@ -164,8 +180,16 @@ class OrganizerService:
             if organizer_id:
                 try:
                     import uuid as uuid_mod
-                    org_uuid = uuid_mod.UUID(str(organizer_id))
-                    stmt = stmt.where((VendorDetails.organizer_id == org_uuid) | (VendorDetails.organizer_id.is_(None)))
+                    from app.modules.rbac.services.tenant_service import TenantService
+                    t_uids = TenantService.resolve_tenant_user_ids(organizer_id, "ORGANIZER")
+                    parsed_uids = []
+                    for u in t_uids:
+                        try:
+                            parsed_uids.append(uuid_mod.UUID(str(u)))
+                        except Exception:
+                            pass
+                    if parsed_uids:
+                        stmt = stmt.where((VendorDetails.organizer_id.in_(parsed_uids)) | (VendorDetails.organizer_id.is_(None)))
                 except Exception:
                     pass
             stmt = stmt.order_by(VendorDetails.created_at.desc())
@@ -369,8 +393,16 @@ class OrganizerService:
             if organizer_id:
                 try:
                     import uuid as uuid_mod
-                    org_uuid = uuid_mod.UUID(str(organizer_id))
-                    stmt = stmt.where((Policy.organizer_id == org_uuid) | (Policy.organizer_id.is_(None)))
+                    from app.modules.rbac.services.tenant_service import TenantService
+                    t_uids = TenantService.resolve_tenant_user_ids(organizer_id, "ORGANIZER")
+                    parsed_uids = []
+                    for u in t_uids:
+                        try:
+                            parsed_uids.append(uuid_mod.UUID(str(u)))
+                        except Exception:
+                            pass
+                    if parsed_uids:
+                        stmt = stmt.where((Policy.organizer_id.in_(parsed_uids)) | (Policy.organizer_id.is_(None)))
                 except Exception:
                     pass
             stmt = stmt.order_by(Policy.created_at.desc())

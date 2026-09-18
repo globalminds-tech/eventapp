@@ -59,18 +59,18 @@ const MASTER_NAVIGATION_ITEMS = {
   exhibitor: [
     { label: "Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard, permission: "exhibitor.dashboard.view" },
     { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store, permission: "exhibitor.stalls.view" },
-    { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
-    { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users, permission: "exhibitor.leads.view" },
+    { label: "Upcoming Events", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
+    { label: "Visitor Leads", path: "/exhibitor/leads", icon: Users, permission: "exhibitor.leads.view" },
     { label: "Billings & Invoices", path: "/exhibitor/billing", icon: Receipt, permission: "exhibitor.billing.view" },
     { label: "Team & Roles", path: "/exhibitor/team", icon: Shield, permission: "exhibitor.team.view" },
   ],
 
   organizer: [
-    { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+    { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: ["dashboard.view", "events.view"] },
     { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode, permission: ["checkin.scan", "checkin.view"] },
     { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils, permission: ["checkin.scan", "checkin.view"] },
     { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store, permission: "stalls.view" },
-    { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users, permission: ["stalls.view", "events.view"] },
+    { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users, permission: "stalls.view" },
     { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield, permission: ["team.view", "roles.view", "roles.manage"] },
     { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt, permission: "finance.view" },
     { label: "Master Data", path: "/OrganizerHome/MasterData", icon: Database, permission: "master_data.view" },
@@ -178,8 +178,8 @@ export default function WebSidebar({ role }) {
   const mainDashboardPath = useMemo(() => {
     if (activeRoleKey === "superuser") return "/superuser/dashboard";
     if (activeRoleKey === "organizer") {
-      if (hasPermission("dashboard.view")) return "/OrganizerHome/Organizerdashboard";
-      return visibleNavigationItems[0]?.path || "/OrganizerHome/EventCheckIn";
+      if (hasPermission(["dashboard.view", "events.view"])) return "/OrganizerHome/Organizerdashboard";
+      return visibleNavigationItems[0]?.path || "/OrganizerHome/Organizerdashboard";
     }
     if (activeRoleKey === "exhibitor") {
       if (hasPermission("exhibitor.dashboard.view")) return "/exhibitor/dashboard";

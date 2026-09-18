@@ -178,7 +178,7 @@ export default function MyPassesPage() {
                         <h3 className="text-base font-black text-white line-clamp-1">{pass.event_name || pass.eventName}</h3>
                       </div>
                       <span className="text-[10px] font-mono text-amber-300 font-bold bg-slate-900/80 px-2.5 py-1 rounded-lg border border-white/10">
-                        {pass.ticket_code || `BKG-#${pass.id}`}
+                        {pass.ticket_code || (pass.id ? `BKG-#${String(pass.id).replace(/-/g, '').slice(0, 6).toUpperCase()}` : "CONFIRMED")}
                       </span>
                     </div>
                   </div>
@@ -254,7 +254,7 @@ export default function MyPassesPage() {
                         </Badge>
                       </div>
                       <span className="text-[11px] font-mono font-black text-slate-700">
-                        {pass.ticket_code || `REF-${String(pass.id).slice(0, 8)}`}
+                        {pass.ticket_code || (pass.id ? `REF-${String(pass.id).replace(/-/g, '').slice(0, 6).toUpperCase()}` : "CONFIRMED")}
                       </span>
                     </div>
 
@@ -297,7 +297,7 @@ export default function MyPassesPage() {
                           </div>
                         )}
                         <span className="text-[9px] font-mono font-bold text-slate-500 mt-1 max-w-[120px] truncate">
-                          {pass.ticket_code || pass.id}
+                          {pass.ticket_code || (pass.id ? `PASS-${String(pass.id).replace(/-/g, '').slice(0, 6).toUpperCase()}` : "ACTIVE")}
                         </span>
                         <span className="text-[8.5px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded-md mt-1 text-center">
                           {pass.entry_type === "Single Entry" ? "Single Entry (1-Use)" : `Multi-Entry (${pass.max_reentries || "Unlimited"})`}

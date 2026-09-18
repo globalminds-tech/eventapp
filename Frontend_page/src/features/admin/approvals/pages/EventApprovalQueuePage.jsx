@@ -24,6 +24,7 @@ import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveT
 import { TablePagination } from "@/components/ui/TablePagination";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { approvalApi } from "../api/approval.api";
+import { kycApi } from "@/features/admin/kyc/api/kyc.api";
 import {
   fetchApprovalQueueThunk,
   updateApprovalStatusInStore
@@ -85,12 +86,26 @@ export default function EventApprovalQueuePage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const handleStatusUpdate = async (eventId, newStatus) => {
+  const handleStatusUpdate = async (eventId, newStatus, autoVerifyKyc = false, userId = null) => {
     setActionLoadingId(eventId);
     try {
+      if (autoVerifyKyc && userId) {
+        try {
+          await kycApi.updateKycStatus(userId, "VERIFIED", "organizer");
+        } catch (kErr) {
+          console.warn("Auto-verify KYC notice:", kErr);
+        }
+      }
       await approvalApi.updateEventStatus(eventId, newStatus);
       // Immediately update Redux store so the queue reflects changes across views
       dispatch(updateApprovalStatusInStore({ eventId, status: newStatus }));
+      dispatch(fetchApprovalQueueThunk({
+        search: debouncedSearch,
+        status: activeTab,
+        page,
+        limit,
+        force: true
+      }));
       showNotification(`Event successfully marked as ${newStatus}!`, "success");
     } catch (err) {
       console.error("Failed to update event status:", err);
@@ -383,19 +398,38 @@ export default function EventApprovalQueuePage() {
 
                             {isPending && (
                               <>
-                                <Button
-                                  size="xs"
-                                  disabled={isActionBusy || isOrgKycPending}
-                                  onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
-                                  title={isOrgKycPending ? "Organizer business KYC is pending verification in the KYC tab. Verify organizer KYC first before approving this event." : "Approve & Publish"}
-                                  className={`${
-                                    isOrgKycPending
-                                      ? "bg-slate-200 text-slate-400 cursor-not-allowed border-none"
-                                      : "bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer border-none"
-                                  } text-[11px]`}
-                                >
-                                  <Check size={12} /> {isOrgKycPending ? "KYC Pending" : "Approve"}
-                                </Button>
+                                {isOrgKycPending ? (
+                                  <div className="inline-flex items-center gap-1">
+                                    <Button
+                                      size="xs"
+                                      disabled={isActionBusy}
+                                      onClick={() => handleStatusUpdate(ev.id, "APPROVED", true, ev.user_id)}
+                                      title="Verify Organizer Business KYC and Approve & Publish Event in 1-Click"
+                                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-[10px] cursor-pointer border-none shadow-xs px-2"
+                                    >
+                                      <ShieldCheck size={11} className="mr-0.5" /> Verify &amp; Approve
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      variant="outline"
+                                      onClick={() => navigate("/superuser/kyc?tab=pending")}
+                                      title="Open KYC Verification tab"
+                                      className="border-amber-300 text-amber-800 hover:bg-amber-50 text-[10px] font-bold px-1.5"
+                                    >
+                                      KYC Tab
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="xs"
+                                    disabled={isActionBusy}
+                                    onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
+                                    title="Approve & Publish Event"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer border-none text-[11px]"
+                                  >
+                                    <Check size={12} /> Approve
+                                  </Button>
+                                )}
                                 <Button
                                   size="xs"
                                   variant="outline"
@@ -460,6 +494,7 @@ export default function EventApprovalQueuePage() {
           const isRejected = st === "REJECTED";
           const isPending = ["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"].includes(st);
           const isActionBusy = actionLoadingId === ev.id;
+          const isOrgKycPending = (ev.organizer_kyc_status || "PENDING").toUpperCase() !== "VERIFIED";
 
           return (
             <MobileDataCard key={ev.id} highlightBorder={isApproved}>
@@ -514,19 +549,37 @@ export default function EventApprovalQueuePage() {
 
                 {isPending && (
                   <>
-                    <Button
-                      size="xs"
-                      disabled={isActionBusy || isOrgKycPending}
-                      onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
-                      title={isOrgKycPending ? "Organizer business KYC is pending verification in the KYC tab" : "Approve Event"}
-                      className={`${
-                        isOrgKycPending
-                          ? "bg-slate-200 text-slate-400 cursor-not-allowed border-none"
-                          : "bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold cursor-pointer border-none"
-                      } text-[11px]`}
-                    >
-                      <Check size={12} /> {isOrgKycPending ? "KYC Pending" : "Approve"}
-                    </Button>
+                    {isOrgKycPending ? (
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="xs"
+                          disabled={isActionBusy}
+                          onClick={() => handleStatusUpdate(ev.id, "APPROVED", true, ev.user_id)}
+                          title="Verify Organizer KYC and Approve Event"
+                          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold cursor-pointer border-none text-[10px]"
+                        >
+                          <ShieldCheck size={11} className="mr-0.5" /> Verify &amp; Approve
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => navigate("/superuser/kyc?tab=pending")}
+                          className="border-amber-300 text-amber-800 hover:bg-amber-50 text-[10px] font-bold"
+                        >
+                          KYC Tab
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="xs"
+                        disabled={isActionBusy}
+                        onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
+                        title="Approve Event"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold cursor-pointer border-none text-[11px]"
+                      >
+                        <Check size={12} /> Approve
+                      </Button>
+                    )}
                     <Button
                       size="xs"
                       variant="outline"

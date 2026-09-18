@@ -28,6 +28,7 @@ import {
 import CreateEvent from "./CreateEvent";
 import MediaRenderer from "@/components/MediaRenderer";
 import { deleteEvent, getEventFullDetails } from "@/Services/api";
+import CreateEventButton from "@/components/ui/CreateEventButton";
 
 /* CONTINUOUS IMAGE SLIDER */
 const ImageSlider = ({ images = [], className = "w-28 h-20" }) => {
@@ -331,18 +332,15 @@ const EventsPage = () => {
           </div>
 
           {/* Create Event Button */}
-          <button
+          <CreateEventButton
+            label="Create Event"
             onClick={() => {
               setEditEvent(null);
               setIsView(false);
               setShowCreate(true);
               navigate("/OrganizerHome/CreateEvent");
             }}
-            className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-cyan-500/20 transition-all active:scale-95 cursor-pointer"
-          >
-            <Plus size={16} />
-            <span>Create Event</span>
-          </button>
+          />
         </div>
       </div>
 
@@ -397,17 +395,16 @@ const EventsPage = () => {
                 Clear Search
               </button>
             )}
-            <button
+            <CreateEventButton
+              size="sm"
+              label="+ Create New Event"
               onClick={() => {
                 setEditEvent(null);
                 setIsView(false);
                 setShowCreate(true);
                 navigate("/OrganizerHome/CreateEvent");
               }}
-              className="text-xs font-bold text-cyan-600 hover:underline cursor-pointer"
-            >
-              + Create New Event
-            </button>
+            />
           </div>
         </div>
       ) : viewMode === "table" ? (

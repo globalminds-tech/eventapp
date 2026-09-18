@@ -21,10 +21,40 @@ def get_dashboard_stats_alias(period: str = "30d"):
 
 @root_admin_router.get("/superadmin/home/get-events")
 @root_admin_router.post("/superadmin/home/get-events")
-def get_home_events(request: Request):
+def get_home_events(
+    request: Request,
+    search: str = None,
+    category: str = None,
+    city: str = None,
+    location: str = None,
+    page: int = None,
+    limit: int = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc"
+):
     try:
         host_url = str(request.base_url)
-        return AdminController.get_events(host_url=host_url, organizer_id=None, only_approved=True)
+        req_params = request.query_params
+        q_search = search if search is not None else req_params.get("search")
+        q_category = category if category is not None else req_params.get("category")
+        q_city = city if city is not None else req_params.get("city")
+        q_location = location if location is not None else (req_params.get("location") or q_city)
+        q_page = page if page is not None else req_params.get("page")
+        q_limit = limit if limit is not None else req_params.get("limit")
+
+        return AdminController.get_events(
+            host_url=host_url,
+            organizer_id=None,
+            only_approved=True,
+            search=q_search,
+            category=q_category,
+            city=q_city,
+            location=q_location,
+            page=int(q_page) if q_page is not None else None,
+            limit=int(q_limit) if q_limit is not None else None,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
     except Exception as e:
         print("[get_home_events Exception]:", e)
         return {"success": True, "data": []}
@@ -44,6 +74,9 @@ def get_events(
     organizer: str = None,
     organizer_id: str = None,
     search: str = None,
+    category: str = None,
+    city: str = None,
+    location: str = None,
     status: str = None,
     page: int = None,
     limit: int = None,
@@ -78,6 +111,9 @@ def get_events(
         q_page = page if page is not None else req_params.get("page")
         q_limit = limit if limit is not None else req_params.get("limit")
         q_search = search if search is not None else req_params.get("search")
+        q_category = category if category is not None else req_params.get("category")
+        q_city = city if city is not None else req_params.get("city")
+        q_location = location if location is not None else (req_params.get("location") or q_city)
         q_status = status if status is not None else req_params.get("status")
 
         return AdminController.get_events(
@@ -85,6 +121,9 @@ def get_events(
             organizer_id=target_organizer,
             only_approved=False,
             search=q_search,
+            category=q_category,
+            city=q_city,
+            location=q_location,
             status=q_status,
             page=int(q_page) if q_page is not None else None,
             limit=int(q_limit) if q_limit is not None else None,
@@ -111,8 +150,8 @@ def update_event_status(event_id: str, payload: UpdateEventStatusSchema, user: d
 @root_admin_router.get("/superadmin/api/categories")
 @root_admin_router.get("/superuser/categories")
 @admin_router.get("/categories")
-def get_categories():
-    return AdminController.get_categories()
+def get_categories(search: str = None):
+    return AdminController.get_categories(search=search)
 
 @root_admin_router.post("/superadmin/api/categories")
 @root_admin_router.post("/superuser/categories")
@@ -262,6 +301,13 @@ def get_all_users_alias(
         sort_by=sort_by,
         sort_order=sort_order
     )
+
+@root_admin_router.get("/superadmin/api/users/{user_id}")
+@root_admin_router.get("/superuser/users/{user_id}")
+@root_admin_router.get("/admin/users/{user_id}")
+@admin_router.get("/users/{user_id}")
+def get_user_details(user_id: str):
+    return AdminController.get_user_details(user_id)
 
 @root_admin_router.put("/admin/users/{user_id}/kyc-status")
 @root_admin_router.put("/admin/organizers/{user_id}/kyc-status")

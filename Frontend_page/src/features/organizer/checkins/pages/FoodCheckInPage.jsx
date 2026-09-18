@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Search, Utensils, QrCode, CheckCircle2, RefreshCw, X, LogIn,
@@ -12,11 +12,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Select";
 import QRScanner, { playScanSound } from "@/components/QRScanner";
-import { getFoodCheckinSummary, redeemFoodTokenApi, getEventAttendees, getGatePresets, addGatePreset, deleteGatePreset } from "@/Services/miscService";
+import { getFoodCheckinSummary, redeemFoodTokenApi, getEventAttendees, getFoodCounterPresets, addFoodCounterPreset, deleteFoodCounterPreset } from "@/Services/miscService";
 import { Download, Check, Trash2 } from "lucide-react";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
-
-
 
 export default function FoodCheckIn() {
   const location = useLocation();
@@ -39,7 +37,29 @@ export default function FoodCheckIn() {
   const [attendees, setAttendees] = useState([]);
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL"); // ALL, REDEEMED, PENDING
+  const [isTableFiltering, setIsTableFiltering] = useState(false);
+  const [attendeeCounts, setAttendeeCounts] = useState({
+    total: 0,
+    redeemed: 0,
+    pending: 0
+  });
+
+  const attendeeRequestIdRef = useRef(0);
+  const hasInitialAttendeesLoadedRef = useRef(false);
+  const searchTimerRef = useRef(null);
+
+  // 300ms Debounce for Attendee Search Query
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
 
   const [foodEvents, setFoodEvents] = useState([]);
   const [stats, setStats] = useState({
@@ -48,30 +68,30 @@ export default function FoodCheckIn() {
     pendingRedemptions: 0
   });
 
-  // Food Stall Controls
-  const [gatePresets, setGatePresets] = useState([]);
-  const [gateName, setGateName] = useState("");
-  const [customGate, setCustomGate] = useState("");
+  // Food Counter / Meal Station Controls (Completely Separate from Gate Presets)
+  const [counterPresets, setCounterPresets] = useState([]);
+  const [counterName, setCounterName] = useState("");
+  const [customCounter, setCustomCounter] = useState("");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [rapidCodeInput, setRapidCodeInput] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const fetchGatePresets = async () => {
+  const fetchCounterPresets = async () => {
     try {
-      const res = await getGatePresets();
+      const res = await getFoodCounterPresets();
       const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-      setGatePresets(list);
-      if (list.length > 0 && !gateName) {
-        setGateName(list[0].name);
+      setCounterPresets(list);
+      if (list.length > 0 && !counterName) {
+        setCounterName(list[0].name);
       }
     } catch (err) {
-      console.error("Failed to load gates", err);
+      console.error("Failed to load food counter presets", err);
     }
   };
 
   useEffect(() => {
     fetchFoodData();
-    fetchGatePresets();
+    fetchCounterPresets();
   }, []);
 
   const fetchFoodData = async () => {
@@ -94,58 +114,94 @@ export default function FoodCheckIn() {
     }
   };
 
-  const handleSaveGate = async () => {
-    if (!customGate.trim()) return;
+  const handleSaveCounter = async () => {
+    if (!customCounter.trim()) return;
     try {
-      const res = await addGatePreset(customGate.trim());
-      await fetchGatePresets();
-      setGateName(customGate.trim());
-      setCustomGate("");
+      await addFoodCounterPreset(customCounter.trim());
+      await fetchCounterPresets();
+      setCounterName(customCounter.trim());
+      setCustomCounter("");
     } catch (err) {
-      console.error("Failed to save gate", err);
+      console.error("Failed to save food counter preset", err);
     }
   };
 
-  const handleDeleteGate = async () => {
-    const targetName = customGate.trim() || gateName;
+  const handleDeleteCounter = async () => {
+    const targetName = customCounter.trim() || counterName;
     if (!targetName) return;
-    const gateObj = gatePresets.find(g => g.name === targetName);
-    if (!gateObj) return;
+    const counterObj = counterPresets.find(c => c.name === targetName);
+    if (!counterObj) return;
     
     try {
-      await deleteGatePreset(gateObj.id);
-      await fetchGatePresets();
-      if (customGate) setCustomGate("");
-      setGateName(gatePresets.length > 1 ? gatePresets.find(g => g.id !== gateObj.id)?.name : "");
+      await deleteFoodCounterPreset(counterObj.id);
+      await fetchCounterPresets();
+      if (customCounter) setCustomCounter("");
+      setCounterName(counterPresets.length > 1 ? counterPresets.find(c => c.id !== counterObj.id)?.name : "");
     } catch (err) {
-      console.error("Failed to delete gate", err);
+      console.error("Failed to delete food counter preset", err);
+    }
+  };
+
+  const fetchAttendees = async (eventId, search = debouncedSearch, status = statusFilter) => {
+    if (!eventId) return;
+    const currentReqId = ++attendeeRequestIdRef.current;
+
+    if (hasInitialAttendeesLoadedRef.current) {
+      setIsTableFiltering(true);
+    } else {
+      setEntriesLoading(true);
+    }
+
+    try {
+      const res = await getEventAttendees(eventId, {
+        search: search || undefined,
+        status: status !== "ALL" ? status : undefined,
+      });
+
+      if (currentReqId !== attendeeRequestIdRef.current) return;
+
+      const list = Array.isArray(res) ? res : res?.data || [];
+      setAttendees(list);
+
+      if (res?.counts) {
+        setAttendeeCounts(res.counts);
+      } else {
+        const redeemed = list.filter((a) => a.is_checked_in || a.total_checkins > 0).length;
+        setAttendeeCounts({
+          total: list.length,
+          redeemed: redeemed,
+          pending: Math.max(0, list.length - redeemed)
+        });
+      }
+      hasInitialAttendeesLoadedRef.current = true;
+    } catch (err) {
+      console.error("Failed to load food attendees:", err);
+      if (currentReqId === attendeeRequestIdRef.current) {
+        setAttendees([]);
+      }
+    } finally {
+      if (currentReqId === attendeeRequestIdRef.current) {
+        setEntriesLoading(false);
+        setIsTableFiltering(false);
+      }
     }
   };
 
   useEffect(() => {
-    if (selectedEventId) {
-      loadEventData(selectedEventId);
-    }
+    hasInitialAttendeesLoadedRef.current = false;
   }, [selectedEventId]);
 
-  const loadEventData = async (eventId) => {
-    setEntriesLoading(true);
-    try {
-      const res = await getEventAttendees(eventId);
-      const list = Array.isArray(res) ? res : res?.data || [];
-      setAttendees(list);
-    } catch (err) {
-      console.error("Failed to load event attendees:", err);
-    } finally {
-      setEntriesLoading(false);
+  useEffect(() => {
+    if (selectedEventId) {
+      fetchAttendees(selectedEventId, debouncedSearch, statusFilter);
     }
-  };
+  }, [selectedEventId, debouncedSearch, statusFilter]);
 
   const selectedEvent = useMemo(() => {
     return foodEvents.find((e) => String(e.id || e.code) === String(selectedEventId)) || null;
   }, [foodEvents, selectedEventId]);
 
-  const effectiveGateName = customGate.trim() || gateName;
+  const effectiveCounterName = customCounter.trim() || counterName;
 
   const handleVerify = async (code) => {
     if (!code || !code.trim()) return;
@@ -154,7 +210,11 @@ export default function FoodCheckIn() {
     setIsVerifying(true);
 
     try {
-      const res = await redeemFoodTokenApi({ token: cleanCode, event_id: selectedEventId });
+      const res = await redeemFoodTokenApi({
+        token: cleanCode,
+        event_id: selectedEventId,
+        counter_name: effectiveCounterName
+      });
       const data = res?.data || res || {};
       const attendeeName = data.name || "Attendee";
       const mealType = data.food_preference || "Meal";
@@ -172,10 +232,12 @@ export default function FoodCheckIn() {
           food_preference: mealType
         },
         timestamp: timeNow,
-        stall: effectiveGateName
+        stall: effectiveCounterName
       });
       fetchFoodData();
-      if (selectedEventId) loadEventData(selectedEventId);
+      if (selectedEventId) {
+        fetchAttendees(selectedEventId, debouncedSearch, statusFilter);
+      }
     } catch (err) {
       const errMsg = err?.response?.data?.message || err?.message || "Invalid or already redeemed food token";
       const timeNow = new Date().toLocaleTimeString();
@@ -190,7 +252,7 @@ export default function FoodCheckIn() {
           ticket_code: cleanCode
         },
         timestamp: timeNow,
-        stall: effectiveGateName
+        stall: effectiveCounterName
       });
     } finally {
       setIsVerifying(false);
@@ -209,26 +271,6 @@ export default function FoodCheckIn() {
       (item.name || "").toLowerCase().includes(search.toLowerCase()) ||
       (item.code || "").toLowerCase().includes(search.toLowerCase())
   );
-
-  const filteredAttendees = useMemo(() => {
-    return attendees.filter((a) => {
-      const matchSearch =
-        !searchQuery ||
-        (a.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.visitor_code || a.ticket_code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.phone || "").toLowerCase().includes(searchQuery.toLowerCase());
-
-      if (!matchSearch) return false;
-
-      // In this backend implementation, food checkin increases total_checkins or sets is_checked_in
-      const hasRedeemed = a.is_checked_in || a.total_checkins > 0;
-
-      if (statusFilter === "REDEEMED") return hasRedeemed;
-      if (statusFilter === "PENDING") return !hasRedeemed;
-      return true;
-    });
-  }, [attendees, searchQuery, statusFilter]);
 
   const handleExportCSV = () => {
     if (!attendees.length) return;
@@ -262,8 +304,9 @@ export default function FoodCheckIn() {
     document.body.removeChild(link);
   };
 
-  const totalRegistered = attendees.length;
-  const redeemedCount = attendees.filter((a) => a.is_checked_in || a.total_checkins > 0).length;
+  const totalRegistered = attendeeCounts.total ?? attendees.length;
+  const redeemedCount = attendeeCounts.redeemed ?? attendees.filter((a) => a.is_checked_in || a.total_checkins > 0).length;
+  const pendingCount = attendeeCounts.pending ?? Math.max(0, totalRegistered - redeemedCount);
 
   const verificationCardJSX = scanResultAlert ? (
     <div className="select-none flex flex-col h-full bg-white">
@@ -306,25 +349,25 @@ export default function FoodCheckIn() {
                 <span className="font-extrabold text-cyan-700">
                   {scanResultAlert.attendee?.food_preference && scanResultAlert.attendee?.food_preference !== "None"
                     ? `${scanResultAlert.attendee.food_preference}`
-                    : "No Meal Pass"}
+                    : "Standard Meal"}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-2 border-t border-slate-200/60 mt-auto">
-            <span>Food Stall: {scanResultAlert.stall || "Main Counter"}</span>
-            <span>Scanned: {scanResultAlert.timestamp}</span>
+            <span>Counter: {scanResultAlert.stall || effectiveCounterName}</span>
+            <span>Redeemed: {scanResultAlert.timestamp}</span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 shrink-0">
+        <div className="space-y-2 pt-2">
           <Button
             onClick={() => setScanResultAlert(null)}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl py-2.5 border-none cursor-pointer"
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs h-11 rounded-xl cursor-pointer"
           >
-            Done / Next Scan
+            Done / Next Attendee
           </Button>
         </div>
       </div>
@@ -340,12 +383,12 @@ export default function FoodCheckIn() {
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
                 Food Token Scanner & Check-In
               </h1>
-              <Badge className="bg-cyan-50 text-cyan-800 border-cyan-200 px-2.5 py-0.5 font-bold text-[11px]">
-                CATERING OPERATIONS
+              <Badge className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-black text-[11px] border-none px-2.5 py-0.5 shadow-sm">
+                EVENTS
               </Badge>
             </div>
             <p className="text-xs sm:text-sm font-medium text-slate-500">
-              Select an event to manage food stalls and meal token redemptions.
+              Select an active event to start scanning meal passes and track catering turnout.
             </p>
           </div>
           <Button
@@ -358,45 +401,97 @@ export default function FoodCheckIn() {
           </Button>
         </div>
 
+        {/* Executive Overall Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="border-slate-200/80 shadow-xs">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Catering Passes</p>
+                <h3 className="text-2xl font-extrabold text-slate-900">{stats.totalFoodTokens.toLocaleString()}</h3>
+                <p className="text-xs font-medium text-slate-500">All Events Combined</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 text-slate-600 flex items-center justify-center border border-slate-100">
+                <Utensils size={22} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200/80 shadow-xs">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Meals Served</p>
+                <h3 className="text-2xl font-extrabold text-cyan-600">{stats.mealsServed.toLocaleString()}</h3>
+                <p className="text-xs font-medium text-cyan-600">Redeemed Tokens</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-100">
+                <CheckCircle2 size={22} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200/80 shadow-xs">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Pending</p>
+                <h3 className="text-2xl font-extrabold text-slate-700">{stats.pendingRedemptions.toLocaleString()}</h3>
+                <p className="text-xs font-medium text-slate-400">Meals Remaining</p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                <QrCode size={22} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Events Table Container */}
         <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Active Events</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Select Event for Food Scan</h2>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search event name or code..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
           </div>
+
           <ResponsiveTableView
             data={filtered}
             keyField="id"
             loading={loading}
             columnCount={5}
             columns={[
-              { header: "Event Details", className: "py-3.5 px-5" },
-              { header: "Start Date", className: "py-3.5 px-4" },
-              { header: "End Date", className: "py-3.5 px-4" },
-              { header: "Food Pass Redemptions", className: "py-3.5 px-4 text-center" },
-              { header: "Actions", className: "py-3.5 px-5 text-right" },
+              { header: "Event Code & Name", className: "py-4 px-5 font-bold" },
+              { header: "Start Date", className: "py-4 px-4 font-bold" },
+              { header: "End Date", className: "py-4 px-4 font-bold" },
+              { header: "Meals Progress", className: "py-4 px-4 font-bold text-center" },
+              { header: "Action", className: "py-4 px-5 font-bold text-right" },
             ]}
-            emptyMessage="No food provisioning events found in database."
+            emptyMessage="No events found for food token scanning."
             renderDesktopTable={() => (
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="rounded-xl border border-slate-100 overflow-hidden">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3.5 px-5">Event Details</th>
-                      <th className="py-3.5 px-4">Start Date</th>
-                      <th className="py-3.5 px-4">End Date</th>
-                      <th className="py-3.5 px-4 text-center">Food Pass Redemptions</th>
-                      <th className="py-3.5 px-5 text-right">Actions</th>
+                    <tr className="border-b border-slate-100 bg-slate-50/50 text-slate-600 text-xs uppercase tracking-wider font-extrabold">
+                      <th className="py-4 px-5 font-bold">Event Code &amp; Name</th>
+                      <th className="py-4 px-4 font-bold">Start Date</th>
+                      <th className="py-4 px-4 font-bold">End Date</th>
+                      <th className="py-4 px-4 font-bold text-center">Meals Progress</th>
+                      <th className="py-4 px-5 font-bold text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                    {filtered.map((item, idx) => (
-                      <tr key={item.id || item.code || idx} className="hover:bg-slate-50/80 transition-colors">
+                  <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                    {filtered.map((item) => (
+                      <tr key={item.id || item.code} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-4 px-5">
-                          <div className="space-y-1">
-                            <Badge variant="outline" className="bg-cyan-50 text-cyan-800 border-cyan-200 font-bold">
-                              {item.code}
-                            </Badge>
-                            <h4 className="font-bold text-slate-900 text-sm">{item.name}</h4>
-                          </div>
+                          <div className="font-extrabold text-slate-900">{item.name}</div>
+                          <span className="font-mono text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-100 mt-0.5 inline-block">
+                            {item.code || "EVENT"}
+                          </span>
                         </td>
                         <td className="py-4 px-4 font-semibold text-slate-800">{item.startDate || "---"}</td>
                         <td className="py-4 px-4 text-slate-500">{item.endDate || "---"}</td>
@@ -477,9 +572,9 @@ export default function FoodCheckIn() {
 
   // Calculate event-specific stats
   const eventStats = {
-    totalFoodTokens: selectedEvent?.totalFoodTokens || 0,
-    mealsServed: selectedEvent?.scannedTokens || 0,
-    pendingRedemptions: Math.max(0, (selectedEvent?.totalFoodTokens || 0) - (selectedEvent?.scannedTokens || 0))
+    totalFoodTokens: selectedEvent?.totalFoodTokens || totalRegistered,
+    mealsServed: selectedEvent?.scannedTokens || redeemedCount,
+    pendingRedemptions: Math.max(0, (selectedEvent?.totalFoodTokens || totalRegistered) - (selectedEvent?.scannedTokens || redeemedCount))
   };
   const percentageRedeemed = eventStats.totalFoodTokens > 0
     ? Math.round((eventStats.mealsServed / eventStats.totalFoodTokens) * 100)
@@ -496,7 +591,7 @@ export default function FoodCheckIn() {
               Food Token Scanner & Check-In
             </h1>
             <Badge className="bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white font-black text-[11px] border-none px-2.5 py-0.5 shadow-sm">
-              LIVE FOOD STALL
+              LIVE FOOD COUNTER
             </Badge>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
@@ -525,26 +620,26 @@ export default function FoodCheckIn() {
         </div>
       </div>
 
-      {/* ── FOOD STALL CONTROL BAR ── */}
-      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl p-5 sm:p-6 relative">
+      {/* ── FOOD COUNTER CONTROL BAR ── */}
+      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl p-5 sm:p-6 relative overflow-visible z-40">
         {/* Background glow effect wrapper */}
         <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl" />
           <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl" />
         </div>
 
-        <div className="relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-5">
 
           {/* Left Side: Settings */}
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 flex-1">
 
             {/* Mode Switch */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Operation Mode</span>
-              <div className="bg-slate-950/50 p-1 rounded-xl flex items-center gap-1 border border-slate-800 backdrop-blur-md">
+            <div className="space-y-1.5 shrink-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Operation Mode</span>
+              <div className="h-11 bg-slate-950/60 p-1 rounded-xl flex items-center gap-1 border border-slate-800 backdrop-blur-md">
                 <button
                   type="button"
-                  className="px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-400/20"
+                  className="h-full px-4 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-400/20"
                 >
                   <Utensils size={15} />
                   <span>Redeem Token</span>
@@ -552,49 +647,54 @@ export default function FoodCheckIn() {
               </div>
             </div>
 
-            {/* Stall Selector */}
-            <div className="space-y-2 flex-1">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Stall Assignment</span>
-              <div className="flex flex-wrap sm:flex-nowrap items-stretch gap-2 h-10.5">
-                <div className="relative flex-1 min-w-[150px]">
-                  <DoorOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            {/* Food Counter Selector (Separate from Gates) */}
+            <div className="space-y-1.5 flex-1 min-w-[280px] relative z-50">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Food Counter / Meal Station Assignment</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 h-auto sm:h-11">
+                {/* Counter Select Dropdown */}
+                <div className="relative h-11">
+                  <DoorOpen size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
                   <Select
-                    value={gateName}
+                    value={counterName}
                     onValueChange={(val) => {
-                      setGateName(val);
-                      setCustomGate("");
+                      setCounterName(val);
+                      setCustomCounter("");
                     }}
-                    placeholder={gatePresets.length === 0 ? "No Presets Saved" : "Select Stall..."}
-                    options={gatePresets.map((p) => ({ value: p.name, label: p.name }))}
-                    triggerClassName="w-full h-full bg-slate-950/50 border-slate-800 text-white text-xs font-bold pl-9 rounded-xl outline-none focus:border-cyan-500 transition-colors"
-                    contentClassName="bg-slate-900 border-slate-800 text-white"
+                    placeholder={counterPresets.length === 0 ? "No Presets Saved" : "Select Counter..."}
+                    options={counterPresets.map((p) => ({ value: p.name, label: p.name }))}
+                    position="bottom"
+                    className="w-full h-11"
+                    triggerClassName="w-full h-11 bg-slate-950/60 border border-slate-800 text-white text-xs font-bold pl-9 pr-3 rounded-xl outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors shadow-2xs"
+                    contentClassName="bg-slate-900 border border-slate-700 text-white shadow-2xl z-[100] max-h-44 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-track]:bg-transparent"
                   />
                 </div>
-                <div className="relative flex-1 min-w-[150px] flex items-center bg-slate-950/50 border border-slate-800 rounded-xl focus-within:border-cyan-500 transition-colors">
-                  <Sparkles size={14} className="absolute left-3 text-slate-400" />
+
+                {/* Custom Counter Name Input */}
+                <div className="relative h-11 flex items-center bg-slate-950/60 border border-slate-800 rounded-xl focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500 transition-all shadow-2xs">
+                  <Sparkles size={14} className="absolute left-3 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Custom gate name..."
-                    value={customGate}
-                    onChange={(e) => setCustomGate(e.target.value)}
-                    className="w-full h-full bg-transparent border-none text-white text-xs font-medium pl-9 pr-14 outline-none placeholder:text-slate-600"
+                    placeholder="Custom counter name..."
+                    value={customCounter}
+                    onChange={(e) => setCustomCounter(e.target.value)}
+                    className="w-full h-full bg-transparent border-none text-white text-xs font-semibold pl-9 pr-16 outline-none placeholder:text-slate-600"
                   />
-                  <div className="absolute right-1 flex items-center gap-1">
+                  <div className="absolute right-1.5 flex items-center gap-1">
                     <button 
                       type="button" 
-                      onClick={handleSaveGate}
-                      disabled={!customGate.trim()}
-                      className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
-                      title="Save Gate Preset"
+                      onClick={handleSaveCounter}
+                      disabled={!customCounter.trim()}
+                      className="w-7 h-7 flex items-center justify-center bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 rounded-lg disabled:opacity-20 disabled:cursor-not-allowed transition cursor-pointer"
+                      title="Save Counter Preset"
                     >
-                      <Check size={14} />
+                      <Check size={14} strokeWidth={2.5} />
                     </button>
                     <button 
                       type="button" 
-                      onClick={handleDeleteGate}
-                      disabled={!(customGate.trim() ? gatePresets.some(g => g.name === customGate.trim()) : gatePresets.some(g => g.name === gateName))}
-                      className="p-1.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
-                      title="Delete Gate Preset"
+                      onClick={handleDeleteCounter}
+                      disabled={!(customCounter.trim() ? counterPresets.some(c => c.name === customCounter.trim()) : counterPresets.some(c => c.name === counterName))}
+                      className="w-7 h-7 flex items-center justify-center bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg disabled:opacity-20 disabled:cursor-not-allowed transition cursor-pointer"
+                      title="Delete Counter Preset"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -607,31 +707,32 @@ export default function FoodCheckIn() {
           {/* Right Side: Actions */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 flex-1 xl:max-w-md">
             {/* Barcode Gun / Manual Quick Input */}
-            <div className="space-y-2 flex-1">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Quick Verification</span>
-              <form onSubmit={handleRapidGunSubmit} className="relative h-10.5">
+            <div className="space-y-1.5 flex-1 min-w-[200px]">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Quick Verification</span>
+              <form onSubmit={handleRapidGunSubmit} className="relative h-11">
                 <input
                   type="text"
                   placeholder="Scan pass code..."
                   value={rapidCodeInput}
                   onChange={(e) => setRapidCodeInput(e.target.value)}
-                  className="w-full h-full pl-4 pr-24 bg-slate-950/80 border border-slate-800 rounded-xl text-sm font-mono font-bold text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600 placeholder:font-sans transition-all"
+                  className="w-full h-11 pl-3.5 pr-20 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600 placeholder:font-sans transition-all shadow-2xs"
                 />
                 <button
                   type="submit"
                   disabled={isVerifying || !rapidCodeInput.trim()}
-                  className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-white text-slate-900 hover:bg-slate-200 font-black text-xs rounded-lg border-none cursor-pointer disabled:opacity-50 transition-colors"
+                  className="absolute right-1.5 top-1.5 bottom-1.5 px-3.5 bg-white text-slate-900 hover:bg-slate-200 font-black text-xs rounded-lg border-none cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center shadow-xs"
                 >
                   Verify
                 </button>
               </form>
             </div>
 
-            <div className="flex items-center gap-2 h-10.5">
+            <div className="flex items-center gap-2 h-11 shrink-0">
               {/* Camera Scanner Button */}
               <Button
+                type="button"
                 onClick={() => setShowScanner(true)}
-                className="h-full bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs px-4 rounded-xl border-none cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 whitespace-nowrap transition-all"
+                className="h-11 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs px-4 rounded-xl border-none cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 whitespace-nowrap transition-all active:scale-95"
               >
                 <QrCode size={16} />
                 <span className="hidden sm:inline">Camera</span>
@@ -641,8 +742,8 @@ export default function FoodCheckIn() {
               <button
                 type="button"
                 onClick={() => setSoundEnabled(!soundEnabled)}
-                title={soundEnabled ? "Mute Scanner Audio" : "Enable Scanner Audio"}
-                className="h-full px-3.5 bg-slate-950/50 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800 cursor-pointer flex items-center justify-center"
+                title={soundEnabled ? "Mute Turnstile Audio" : "Enable Turnstile Audio"}
+                className="h-11 w-11 shrink-0 bg-slate-950/60 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800 cursor-pointer flex items-center justify-center shadow-2xs"
               >
                 {soundEnabled ? <Volume2 size={16} className="text-cyan-400" /> : <VolumeX size={16} className="text-slate-500" />}
               </button>
@@ -754,8 +855,18 @@ export default function FoodCheckIn() {
                 placeholder="Search name, code, email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-500"
+                className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-500"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Clear Search"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             {/* Export CSV Button */}
@@ -776,7 +887,7 @@ export default function FoodCheckIn() {
           {[
             { key: "ALL", label: `All Passes (${totalRegistered})` },
             { key: "REDEEMED", label: `Food Redeemed (${redeemedCount})` },
-            { key: "PENDING", label: `Not Redeemed (${Math.max(0, totalRegistered - redeemedCount)})` }
+            { key: "PENDING", label: `Not Redeemed (${pendingCount})` }
           ].map((tab) => (
             <button
               key={tab.key}
@@ -792,150 +903,159 @@ export default function FoodCheckIn() {
           ))}
         </div>
 
-        {/* Attendees Data Table / Mobile Cards */}
-        <ResponsiveTableView
-          data={filteredAttendees}
-          keyField="id"
-          loading={entriesLoading}
-          columnCount={5}
-          columns={[
-            { header: "Pass Code", className: "py-3.5 px-4" },
-            { header: "Attendee Name & Contact", className: "py-3.5 px-4" },
-            { header: "Meal Option", className: "py-3.5 px-4" },
-            { header: "Status & Times", className: "py-3.5 px-4" },
-            { header: "Desk Action", className: "py-3.5 px-4 text-right" },
-          ]}
-          emptyMessage="No attendee passes found matching your filter criteria."
-          renderDesktopTable={() => (
-            <div className="overflow-x-auto responsive-table-wrap">
-              <table className="w-full text-left border-collapse min-w-[650px]">
-                <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Pass Code</th>
-                    <th className="py-3.5 px-4">Attendee Name &amp; Contact</th>
-                    <th className="py-3.5 px-4">Meal Option</th>
-                    <th className="py-3.5 px-4">Status &amp; Times</th>
-                    <th className="py-3.5 px-4 text-right">Desk Action</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
-                  {filteredAttendees.map((v) => {
-                    const isRedeemed = v.is_checked_in || v.total_checkins > 0;
-                    return (
-                      <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
-                          {v.visitor_code || v.ticket_code}
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          <div className="font-extrabold text-slate-900">{v.name}</div>
-                          <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
-                            {v.email || v.phone || "No contact info"}
-                          </div>
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          {v.food_preference && v.food_preference !== "None" ? (
-                            <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-extrabold px-2 py-0.5">
-                              {v.food_preference}
-                            </Badge>
-                          ) : (
-                            <span className="text-slate-400 text-xs font-medium">None</span>
-                          )}
-                        </td>
-
-                        <td className="py-3.5 px-4">
-                          {isRedeemed ? (
-                            <div>
-                              <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-black px-2 py-0.5">
-                                ● Meal Redeemed
-                              </Badge>
-                              <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                                At: {v.checkin_time || "Earlier"}
-                              </p>
-                            </div>
-                          ) : (
-                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0.5">
-                              Pending
-                            </Badge>
-                          )}
-                        </td>
-
-                        <td className="py-3.5 px-4 text-right">
-                          {!isRedeemed ? (
-                            <Button
-                              size="sm"
-                              onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
-                              className="bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
-                            >
-                              <Utensils size={13} />
-                              <span>Redeem Token</span>
-                            </Button>
-                          ) : (
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">
-                              Already Served
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        {/* Attendees Data Table / Mobile Cards with Zero-Flicker Transition */}
+        <div className="relative min-h-[320px]">
+          {/* Subtle Top Loading Line on Filter Switching / Searching (Zero Flicker) */}
+          {isTableFiltering && (
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 animate-pulse rounded-t-xl z-20" />
           )}
-          renderMobileCard={(v) => {
-            const isRedeemed = v.is_checked_in || v.total_checkins > 0;
-            return (
-              <MobileDataCard key={v.id} highlightBorder={isRedeemed}>
-                <MobileDataCard.Header
-                  badge={
-                    <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                      {v.visitor_code || v.ticket_code}
-                    </span>
-                  }
-                  title={v.name}
-                  subtitle={v.email || v.phone || "No contact info"}
-                  statusBadge={
-                    isRedeemed ? (
-                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[9px] font-black px-2 py-0.5">
-                        ● Redeemed
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[9px] font-bold px-2 py-0.5">
-                        Pending
-                      </Badge>
-                    )
-                  }
-                />
-                <MobileDataCard.Grid
-                  columns={2}
-                  items={[
-                    { label: "Meal Option", value: v.food_preference && v.food_preference !== "None" ? v.food_preference : "None" },
-                    { label: "Redeem Time", value: v.checkin_time || "Pending" },
-                  ]}
-                />
-                <MobileDataCard.Actions>
-                  {!isRedeemed ? (
-                    <Button
-                      size="sm"
-                      onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
-                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
-                    >
-                      <Utensils size={14} />
-                      <span>Redeem Meal Token</span>
-                    </Button>
-                  ) : (
-                    <div className="w-full text-center py-1.5 text-[11px] font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
-                      Meal Already Served
-                    </div>
-                  )}
-                </MobileDataCard.Actions>
-              </MobileDataCard>
-            );
-          }}
-        />
+
+          <div className={`transition-opacity duration-200 ${isTableFiltering ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
+            <ResponsiveTableView
+              data={attendees}
+              keyField="id"
+              loading={entriesLoading}
+              columnCount={5}
+              columns={[
+                { header: "Pass Code", className: "py-3.5 px-4" },
+                { header: "Attendee Name & Contact", className: "py-3.5 px-4" },
+                { header: "Meal Option", className: "py-3.5 px-4" },
+                { header: "Status & Times", className: "py-3.5 px-4" },
+                { header: "Desk Action", className: "py-3.5 px-4 text-right" },
+              ]}
+              emptyMessage={searchQuery.trim() ? "No attendees found matching your search." : "No attendee passes found matching this filter."}
+              renderDesktopTable={() => (
+                <div className="overflow-x-auto responsive-table-wrap">
+                  <table className="w-full text-left border-collapse min-w-[650px]">
+                    <thead>
+                      <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="py-3.5 px-4">Pass Code</th>
+                        <th className="py-3.5 px-4">Attendee Name &amp; Contact</th>
+                        <th className="py-3.5 px-4">Meal Option</th>
+                        <th className="py-3.5 px-4">Status &amp; Times</th>
+                        <th className="py-3.5 px-4 text-right">Desk Action</th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
+                      {attendees.map((v) => {
+                        const isRedeemed = v.is_checked_in || v.total_checkins > 0;
+                        return (
+                          <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
+                              {v.visitor_code || v.ticket_code}
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <div className="font-extrabold text-slate-900">{v.name}</div>
+                              <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
+                                {v.email || v.phone || "No contact info"}
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              {v.food_preference && v.food_preference !== "None" ? (
+                                <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-extrabold px-2 py-0.5">
+                                  {v.food_preference}
+                                </Badge>
+                              ) : (
+                                <span className="text-slate-400 text-xs font-medium">None</span>
+                              )}
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              {isRedeemed ? (
+                                <div>
+                                  <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[10px] font-black px-2 py-0.5">
+                                    ● Meal Redeemed
+                                  </Badge>
+                                  <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                    At: {v.checkin_time || "Earlier"}
+                                  </p>
+                                </div>
+                              ) : (
+                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold px-2 py-0.5">
+                                  Pending
+                                </Badge>
+                              )}
+                            </td>
+
+                            <td className="py-3.5 px-4 text-right">
+                              {!isRedeemed ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
+                                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
+                                >
+                                  <Utensils size={13} />
+                                  <span>Redeem Token</span>
+                                </Button>
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                  Already Served
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              renderMobileCard={(v) => {
+                const isRedeemed = v.is_checked_in || v.total_checkins > 0;
+                return (
+                  <MobileDataCard key={v.id} highlightBorder={isRedeemed}>
+                    <MobileDataCard.Header
+                      badge={
+                        <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                          {v.visitor_code || v.ticket_code}
+                        </span>
+                      }
+                      title={v.name}
+                      subtitle={v.email || v.phone || "No contact info"}
+                      statusBadge={
+                        isRedeemed ? (
+                          <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 text-[9px] font-black px-2 py-0.5">
+                            ● Redeemed
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[9px] font-bold px-2 py-0.5">
+                            Pending
+                          </Badge>
+                        )
+                      }
+                    />
+                    <MobileDataCard.Grid
+                      columns={2}
+                      items={[
+                        { label: "Meal Option", value: v.food_preference && v.food_preference !== "None" ? v.food_preference : "None" },
+                        { label: "Redeem Time", value: v.checkin_time || "Pending" },
+                      ]}
+                    />
+                    <MobileDataCard.Actions>
+                      {!isRedeemed ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id)}
+                          className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                        >
+                          <Utensils size={14} />
+                          <span>Redeem Meal Token</span>
+                        </Button>
+                      ) : (
+                        <div className="w-full text-center py-1.5 text-[11px] font-bold text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+                          Meal Already Served
+                        </div>
+                      )}
+                    </MobileDataCard.Actions>
+                  </MobileDataCard>
+                );
+              }}
+            />
+          </div>
+        </div>
       </Card>
     </div>
   );

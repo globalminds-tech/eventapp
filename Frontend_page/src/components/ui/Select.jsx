@@ -34,6 +34,8 @@ export const Select = ({
   className = "",
   triggerClassName = "",
   contentClassName = "",
+  itemClassName = "",
+  position = "popper",
   children,
   ...props
 }) => {
@@ -166,18 +168,23 @@ export const Select = ({
             >
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
-            <SelectContent className={contentClassName}>
+            <SelectContent className={contentClassName} position={position}>
               {options
                 ? options.length > 0 ? (
                     options.map((opt, idx) => {
                       const optVal = typeof opt === "object" ? opt.value : opt;
                       const optLabel = typeof opt === "object" ? opt.label : opt;
                       const optDisabled = typeof opt === "object" ? opt.disabled : false;
+                      const isDarkTheme = contentClassName?.includes("bg-slate-9") || contentClassName?.includes("bg-slate-8") || contentClassName?.includes("bg-black");
                       return (
                         <SelectItem
                           key={idx}
                           value={optVal}
                           disabled={optDisabled}
+                          className={cn(
+                            isDarkTheme && "text-slate-200 hover:bg-slate-800 hover:text-white",
+                            itemClassName
+                          )}
                         >
                           {optLabel}
                         </SelectItem>
@@ -241,8 +248,8 @@ export const SelectTrigger = React.forwardRef(
         disabled={disabled}
         onClick={() => !disabled && setOpen(!open)}
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 font-semibold shadow-2xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all hover:border-slate-300 cursor-pointer text-left",
-          open && "ring-2 ring-sky-500 border-sky-500",
+          "flex h-10 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-800 font-semibold shadow-2xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all hover:border-slate-300 cursor-pointer text-left",
+          open && "ring-2 ring-emerald-500 border-emerald-500",
           error && "border-red-500 focus:ring-red-500",
           className
         )}
@@ -252,7 +259,7 @@ export const SelectTrigger = React.forwardRef(
         <ChevronDown
           className={cn(
             "h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 pointer-events-none ml-2",
-            open && "transform rotate-180 text-sky-600"
+            open && "transform rotate-180 text-emerald-600"
           )}
         />
       </button>
@@ -272,7 +279,7 @@ export const SelectValue = ({ placeholder = "Select an option", className = "" }
     <span
       className={cn(
         "truncate block",
-        !display ? "text-slate-400 font-normal" : "text-slate-800 font-medium",
+        !display ? "text-slate-400 font-normal" : "text-inherit font-medium",
         className
       )}
     >
@@ -305,13 +312,19 @@ export const SelectContent = ({
 
   if (!open) return null;
 
+  const isTop = position === "top" || position === "above";
+
   return (
     <div
       ref={contentRef}
       className={cn(
-        "absolute z-[100] left-0 right-0 top-[calc(100%+4px)] min-w-[8rem] rounded-xl border border-slate-200/90 bg-white p-1 text-slate-800 shadow-2xl animate-in fade-in-80 zoom-in-95 duration-100 max-h-60 overflow-y-auto",
+        "absolute z-[100] left-0 right-0 min-w-[8rem] rounded-xl border border-slate-200/90 bg-white p-1 text-slate-800 shadow-2xl animate-in fade-in-80 zoom-in-95 duration-100 max-h-48 overflow-y-auto overscroll-contain",
+        isTop ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]",
         className
       )}
+      style={{
+        scrollbarWidth: "thin",
+      }}
       {...props}
     >
       <div className="flex flex-col gap-0.5">{children}</div>
@@ -321,6 +334,8 @@ export const SelectContent = ({
 
 export const SelectItem = ({
   value: itemValue,
+  label: propLabel,
+  textValue,
   disabled = false,
   className = "",
   children,
@@ -328,7 +343,11 @@ export const SelectItem = ({
 }) => {
   const { value, onValueChange, setSelectedLabel } = useSelect();
   const isSelected = String(value) === String(itemValue);
-  const itemText = React.useMemo(() => extractTextFromChildren(children), [children]);
+  const itemText = React.useMemo(() => {
+    if (propLabel) return propLabel;
+    if (textValue) return textValue;
+    return extractTextFromChildren(children);
+  }, [propLabel, textValue, children]);
 
   // Sync label if this item is currently selected
   useEffect(() => {
@@ -344,6 +363,8 @@ export const SelectItem = ({
     }
   };
 
+  const isDark = className?.includes("text-slate-200") || className?.includes("text-white") || className?.includes("hover:bg-slate-800");
+
   return (
     <div
       role="option"
@@ -351,15 +372,15 @@ export const SelectItem = ({
       onClick={handleSelect}
       className={cn(
         "relative flex w-full cursor-pointer select-none items-center justify-between rounded-lg py-2 pl-3 pr-3 text-xs sm:text-sm font-semibold outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 text-slate-700",
-        isSelected && "bg-sky-50 text-sky-700 font-bold hover:bg-sky-100 hover:text-sky-800",
+        isSelected && (isDark ? "bg-emerald-500/20 text-emerald-400 font-bold hover:bg-emerald-500/30" : "bg-emerald-50 text-emerald-800 font-bold hover:bg-emerald-100 hover:text-emerald-900"),
         disabled && "pointer-events-none opacity-40 cursor-not-allowed",
         className
       )}
       {...props}
     >
-      <span className="truncate mr-2">{children}</span>
+      <div className="flex-1 min-w-0 mr-2">{children}</div>
       {isSelected && (
-        <Check className="h-4 w-4 shrink-0 text-sky-600" />
+        <Check className={cn("h-4 w-4 shrink-0", isDark ? "text-emerald-400" : "text-emerald-600")} />
       )}
     </div>
   );

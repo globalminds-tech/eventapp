@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends
 from app.modules.checkins.controllers.checkin_controller import CheckinController
 from app.middleware.auth import get_current_user
@@ -29,8 +30,21 @@ def get_events_checkin_summary(current_user: dict = Depends(get_current_user)):
     return CheckinController.get_events_summary(organizer_id=organizer_id)
 
 @checkin_router.get("/events/{event_id}/attendees")
-def get_event_attendees(event_id: str, current_user: dict = Depends(get_current_user)):
-    return CheckinController.get_event_attendees(event_id=event_id)
+def get_event_attendees(
+    event_id: str,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    page: Optional[int] = None,
+    limit: Optional[int] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    return CheckinController.get_event_attendees(
+        event_id=event_id,
+        search=search,
+        status=status,
+        page=page,
+        limit=limit
+    )
 
 @checkin_router.get("/events/{event_id}/logs")
 def get_event_checkin_logs(event_id: str, current_user: dict = Depends(get_current_user)):
@@ -49,7 +63,24 @@ def get_food_checkin_summary(current_user: dict = Depends(get_current_user)):
 def redeem_food_token(payload: dict, current_user: dict = Depends(get_current_user)):
     token = payload.get("token") or payload.get("code") or payload.get("ticket_code") or ""
     event_id = payload.get("event_id")
-    return CheckinController.redeem_food_token(token, event_id=event_id)
+    counter_name = payload.get("counter_name") or payload.get("stall") or payload.get("gate_name")
+    return CheckinController.redeem_food_token(token, event_id=event_id, counter_name=counter_name)
+
+@checkin_router.get("/food/counters")
+def get_food_counter_presets(current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("user_id") or current_user.get("id") or "")
+    return CheckinController.get_food_counter_presets(organizer_id=user_id)
+
+@checkin_router.post("/food/counters")
+def add_food_counter_preset(payload: dict, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("user_id") or current_user.get("id") or "")
+    name = payload.get("name")
+    return CheckinController.add_food_counter_preset(name=name, organizer_id=user_id)
+
+@checkin_router.delete("/food/counters/{counter_id}")
+def delete_food_counter_preset(counter_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("user_id") or current_user.get("id") or "")
+    return CheckinController.delete_food_counter_preset(counter_id=counter_id, organizer_id=user_id)
 
 @checkin_router.get("/addons")
 def get_addons_checkin(current_user: dict = Depends(get_current_user)):
