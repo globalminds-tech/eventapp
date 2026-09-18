@@ -24,6 +24,7 @@ import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveT
 import { TablePagination } from "@/components/ui/TablePagination";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { approvalApi } from "../api/approval.api";
+import { kycApi } from "@/features/admin/kyc/api/kyc.api";
 import {
   fetchApprovalQueueThunk,
   updateApprovalStatusInStore
@@ -85,12 +86,26 @@ export default function EventApprovalQueuePage() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const handleStatusUpdate = async (eventId, newStatus) => {
+  const handleStatusUpdate = async (eventId, newStatus, autoVerifyKyc = false, userId = null) => {
     setActionLoadingId(eventId);
     try {
+      if (autoVerifyKyc && userId) {
+        try {
+          await kycApi.updateKycStatus(userId, "VERIFIED", "organizer");
+        } catch (kErr) {
+          console.warn("Auto-verify KYC notice:", kErr);
+        }
+      }
       await approvalApi.updateEventStatus(eventId, newStatus);
       // Immediately update Redux store so the queue reflects changes across views
       dispatch(updateApprovalStatusInStore({ eventId, status: newStatus }));
+      dispatch(fetchApprovalQueueThunk({
+        search: debouncedSearch,
+        status: activeTab,
+        page,
+        limit,
+        force: true
+      }));
       showNotification(`Event successfully marked as ${newStatus}!`, "success");
     } catch (err) {
       console.error("Failed to update event status:", err);
@@ -319,6 +334,8 @@ export default function EventApprovalQueuePage() {
                     const isPending = ["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"].includes(st);
                     const isActionBusy = actionLoadingId === ev.id;
 
+                    const isOrgKycPending = (ev.organizer_kyc_status || "PENDING").toUpperCase() !== "VERIFIED";
+
                     return (
                       <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="p-3.5 pl-5">
@@ -328,6 +345,13 @@ export default function EventApprovalQueuePage() {
                           <div className="text-[10px] text-slate-400 font-mono">
                             Code: {ev.event_code || ev.code || `EVT-${ev.id}`}
                           </div>
+                          {isOrgKycPending && (
+                            <div className="mt-0.5">
+                              <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded inline-flex items-center gap-1" title="Organizer business KYC is pending approval in the KYC tab">
+                                ⚠️ Org KYC Pending
+                              </span>
+                            </div>
+                          )}
                         </td>
 
                         <td className="p-3.5">
@@ -374,14 +398,38 @@ export default function EventApprovalQueuePage() {
 
                             {isPending && (
                               <>
-                                <Button
-                                  size="xs"
-                                  disabled={isActionBusy}
-                                  onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] cursor-pointer border-none"
-                                >
-                                  <Check size={12} /> Approve
-                                </Button>
+                                {isOrgKycPending ? (
+                                  <div className="inline-flex items-center gap-1">
+                                    <Button
+                                      size="xs"
+                                      disabled={isActionBusy}
+                                      onClick={() => handleStatusUpdate(ev.id, "APPROVED", true, ev.user_id)}
+                                      title="Verify Organizer Business KYC and Approve & Publish Event in 1-Click"
+                                      className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-[10px] cursor-pointer border-none shadow-xs px-2"
+                                    >
+                                      <ShieldCheck size={11} className="mr-0.5" /> Verify &amp; Approve
+                                    </Button>
+                                    <Button
+                                      size="xs"
+                                      variant="outline"
+                                      onClick={() => navigate("/superuser/kyc?tab=pending")}
+                                      title="Open KYC Verification tab"
+                                      className="border-amber-300 text-amber-800 hover:bg-amber-50 text-[10px] font-bold px-1.5"
+                                    >
+                                      KYC Tab
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="xs"
+                                    disabled={isActionBusy}
+                                    onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
+                                    title="Approve & Publish Event"
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold cursor-pointer border-none text-[11px]"
+                                  >
+                                    <Check size={12} /> Approve
+                                  </Button>
+                                )}
                                 <Button
                                   size="xs"
                                   variant="outline"
@@ -446,6 +494,7 @@ export default function EventApprovalQueuePage() {
           const isRejected = st === "REJECTED";
           const isPending = ["PENDING", "PENDING APPROVAL", "SUBMITTED", "DRAFT"].includes(st);
           const isActionBusy = actionLoadingId === ev.id;
+          const isOrgKycPending = (ev.organizer_kyc_status || "PENDING").toUpperCase() !== "VERIFIED";
 
           return (
             <MobileDataCard key={ev.id} highlightBorder={isApproved}>
@@ -500,14 +549,37 @@ export default function EventApprovalQueuePage() {
 
                 {isPending && (
                   <>
-                    <Button
-                      size="xs"
-                      disabled={isActionBusy}
-                      onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] cursor-pointer border-none"
-                    >
-                      <Check size={12} /> Approve
-                    </Button>
+                    {isOrgKycPending ? (
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="xs"
+                          disabled={isActionBusy}
+                          onClick={() => handleStatusUpdate(ev.id, "APPROVED", true, ev.user_id)}
+                          title="Verify Organizer KYC and Approve Event"
+                          className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold cursor-pointer border-none text-[10px]"
+                        >
+                          <ShieldCheck size={11} className="mr-0.5" /> Verify &amp; Approve
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => navigate("/superuser/kyc?tab=pending")}
+                          className="border-amber-300 text-amber-800 hover:bg-amber-50 text-[10px] font-bold"
+                        >
+                          KYC Tab
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="xs"
+                        disabled={isActionBusy}
+                        onClick={() => handleStatusUpdate(ev.id, "APPROVED")}
+                        title="Approve Event"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold cursor-pointer border-none text-[11px]"
+                      >
+                        <Check size={12} /> Approve
+                      </Button>
+                    )}
                     <Button
                       size="xs"
                       variant="outline"

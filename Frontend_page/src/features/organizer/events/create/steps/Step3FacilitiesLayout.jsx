@@ -184,10 +184,15 @@ const Step3FacilitiesLayout = ({ formData, setFormData, organizerId, showErrors 
 
       {/* ── Communication ── */}
       <AccordionSection icon={MessageSquare} title="Communication" accentColor="purple" defaultOpen={true}>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <ToggleChip label="Mail ID" field="mail" />
-          <ToggleChip label="WhatsApp" field="whatsapp" />
-          <ToggleChip label="Print" field="print" />
+        <div className="space-y-2 pt-0.5">
+          <p className="text-[11px] font-medium text-slate-500 leading-tight">
+            Ticket Delivery &amp; Notification Channels: Select the channels used to deliver digital entry passes, invoices, and gate QR codes to attendees upon booking.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <ToggleChip label="Mail ID (Email Confirmation & PDF Pass)" field="mail" />
+            <ToggleChip label="WhatsApp (Pass & QR Notifications)" field="whatsapp" />
+            <ToggleChip label="Print (On-Spot Kiosk Badge Printing)" field="print" />
+          </div>
         </div>
       </AccordionSection>
 

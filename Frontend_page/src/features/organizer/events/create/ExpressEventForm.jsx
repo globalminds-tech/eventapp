@@ -34,7 +34,7 @@ export default function ExpressEventForm({ formData, setFormData, onSubmit, isSu
       <div className="bg-cyan-50/60 border border-cyan-200/80 rounded-xl p-3 flex items-center justify-between text-cyan-900">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-cyan-600 animate-pulse" />
-          <span className="font-extrabold">🚀 Express Creation Mode Active</span>
+          <span className="font-extrabold">Express Creation Mode Active</span>
         </div>
         <span className="text-[11px] font-medium text-cyan-800">
           Fill essential fields below & publish in 1 click!

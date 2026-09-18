@@ -1,74 +1,129 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   MapPin, Calendar, LayoutGrid, Grid, LayoutList, List, Menu,
   ChevronLeft, ChevronRight, ArrowRight, Store, Search, Filter, Sparkles
 } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
-import { getHomeEventshow } from "@/Services/api";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchExhibitorEvents, fetchExhibitorBookings, setEventsFilter } from "@/app/store/exhibitorSlice";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
+import { getAuthUserId } from "@/shared/services/authHelper";
 
 export const UpcomingEventsPage = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const reduxAuthUser = useSelector((state) => state.auth?.user);
+  const reduxUser = useSelector((state) => state.user);
+  const effectiveUserId = getAuthUserId(reduxAuthUser || reduxUser);
+
+  const { list: rawEvents, loading: reduxLoading, categoryFilter, search } = useSelector((state) => state.exhibitor.upcomingEvents);
+  const userBookings = useSelector((state) => state.exhibitor.bookings.list);
+
+  const [searchTerm, setSearchTerm] = useState(search || "");
+  const [selectedCategory, setSelectedCategory] = useState(categoryFilter || "all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
-  const navigate = useNavigate();
-  const user = useSelector((state) => state.user);
-
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    dispatch(fetchExhibitorEvents());
+    if (effectiveUserId && userBookings.length === 0) {
+      dispatch(fetchExhibitorBookings({ userId: effectiveUserId }));
+    }
+  }, [dispatch, effectiveUserId]);
 
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const data = await getHomeEventshow();
-      const rawList = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.events) ? data.events : []));
-      const activeList = rawList.filter((e) => !isEventConcluded(e));
+  const userBookingsMap = useMemo(() => {
+    const bMap = {};
+    (userBookings || []).forEach((b) => {
+      const evId = b.event_id || b.eventId;
+      const status = (b.status || "").toLowerCase();
+      if (evId && ["pending", "approved", "confirmed", "paid"].includes(status)) {
+        bMap[evId] = b;
+      }
+    });
+    return bMap;
+  }, [userBookings]);
 
-      const formatted = activeList.map((e) => ({
+  const events = useMemo(() => {
+    const activeList = (rawEvents || []).filter((e) => !isEventConcluded(e));
+    return activeList.map((e) => {
+      const totalStalls = parseInt(e.total_stalls || 0, 10);
+      const stallsBooked = parseInt(e.stalls_booked || 0, 10);
+      const stallsAvailable = Math.max(0, totalStalls - stallsBooked);
+
+      const venuePart = (e.venue || "").trim();
+      const addressPart = (e.address || e.city || "").trim();
+      const fullLocation = [venuePart, addressPart].filter(Boolean).join(", ") || "Exhibition Center";
+
+      return {
         id: e.id,
         title: e.event_name || e.name || "Exhibition Show",
-        location: `${e.venue || 'Exhibition Center'}, ${e.address || e.city || 'Chennai'}`,
-        date: e.start_date || "2026-09-15",
-        endDate: e.end_date || "2026-09-18",
-        image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
+        location: fullLocation,
+        venue: venuePart || "Exhibition Center",
+        city: e.city || "",
+        date: e.start_date || "",
+        endDate: e.end_date || e.start_date || "",
+        startTime: e.start_time || "",
+        endTime: e.end_time || "",
+        image: e.banner_url || e.banner || e.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
         banner_type: e.banner_type,
-        category: e.category || "Trade Fair",
-        stallsAvailable: 15,
-        totalStalls: 60,
+        category: e.category || "General",
+        subCategory: e.sub_category || "",
+        stallsAvailable,
+        totalStalls,
+        stallsBooked,
         status: (e.status || "APPROVED").toUpperCase(),
-        is_suspended: (e.status || "").toUpperCase() === "SUSPENDED"
-      }));
+        is_suspended: (e.status || "").toUpperCase() === "SUSPENDED",
+        raw: e
+      };
+    });
+  }, [rawEvents]);
 
-      setEvents(formatted);
-    } catch (err) {
-      console.log("Error fetching events:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loading = reduxLoading && events.length === 0;
 
   const handleBookStall = (event) => {
+    navigate(`/exhibitor/book-stall/${event.id}`, { state: { event } });
+  };
+
+  const handleViewDetails = (event) => {
     navigate(`/exhibitor/event/${event.id}`, { state: { event } });
   };
 
+  const dynamicCategories = [
+    "all",
+    ...Array.from(new Set(events.map((e) => e.category).filter(Boolean)))
+  ];
+
   const filteredEvents = events.filter((e) => {
-    const matchesSearch = searchTerm === "" || e.title.toLowerCase().includes(searchTerm.toLowerCase()) || e.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || e.category.toLowerCase().includes(selectedCategory.toLowerCase());
+    const matchesSearch = searchTerm === "" || 
+      e.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      e.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || e.category.toLowerCase() === selectedCategory.toLowerCase();
     return matchesSearch && matchesCategory;
   });
 
   const totalPages = Math.ceil(filteredEvents.length / itemsPerPage) || 1;
   const paginatedEvents = filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const formatDateRange = (sDate, eDate) => {
+    if (!sDate) return "Dates TBA";
+    try {
+      const s = new Date(sDate);
+      if (isNaN(s.getTime())) return sDate;
+      const sStr = s.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      if (!eDate || eDate === sDate) return sStr;
+      const e = new Date(eDate);
+      if (isNaN(e.getTime())) return sStr;
+      const eStr = e.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      return `${sStr} – ${eStr}`;
+    } catch {
+      return sDate;
+    }
+  };
 
   return (
     <div className="space-y-6 pb-12 select-none font-sans text-slate-800">
@@ -77,14 +132,14 @@ export const UpcomingEventsPage = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Upcoming Expos & Trade Fairs
+              Upcoming Events & Trade Fairs
             </h1>
             <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[11px]">
-              Exhibitor Booth Reservation Catalog
+              Exhibitor Booth Catalog
             </Badge>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Browse upcoming major expos, view hall floor plans, and reserve your exhibition booth space.
+            Browse live and upcoming verified major expos, inspect booth plans, and reserve your exhibition stall.
           </p>
         </div>
       </div>
@@ -93,12 +148,12 @@ export const UpcomingEventsPage = () => {
       <Card className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center overflow-x-auto touch-scroll gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto shrink-0 max-w-full">
-            {["all", "Tech", "Business", "Fashion", "Food"].map((cat) => (
+            {dynamicCategories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer capitalize whitespace-nowrap ${
-                  selectedCategory === cat ? "bg-white text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                  selectedCategory.toLowerCase() === cat.toLowerCase() ? "bg-white text-emerald-800 shadow-xs border border-emerald-100" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 {cat === "all" ? "All Categories" : cat}
@@ -113,7 +168,7 @@ export const UpcomingEventsPage = () => {
               placeholder="Search expo title, city, venue..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full h-9 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
             />
           </div>
         </div>
@@ -146,7 +201,7 @@ export const UpcomingEventsPage = () => {
           ))
         ) : paginatedEvents.length === 0 ? (
           <div className="col-span-full p-16 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 font-semibold text-sm">
-            No upcoming expos found matching your search.
+            No upcoming events found matching your search.
           </div>
         ) : (
           paginatedEvents.map((event) => (
@@ -163,6 +218,10 @@ export const UpcomingEventsPage = () => {
                     <Badge className="bg-amber-500 text-white font-extrabold text-[10px] px-2.5 py-1 shadow-md border border-amber-400">
                       Stall Bookings Paused
                     </Badge>
+                  ) : event.totalStalls > 0 && event.stallsAvailable === 0 ? (
+                    <Badge className="bg-rose-600 text-white font-extrabold text-[10px] px-2.5 py-1 shadow-md">
+                      Stalls Sold Out
+                    </Badge>
                   ) : (
                     <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2.5 py-1 shadow-md">
                       Booths Open
@@ -177,18 +236,23 @@ export const UpcomingEventsPage = () => {
                     <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-[10px]">
                       {event.category}
                     </Badge>
+                    {event.subCategory && (
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        • {event.subCategory}
+                      </span>
+                    )}
                   </div>
-                  <h3 className="text-base font-extrabold text-slate-900 group-hover:text-emerald-600 transition-colors line-clamp-1">
+                  <h3 className="text-base font-extrabold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
                     {event.title}
                   </h3>
-                  <div className="text-xs text-slate-500 space-y-1 mt-2">
+                  <div className="text-xs text-slate-500 space-y-1.5 mt-2.5">
                     <p className="flex items-center gap-1.5 font-medium">
                       <MapPin size={14} className="text-emerald-600 shrink-0" />
                       <span className="truncate">{event.location}</span>
                     </p>
                     <p className="flex items-center gap-1.5 font-medium">
                       <Calendar size={14} className="text-emerald-600 shrink-0" />
-                      <span>{new Date(event.date).toDateString()}</span>
+                      <span>{formatDateRange(event.date, event.endDate)}</span>
                     </p>
                   </div>
                 </div>
@@ -196,25 +260,53 @@ export const UpcomingEventsPage = () => {
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Available Stalls</span>
-                    <p className="text-xs font-extrabold text-emerald-700">{event.stallsAvailable} / {event.totalStalls} Open</p>
+                    {event.totalStalls > 0 ? (
+                      <p className={`text-xs font-extrabold ${event.stallsAvailable > 0 ? "text-emerald-700" : "text-rose-600"}`}>
+                        {event.stallsAvailable > 0 ? `${event.stallsAvailable} / ${event.totalStalls} Open` : "Sold Out"}
+                      </p>
+                    ) : (
+                      <p className="text-xs font-extrabold text-slate-600">Open Floor Plan</p>
+                    )}
                   </div>
 
-                  {event.is_suspended || event.status === "SUSPENDED" ? (
-                    <span
-                      title="Currently not accepting new stall reservations"
-                      className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[11px] px-3.5 py-2 rounded-xl uppercase tracking-wider text-center"
-                    >
-                      Bookings Paused
-                    </span>
-                  ) : (
+                  <div className="flex items-center gap-2">
                     <Button
-                      onClick={() => handleBookStall(event)}
-                      className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs px-4 py-2 rounded-xl shadow-xs border-none cursor-pointer gap-1.5"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewDetails(event)}
+                      className="rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-50"
                     >
-                      <span>Reserve Booth</span>
-                      <ArrowRight size={14} />
+                      Details
                     </Button>
-                  )}
+                    {userBookingsMap[event.id] ? (
+                      <Button
+                        onClick={() => navigate(`/exhibitor/my-bookings/${userBookingsMap[event.id].id}`)}
+                        className={`font-extrabold text-xs px-3 py-2 rounded-xl shadow-xs border-none cursor-pointer flex items-center gap-1.5 ${
+                          (userBookingsMap[event.id].status || "").toLowerCase() === "approved" || (userBookingsMap[event.id].status || "").toLowerCase() === "confirmed"
+                            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                            : "bg-amber-500 hover:bg-amber-600 text-white"
+                        }`}
+                      >
+                        <span>{(userBookingsMap[event.id].status || "").toLowerCase() === "approved" || (userBookingsMap[event.id].status || "").toLowerCase() === "confirmed" ? "✓ Reserved" : "⏳ Pending"}</span>
+                      </Button>
+                    ) : event.is_suspended || event.status === "SUSPENDED" ? (
+                      <span
+                        title="Currently not accepting new stall reservations"
+                        className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[11px] px-3.5 py-2 rounded-xl uppercase tracking-wider text-center"
+                      >
+                        Paused
+                      </span>
+                    ) : (
+                      <Button
+                        onClick={() => handleBookStall(event)}
+                        disabled={event.totalStalls > 0 && event.stallsAvailable === 0}
+                        className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs border-none cursor-pointer gap-1.5"
+                      >
+                        <span>Reserve</span>
+                        <ArrowRight size={14} />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

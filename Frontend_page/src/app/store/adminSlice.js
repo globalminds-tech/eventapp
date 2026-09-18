@@ -147,10 +147,25 @@ const adminSlice = createSlice({
       }
     },
     updateKycStatusInStore: (state, action) => {
-      const { userId, status } = action.payload || {};
+      const { userId, status, role } = action.payload || {};
       const user = state.kycUsers.find((u) => String(u.id) === String(userId));
       if (user) {
-        user.kyc_status = status;
+        if (role === "organizer") {
+          user.organizer_kyc = status;
+        } else if (role === "exhibitor") {
+          user.exhibitor_kyc = status;
+        } else {
+          if (user.is_organizer) user.organizer_kyc = status;
+          if (user.is_exhibitor) user.exhibitor_kyc = status;
+        }
+        const activeKycs = [user.organizer_kyc, user.exhibitor_kyc].filter(Boolean);
+        if (activeKycs.some((k) => String(k).toUpperCase() === "PENDING")) {
+          user.kyc_status = "PENDING";
+        } else if (activeKycs.length > 0 && activeKycs.every((k) => String(k).toUpperCase() === "VERIFIED")) {
+          user.kyc_status = "VERIFIED";
+        } else {
+          user.kyc_status = status;
+        }
       }
     },
     addCategoryToStore: (state, action) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import {
   getEventscheckin,
   getEventAttendees,
@@ -51,12 +52,32 @@ const GATE_PRESETS = [
 ];
 
 export default function EventCheckIn() {
+  const { eventId: routeEventId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const initialEventId = routeEventId || location.state?.eventId || location.state?.selectedEventId || "";
   const [events, setEvents] = useState([]);
-  const [selectedEventId, setSelectedEventId] = useState("");
+  const [selectedEventId, setSelectedEventId] = useState(initialEventId);
   const [attendees, setAttendees] = useState([]);
   const [recentLogs, setRecentLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [entriesLoading, setEntriesLoading] = useState(false);
+
+  useEffect(() => {
+    // If routeEventId exists in URL (e.g. /OrganizerHome/EventCheckIn/:eventId)
+    if (routeEventId) {
+      setSelectedEventId(routeEventId);
+      return;
+    }
+    // If incoming navigation state explicitly provided an eventId and didn't request reset:
+    if (!location.state?.resetSelection && (location.state?.eventId || location.state?.selectedEventId)) {
+      setSelectedEventId(location.state.eventId || location.state.selectedEventId);
+      return;
+    }
+    // Otherwise, we are at the main /EventCheckIn page, reset to the event list:
+    setSelectedEventId("");
+  }, [routeEventId, location.pathname, location.key, location.state]);
 
   // Turnstile Station Controls
   const [scanMode, setScanMode] = useState("CHECK_IN"); // "CHECK_IN" | "CHECK_OUT"
@@ -72,11 +93,34 @@ export default function EventCheckIn() {
   const [verificationResult, setVerificationResult] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Attendee Roster Filters
+  // Attendee Roster Filters (API Driven)
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL"); // "ALL" | "INSIDE" | "NOT_ARRIVED" | "DEPARTED"
+  const [isTableFiltering, setIsTableFiltering] = useState(false);
+  const [attendeeCounts, setAttendeeCounts] = useState({
+    total: 0,
+    inside: 0,
+    not_arrived: 0,
+    departed: 0,
+    arrived: 0
+  });
 
   const autoDismissTimerRef = useRef(null);
+  const searchTimerRef = useRef(null);
+  const attendeeRequestIdRef = useRef(0);
+  const hasInitialAttendeesLoadedRef = useRef(false);
+
+  // 300ms Debounce for Search Query
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
 
   const fetchGatePresets = async () => {
     try {
@@ -101,7 +145,6 @@ export default function EventCheckIn() {
     try {
       const res = await getEventscheckin();
       const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
-      setEvents(list);
       setEvents(list);
     } catch (err) {
       console.error("Failed to load events:", err);
@@ -140,37 +183,104 @@ export default function EventCheckIn() {
   };
 
   const selectedEvent = useMemo(() => {
-    return events.find((e) => String(e.id) === String(selectedEventId)) || events[0] || null;
-  }, [events, selectedEventId]);
-
-  useEffect(() => {
-    if (selectedEvent?.id) {
-      loadEventData(selectedEvent.id);
+    if (!selectedEventId) return null;
+    const found = events.find(
+      (e) =>
+        String(e.id) === String(selectedEventId) ||
+        (e.event_code && String(e.event_code) === String(selectedEventId)) ||
+        (e.code && String(e.code) === String(selectedEventId))
+    );
+    if (found) return found;
+    if (location.state?.eventData) {
+      const ed = location.state.eventData;
+      if (
+        String(ed.id) === String(selectedEventId) ||
+        (ed.event_code && String(ed.event_code) === String(selectedEventId)) ||
+        (ed.code && String(ed.code) === String(selectedEventId))
+      ) {
+        return ed;
+      }
     }
-  }, [selectedEvent?.id]);
+    return events.find((e) => String(e.id) === String(selectedEventId)) || null;
+  }, [events, selectedEventId, location.state]);
 
-  const loadEventData = async (eventId) => {
-    setEntriesLoading(true);
+  // Fetch attendees driven by API query parameters (search, status filter)
+  const fetchAttendees = async (eventId, search = debouncedSearch, status = statusFilter) => {
+    if (!eventId) return;
+    const currentReqId = ++attendeeRequestIdRef.current;
+
+    if (hasInitialAttendeesLoadedRef.current) {
+      setIsTableFiltering(true);
+    } else {
+      setEntriesLoading(true);
+    }
+
     try {
-      const [attRes, logsRes] = await Promise.allSettled([
-        getEventAttendees(eventId),
-        getEventCheckinLogs(eventId)
-      ]);
+      const res = await getEventAttendees(eventId, {
+        search: search || undefined,
+        status: status !== "ALL" ? status : undefined,
+      });
 
-      if (attRes.status === "fulfilled") {
-        const list = Array.isArray(attRes.value) ? attRes.value : attRes.value?.data || [];
-        setAttendees(list);
+      if (currentReqId !== attendeeRequestIdRef.current) return;
+
+      const list = Array.isArray(res) ? res : res?.data || [];
+      setAttendees(list);
+
+      if (res?.counts) {
+        setAttendeeCounts(res.counts);
+      } else {
+        setAttendeeCounts({
+          total: list.length,
+          inside: list.filter((a) => a.is_checked_in).length,
+          not_arrived: list.filter((a) => !a.is_checked_in && !a.is_checked_out).length,
+          departed: list.filter((a) => a.is_checked_out).length,
+          arrived: list.filter((a) => a.is_checked_in || a.total_checkins > 0).length,
+        });
       }
-      if (logsRes.status === "fulfilled") {
-        const logs = Array.isArray(logsRes.value) ? logsRes.value : logsRes.value?.data || [];
-        setRecentLogs(logs);
-      }
+      hasInitialAttendeesLoadedRef.current = true;
     } catch (err) {
-      console.error("Failed to load event attendee entries:", err);
+      console.error("Failed to load event attendees:", err);
+      if (currentReqId === attendeeRequestIdRef.current) {
+        setAttendees([]);
+      }
     } finally {
-      setEntriesLoading(false);
+      if (currentReqId === attendeeRequestIdRef.current) {
+        setEntriesLoading(false);
+        setIsTableFiltering(false);
+      }
     }
   };
+
+  const loadRecentLogs = async (eventId) => {
+    try {
+      const logsRes = await getEventCheckinLogs(eventId);
+      const logs = Array.isArray(logsRes) ? logsRes : logsRes?.data || [];
+      setRecentLogs(logs);
+    } catch (err) {
+      console.error("Failed to load event logs:", err);
+    }
+  };
+
+  // Reset initial load flag when event changes
+  useEffect(() => {
+    hasInitialAttendeesLoadedRef.current = false;
+  }, [selectedEvent?.id, selectedEventId]);
+
+  // Trigger attendee fetch on event ID, debouncedSearch or statusFilter changes
+  useEffect(() => {
+    const idToLoad = selectedEvent?.id || selectedEventId;
+    if (idToLoad) {
+      fetchAttendees(idToLoad, debouncedSearch, statusFilter);
+    }
+  }, [selectedEvent?.id, selectedEventId, debouncedSearch, statusFilter]);
+
+  // Load check-in logs when event changes
+  useEffect(() => {
+    const idToLoad = selectedEvent?.id || selectedEventId;
+    if (idToLoad) {
+      loadRecentLogs(idToLoad);
+    }
+  }, [selectedEvent?.id, selectedEventId]);
 
   const effectiveGateName = customGate.trim() || gateName;
 
@@ -211,8 +321,10 @@ export default function EventCheckIn() {
       });
 
       // Refresh attendee list and recent logs
-      if (selectedEvent?.id) {
-        loadEventData(selectedEvent.id);
+      const targetId = selectedEvent?.id || selectedEventId;
+      if (targetId) {
+        fetchAttendees(targetId, debouncedSearch, statusFilter);
+        loadRecentLogs(targetId);
         fetchEvents();
       }
 
@@ -290,30 +402,12 @@ export default function EventCheckIn() {
     document.body.removeChild(link);
   };
 
-  // Filtered Attendees
-  const filteredAttendees = useMemo(() => {
-    return attendees.filter((a) => {
-      const matchSearch =
-        !searchQuery ||
-        (a.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.visitor_code || a.ticket_code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (a.phone || "").toLowerCase().includes(searchQuery.toLowerCase());
-
-      if (!matchSearch) return false;
-
-      if (statusFilter === "INSIDE") return a.is_checked_in;
-      if (statusFilter === "NOT_ARRIVED") return !a.is_checked_in && !a.is_checked_out;
-      if (statusFilter === "DEPARTED") return a.is_checked_out;
-      return true;
-    });
-  }, [attendees, searchQuery, statusFilter]);
-
-  // Turnstile Live KPI Calculations
-  const totalRegistered = attendees.length;
-  const arrivedCount = attendees.filter((a) => a.is_checked_in || a.total_checkins > 0).length;
-  const insideCount = attendees.filter((a) => a.is_checked_in).length;
-  const departedCount = attendees.filter((a) => a.is_checked_out).length;
+  // Turnstile Live KPI Calculations (Derived from database-level counts)
+  const totalRegistered = attendeeCounts.total ?? attendees.length;
+  const arrivedCount = attendeeCounts.arrived ?? (attendeeCounts.inside + attendeeCounts.departed);
+  const insideCount = attendeeCounts.inside ?? 0;
+  const departedCount = attendeeCounts.departed ?? 0;
+  const notArrivedCount = attendeeCounts.not_arrived ?? Math.max(0, totalRegistered - arrivedCount);
 
   if (!selectedEventId) {
     return (
@@ -380,7 +474,10 @@ export default function EventCheckIn() {
                           <td className="py-3.5 px-4 text-slate-600 font-medium">{formattedStart} - {formattedEnd}</td>
                           <td className="py-3.5 px-4 text-right">
                             <button
-                              onClick={() => setSelectedEventId(ev.id)}
+                              onClick={() => {
+                                setSelectedEventId(ev.id);
+                                navigate(`/OrganizerHome/EventCheckIn/${ev.id}`, { state: { eventId: ev.id, eventData: ev } });
+                              }}
                               className="px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 transition cursor-pointer border border-cyan-200 text-xs font-bold inline-flex items-center gap-1.5"
                             >
                               <ArrowRight size={14} />
@@ -401,13 +498,20 @@ export default function EventCheckIn() {
               const formattedEnd = endDate ? new Date(endDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : "-";
 
               return (
-                <MobileDataCard key={ev.id} onClick={() => setSelectedEventId(ev.id)}>
+                <MobileDataCard key={ev.id} onClick={() => {
+                  setSelectedEventId(ev.id);
+                  navigate(`/OrganizerHome/EventCheckIn/${ev.id}`, { state: { eventId: ev.id, eventData: ev } });
+                }}>
                   <MobileDataCard.Header
                     title={`${ev.event_code ? `[${ev.event_code}] ` : ""}${ev.event_name || ev.name || "Event"}`}
                     subtitle={`${formattedStart} - ${formattedEnd}`}
                     statusBadge={
                       <button
-                        onClick={() => setSelectedEventId(ev.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEventId(ev.id);
+                          navigate(`/OrganizerHome/EventCheckIn/${ev.id}`, { state: { eventId: ev.id, eventData: ev } });
+                        }}
                         className="px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-extrabold inline-flex items-center gap-1 border border-cyan-200 cursor-pointer"
                       >
                         <span>Manage</span>
@@ -551,14 +655,24 @@ export default function EventCheckIn() {
             </Badge>
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Real-time ticket pass verification, anti-fraud turnstile control, and venue capacity monitoring.
+            {selectedEvent?.event_name || selectedEvent?.name ? (
+              <>
+                Managing Check-Ins for: <span className="font-extrabold text-slate-900">{selectedEvent.event_name || selectedEvent.name}</span>
+                {selectedEvent.event_code && <span className="ml-2 font-mono text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-md">[{selectedEvent.event_code}]</span>}
+              </>
+            ) : (
+              "Real-time ticket pass verification, anti-fraud turnstile control, and venue capacity monitoring."
+            )}
           </p>
         </div>
 
         {/* Event Actions & Back Button */}
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            onClick={() => setSelectedEventId("")}
+            onClick={() => {
+              setSelectedEventId("");
+              navigate("/OrganizerHome/EventCheckIn");
+            }}
             variant="outline"
             className="h-10 px-3.5 border-slate-200 text-slate-700 hover:text-slate-900 cursor-pointer gap-2 rounded-xl"
           >
@@ -582,28 +696,28 @@ export default function EventCheckIn() {
       </div>
 
       {/* ── TURNSTILE STATION CONTROL BAR ── */}
-      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl p-5 sm:p-6 relative">
+      <Card className="border-slate-800 shadow-xl bg-slate-900 text-white rounded-3xl p-5 sm:p-6 relative overflow-visible z-40">
         {/* Background glow effect wrapper */}
         <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 rounded-full bg-cyan-500/10 blur-3xl" />
           <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 rounded-full bg-blue-600/10 blur-3xl" />
         </div>
 
-        <div className="relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-5">
 
           {/* Left Side: Settings */}
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 flex-1">
 
             {/* Mode Switch */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Operation Mode</span>
-              <div className="bg-slate-950/50 p-1 rounded-xl flex items-center gap-1 border border-slate-800 backdrop-blur-md">
+            <div className="space-y-1.5 shrink-0">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Operation Mode</span>
+              <div className="h-11 bg-slate-950/60 p-1 rounded-xl flex items-center gap-1 border border-slate-800 backdrop-blur-md">
                 <button
                   type="button"
                   onClick={() => setScanMode("CHECK_IN")}
-                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${scanMode === "CHECK_IN"
+                  className={`h-full px-4 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${scanMode === "CHECK_IN"
                       ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-400/20"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent"
                     }`}
                 >
                   <LogIn size={15} />
@@ -612,9 +726,9 @@ export default function EventCheckIn() {
                 <button
                   type="button"
                   onClick={() => setScanMode("CHECK_OUT")}
-                  className={`px-4 py-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${scanMode === "CHECK_OUT"
+                  className={`h-full px-4 rounded-lg text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${scanMode === "CHECK_OUT"
                       ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400/20"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/80 border border-transparent"
                     }`}
                 >
                   <LogOutIcon size={15} />
@@ -624,11 +738,12 @@ export default function EventCheckIn() {
             </div>
 
             {/* Gate Point Selector */}
-            <div className="space-y-2 flex-1">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Gate / Checkpoint Assignment</span>
-              <div className="flex flex-wrap sm:flex-nowrap items-stretch gap-2 h-10.5">
-                <div className="relative flex-1 min-w-[150px]">
-                  <DoorOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="space-y-1.5 flex-1 min-w-[280px] relative z-50">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Gate / Checkpoint Assignment</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 h-auto sm:h-11">
+                {/* Gate Select Dropdown */}
+                <div className="relative h-11">
+                  <DoorOpen size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
                   <Select
                     value={gateName}
                     onValueChange={(val) => {
@@ -637,34 +752,38 @@ export default function EventCheckIn() {
                     }}
                     placeholder={gatePresets.length === 0 ? "No Presets Saved" : "Select Gate..."}
                     options={gatePresets.map((p) => ({ value: p.name, label: p.name }))}
-                    triggerClassName="w-full h-full bg-slate-950/50 border-slate-800 text-white text-xs font-bold pl-9 rounded-xl outline-none focus:border-cyan-500 transition-colors"
-                    contentClassName="bg-slate-900 border-slate-800 text-white"
+                    position="bottom"
+                    className="w-full h-11"
+                    triggerClassName="w-full h-11 bg-slate-950/60 border border-slate-800 text-white text-xs font-bold pl-9 pr-3 rounded-xl outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors shadow-2xs"
+                    contentClassName="bg-slate-900 border border-slate-700 text-white shadow-2xl z-[100] max-h-44 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-track]:bg-transparent"
                   />
                 </div>
-                <div className="relative flex-1 min-w-[150px] flex items-center bg-slate-950/50 border border-slate-800 rounded-xl focus-within:border-cyan-500 transition-colors">
-                  <Sparkles size={14} className="absolute left-3 text-slate-400" />
+
+                {/* Custom Gate Name Input */}
+                <div className="relative h-11 flex items-center bg-slate-950/60 border border-slate-800 rounded-xl focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500 transition-all shadow-2xs">
+                  <Sparkles size={14} className="absolute left-3 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
                     placeholder="Custom gate name..."
                     value={customGate}
                     onChange={(e) => setCustomGate(e.target.value)}
-                    className="w-full h-full bg-transparent border-none text-white text-xs font-medium pl-9 pr-14 outline-none placeholder:text-slate-600"
+                    className="w-full h-full bg-transparent border-none text-white text-xs font-semibold pl-9 pr-16 outline-none placeholder:text-slate-600"
                   />
-                  <div className="absolute right-1 flex items-center gap-1">
+                  <div className="absolute right-1.5 flex items-center gap-1">
                     <button 
                       type="button" 
                       onClick={handleSaveGate}
                       disabled={!customGate.trim()}
-                      className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      className="w-7 h-7 flex items-center justify-center bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-400 rounded-lg disabled:opacity-20 disabled:cursor-not-allowed transition cursor-pointer"
                       title="Save Gate Preset"
                     >
-                      <Check size={14} />
+                      <Check size={14} strokeWidth={2.5} />
                     </button>
                     <button 
                       type="button" 
                       onClick={handleDeleteGate}
                       disabled={!(customGate.trim() ? gatePresets.some(g => g.name === customGate.trim()) : gatePresets.some(g => g.name === gateName))}
-                      className="p-1.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      className="w-7 h-7 flex items-center justify-center bg-rose-500/20 hover:bg-rose-500/40 text-rose-400 rounded-lg disabled:opacity-20 disabled:cursor-not-allowed transition cursor-pointer"
                       title="Delete Gate Preset"
                     >
                       <Trash2 size={14} />
@@ -678,31 +797,32 @@ export default function EventCheckIn() {
           {/* Right Side: Actions */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 flex-1 xl:max-w-md">
             {/* Barcode Gun / Manual Quick Input */}
-            <div className="space-y-2 flex-1">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Quick Verification</span>
-              <form onSubmit={handleRapidGunSubmit} className="relative h-10.5">
+            <div className="space-y-1.5 flex-1 min-w-[200px]">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block">Quick Verification</span>
+              <form onSubmit={handleRapidGunSubmit} className="relative h-11">
                 <input
                   type="text"
                   placeholder="Scan pass code..."
                   value={rapidCodeInput}
                   onChange={(e) => setRapidCodeInput(e.target.value)}
-                  className="w-full h-full pl-4 pr-24 bg-slate-950/80 border border-slate-800 rounded-xl text-sm font-mono font-bold text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600 placeholder:font-sans transition-all"
+                  className="w-full h-11 pl-3.5 pr-20 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-mono font-bold text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 placeholder:text-slate-600 placeholder:font-sans transition-all shadow-2xs"
                 />
                 <button
                   type="submit"
                   disabled={isVerifying || !rapidCodeInput.trim()}
-                  className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-white text-slate-900 hover:bg-slate-200 font-black text-xs rounded-lg border-none cursor-pointer disabled:opacity-50 transition-colors"
+                  className="absolute right-1.5 top-1.5 bottom-1.5 px-3.5 bg-white text-slate-900 hover:bg-slate-200 font-black text-xs rounded-lg border-none cursor-pointer disabled:opacity-40 transition-colors flex items-center justify-center shadow-xs"
                 >
                   Verify
                 </button>
               </form>
             </div>
 
-            <div className="flex items-center gap-2 h-10.5">
+            <div className="flex items-center gap-2 h-11 shrink-0">
               {/* Camera Scanner Button */}
               <Button
+                type="button"
                 onClick={() => setShowCameraScanner(true)}
-                className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs px-4 rounded-xl border-none cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 whitespace-nowrap transition-all"
+                className="h-11 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs px-4 rounded-xl border-none cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 whitespace-nowrap transition-all active:scale-95"
               >
                 <QrCode size={16} />
                 <span className="hidden sm:inline">Camera</span>
@@ -713,7 +833,7 @@ export default function EventCheckIn() {
                 type="button"
                 onClick={() => setSoundEnabled(!soundEnabled)}
                 title={soundEnabled ? "Mute Turnstile Audio" : "Enable Turnstile Audio"}
-                className="h-full px-3.5 bg-slate-950/50 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800 cursor-pointer flex items-center justify-center"
+                className="h-11 w-11 shrink-0 bg-slate-950/60 hover:bg-slate-800 text-slate-300 rounded-xl transition border border-slate-800 cursor-pointer flex items-center justify-center shadow-2xs"
               >
                 {soundEnabled ? <Volume2 size={16} className="text-cyan-400" /> : <VolumeX size={16} className="text-slate-500" />}
               </button>
@@ -890,8 +1010,18 @@ export default function EventCheckIn() {
                 placeholder="Search name, code, email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-500"
+                className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-cyan-500"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Clear Search"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
             {/* Export CSV Button */}
@@ -912,7 +1042,7 @@ export default function EventCheckIn() {
           {[
             { key: "ALL", label: `All Passes (${totalRegistered})` },
             { key: "INSIDE", label: `Inside Venue (${insideCount})` },
-            { key: "NOT_ARRIVED", label: `Not Arrived (${Math.max(0, totalRegistered - arrivedCount)})` },
+            { key: "NOT_ARRIVED", label: `Not Arrived (${notArrivedCount})` },
             { key: "DEPARTED", label: `Departed (${departedCount})` },
           ].map((tab) => (
             <button
@@ -929,169 +1059,178 @@ export default function EventCheckIn() {
           ))}
         </div>
 
-        {/* Attendees Data Table / Mobile Cards */}
-        <ResponsiveTableView
-          data={filteredAttendees}
-          keyField="id"
-          loading={entriesLoading}
-          columnCount={5}
-          columns={[
-            { header: "Pass Code", className: "py-3.5 px-4" },
-            { header: "Attendee Name & Contact", className: "py-3.5 px-4" },
-            { header: "Meal Option", className: "py-3.5 px-4" },
-            { header: "Status & Times", className: "py-3.5 px-4" },
-            { header: "Desk Action", className: "py-3.5 px-4 text-right" },
-          ]}
-          emptyMessage="No attendee passes found matching your filter criteria."
-          renderDesktopTable={() => (
-            <div className="overflow-x-auto responsive-table-wrap">
-              <table className="w-full text-left border-collapse min-w-[650px]">
-                <thead>
-                  <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">Pass Code</th>
-                    <th className="py-3.5 px-4">Attendee Name &amp; Contact</th>
-                    <th className="py-3.5 px-4">Meal Option</th>
-                    <th className="py-3.5 px-4">Status &amp; Times</th>
-                    <th className="py-3.5 px-4 text-right">Desk Action</th>
-                  </tr>
-                </thead>
+        {/* Attendees Data Table / Mobile Cards with Zero-Flicker Transition */}
+        <div className="relative min-h-[320px]">
+          {/* Subtle Top Loading Line on Filter Switching / Searching (Zero Flicker) */}
+          {isTableFiltering && (
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 animate-pulse rounded-t-xl z-20" />
+          )}
 
-                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
-                  {filteredAttendees.map((v) => (
-                    <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
+          <div className={`transition-opacity duration-200 ${isTableFiltering ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
+            <ResponsiveTableView
+              data={attendees}
+              keyField="id"
+              loading={entriesLoading}
+              columnCount={5}
+              columns={[
+                { header: "Pass Code", className: "py-3.5 px-4" },
+                { header: "Attendee Name & Contact", className: "py-3.5 px-4" },
+                { header: "Meal Option", className: "py-3.5 px-4" },
+                { header: "Status & Times", className: "py-3.5 px-4" },
+                { header: "Desk Action", className: "py-3.5 px-4 text-right" },
+              ]}
+              emptyMessage={searchQuery.trim() ? "No attendees found matching your search." : "No attendee passes found matching this filter."}
+              renderDesktopTable={() => (
+                <div className="overflow-x-auto responsive-table-wrap">
+                  <table className="w-full text-left border-collapse min-w-[650px]">
+                    <thead>
+                      <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="py-3.5 px-4">Pass Code</th>
+                        <th className="py-3.5 px-4">Attendee Name &amp; Contact</th>
+                        <th className="py-3.5 px-4">Meal Option</th>
+                        <th className="py-3.5 px-4">Status &amp; Times</th>
+                        <th className="py-3.5 px-4 text-right">Desk Action</th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-800">
+                      {attendees.map((v) => (
+                        <tr key={v.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-extrabold text-indigo-600">
+                            {v.visitor_code || v.ticket_code}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <div className="font-extrabold text-slate-900">{v.name}</div>
+                            <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
+                              {v.email || v.phone || "No contact info"}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {v.food_preference && v.food_preference !== "None" ? (
+                              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold px-2 py-0.5">
+                                {v.food_preference}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400 text-xs font-medium">None</span>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {v.is_checked_in ? (
+                              <div>
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-black px-2 py-0.5">
+                                  ● Inside Venue
+                                </Badge>
+                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                  In: {v.checkin_time || "Earlier"}
+                                </p>
+                              </div>
+                            ) : v.is_checked_out ? (
+                              <div>
+                                <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] font-bold px-2 py-0.5">
+                                  Checked Out
+                                </Badge>
+                                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                                  Out: {v.checkout_time || "Earlier"}
+                                </p>
+                              </div>
+                            ) : (
+                              <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold px-2 py-0.5">
+                                Not Arrived
+                              </Badge>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            {!v.is_checked_in ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_IN")}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
+                              >
+                                <LogIn size={13} />
+                                <span>Check In</span>
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_OUT")}
+                                className="bg-slate-800 hover:bg-slate-700 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
+                              >
+                                <LogOutIcon size={13} />
+                                <span>Check Out</span>
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              renderMobileCard={(v) => (
+                <MobileDataCard key={v.id} highlightBorder={v.is_checked_in}>
+                  <MobileDataCard.Header
+                    badge={
+                      <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                         {v.visitor_code || v.ticket_code}
-                      </td>
+                      </span>
+                    }
+                    title={v.name}
+                    subtitle={v.email || v.phone || "No contact info"}
+                    statusBadge={
+                      v.is_checked_in ? (
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] font-black px-2 py-0.5">
+                          ● Inside
+                        </Badge>
+                      ) : v.is_checked_out ? (
+                        <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[9px] font-bold px-2 py-0.5">
+                          Checked Out
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[9px] font-bold px-2 py-0.5">
+                          Not Arrived
+                        </Badge>
+                      )
+                    }
+                  />
 
-                      <td className="py-3.5 px-4">
-                        <div className="font-extrabold text-slate-900">{v.name}</div>
-                        <div className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">
-                          {v.email || v.phone || "No contact info"}
-                        </div>
-                      </td>
+                  <MobileDataCard.Grid
+                    columns={2}
+                    items={[
+                      { label: "Meal Option", value: v.food_preference && v.food_preference !== "None" ? v.food_preference : "None" },
+                      { label: "Entry Time", value: v.checkin_time || v.checkout_time || "Pending" },
+                    ]}
+                  />
 
-                      <td className="py-3.5 px-4">
-                        {v.food_preference && v.food_preference !== "None" ? (
-                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold px-2 py-0.5">
-                            {v.food_preference}
-                          </Badge>
-                        ) : (
-                          <span className="text-slate-400 text-xs font-medium">None</span>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4">
-                        {v.is_checked_in ? (
-                          <div>
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-black px-2 py-0.5">
-                              ● Inside Venue
-                            </Badge>
-                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                              In: {v.checkin_time || "Earlier"}
-                            </p>
-                          </div>
-                        ) : v.is_checked_out ? (
-                          <div>
-                            <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] font-bold px-2 py-0.5">
-                              Checked Out
-                            </Badge>
-                            <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                              Out: {v.checkout_time || "Earlier"}
-                            </p>
-                          </div>
-                        ) : (
-                          <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[10px] font-bold px-2 py-0.5">
-                            Not Arrived
-                          </Badge>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        {!v.is_checked_in ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_IN")}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
-                          >
-                            <LogIn size={13} />
-                            <span>Check In</span>
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_OUT")}
-                            className="bg-slate-800 hover:bg-slate-700 text-white font-black text-xs px-3 py-1.5 rounded-xl border-none cursor-pointer shadow-xs gap-1"
-                          >
-                            <LogOutIcon size={13} />
-                            <span>Check Out</span>
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          renderMobileCard={(v) => (
-            <MobileDataCard key={v.id} highlightBorder={v.is_checked_in}>
-              <MobileDataCard.Header
-                badge={
-                  <span className="font-mono text-[10px] font-extrabold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                    {v.visitor_code || v.ticket_code}
-                  </span>
-                }
-                title={v.name}
-                subtitle={v.email || v.phone || "No contact info"}
-                statusBadge={
-                  v.is_checked_in ? (
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] font-black px-2 py-0.5">
-                      ● Inside
-                    </Badge>
-                  ) : v.is_checked_out ? (
-                    <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-[9px] font-bold px-2 py-0.5">
-                      Checked Out
-                    </Badge>
-                  ) : (
-                    <Badge className="bg-sky-50 text-sky-700 border-sky-200 text-[9px] font-bold px-2 py-0.5">
-                      Not Arrived
-                    </Badge>
-                  )
-                }
-              />
-
-              <MobileDataCard.Grid
-                columns={2}
-                items={[
-                  { label: "Meal Option", value: v.food_preference && v.food_preference !== "None" ? v.food_preference : "None" },
-                  { label: "Entry Time", value: v.checkin_time || v.checkout_time || "Pending" },
-                ]}
-              />
-
-              <MobileDataCard.Actions>
-                {!v.is_checked_in ? (
-                  <Button
-                    size="sm"
-                    onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_IN")}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
-                  >
-                    <LogIn size={14} />
-                    <span>Confirm Gate Check-In</span>
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_OUT")}
-                    className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
-                  >
-                    <LogOutIcon size={14} />
-                    <span>Record Gate Check-Out</span>
-                  </Button>
-                )}
-              </MobileDataCard.Actions>
-            </MobileDataCard>
-          )}
-        />
+                  <MobileDataCard.Actions>
+                    {!v.is_checked_in ? (
+                      <Button
+                        size="sm"
+                        onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_IN")}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                      >
+                        <LogIn size={14} />
+                        <span>Confirm Gate Check-In</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleVerify(v.visitor_code || v.ticket_code || v.id, "CHECK_OUT")}
+                        className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-xs py-2 rounded-xl border-none cursor-pointer shadow-xs gap-1.5 flex items-center justify-center"
+                      >
+                        <LogOutIcon size={14} />
+                        <span>Record Gate Check-Out</span>
+                      </Button>
+                    )}
+                  </MobileDataCard.Actions>
+                </MobileDataCard>
+              )}
+            />
+          </div>
+        </div>
       </Card>
 
     </div>

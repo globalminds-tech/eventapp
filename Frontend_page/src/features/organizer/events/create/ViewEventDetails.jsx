@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getFullEventDetails } from "@/Services/api";
-import { X, Calendar, Clock, MapPin, Users, Ticket, Tag, FileText, AlertCircle, Eye } from "lucide-react";
+import { X, Calendar, Clock, MapPin, Users, Ticket, Tag, FileText, AlertCircle, Eye, Check } from "lucide-react";
 import MediaRenderer from "@/components/MediaRenderer";
 
 const getFullDocUrl = (url) => {
@@ -241,8 +241,8 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                 <div className="space-y-6">
                   <h4 className="text-sm font-bold text-indigo-600 tracking-wider border-b pb-2">Schedule & limits</h4>
                   <div className="grid grid-cols-2 gap-4">
-                    <DetailItem label="Booking Start Date" value={formatDateOnly(booking?.bookingStartDate || booking?.booking_start_date)} />
-                    <DetailItem label="Booking End Date" value={formatDateOnly(booking?.bookingEndDate || booking?.booking_end_date)} />
+                    <DetailItem label="Booking Start Date & Time" value={`${formatDateOnly(booking?.bookingStartDate || booking?.booking_start_date) || "N/A"} ${booking?.bookingStartTime || booking?.booking_start_time || ""}`.trim()} />
+                    <DetailItem label="Booking End Date & Time" value={`${formatDateOnly(booking?.bookingEndDate || booking?.booking_end_date) || "N/A"} ${booking?.bookingEndTime || booking?.booking_end_time || ""}`.trim()} />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <DetailItem label="Total Capacity" value={booking?.totalCapacity || booking?.capacity || 500} />
@@ -399,7 +399,7 @@ const ViewEventDetails = ({ eventId, onClose }) => {
                             <td className="px-6 py-4 text-gray-900 font-medium text-right">₹{stall.price_inr || stall.priceINR || stall.price || 0}</td>
                             <td className="px-6 py-4 text-gray-900 font-medium text-right">₹{stall.prime_price_inr || stall.primePriceINR || 0}</td>
                             <td className="px-6 py-4 text-center">
-                              {isTruthy(stall.prime_seat || stall.primeSeat) ? '✅' : '-'}
+                              {isTruthy(stall.prime_seat || stall.primeSeat) ? <Check size={14} className="text-emerald-600 mx-auto" /> : '-'}
                             </td>
                           </tr>
                         ))}

@@ -66,7 +66,24 @@ class AuthRepository:
         return user
 
     @staticmethod
+    def _apply_profile_field(profile, key: str, val):
+        from app.utils.security_crypto import encrypt_field, blind_index_hash
+        if val is None or val == "":
+            return
+        if key == "pan_number":
+            clean_val = str(val).strip().upper()
+            profile.pan_number = encrypt_field(clean_val)
+            profile.pan_hash = blind_index_hash(clean_val)
+        elif key == "account_number":
+            clean_val = str(val).strip()
+            profile.account_number = encrypt_field(clean_val)
+            profile.account_hash = blind_index_hash(clean_val)
+        else:
+            setattr(profile, key, val)
+
+    @staticmethod
     def create_organizer_user(data: dict, password_hash: str) -> User:
+        from app.utils.security_crypto import encrypt_field, blind_index_hash
         user = User(
             name=data.get("name"),
             email=data.get("email").strip().lower(),
@@ -83,23 +100,32 @@ class AuthRepository:
         db.session.add(user)
         db.session.flush()
 
+        pan_raw = data.get("pan_number")
+        acc_raw = data.get("account_number")
+        pan_enc = encrypt_field(str(pan_raw).strip().upper()) if pan_raw else None
+        pan_h = blind_index_hash(str(pan_raw).strip().upper()) if pan_raw else None
+        acc_enc = encrypt_field(str(acc_raw).strip()) if acc_raw else None
+        acc_h = blind_index_hash(str(acc_raw).strip()) if acc_raw else None
+
         profile = OrganizerProfile(
             user_id=user.id,
             company_name=data.get("company_name"),
             business_type=data.get("business_type"),
             gstin=data.get("gstin"),
-            pan_number=data.get("pan_number"),
+            pan_number=pan_enc,
+            pan_hash=pan_h,
             business_address=data.get("business_address"),
             city=data.get("city"),
             state=data.get("state"),
             pincode=data.get("pincode"),
             website_url=data.get("website_url"),
             bank_name=data.get("bank_name"),
-            account_number=data.get("account_number"),
+            account_number=acc_enc,
+            account_hash=acc_h,
             ifsc_code=data.get("ifsc_code"),
             account_holder=data.get("account_holder"),
             upi_id=data.get("upi_id"),
-            kyc_status="VERIFIED"
+            kyc_status="PENDING"
         )
         db.session.add(profile)
         db.session.commit()
@@ -108,6 +134,7 @@ class AuthRepository:
     @staticmethod
     def get_shared_kyc_data(user_id) -> dict:
         """Fetch pre-existing shared KYC fields from either profile if present."""
+        from app.utils.security_crypto import decrypt_field
         shared = {}
         org_profile = db.session.scalar(select(OrganizerProfile).where(OrganizerProfile.user_id == user_id))
         exh_profile = db.session.scalar(select(ExhibitorProfile).where(ExhibitorProfile.user_id == user_id))
@@ -121,7 +148,10 @@ class AuthRepository:
             ]:
                 val = getattr(source, field, None)
                 if val:
-                    shared[field] = val
+                    if field in ["pan_number", "account_number"]:
+                        shared[field] = decrypt_field(val)
+                    else:
+                        shared[field] = val
         return shared
 
     @staticmethod
@@ -145,7 +175,7 @@ class AuthRepository:
         for key in ["company_name", "business_type", "gstin", "pan_number", "business_address", "city", "state", "pincode", "website_url"]:
             val = data.get(key)
             if val is not None and val != "":
-                setattr(profile, key, val)
+                AuthRepository._apply_profile_field(profile, key, val)
 
         if profile.kyc_status != "VERIFIED":
             profile.kyc_status = "IN_PROGRESS"
@@ -186,19 +216,21 @@ class AuthRepository:
         for key in ["company_name", "business_type", "gstin", "pan_number", "business_address", "city", "state", "pincode", "website_url", "bank_name", "account_number", "ifsc_code", "account_holder", "upi_id"]:
             val = data.get(key)
             if val is not None and val != "":
-                setattr(profile, key, val)
-        profile.kyc_status = "VERIFIED"
+                AuthRepository._apply_profile_field(profile, key, val)
+        profile.kyc_status = "PENDING"
 
         db.session.commit()
         return user
 
     @staticmethod
     def create_exhibitor_user(data: dict, password_hash: str) -> User:
+        from app.utils.security_crypto import encrypt_field, blind_index_hash
         user = User(
             name=data.get("name"),
             email=data.get("email").strip().lower(),
             password=password_hash,
-            role="exhibitor",
+            roles=["exhibitor", "user"],
+            active_role="exhibitor",
             mobile=data.get("mobile"),
             organization_name=data.get("company_name"),
             address=data.get("business_address"),
@@ -209,23 +241,32 @@ class AuthRepository:
         db.session.add(user)
         db.session.flush()
 
+        pan_raw = data.get("pan_number")
+        acc_raw = data.get("account_number")
+        pan_enc = encrypt_field(str(pan_raw).strip().upper()) if pan_raw else None
+        pan_h = blind_index_hash(str(pan_raw).strip().upper()) if pan_raw else None
+        acc_enc = encrypt_field(str(acc_raw).strip()) if acc_raw else None
+        acc_h = blind_index_hash(str(acc_raw).strip()) if acc_raw else None
+
         profile = ExhibitorProfile(
             user_id=user.id,
             company_name=data.get("company_name"),
             vendor_category=data.get("vendor_category"),
             gstin=data.get("gstin"),
-            pan_number=data.get("pan_number"),
+            pan_number=pan_enc,
+            pan_hash=pan_h,
             business_address=data.get("business_address"),
             city=data.get("city"),
             state=data.get("state"),
             pincode=data.get("pincode"),
             website_url=data.get("website_url"),
             bank_name=data.get("bank_name"),
-            account_number=data.get("account_number"),
+            account_number=acc_enc,
+            account_hash=acc_h,
             ifsc_code=data.get("ifsc_code"),
             account_holder=data.get("account_holder"),
             upi_id=data.get("upi_id"),
-            kyc_status="VERIFIED"
+            kyc_status="PENDING"
         )
         db.session.add(profile)
         db.session.commit()
@@ -252,7 +293,7 @@ class AuthRepository:
         for key in ["company_name", "vendor_category", "gstin", "pan_number", "business_address", "city", "state", "pincode", "website_url"]:
             val = data.get(key)
             if val is not None and val != "":
-                setattr(profile, key, val)
+                AuthRepository._apply_profile_field(profile, key, val)
 
         if profile.kyc_status != "VERIFIED":
             profile.kyc_status = "IN_PROGRESS"
@@ -293,8 +334,8 @@ class AuthRepository:
         for key in ["company_name", "vendor_category", "gstin", "pan_number", "business_address", "city", "state", "pincode", "website_url", "bank_name", "account_number", "ifsc_code", "account_holder", "upi_id"]:
             val = data.get(key)
             if val is not None and val != "":
-                setattr(profile, key, val)
-        profile.kyc_status = "VERIFIED"
+                AuthRepository._apply_profile_field(profile, key, val)
+        profile.kyc_status = "PENDING"
 
         db.session.commit()
         return user

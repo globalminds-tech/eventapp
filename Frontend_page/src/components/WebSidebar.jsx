@@ -59,18 +59,18 @@ const MASTER_NAVIGATION_ITEMS = {
   exhibitor: [
     { label: "Dashboard", path: "/exhibitor/dashboard", icon: LayoutDashboard, permission: "exhibitor.dashboard.view" },
     { label: "My Stall Bookings", path: "/exhibitor/my-bookings", icon: Store, permission: "exhibitor.stalls.view" },
-    { label: "Upcoming Expos", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
-    { label: "Visitor Leads & Staff", path: "/exhibitor/leads", icon: Users, permission: "exhibitor.leads.view" },
+    { label: "Upcoming Events", path: "/exhibitor/upcoming-events", icon: Calendar, permission: "exhibitor.events.browse" },
+    { label: "Visitor Leads", path: "/exhibitor/leads", icon: Users, permission: "exhibitor.leads.view" },
     { label: "Billings & Invoices", path: "/exhibitor/billing", icon: Receipt, permission: "exhibitor.billing.view" },
     { label: "Team & Roles", path: "/exhibitor/team", icon: Shield, permission: "exhibitor.team.view" },
   ],
 
   organizer: [
-    { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+    { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: ["dashboard.view", "events.view"] },
     { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode, permission: ["checkin.scan", "checkin.view"] },
     { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils, permission: ["checkin.scan", "checkin.view"] },
     { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store, permission: "stalls.view" },
-    { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users, permission: ["stalls.view", "events.view"] },
+    { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users, permission: "stalls.view" },
     { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield, permission: ["team.view", "roles.view", "roles.manage"] },
     { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt, permission: "finance.view" },
     { label: "Master Data", path: "/OrganizerHome/MasterData", icon: Database, permission: "master_data.view" },
@@ -134,6 +134,18 @@ export default function WebSidebar({ role }) {
         location.pathname.startsWith("/OrganizerHome/CreateEvent")
       );
     }
+    if (path === "/OrganizerHome/EventCheckIn") {
+      return (
+        location.pathname === "/OrganizerHome/EventCheckIn" ||
+        location.pathname.startsWith("/OrganizerHome/EventCheckIn/")
+      );
+    }
+    if (path === "/OrganizerHome/FoodCheckIn") {
+      return (
+        location.pathname === "/OrganizerHome/FoodCheckIn" ||
+        location.pathname.startsWith("/OrganizerHome/FoodCheckIn/")
+      );
+    }
     if (path === "/superuser/categories") {
       return (
         location.pathname === "/superuser/categories" ||
@@ -141,7 +153,7 @@ export default function WebSidebar({ role }) {
         location.pathname.startsWith("/superuser/category-requests")
       );
     }
-    return location.pathname === path && !location.search;
+    return (location.pathname === path || location.pathname.startsWith(path + "/")) && !location.search;
   }, [location.pathname, location.search]);
 
   // Initial loading state indicator for permission-gated navigation
@@ -166,8 +178,8 @@ export default function WebSidebar({ role }) {
   const mainDashboardPath = useMemo(() => {
     if (activeRoleKey === "superuser") return "/superuser/dashboard";
     if (activeRoleKey === "organizer") {
-      if (hasPermission("dashboard.view")) return "/OrganizerHome/Organizerdashboard";
-      return visibleNavigationItems[0]?.path || "/OrganizerHome/EventCheckIn";
+      if (hasPermission(["dashboard.view", "events.view"])) return "/OrganizerHome/Organizerdashboard";
+      return visibleNavigationItems[0]?.path || "/OrganizerHome/Organizerdashboard";
     }
     if (activeRoleKey === "exhibitor") {
       if (hasPermission("exhibitor.dashboard.view")) return "/exhibitor/dashboard";
@@ -175,6 +187,11 @@ export default function WebSidebar({ role }) {
     }
     return "/";
   }, [activeRoleKey, hasPermission, visibleNavigationItems]);
+
+  const handleItemNavigation = (targetPath) => {
+    setIsMobileOpen(false);
+    navigate(targetPath, { state: { resetSelection: true, _ts: Date.now() } });
+  };
 
   return (
     <div className="flex flex-col lg:flex-row h-screen w-screen overflow-hidden bg-slate-50">
@@ -189,7 +206,7 @@ export default function WebSidebar({ role }) {
           >
             <Menu size={20} />
           </button>
-          <div onClick={() => navigate(mainDashboardPath)} className="cursor-pointer">
+          <div onClick={() => handleItemNavigation(mainDashboardPath)} className="cursor-pointer">
             <BrandLogo isCollapsed={false} roleLabel={theme.roleLabel} textColor="text-white" />
           </div>
         </div>
@@ -239,7 +256,7 @@ export default function WebSidebar({ role }) {
 
         {/* Brand Header */}
         <div 
-          onClick={() => navigate(mainDashboardPath)}
+          onClick={() => handleItemNavigation(mainDashboardPath)}
           className={`h-16 flex items-center px-4 border-b border-slate-800/80 cursor-pointer transition-all duration-300 ${
             isCollapsed ? "justify-center px-0" : "justify-between"
           }`}
@@ -292,7 +309,7 @@ export default function WebSidebar({ role }) {
               return (
                 <button
                   key={item.path || itemIdx}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => handleItemNavigation(item.path)}
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs cursor-pointer transition-all border-none bg-transparent group relative ${
                     isCollapsed ? "justify-center px-0" : ""
                   } ${

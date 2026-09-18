@@ -84,6 +84,8 @@ export default function QRScanner({
   const controlsRef = useRef(null);
   const [isStarting, setIsStarting] = useState(true);
   const [error, setError] = useState(null);
+  const [permissionBlocked, setPermissionBlocked] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [lastScannedCode, setLastScannedCode] = useState(null);
   const [scanCount, setScanCount] = useState(0);
@@ -131,7 +133,7 @@ export default function QRScanner({
       }
     };
     listCameras();
-  }, []);
+  }, [retryTrigger]);
 
   // Stop scanner tracks cleanly
   const stopScanner = useCallback(() => {
@@ -175,6 +177,7 @@ export default function QRScanner({
       if (cancelled) return;
       setIsStarting(true);
       setError(null);
+      setPermissionBlocked(false);
 
       try {
         if (videoRef.current && videoRef.current.srcObject) {
@@ -225,7 +228,6 @@ export default function QRScanner({
                   onScanRef.current(code);
                 }
               }
-              // Catching err suppresses the unhandled exception console logs from ZXing
               if (err && !cancelled) {
                  // ignore NotFoundExceptions internally
               }
@@ -288,7 +290,19 @@ export default function QRScanner({
       } catch (err) {
         console.error("Camera scanner error:", err);
         if (!cancelled) {
-          setError("Unable to access video camera. Please verify browser permissions or switch to Manual Mode.");
+          const isPerm = 
+            err.name === "NotAllowedError" ||
+            err.name === "PermissionDeniedError" ||
+            /denied|permission|not allowed/i.test(err.message || "");
+          
+          setPermissionBlocked(isPerm);
+          if (isPerm) {
+            setError("Camera access is blocked by your browser settings. Please grant camera permission to continue.");
+          } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+            setError("No video camera was detected on this device. Please connect a webcam or switch to Manual Mode.");
+          } else {
+            setError("Unable to access video camera. Please verify browser permissions or switch to Manual Mode.");
+          }
           setIsStarting(false);
         }
       }
@@ -306,7 +320,7 @@ export default function QRScanner({
       }
       stopScanner();
     };
-  }, [mode, selectedCameraId, stopScanner]);
+  }, [mode, selectedCameraId, stopScanner, retryTrigger]);
 
   // Flashlight toggle
   const toggleTorch = async () => {
@@ -467,16 +481,57 @@ export default function QRScanner({
           )}
 
           {error && (
-            <div className="absolute inset-0 bg-slate-950 p-6 flex flex-col items-center justify-center text-center space-y-3 text-amber-400">
-              <AlertCircle size={32} />
-              <p className="text-xs font-semibold text-slate-300 max-w-xs">{error}</p>
-              <button
-                type="button"
-                onClick={() => setMode("manual")}
-                className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs rounded-xl border-none cursor-pointer shadow-md"
-              >
-                Switch to Manual / USB Gun Mode
-              </button>
+            <div className="absolute inset-0 bg-slate-950/95 p-5 sm:p-6 flex flex-col items-center justify-center text-center space-y-3 z-30">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
+                <AlertCircle size={26} />
+              </div>
+
+              <div className="space-y-1 max-w-sm">
+                <h4 className="text-sm font-black text-white">
+                  {permissionBlocked ? "Camera Access Blocked in Browser" : "Camera Access Notice"}
+                </h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {error}
+                </p>
+              </div>
+
+              {permissionBlocked && (
+                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 text-left max-w-sm w-full space-y-1.5 text-[11px] text-slate-300 font-medium">
+                  <p className="font-bold text-cyan-400 flex items-center gap-1.5">
+                    <span>💡 How to enable:</span>
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-slate-400">
+                    <li>Look at your browser's address bar at the top</li>
+                    <li>Click the <strong>camera 📷 / padlock 🔒</strong> icon</li>
+                    <li>Change permission to <strong>Allow</strong></li>
+                    <li>Click <strong>Try Camera Again</strong> below</li>
+                  </ol>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setIsStarting(true);
+                    setRetryTrigger((prev) => prev + 1);
+                  }}
+                  className="px-3.5 py-2 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-xs rounded-xl border-none cursor-pointer shadow-md shadow-cyan-500/20 flex items-center gap-1.5"
+                >
+                  <RefreshCw size={13} />
+                  <span>Try Camera Again</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode("manual")}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-black text-xs rounded-xl border border-slate-700 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Keyboard size={13} />
+                  <span>Use Manual / USB Gun</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -68,8 +68,9 @@ export default function LiveEventCardPreview({ formData }) {
           </div>
         </div>
 
-        <div className="pt-1 text-[11px] text-center text-slate-400 font-medium italic">
-          ✨ Real-time preview of how your event thumbnail will look on the Attendee Home Screen.
+        <div className="pt-1 text-[11px] text-center text-slate-400 font-medium italic flex items-center justify-center gap-1">
+          <Sparkles size={12} className="text-cyan-500 shrink-0" />
+          <span>Real-time preview of how your event thumbnail will look on the Attendee Home Screen.</span>
         </div>
       </div>
     </Card>

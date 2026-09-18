@@ -2,8 +2,8 @@ import axiosClient from "@/shared/api/axiosClient";
 import { CATEGORY_ENDPOINTS } from "./category.endpoints";
 
 export const categoryApi = {
-  getCategories: async () => {
-    const res = await axiosClient.get(CATEGORY_ENDPOINTS.LIST);
+  getCategories: async (params = {}) => {
+    const res = await axiosClient.get(CATEGORY_ENDPOINTS.LIST, { params });
     return res.data;
   },
 

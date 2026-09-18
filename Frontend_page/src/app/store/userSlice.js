@@ -16,6 +16,11 @@ const getInitialUser = () => {
           mobile: u.mobile || "",
           organization_name: u.organization_name || u.company_name || "",
           profile_image: u.profile_image || "",
+          is_team_member: Boolean(u.is_team_member),
+          organization_id: u.organization_id || "",
+          organization_owner_id: u.organization_owner_id || "",
+          team_role_name: u.team_role_name || "",
+          permissions: Array.isArray(u.permissions) ? u.permissions : [],
           must_change_password: Boolean(u.must_change_password),
           profiles: u.profiles || {},
         };
@@ -39,6 +44,11 @@ const getInitialUser = () => {
     mobile: localStorage.getItem("mobile") || sessionStorage.getItem("mobile") || "",
     organization_name: localStorage.getItem("organization_name") || sessionStorage.getItem("organization_name") || "",
     profile_image: localStorage.getItem("profile_image") || sessionStorage.getItem("profile_image") || "",
+    is_team_member: false,
+    organization_id: "",
+    organization_owner_id: "",
+    team_role_name: "",
+    permissions: [],
     must_change_password: false,
     profiles: {},
   };
@@ -59,6 +69,11 @@ const userSlice = createSlice({
       state.mobile = p.mobile || state.mobile;
       state.organization_name = p.organization_name || p.company_name || state.organization_name;
       state.profile_image = p.profile_image || state.profile_image;
+      if (p.is_team_member !== undefined) state.is_team_member = Boolean(p.is_team_member);
+      if (p.organization_id !== undefined) state.organization_id = p.organization_id;
+      if (p.organization_owner_id !== undefined) state.organization_owner_id = p.organization_owner_id;
+      if (p.team_role_name !== undefined) state.team_role_name = p.team_role_name;
+      if (Array.isArray(p.permissions)) state.permissions = p.permissions;
       if (p.must_change_password !== undefined) {
         state.must_change_password = Boolean(p.must_change_password);
       }
@@ -88,6 +103,11 @@ const userSlice = createSlice({
       state.mobile = "";
       state.organization_name = "";
       state.profile_image = "";
+      state.is_team_member = false;
+      state.organization_id = "";
+      state.organization_owner_id = "";
+      state.team_role_name = "";
+      state.permissions = [];
 
       const keysToClear = ["id", "name", "email", "role", "roles", "active_role", "mobile", "organization_name", "profile_image", "user", "token", "userId"];
       keysToClear.forEach((k) => {

@@ -5,7 +5,7 @@ from .event import (
     EventDetails, EventBookingDetails, EventLayout,
     EventFile, EventTerm, EventGuest
 )
-from .venue import Venue, VenueDocument
+from .venue import Venue
 from .stall import EventStall, StallAmenity
 from .exhibitor import ExhibitorStallBooking
 from .booking import UserBookingDetails, AttendeeCheckinLog
@@ -23,14 +23,14 @@ from .category_request import CategoryRequest
 from .organization import Organization, OrganizationMember, OrganizationInvitation
 from .rbac import Role, Permission, RolePermission
 from .audit_log import AuditLog
-from .gate import GatePreset
+from .gate import GatePreset, FoodCounterPreset
 from .financial import EventTransaction, OrganizerPayout, FinancialInvoice
 
 __all__ = [
     'User', 'OrganizerProfile', 'ExhibitorProfile', 'CategoryMaster', 'CategoryRequest',
     'EventDetails', 'EventBookingDetails', 'EventLayout',
     'EventFile', 'EventTerm', 'EventGuest',
-    'Venue', 'VenueDocument',
+    'Venue',
     'EventStall', 'StallAmenity',
     'ExhibitorStallBooking',
     'UserBookingDetails', 'AttendeeCheckinLog',
@@ -43,7 +43,7 @@ __all__ = [
     'FeedbackEvent', 'Complaint', 'ChatHistory', 'FAQ',
     'TodoTask', 'MessageGreeting', 'Contact',
     'Organization', 'OrganizationMember', 'OrganizationInvitation',
-    'Role', 'Permission', 'RolePermission', 'AuditLog', 'GatePreset',
+    'Role', 'Permission', 'RolePermission', 'AuditLog', 'GatePreset', 'FoodCounterPreset',
     'EventTransaction', 'OrganizerPayout', 'FinancialInvoice'
 ]
 

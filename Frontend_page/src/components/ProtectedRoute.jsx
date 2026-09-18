@@ -7,6 +7,7 @@ import { getUserAvailableRoles } from "@/shared/services/authHelper";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { ShieldCheck } from "lucide-react";
 import FirstLoginPasswordModal from "./FirstLoginPasswordModal";
+import { isTokenExpired } from "@/shared/utils/jwtUtils";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const dispatch = useDispatch();
@@ -114,10 +115,19 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // 5. Check valid session token
-  const isValidToken = Boolean(token && !token.includes("authenticated-user-token") && !token.includes("-session-token"));
+  // 5. Check valid session token (including expiration check)
+  const isValidToken = Boolean(
+    token &&
+    !token.includes("authenticated-user-token") &&
+    !token.includes("-session-token") &&
+    !isTokenExpired(token)
+  );
 
   if (!isValidToken) {
+    const isExplicitlyLoggedOut = localStorage.getItem("is_logged_out") === "true" || sessionStorage.getItem("is_logged_out") === "true";
+    if (isExplicitlyLoggedOut) {
+      return <Navigate to="/" replace />;
+    }
     const returnUrl = encodeURIComponent(location.pathname + location.search);
     console.warn(`[ProtectedRoute] Unauthenticated access to "${location.pathname}". Redirecting to /login?returnUrl=${returnUrl}`);
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;

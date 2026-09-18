@@ -90,8 +90,20 @@ class CheckinService:
         return CheckinRepository.get_events_checkin_summary(organizer_id)
 
     @staticmethod
-    def get_event_attendees(event_id: str):
-        return CheckinRepository.get_event_attendees(event_id)
+    def get_event_attendees(
+        event_id: str,
+        search: Optional[str] = None,
+        status: Optional[str] = None,
+        page: Optional[int] = None,
+        limit: Optional[int] = None
+    ):
+        return CheckinRepository.get_event_attendees(
+            event_id,
+            search=search,
+            status=status,
+            page=page,
+            limit=limit
+        )
 
     @staticmethod
     def get_event_checkin_logs(event_id: str):
@@ -102,7 +114,7 @@ class CheckinService:
         return CheckinRepository.get_food_checkin_summary(organizer_id)
 
     @staticmethod
-    def redeem_food_token(code_or_id: str, event_id: Optional[str] = None):
+    def redeem_food_token(code_or_id: str, event_id: Optional[str] = None, counter_name: Optional[str] = None):
         from app.extensions.database import db
         from app.models.booking import AttendeeCheckinLog
         from datetime import datetime
@@ -132,18 +144,24 @@ class CheckinService:
             time_str = existing_log.timestamp.strftime("%I:%M %p") if existing_log.timestamp else "earlier"
             raise ApiError(f"Meal already redeemed at {time_str}!", 400)
 
-        # Log food redemption
+        # Log food redemption and mark booking checked-in/scanned
         try:
             log_entry = AttendeeCheckinLog(
                 booking_id=booking.id,
                 ticket_code=booking.ticket_code,
                 event_id=booking.event_id,
                 action="FOOD_REDEEM",
-                gate_name="FOOD_COUNTER",
+                gate_name=counter_name or "FOOD_COUNTER",
                 scanner_id="FOOD_STAFF",
                 timestamp=datetime.utcnow()
             )
             db.session.add(log_entry)
+
+            booking.is_checked_in = True
+            booking.is_scanned = True
+            booking.total_checkins = (booking.total_checkins or 0) + 1
+            booking.checkin_at = datetime.utcnow()
+
             db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -211,3 +229,50 @@ class CheckinService:
         except Exception as e:
             db.session.rollback()
             raise ApiError(f"Failed to delete gate: {str(e)}", 500)
+
+    @staticmethod
+    def get_food_counter_presets(organizer_id: str):
+        from app.models.gate import FoodCounterPreset
+        from app.extensions.database import db
+        presets = db.session.query(FoodCounterPreset).filter_by(organizer_id=organizer_id).order_by(FoodCounterPreset.created_at.asc()).all()
+        return [p.to_dict() for p in presets]
+
+    @staticmethod
+    def add_food_counter_preset(name: str, organizer_id: str):
+        from app.models.gate import FoodCounterPreset
+        from app.extensions.database import db
+        from app.exceptions.api_error import ApiError
+
+        if not name or not name.strip():
+            raise ApiError("Counter name cannot be empty", 400)
+
+        existing = db.session.query(FoodCounterPreset).filter_by(organizer_id=organizer_id, name=name.strip()).first()
+        if existing:
+            return existing.to_dict()
+
+        try:
+            preset = FoodCounterPreset(name=name.strip(), organizer_id=organizer_id)
+            db.session.add(preset)
+            db.session.commit()
+            return preset.to_dict()
+        except Exception as e:
+            db.session.rollback()
+            raise ApiError(f"Failed to add food counter: {str(e)}", 500)
+
+    @staticmethod
+    def delete_food_counter_preset(counter_id: str, organizer_id: str):
+        from app.models.gate import FoodCounterPreset
+        from app.extensions.database import db
+        from app.exceptions.api_error import ApiError
+
+        preset = db.session.query(FoodCounterPreset).filter_by(id=counter_id, organizer_id=organizer_id).first()
+        if not preset:
+            raise ApiError("Food counter preset not found", 404)
+
+        try:
+            db.session.delete(preset)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            raise ApiError(f"Failed to delete food counter: {str(e)}", 500)

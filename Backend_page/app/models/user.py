@@ -1,8 +1,8 @@
+import json
 import uuid as uuid_pkg
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, DateTime, func
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, ARRAY
+from sqlalchemy import String, Text, Boolean, DateTime, func, Uuid, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import db
 
@@ -10,11 +10,11 @@ from app.extensions.database import db
 class User(db.Model):
     __tablename__ = 'users'
 
-    id: Mapped[uuid_pkg.UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid_pkg.uuid4)
+    id: Mapped[uuid_pkg.UUID] = mapped_column(Uuid, primary_key=True, default=uuid_pkg.uuid4)
     name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
-    roles: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String(50)), default=lambda: ["user"], nullable=True)
+    roles: Mapped[Optional[Any]] = mapped_column(JSON, default=lambda: ["user"], nullable=True)
     active_role: Mapped[Optional[str]] = mapped_column(String(50), default="user", nullable=True)
     status: Mapped[Optional[str]] = mapped_column(String(50), default="ACTIVE")
     mobile: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -33,14 +33,21 @@ class User(db.Model):
     timezone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
-    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    created_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=func.now(), nullable=True)
-    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    updated_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    deleted_by: Mapped[Optional[uuid_pkg.UUID]] = mapped_column(Uuid, nullable=True)
 
     def to_dict(self):
-        user_roles = list(self.roles) if self.roles else ["user"]
+        user_roles = self.roles
+        if isinstance(user_roles, str):
+            try:
+                user_roles = json.loads(user_roles)
+            except Exception:
+                user_roles = [user_roles]
+        if not user_roles:
+            user_roles = ["user"]
         active = self.active_role or (user_roles[0] if user_roles else "user")
         return {
             "id": str(self.id),

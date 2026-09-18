@@ -73,8 +73,8 @@ class OrganizerController:
         return OrganizerService.delete_vendor(vendor_id)
 
     @staticmethod
-    def update_venue(venue_id: str, data: dict) -> dict:
-        return OrganizerService.update_venue(venue_id, data)
+    def update_venue(venue_id: str, data: dict, user_id = None) -> dict:
+        return OrganizerService.update_venue(venue_id, data, user_id)
 
     @staticmethod
     def delete_venue(venue_id: str) -> dict:

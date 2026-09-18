@@ -16,3 +16,4 @@ openpyxl
 google-generativeai
 redis
 razorpay
+pyodbc

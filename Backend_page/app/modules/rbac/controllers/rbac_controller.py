@@ -5,7 +5,7 @@ from sqlalchemy import func
 from fastapi import HTTPException, status
 from app.modules.rbac.services.rbac_service import RBACService
 from app.extensions.database import db_session
-from app.models.organization import Organization, OrganizationMember
+from app.models.organization import Organization, OrganizationMember, OrganizationInvitation
 from app.models.user import User
 from werkzeug.security import generate_password_hash
 from app.utils.jwt_utils import generate_access_token, generate_refresh_token
@@ -41,7 +41,28 @@ class RBACController:
             ).first()
             if membership:
                 return str(membership.organization_id)
-            
+
+            # 2.2 Check if user is an active member of ANY organization (team members should not own new orgs)
+            any_membership = session.query(OrganizationMember).join(Organization).filter(
+                OrganizationMember.user_id == user_id,
+                OrganizationMember.deleted_at.is_(None),
+                Organization.deleted_at.is_(None)
+            ).first()
+            if any_membership:
+                return str(any_membership.organization_id)
+
+            # 2.5 Check if user has a pending invitation for any organization
+            if user_obj and user_obj.email:
+                pending_inv = session.query(OrganizationInvitation).join(Organization).filter(
+                    OrganizationInvitation.invited_email == user_obj.email.strip().lower(),
+                    OrganizationInvitation.status == 'PENDING',
+                    Organization.deleted_at.is_(None)
+                ).first()
+                if pending_inv:
+                    from app.modules.rbac.services.tenant_service import TenantService
+                    TenantService.auto_accept_pending_invitations_for_user(user_id, user_obj.email)
+                    return str(pending_inv.organization_id)
+
             # 3. Auto-provision default organization specifically for target_org_type
             org_name = current_user.get("name") or (user_obj.name if user_obj else None) or "My Organization"
             suffix = "Exhibitor Team" if target_org_type == "EXHIBITOR" else "Organizer Team"

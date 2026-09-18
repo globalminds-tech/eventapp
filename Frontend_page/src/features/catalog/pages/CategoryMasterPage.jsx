@@ -6,11 +6,13 @@ import { Card } from "@/components/ui/Card";
 import { categoryApi } from "@/features/catalog/api/category.api";
 import { uploadCategoryImageToSupabase } from "@/Services/supabaseClient";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 export default function CategoryMaster() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery.trim(), 300);
   const [isLoading, setIsLoading] = useState(true);
 
   // Category Requests State
@@ -37,14 +39,18 @@ export default function CategoryMaster() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    fetchCategories();
+    fetchCategories(debouncedSearch);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
     fetchCategoryRequests();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (search = "") => {
     setIsLoading(true);
     try {
-      const res = await categoryApi.getCategories();
+      const params = search ? { search } : {};
+      const res = await categoryApi.getCategories(params);
       const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res?.categories) ? res.categories : (Array.isArray(res) ? res : []));
       setCategories(list);
     } catch (err) {
@@ -200,10 +206,7 @@ export default function CategoryMaster() {
     }
   };
 
-  const filteredCategories = categories.filter((c) =>
-    (c.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (Array.isArray(c.subcategories) ? c.subcategories.join(" ") : (c.subcategories || "")).toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCategories = categories;
 
   // Category request counts
   const pendingRequests = categoryRequests.filter((r) => r.status === "Pending");

@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { StatCardSkeleton } from "@/components/ui/StatCardSkeleton";
 import axiosClient from "@/shared/api/axiosClient";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
@@ -82,57 +83,71 @@ export const Receipt = () => {
 
       {/* ── 4 EXECUTIVE FINANCIAL KPI CARDS ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Money Collected</span>
-            <div className="p-2 bg-blue-50 rounded-xl text-blue-600">
-              <IndianRupee size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">
-            ₹{financialData.gross_gmv.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] font-medium text-slate-500 mt-1">Gross sales from tickets & stalls</p>
-        </Card>
+        {isLoading ? (
+          <StatCardSkeleton count={4} />
+        ) : (
+          <>
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Money Collected</span>
+                <div className="w-9 h-9 bg-blue-50 rounded-xl text-blue-600 flex items-center justify-center border border-blue-100/70 shrink-0">
+                  <IndianRupee size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  ₹{financialData.gross_gmv.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Gross sales from tickets & stalls</p>
+              </div>
+            </Card>
 
-        <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Platform Deductions</span>
-            <div className="p-2 bg-amber-50 rounded-xl text-amber-600">
-              <TrendingDown size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-slate-900">
-            ₹{financialData.platform_deductions.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] font-medium text-slate-500 mt-1">Platform commission & gateway fees</p>
-        </Card>
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Platform Deductions</span>
+                <div className="w-9 h-9 bg-amber-50 rounded-xl text-amber-600 flex items-center justify-center border border-amber-100/70 shrink-0">
+                  <TrendingDown size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  ₹{financialData.platform_deductions.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Platform commission & gateway fees</p>
+              </div>
+            </Card>
 
-        <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">In Escrow (Available)</span>
-            <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
-              <Clock size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-emerald-600">
-            ₹{financialData.available_in_escrow.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] font-medium text-slate-500 mt-1">Net cleared funds ready for payout</p>
-        </Card>
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">In Escrow (Available)</span>
+                <div className="w-9 h-9 bg-emerald-50 rounded-xl text-emerald-600 flex items-center justify-center border border-emerald-100/70 shrink-0">
+                  <Clock size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">
+                  ₹{financialData.available_in_escrow.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Net cleared funds ready for payout</p>
+              </div>
+            </Card>
 
-        <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Settled Payouts</span>
-            <div className="p-2 bg-purple-50 rounded-xl text-purple-600">
-              <ShieldCheck size={18} />
-            </div>
-          </div>
-          <div className="text-2xl font-black text-purple-600">
-            ₹{financialData.settled_payouts.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </div>
-          <p className="text-[11px] font-medium text-slate-500 mt-1">Transferred directly to bank account</p>
-        </Card>
+            <Card className="rounded-2xl border-slate-200/80 shadow-xs bg-white p-5 flex flex-col justify-between transition hover:border-slate-300">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Settled Payouts</span>
+                <div className="w-9 h-9 bg-purple-50 rounded-xl text-purple-600 flex items-center justify-center border border-purple-100/70 shrink-0">
+                  <ShieldCheck size={18} />
+                </div>
+              </div>
+              <div>
+                <div className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight">
+                  ₹{financialData.settled_payouts.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-xs font-medium text-slate-500 mt-1">Transferred directly to bank account</p>
+              </div>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* ── TABS SELECTOR ── */}
