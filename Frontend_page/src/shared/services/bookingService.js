@@ -1,8 +1,17 @@
 import apiClient from "./client";
 
 export const bookEvent = async (data) => {
-  const res = await apiClient.post("/user/book-event", data);
-  return res.data;
+  try {
+    const res = await apiClient.post("/api/v1/user/book-event", data);
+    return res.data;
+  } catch (err) {
+    // Graceful fallback for legacy root route
+    if (err?.response?.status === 404) {
+      const fallbackRes = await apiClient.post("/user/book-event", data);
+      return fallbackRes.data;
+    }
+    throw err;
+  }
 };
 
 export const bookStall = async (formData) => {

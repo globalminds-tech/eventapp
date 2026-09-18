@@ -155,6 +155,23 @@ class UserService:
         booking_id = str(booking.id)
         ticket_code = booking.ticket_code or UserRepository.generate_ticket_code(data.event_id)
 
+        # 4b. Record Financial Transaction for Paid Bookings
+        if float(data.amount_paid or 0) > 0:
+            try:
+                from app.modules.finance.services.finance_service import FinanceService
+                FinanceService.record_transaction(
+                    event_id=booking.event_id,
+                    transaction_type="TICKET_SALE",
+                    gross_amount=float(data.amount_paid),
+                    payer_user_id=booking.user_id,
+                    booking_id=booking.id,
+                    gateway_payment_id=data.payment_id,
+                    gateway_order_id=data.razorpay_order_id,
+                    description=f"Ticket Sale - {data.name} ({qty} pass(es) - {data.pass_type or 'Single Pass'})"
+                )
+            except Exception as fin_err:
+                print(f"⚠️ Financial transaction recording note: {fin_err}")
+
         formatted_date = str(event.start_date)
         if event.start_date:
             try:
@@ -293,5 +310,5 @@ class UserService:
         }
 
     @staticmethod
-    def get_my_bookings(email: Optional[str] = None, user_id: Optional[str] = None) -> list[dict]:
-        return UserRepository.get_user_bookings(email=email, user_id=user_id)
+    def get_my_bookings(email: Optional[str] = None, user_id: Optional[str] = None, search: Optional[str] = None) -> list[dict]:
+        return UserRepository.get_user_bookings(email=email, user_id=user_id, search=search)

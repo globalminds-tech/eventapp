@@ -239,7 +239,7 @@ export default function WebSidebar({ role }) {
 
       {/* ── SIDEBAR CONTAINER (Desktop persistent + Mobile slide-out drawer) ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col h-full border-r border-slate-800 bg-[#0f172a] text-slate-300 transition-all duration-300 select-none lg:static lg:z-30 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col h-full border-r border-slate-800 bg-[#0f172a] text-slate-300 transition-all duration-300 select-none lg:relative lg:z-50 ${
           isMobileOpen ? "translate-x-0 w-[270px] shadow-2xl" : "-translate-x-full lg:translate-x-0"
         } ${
           isCollapsed ? "lg:w-[72px]" : "lg:w-[250px]"
@@ -339,7 +339,7 @@ export default function WebSidebar({ role }) {
 
                   {/* Hover Tooltip when Sidebar is Collapsed */}
                   {isCollapsed && (
-                    <div className="fixed left-16 bg-slate-950 text-white text-xs font-semibold py-1.5 px-3 rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-50 whitespace-nowrap flex items-center gap-1.5 border border-slate-800">
+                    <div className="fixed left-[78px] bg-slate-950 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-all duration-150 z-[99999] whitespace-nowrap flex items-center gap-1.5 border border-slate-700/90 ring-1 ring-white/10">
                       <span>{item.label}</span>
                     </div>
                   )}

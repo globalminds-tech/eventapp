@@ -52,20 +52,48 @@ async def upload_avatar(file: UploadFile = File(...), current_user: dict = Depen
 @root_users_router.post("/api/v1/user/book-event", status_code=201)
 def book_event(payload: BookEventSchema, request: Request):
     data = payload.dict()
+
+    # 1. Normalize and clean user_id
+    raw_uid = data.get("user_id")
+    if not raw_uid or str(raw_uid).strip().lower() in ["none", "null", "undefined", ""]:
+        data["user_id"] = None
+    else:
+        data["user_id"] = str(raw_uid).strip()
+
+    # 2. Extract user_id from Authorization Bearer token if not provided in payload
     if not data.get("user_id"):
-        from app.middleware.auth import get_current_user
-        try:
-            current_user = get_current_user(request)
-            if current_user and isinstance(current_user, dict):
-                data["user_id"] = current_user.get("user_id") or current_user.get("id")
-        except Exception:
-            pass
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            try:
+                import jwt
+                from app.utils.jwt_utils import JWT_SECRET_KEY, JWT_ALGORITHM
+                token_payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+                data["user_id"] = token_payload.get("user_id") or token_payload.get("id") or token_payload.get("sub")
+            except Exception:
+                pass
+
+    # 3. Resolve or auto-link user account by email to prevent blocking attendees who just paid
     if not data.get("user_id") and data.get("email"):
         from app.modules.auth.repository.auth_repository import AuthRepository
         try:
-            existing_user = AuthRepository.get_user_by_email(data["email"])
+            clean_email = data["email"].strip().lower()
+            existing_user = AuthRepository.get_user_by_email(clean_email)
             if existing_user:
                 data["user_id"] = str(existing_user.id)
+            else:
+                import secrets
+                from werkzeug.security import generate_password_hash
+                random_pw = secrets.token_urlsafe(12)
+                new_user = AuthRepository.create_user(
+                    name=data.get("name") or "Attendee",
+                    email=clean_email,
+                    password_hash=generate_password_hash(random_pw),
+                    role="user",
+                    mobile=data.get("phone")
+                )
+                if new_user:
+                    data["user_id"] = str(new_user.id)
         except Exception:
             pass
 
@@ -88,12 +116,34 @@ def validate_qr(code_or_id: str):
 
 @users_router.get("/my-bookings")
 @root_users_router.get("/user/my-bookings")
+@root_users_router.get("/api/v1/user/my-bookings")
 def get_my_bookings(
+    request: Request,
     email: Optional[str] = Query(None),
     user_id: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user)
+    search: Optional[str] = Query(None)
 ):
-    uid = user_id or (current_user.get("user_id") if isinstance(current_user, dict) else None) or (current_user.get("id") if isinstance(current_user, dict) else None)
-    uemail = email or (current_user.get("email") if isinstance(current_user, dict) else None)
-    return UserController.get_my_bookings(email=uemail, user_id=uid)
+    raw_uid = user_id
+    uid = None
+    if raw_uid and str(raw_uid).strip().lower() not in ["none", "null", "undefined", ""]:
+        uid = str(raw_uid).strip()
+
+    uemail = email.strip().lower() if email and str(email).strip().lower() not in ["none", "null", "undefined", ""] else None
+
+    # Try extracting user info from Bearer token if available
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+        try:
+            import jwt
+            from app.utils.jwt_utils import JWT_SECRET_KEY, JWT_ALGORITHM
+            payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            if not uid:
+                uid = payload.get("user_id") or payload.get("id") or payload.get("sub")
+            if not uemail:
+                uemail = payload.get("email")
+        except Exception:
+            pass
+
+    return UserController.get_my_bookings(email=uemail, user_id=uid, search=search)
 

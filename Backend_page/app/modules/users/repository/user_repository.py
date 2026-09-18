@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 from datetime import datetime
 from sqlalchemy import select
@@ -51,17 +52,28 @@ class UserRepository:
     @staticmethod
     def get_event_total_booked_seats(event_id) -> int:
         import uuid
-        from sqlalchemy import func
         try:
             eid = uuid.UUID(str(event_id))
         except Exception:
             eid = event_id
-        res = db.session.scalar(
-            select(func.coalesce(func.sum(func.coalesce(UserBookingDetails.group_size, UserBookingDetails.ticket_count, 1)), 0))
-            .where(UserBookingDetails.event_id == eid)
-            .where(UserBookingDetails.deleted_at.is_(None))
-        )
-        return int(res or 0)
+        try:
+            user_bookings = list(db.session.scalars(
+                select(UserBookingDetails).where(
+                    UserBookingDetails.event_id == eid,
+                    UserBookingDetails.deleted_at.is_(None)
+                )
+            ).all())
+            total_seats = 0
+            for ub in user_bookings:
+                t_count = int(getattr(ub, "ticket_count", 1) or 1)
+                g_size = int(getattr(ub, "group_size", 1) or 1)
+                p_type = str(getattr(ub, "pass_type", "") or "").lower()
+                seats = (t_count * g_size) if ("group" in p_type and g_size > 1) else t_count
+                total_seats += seats
+            return total_seats
+        except Exception as e:
+            print(f"[get_event_total_booked_seats] Error: {e}")
+            return 0
 
     @staticmethod
     def get_user_booked_passes_count(event_id, user_id=None, email: str = "") -> int:
@@ -79,7 +91,9 @@ class UserRepository:
                 parsed_uid = uuid.UUID(str(user_id))
                 user_ident_conditions.append(UserBookingDetails.user_id == parsed_uid)
             except Exception:
-                user_ident_conditions.append(UserBookingDetails.user_id == user_id)
+                # In SQL Server, UserBookingDetails.user_id is UNIQUEIDENTIFIER.
+                # Never query with an invalid non-UUID string as it causes SQL Server Error 8169.
+                pass
         if clean_email:
             user_ident_conditions.append(UserBookingDetails.email == clean_email)
 
@@ -364,8 +378,8 @@ class UserRepository:
         return success, booking
 
     @staticmethod
-    def get_user_bookings(email: Optional[str] = None, user_id: Optional[int] = None):
-        from sqlalchemy import or_
+    def get_user_bookings(email: Optional[str] = None, user_id: Optional[int] = None, search: Optional[str] = None):
+        from sqlalchemy import or_, func
         import qrcode
         import io
         import base64
@@ -375,14 +389,33 @@ class UserRepository:
         )
 
         clean_email = email.strip().lower() if email else None
-        if user_id and clean_email:
-            stmt = stmt.where(or_(UserBookingDetails.user_id == user_id, UserBookingDetails.email == clean_email))
-        elif user_id:
-            stmt = stmt.where(UserBookingDetails.user_id == user_id)
+        parsed_uid = None
+        if user_id:
+            try:
+                parsed_uid = uuid.UUID(str(user_id))
+            except Exception:
+                parsed_uid = None
+
+        if parsed_uid and clean_email:
+            stmt = stmt.where(or_(UserBookingDetails.user_id == parsed_uid, UserBookingDetails.email == clean_email))
+        elif parsed_uid:
+            stmt = stmt.where(UserBookingDetails.user_id == parsed_uid)
         elif clean_email:
             stmt = stmt.where(UserBookingDetails.email == clean_email)
         else:
             return []
+
+        # API-driven search across event name, venue, category, ticket code, and attendee name
+        if search and search.strip():
+            term = f"%{search.strip().lower()}%"
+            stmt = stmt.where(or_(
+                func.lower(EventDetails.event_name).like(term),
+                func.lower(EventDetails.venue).like(term),
+                func.lower(EventDetails.category).like(term),
+                func.lower(UserBookingDetails.ticket_code).like(term),
+                func.lower(UserBookingDetails.name).like(term),
+                func.lower(UserBookingDetails.pass_type).like(term),
+            ))
 
         stmt = stmt.order_by(UserBookingDetails.created_at.desc())
         results = db.session.execute(stmt).all()

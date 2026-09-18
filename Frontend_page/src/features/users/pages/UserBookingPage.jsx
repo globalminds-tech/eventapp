@@ -19,6 +19,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogContent } from "@/components/u
 import { isEventConcluded } from "@/shared/utils/eventDateUtils";
 import apiClient from "@/shared/api/axiosClient";
 import { ENV } from "@/config/env";
+import PrintableTicketPass from "@/features/users/components/PrintableTicketPass";
 
 const Toast = ({ show, message, type, onClose }) => {
   if (!show) return null;
@@ -121,15 +122,16 @@ export function Userbooking() {
   // 1b. Check how many passes the logged in user already reserved for this event
   useEffect(() => {
     const fetchExistingBookings = async () => {
-      const effUid = userId || auth?.user?.id || storedUser?.id || localStorage.getItem("userId");
+      const rawUid = userId || auth?.user?.id || storedUser?.id || localStorage.getItem("userId");
+      const effUid = (rawUid && rawUid !== "null" && rawUid !== "undefined") ? String(rawUid).trim() : null;
       const effEmail = form.email || auth?.user?.email || storedUser?.email;
       if (!effUid && !effEmail) return;
 
       const q = [];
-      if (effUid) q.push(`user_id=${effUid}`);
+      if (effUid) q.push(`user_id=${encodeURIComponent(effUid)}`);
       if (effEmail) q.push(`email=${encodeURIComponent(effEmail)}`);
       try {
-        const res = await apiClient.get(`/user/my-bookings?${q.join("&")}`);
+        const res = await apiClient.get(`/api/v1/user/my-bookings?${q.join("&")}`);
         const list = Array.isArray(res.data) ? res.data : (Array.isArray(res.data?.data) ? res.data.data : []);
         const thisEventBookings = list.filter((b) => String(b.event_id) === String(id));
         const totalPast = thisEventBookings.reduce((sum, b) => sum + Number(b.ticket_count || 1), 0);
@@ -303,8 +305,20 @@ export function Userbooking() {
     });
   };
 
+  const getErrorMessage = (err, defaultMsg = "Booking verification failed. Try again.") => {
+    const detail = err?.response?.data?.detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      return detail.map((d) => d.msg || (typeof d === "string" ? d : JSON.stringify(d))).join(", ");
+    }
+    if (err?.response?.data?.message && typeof err.response.data.message === "string") {
+      return err.response.data.message;
+    }
+    return err?.message || defaultMsg;
+  };
+
   const handleBook = async () => {
-    const effectiveUserId =
+    const rawUid =
       userId ||
       auth?.user?.id ||
       auth?.user?.user_id ||
@@ -313,6 +327,7 @@ export function Userbooking() {
       localStorage.getItem("userId") ||
       sessionStorage.getItem("userId") ||
       null;
+    const effectiveUserId = (rawUid && rawUid !== "null" && rawUid !== "undefined") ? String(rawUid).trim() : null;
 
     if (!effectiveUserId) {
       showToast("Authentication required: Please sign in to book your ticket.", "warning");
@@ -419,7 +434,7 @@ export function Userbooking() {
               setStep(3);
               showToast("✓ Payment & Pass Confirmed!", "success");
             } catch (err) {
-              showToast(err?.response?.data?.detail || "Booking verification failed. Try again.", "error");
+              showToast(getErrorMessage(err, "Booking verification failed. Try again."), "error");
             } finally {
               setLoading(false);
             }
@@ -468,7 +483,7 @@ export function Userbooking() {
         setStep(3);
         showToast("✓ Free Pass Confirmed!", "success");
       } catch (err) {
-        showToast(err?.response?.data?.detail || "Booking failed. Try again.", "error");
+        showToast(getErrorMessage(err, "Booking failed. Try again."), "error");
       } finally {
         setLoading(false);
       }
@@ -481,8 +496,63 @@ export function Userbooking() {
     ? (rawQr.startsWith("data:") ? rawQr : `data:image/png;base64,${rawQr}`) 
     : null;
 
+  // Print Pass Data Snapshot
+  const passDataForPrint = (step === 3 && successData) ? {
+    id: successData.booking_id || successData.data?.booking_id || successData.id,
+    booking_id: successData.booking_id || successData.data?.booking_id,
+    ticket_code: successData.ticket_code || successData.data?.ticket_code || `BME-${Date.now().toString().slice(-6)}`,
+    event_name: successData.event_details?.name || eventName,
+    venue: successData.event_details?.venue || eventVenue,
+    address: eventData?.address || eventData?.city || "",
+    start_date: eventData?.start_date,
+    start_time: eventData?.start_time,
+    name: form.name,
+    email: form.email,
+    phone: form.phone,
+    ticket_count: quantity,
+    group_size: isGroupPass ? groupSize : 1,
+    pass_type: isGroupPass ? `Group Pass (${groupSize} Members)` : (booking?.entry_type || "Single Entry Pass"),
+    entry_type: booking?.entry_type || "Single Entry",
+    max_reentries: booking?.max_reentries || "1",
+    amount_paid: grandTotal,
+    currency_code: "INR",
+    qr_code: rawQr,
+    food_details: selectedFoods.length > 0 ? JSON.stringify(selectedFoods) : (form.food_preference || null),
+    vehicle_details: (selectedVehicles.length > 0 || vehicleNumber) ? JSON.stringify({ passes: selectedVehicles, number: vehicleNumber }) : null,
+  } : null;
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans select-none pb-24">
+      {/* ── PRINT-SPECIFIC CSS STYLES ── */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-ticket-wrapper,
+          #printable-ticket-wrapper * {
+            visibility: visible !important;
+          }
+          #printable-ticket-wrapper {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            padding: 8mm !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            background: #ffffff !important;
+            z-index: 9999999 !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 6mm 8mm;
+          }
+        }
+      `}</style>
       <Toast {...toast} onClose={() => setToast((t) => ({ ...t, show: false }))} />
 
       {/* Top Desktop Web Navbar */}
@@ -1460,6 +1530,13 @@ export function Userbooking() {
           </Button>
         </DialogContent>
       </Dialog>
+
+      {/* ── DEDICATED PRINT-ONLY CONTAINER (Hidden on screen, Visible on Print) ── */}
+      {passDataForPrint && (
+        <div id="printable-ticket-wrapper" className="hidden print:block">
+          <PrintableTicketPass pass={passDataForPrint} id="printable-booking-pass" />
+        </div>
+      )}
     </div>
   );
 }

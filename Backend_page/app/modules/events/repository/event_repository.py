@@ -341,14 +341,22 @@ class EventRepository:
         # ── Compute Individual Event Performance Stats ──
         passes_sold_count = 0
         gate_scans_count = 0
+        ticket_revenue_val = 0.0
         try:
             from app.models.booking import UserBookingDetails
             user_bookings = list(db.session.scalars(select(UserBookingDetails).where(
                 UserBookingDetails.event_id == event_id,
                 UserBookingDetails.deleted_at.is_(None)
             )).all())
-            passes_sold_count = len(user_bookings)
-            gate_scans_count = sum(1 for ub in user_bookings if ub.is_scanned or ub.is_checked_in)
+            for ub in user_bookings:
+                t_count = int(getattr(ub, "ticket_count", 1) or 1)
+                g_size = int(getattr(ub, "group_size", 1) or 1)
+                p_type = str(getattr(ub, "pass_type", "") or "").lower()
+                seats = (t_count * g_size) if ("group" in p_type and g_size > 1) else t_count
+                passes_sold_count += seats
+                ticket_revenue_val += float(getattr(ub, "amount_paid", 0) or 0)
+                if ub.is_scanned or ub.is_checked_in:
+                    gate_scans_count += seats
         except Exception as e:
             print(f"[get_full_event_by_id] UserBookingDetails query error: {e}")
 
@@ -364,13 +372,25 @@ class EventRepository:
                 eb_status = str(eb.status or "").lower()
                 if eb_status in ["approved", "confirmed", "paid"]:
                     stalls_booked_count += 1
-                    stall_revenue_val += float(getattr(eb, "amount", 0) or getattr(eb, "price", 0) or 0)
         except Exception as e:
             print(f"[get_full_event_by_id] ExhibitorStallBooking query error: {e}")
 
+        # Check financial ledger for actual stall revenue
+        try:
+            from app.models.financial import EventTransaction
+            stall_txns = list(db.session.scalars(select(EventTransaction).where(
+                EventTransaction.event_id == event_id,
+                EventTransaction.transaction_type.in_(["STALL_SALE", "STALL_BOOKING", "STALL"]),
+                EventTransaction.status == "SUCCESS"
+            )).all())
+            stall_revenue_val = sum(float(st.gross_amount or 0) for st in stall_txns)
+        except Exception as e:
+            print(f"[get_full_event_by_id] EventTransaction query error: {e}")
+
         booking_price = float(booking.price_inr) if booking and booking.price_inr is not None else 0.0
         booking_capacity = int(booking.capacity) if booking and booking.capacity is not None else 0
-        ticket_revenue_val = booking_price * passes_sold_count
+        if ticket_revenue_val == 0.0 and passes_sold_count > 0:
+            ticket_revenue_val = booking_price * passes_sold_count
         gross_revenue_val = ticket_revenue_val + stall_revenue_val
 
         individual_stats = {
@@ -553,6 +573,22 @@ class EventRepository:
         event_dict["vendorSponsor"] = event_dict["vendor_sponsor"]
         event_dict["individual_stats"] = individual_stats
         event_dict["individualStats"] = individual_stats
+        event_dict["passes_sold"] = passes_sold_count
+        event_dict["passesSold"] = passes_sold_count
+        event_dict["total_capacity"] = booking_capacity
+        event_dict["totalCapacity"] = booking_capacity
+        event_dict["gate_scans"] = gate_scans_count
+        event_dict["gateScans"] = gate_scans_count
+        event_dict["total_stalls"] = total_stalls_count
+        event_dict["stalls_booked"] = stalls_booked_count
+        event_dict["stallsBooked"] = stalls_booked_count
+        event_dict["ticket_revenue"] = ticket_revenue_val
+        event_dict["ticketRevenue"] = ticket_revenue_val
+        event_dict["stall_revenue"] = stall_revenue_val
+        event_dict["stallRevenue"] = stall_revenue_val
+        event_dict["gross_revenue"] = gross_revenue_val
+        event_dict["grossRevenue"] = gross_revenue_val
+        event_dict["total_earnings"] = gross_revenue_val
         event_dict["programs"] = program_dicts
         event_dict["programDetails"] = program_dicts
 

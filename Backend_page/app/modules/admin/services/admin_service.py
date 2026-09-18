@@ -383,10 +383,30 @@ class AdminService:
             )).all()
             user_booking_map = {}
             gate_scans_map = {}
+            ticket_revenue_map = {}
             for ub in user_bookings:
-                user_booking_map[ub.event_id] = user_booking_map.get(ub.event_id, 0) + 1
+                t_count = int(getattr(ub, "ticket_count", 1) or 1)
+                g_size = int(getattr(ub, "group_size", 1) or 1)
+                p_type = str(getattr(ub, "pass_type", "") or "").lower()
+                seats = (t_count * g_size) if ("group" in p_type and g_size > 1) else t_count
+                user_booking_map[ub.event_id] = user_booking_map.get(ub.event_id, 0) + seats
+                ticket_revenue_map[ub.event_id] = ticket_revenue_map.get(ub.event_id, 0.0) + float(getattr(ub, "amount_paid", 0) or 0)
                 if ub.is_scanned or ub.is_checked_in:
-                    gate_scans_map[ub.event_id] = gate_scans_map.get(ub.event_id, 0) + 1
+                    gate_scans_map[ub.event_id] = gate_scans_map.get(ub.event_id, 0) + seats
+
+            # Also compute stall revenue per event from EventTransaction
+            stall_revenue_map = {}
+            try:
+                from app.models.financial import EventTransaction
+                stall_txns = session.scalars(select(EventTransaction).where(
+                    EventTransaction.event_id.in_(event_ids),
+                    EventTransaction.transaction_type.in_(["STALL_SALE", "STALL_BOOKING", "STALL"]),
+                    EventTransaction.status == "SUCCESS"
+                )).all()
+                for st in stall_txns:
+                    stall_revenue_map[st.event_id] = stall_revenue_map.get(st.event_id, 0.0) + float(st.gross_amount or 0)
+            except Exception as e:
+                print(f"[AdminService.get_events] EventTransaction query error: {e}")
 
             user_ids = [e.user_id for e in events if e.user_id]
             from app.models.organizer_profile import OrganizerProfile
@@ -403,6 +423,11 @@ class AdminService:
                 capacity_val = int(getattr(booking, "capacity", 500) or getattr(event, "total_capacity", 500) or 500)
                 passes_sold_val = user_booking_map.get(event.id, 0) or int(getattr(event, "passes_sold", 0) or getattr(booking, "passes_sold", 0) or 0)
                 gate_scans_val = gate_scans_map.get(event.id, 0) or int(getattr(event, "gate_scans", 0) or getattr(event, "arrived", 0) or 0)
+                ticket_rev_val = ticket_revenue_map.get(event.id, 0.0)
+                if ticket_rev_val == 0.0 and passes_sold_val > 0:
+                    ticket_rev_val = price_val * passes_sold_val
+                stall_rev_val = stall_revenue_map.get(event.id, 0.0)
+                gross_rev_val = ticket_rev_val + stall_rev_val
 
                 events_list.append({
                     "id": str(event.id),
@@ -435,6 +460,31 @@ class AdminService:
                     "capacity": capacity_val,
                     "total_stalls": stall_map.get(event.id, 0),
                     "stalls_booked": stalls_booked_map.get(event.id, 0),
+                    "ticket_revenue": ticket_rev_val,
+                    "ticketRevenue": ticket_rev_val,
+                    "stall_revenue": stall_rev_val,
+                    "stallRevenue": stall_rev_val,
+                    "gross_revenue": gross_rev_val,
+                    "grossRevenue": gross_rev_val,
+                    "total_earnings": gross_rev_val,
+                    "totalEarnings": gross_rev_val,
+                    "individual_stats": {
+                        "passes_sold": passes_sold_val,
+                        "passesSold": passes_sold_val,
+                        "total_capacity": capacity_val,
+                        "totalCapacity": capacity_val,
+                        "gate_scans": gate_scans_val,
+                        "gateScans": gate_scans_val,
+                        "total_stalls": stall_map.get(event.id, 0),
+                        "stalls_booked": stalls_booked_map.get(event.id, 0),
+                        "stallsBooked": stalls_booked_map.get(event.id, 0),
+                        "ticket_revenue": ticket_rev_val,
+                        "ticketRevenue": ticket_rev_val,
+                        "stall_revenue": stall_rev_val,
+                        "stallRevenue": stall_rev_val,
+                        "gross_revenue": gross_rev_val,
+                        "grossRevenue": gross_rev_val,
+                    },
                     "charge_type": (getattr(booking, "charge_type", None) if booking else None) or "Free",
                     "pass_fee": price_val,
                     "banner_url": b_url,
