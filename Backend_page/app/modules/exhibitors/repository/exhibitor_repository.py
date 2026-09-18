@@ -12,10 +12,19 @@ class ExhibitorRepository:
         conditions = []
         if user_id:
             try:
-                parsed_uid = uuid.UUID(str(user_id))
-                conditions.append(ExhibitorStallBooking.user_id == parsed_uid)
+                from app.modules.rbac.services.tenant_service import TenantService
+                tenant_uids = TenantService.resolve_tenant_user_ids(user_id, "EXHIBITOR")
             except Exception:
-                conditions.append(ExhibitorStallBooking.user_id == user_id)
+                tenant_uids = [user_id]
+
+            parsed_uids = []
+            for uid in tenant_uids:
+                try:
+                    parsed_uids.append(uuid.UUID(str(uid)))
+                except Exception:
+                    parsed_uids.append(uid)
+            if parsed_uids:
+                conditions.append(ExhibitorStallBooking.user_id.in_(parsed_uids))
         if email:
             conditions.append(func.lower(ExhibitorStallBooking.email) == email.strip().lower())
 
@@ -56,10 +65,19 @@ class ExhibitorRepository:
         conditions = []
         if user_id:
             try:
-                parsed_uid = uuid.UUID(str(user_id))
-                conditions.append(ExhibitorStallBooking.user_id == parsed_uid)
+                from app.modules.rbac.services.tenant_service import TenantService
+                tenant_uids = TenantService.resolve_tenant_user_ids(user_id, "EXHIBITOR")
             except Exception:
-                conditions.append(ExhibitorStallBooking.user_id == user_id)
+                tenant_uids = [user_id]
+
+            parsed_uids = []
+            for uid in tenant_uids:
+                try:
+                    parsed_uids.append(uuid.UUID(str(uid)))
+                except Exception:
+                    parsed_uids.append(uid)
+            if parsed_uids:
+                conditions.append(ExhibitorStallBooking.user_id.in_(parsed_uids))
 
         stmt = select(
             ExhibitorStallBooking,
@@ -182,7 +200,7 @@ class ExhibitorRepository:
     @staticmethod
     def serialize_application(b: ExhibitorStallBooking, event_name: str = None, event_status: str = None) -> dict:
         full_name = f"{getattr(b, 'first_name', '') or ''} {getattr(b, 'last_name', '') or ''}".strip()
-        contact_name = full_name or getattr(b, "company_name", "") or "Exhibitor Representative"
+        contact_name = full_name or getattr(b, "company_name", "") or ""
 
         # Lookup exact stall pricing configured for this booking
         pricing = ExhibitorRepository.get_stall_pricing(b)
@@ -191,27 +209,27 @@ class ExhibitorRepository:
         return {
             "id": str(b.id),
             "event_id": str(b.event_id) if b.event_id else None,
-            "event_name": event_name or getattr(b, "event_name", None) or "Exhibition Show",
+            "event_name": event_name or getattr(b, "event_name", None) or "",
             "event_status": event_status or "ACTIVE",
             "user_id": str(b.user_id) if b.user_id else None,
-            "title": getattr(b, "title", "") or "Mr.",
+            "title": getattr(b, "title", "") or "",
             "first_name": getattr(b, "first_name", "") or "",
             "last_name": getattr(b, "last_name", "") or "",
             "name": contact_name,
-            "company_name": getattr(b, "company_name", "") or "Independent Vendor",
+            "company_name": getattr(b, "company_name", "") or "",
             "email": b.email or "",
             "mobile": getattr(b, "mobile", "") or "",
-            "designation": getattr(b, "designation", "") or "Authorized Representative",
-            "company_type": getattr(b, "company_type", "") or "Private Limited",
-            "industry_type": getattr(b, "industry_type", "") or getattr(b, "products", "") or "General Industry",
+            "designation": getattr(b, "designation", "") or "",
+            "company_type": getattr(b, "company_type", "") or "",
+            "industry_type": getattr(b, "industry_type", "") or getattr(b, "products", "") or "",
             "company_website": getattr(b, "company_website", "") or "",
             "business_description": getattr(b, "business_description", "") or "",
-            "country": getattr(b, "country", "") or "India",
+            "country": getattr(b, "country", "") or "",
             "state": getattr(b, "state", "") or "",
             "city": getattr(b, "city", "") or "",
             "address": getattr(b, "address", "") or "",
             "pin_code": getattr(b, "pin_code", "") or "",
-            "stall_area": getattr(b, "stall_area", "") or "Standard Booth",
+            "stall_area": getattr(b, "stall_area", "") or "",
             "stall_size": pricing["stall_size"],
             "products": getattr(b, "products", "") or "",
             "visiting_card": getattr(b, "visiting_card", "") or "",
@@ -304,7 +322,7 @@ class ExhibitorRepository:
             if key not in companies_map:
                 companies_map[key] = {
                     "id": str(b.id),
-                    "company_name": b.company_name or "Independent Vendor",
+                    "company_name": b.company_name or app_dict["name"] or "",
                     "name": app_dict["name"],
                     "first_name": app_dict["first_name"],
                     "last_name": app_dict["last_name"],
@@ -312,7 +330,7 @@ class ExhibitorRepository:
                     "mobile": app_dict["mobile"],
                     "designation": app_dict["designation"],
                     "company_type": app_dict["company_type"],
-                    "industry_type": app_dict["industry_type"] or "Exhibitions",
+                    "industry_type": app_dict["industry_type"] or "",
                     "company_website": app_dict["company_website"],
                     "business_description": app_dict["business_description"],
                     "city": app_dict["city"],
@@ -347,8 +365,8 @@ class ExhibitorRepository:
             comp["applications"].append({
                 "id": str(b.id),
                 "event_id": str(b.event_id) if b.event_id else None,
-                "event_name": evt_name or "Exhibition Show",
-                "stall_area": b.stall_area or "Standard",
+                "event_name": evt_name or "",
+                "stall_area": b.stall_area or "",
                 "status": b.status or "pending",
                 "created_at": str(b.created_at) if b.created_at else None
             })
@@ -430,17 +448,25 @@ class ExhibitorRepository:
             except Exception:
                 ev_uuid = event_id
 
-        u_uuid = None
+        u_uuids = []
         if user_id:
             try:
-                u_uuid = uuid.UUID(str(user_id))
+                from app.modules.rbac.services.tenant_service import TenantService
+                tenant_uids = TenantService.resolve_tenant_user_ids(user_id, "EXHIBITOR")
             except Exception:
-                u_uuid = user_id
+                tenant_uids = [user_id]
+
+            for uid in tenant_uids:
+                try:
+                    u_uuids.append(uuid.UUID(str(uid)))
+                except Exception:
+                    u_uuids.append(uid)
 
         stmt = select(ExhibitorLead).where(
-            ExhibitorLead.event_id == ev_uuid,
-            ExhibitorLead.user_id == u_uuid
+            ExhibitorLead.event_id == ev_uuid
         )
+        if u_uuids:
+            stmt = stmt.where(ExhibitorLead.user_id.in_(u_uuids))
 
         if search and search.strip():
             term = f"%{search.strip().lower()}%"

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchExhibitorBookings } from "@/app/store/exhibitorSlice";
-import { getAuthUserId } from "@/shared/services/authHelper";
+import { fetchExhibitorBookings, fetchExhibitorInvoices } from "@/app/store/exhibitorSlice";
+import apiClient from "@/Services/client";
+import { getAuthUserId, getEffectiveTenantUserId } from "@/shared/services/authHelper";
+import { usePermissions } from "@/shared/context/PermissionContext";
 import {
   Store, Search, CheckCircle2, Clock, Eye, Pencil, CreditCard,
   MapPin, XCircle, Phone, Mail, Building, AlertCircle, ShieldCheck
@@ -17,10 +19,12 @@ import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveT
 const MyBookings = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
 
   const reduxAuthUser = useSelector((state) => state.auth?.user);
   const reduxUser = useSelector((state) => state.user);
-  const effectiveUserId = getAuthUserId(reduxAuthUser || reduxUser);
+  const effectiveUserId = getEffectiveTenantUserId(reduxAuthUser || reduxUser);
+  const canPay = hasPermission(["exhibitor.billing.pay", "exhibitor.billing.view", "exhibitor.*"]);
 
   const { list: bookings, loading, statusFilter, search } = useSelector((state) => state.exhibitor.bookings);
   const [searchTerm, setSearchTerm] = useState(search || "");
@@ -50,9 +54,39 @@ const MyBookings = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  const [selectedPayBooking, setSelectedPayBooking] = useState(null);
+  const [isPaying, setIsPaying] = useState(false);
+
   const handlePayNow = (b) => {
-    setToastMessage(`✓ Redirecting to payment portal for ${b.event_name}...`);
-    setTimeout(() => setToastMessage(""), 3000);
+    setSelectedPayBooking(b);
+  };
+
+  const handleExecutePayment = async () => {
+    if (!selectedPayBooking) return;
+    try {
+      setIsPaying(true);
+      await apiClient.put(`/api/v1/organizer/stalls/applications/${selectedPayBooking.id}/status`, {
+        status: "Confirmed"
+      });
+      if (effectiveUserId) {
+        dispatch(fetchExhibitorBookings({
+          userId: effectiveUserId,
+          status: selectedStatusTab,
+          search: searchTerm,
+          force: true
+        }));
+      }
+      dispatch(fetchExhibitorInvoices({ force: true }));
+      setToastMessage(`✓ Payment confirmed! Stall allocated for ${selectedPayBooking.event_name}.`);
+      setSelectedPayBooking(null);
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Stall payment execution failed:", err);
+      setToastMessage("✗ Payment failed. Please try again.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const filteredBookings = bookings.filter((b) => {
@@ -323,13 +357,23 @@ const MyBookings = () => {
                             </button>
 
                             {status === 'approved' && (
-                              <button
-                                onClick={() => handlePayNow(b)}
-                                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-sm"
-                              >
-                                <CreditCard size={13} />
-                                <span>Pay Now</span>
-                              </button>
+                              canPay ? (
+                                <button
+                                  onClick={() => handlePayNow(b)}
+                                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-[11px] transition cursor-pointer flex items-center gap-1 shadow-sm"
+                                >
+                                  <CreditCard size={13} />
+                                  <span>Pay Now</span>
+                                </button>
+                              ) : (
+                                <span
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200 inline-flex items-center gap-1"
+                                  title="Payment action restricted for your assigned role"
+                                >
+                                  <CreditCard size={11} />
+                                  <span>Payment Restricted</span>
+                                </span>
+                              )
                             )}
                           </div>
                         </td>
@@ -408,13 +452,23 @@ const MyBookings = () => {
                     <span>View Details</span>
                   </button>
                   {status === 'approved' && (
-                    <button
-                      onClick={() => handlePayNow(b)}
-                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs inline-flex items-center gap-1 shadow-sm cursor-pointer"
-                    >
-                      <CreditCard size={13} />
-                      <span>Pay Now</span>
-                    </button>
+                    canPay ? (
+                      <button
+                        onClick={() => handlePayNow(b)}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs inline-flex items-center gap-1 shadow-sm cursor-pointer"
+                      >
+                        <CreditCard size={13} />
+                        <span>Pay Now</span>
+                      </button>
+                    ) : (
+                      <span
+                        className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200 inline-flex items-center gap-1"
+                        title="Payment action restricted for your assigned role"
+                      >
+                        <CreditCard size={11} />
+                        <span>Payment Restricted</span>
+                      </span>
+                    )
                   )}
                 </MobileDataCard.Actions>
               </MobileDataCard>
@@ -423,7 +477,101 @@ const MyBookings = () => {
         />
       </Card>
 
+      {/* ── STALL CHECKOUT / PAYMENT CONFIRMATION MODAL ── */}
+      {selectedPayBooking && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl border border-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                    <CreditCard size={18} />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-900 tracking-tight">Complete Stall Settlement</h3>
+                </div>
+                <p className="text-xs text-slate-500 font-medium">
+                  24-hour payment lock active for {selectedPayBooking.event_name || 'Exhibition Expo'}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedPayBooking(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <XCircle size={20} />
+              </button>
+            </div>
 
+            {/* Booth Info Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium">Event:</span>
+                <span className="font-bold text-slate-900">{selectedPayBooking.event_name || 'Exhibition Expo'}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium">Allocated Booth:</span>
+                <span className="font-bold text-slate-900">{selectedPayBooking.stall_area || 'Standard Space'}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 font-medium">Company Name:</span>
+                <span className="font-bold text-slate-900">{selectedPayBooking.company_name || 'Registered Exhibitor'}</span>
+              </div>
+            </div>
+
+            {/* Financial Breakdown */}
+            {(() => {
+              const total = Number(selectedPayBooking.total_price || selectedPayBooking.price || selectedPayBooking.rental_price || 11000);
+              const baseAmt = (total / 1.18).toFixed(2);
+              const gst = (total - Number(baseAmt)).toFixed(2);
+              return (
+                <div className="space-y-2 border-t border-slate-100 pt-3">
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>Base Stall Rental:</span>
+                    <span>₹{Number(baseAmt).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600">
+                    <span>GST (18% ITC Eligible):</span>
+                    <span>₹{Number(gst).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline text-base font-black text-slate-900 pt-2 border-t border-slate-200">
+                    <span>Total Amount Payable:</span>
+                    <span className="text-xl text-emerald-700">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedPayBooking(null)}
+                disabled={isPaying}
+                className="rounded-xl border-slate-200 text-slate-700 font-bold text-xs h-10 px-4"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleExecutePayment}
+                disabled={isPaying}
+                className="rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs h-10 px-6 gap-2 shadow-md shadow-emerald-900/20 cursor-pointer"
+              >
+                {isPaying ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Processing Payment...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={15} />
+                    <span>Pay &amp; Confirm Stall</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

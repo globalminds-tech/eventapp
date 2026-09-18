@@ -265,11 +265,11 @@ const ExhibitorBookingDetailPage = () => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Company Type</p>
-                  <p className="font-bold text-slate-800 mt-1">{b.company_type || "Private Limited"}</p>
+                  <p className="font-bold text-slate-800 mt-1">{b.company_type || "—"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Industry</p>
-                  <p className="font-bold text-slate-800 mt-1">{b.industry_type || b.products || "Technology & Services"}</p>
+                  <p className="font-bold text-slate-800 mt-1">{b.industry_type || b.products || "—"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Website</p>
@@ -289,7 +289,7 @@ const ExhibitorBookingDetailPage = () => {
                 <div className="sm:col-span-2 pt-3 border-t border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5"><FileText size={12}/> Business Description</p>
                   <p className="text-sm text-slate-700 mt-1.5 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed font-medium">
-                    {b.business_description || "Specialized industry exhibitor showcasing innovative products and solutions."}
+                    {b.business_description || "—"}
                   </p>
                 </div>
               </div>
@@ -315,12 +315,12 @@ const ExhibitorBookingDetailPage = () => {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Full Name</p>
                 <p className="font-extrabold text-slate-800 mt-1">
-                  {[b.title, b.first_name, b.last_name].filter(Boolean).join(" ") || "Applicant"}
+                  {[b.title, b.first_name, b.last_name].filter(Boolean).join(" ") || b.name || "—"}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Designation</p>
-                <p className="font-medium text-slate-700 mt-1">{b.designation || "Authorized Representative"}</p>
+                <p className="font-medium text-slate-700 mt-1">{b.designation || "—"}</p>
               </div>
               <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                 <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center border border-slate-100 shrink-0">

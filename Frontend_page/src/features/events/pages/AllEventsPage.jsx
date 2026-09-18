@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Search, MapPin, Calendar, Filter, RefreshCw, ChevronLeft, ArrowRight, ThumbsUp, Star } from "lucide-react";
-import { getHomeEventshow } from "@/Services/api";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { Search, MapPin, Calendar, Filter, RefreshCw, ChevronLeft, ArrowRight, ThumbsUp, Star, Loader2 } from "lucide-react";
+import { searchCustomerEvents } from "@/Services/api";
 import { getAdminCategories } from "@/shared/services/miscService";
+import useDebounce from "@/shared/hooks/useDebounce";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -13,20 +14,29 @@ import UserEventCard from "@/components/UserEventCard";
 export default function AllEvents() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read initial query params from URL with state fallback
+  const initialTitle = searchParams.get("search") || location.state?.title || "";
+  const initialLocation = searchParams.get("location") || searchParams.get("city") || location.state?.location || "";
+  const initialCategory = searchParams.get("category") || location.state?.category || "All";
 
   const [events, setEvents] = useState([]);
-  const [filteredEvents, setFilteredEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filter States
-  const [searchTitle, setSearchTitle] = useState(location.state?.title || "");
-  const [searchLocation, setSearchLocation] = useState(location.state?.location || "");
-  const [searchCategory, setSearchCategory] = useState(location.state?.category || "All");
+  const [searchTitle, setSearchTitle] = useState(initialTitle);
+  const [searchLocation, setSearchLocation] = useState(initialLocation);
+  const [searchCategory, setSearchCategory] = useState(initialCategory);
 
   const [categories, setCategories] = useState(["All"]);
 
+  // Debounced filter values to avoid excessive API requests
+  const debouncedTitle = useDebounce(searchTitle, 350);
+  const debouncedLocation = useDebounce(searchLocation, 350);
+
+  // Fetch Category master list once on mount
   useEffect(() => {
-    fetchEvents();
     fetchCategories();
   }, []);
 
@@ -40,85 +50,84 @@ export default function AllEvents() {
         setCategories(["All"]);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load categories:", err);
       setCategories(["All"]);
     }
   };
 
-  const fetchEvents = async () => {
-    setIsLoading(true);
-    try {
-      const data = await getHomeEventshow();
-      const rawList = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-      if (!rawList || rawList.length === 0) {
-        setEvents([]);
-        setFilteredEvents([]);
-        return;
-      }
-
-      // Hide concluded events whose date has passed from the user explore catalog
-      const activeList = rawList.filter((e) => !isEventConcluded(e));
-
-      const formatted = activeList.map((e, index) => {
-        const isDonation = e.entry_type === "Donation" || String(e.pass_fee).toLowerCase() === "donation";
-        const isFree = e.entry_type === "Free" || (!isDonation && (!e.pass_fee || Number(e.pass_fee) === 0));
-        return {
-          id: e.id,
-          title: e.event_name || e.name || "Live Event",
-          category: e.category || "General",
-          entry_type: isDonation ? "Donation" : isFree ? "Free" : "Paid",
-          price: isDonation || isFree ? "Free" : `₹${Number(e.pass_fee) || 0}`,
-          location: e.venue || "Chennai",
-          fullLocation: `${e.venue || ''}, ${e.address || e.city || ''}`,
-          date: e.start_date || "Upcoming",
-          likes: `${(120 + index * 18).toFixed(1)}K+`,
-          rating: (8.6 + (index % 12) * 0.1).toFixed(1),
-          image: e.banner_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
-          status: (e.status || "APPROVED").toUpperCase(),
-        };
-      });
-
-      setEvents(formatted);
-      setFilteredEvents(formatted);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleFindEvents = useCallback(() => {
-    let result = [...events];
-
-    if (searchTitle.trim()) {
-      result = result.filter(
-        (e) =>
-          e.title.toLowerCase().includes(searchTitle.toLowerCase()) ||
-          e.fullLocation.toLowerCase().includes(searchTitle.toLowerCase())
-      );
-    }
-    if (searchLocation.trim()) {
-      result = result.filter((e) =>
-        e.fullLocation.toLowerCase().includes(searchLocation.toLowerCase())
-      );
-    }
-    if (searchCategory && searchCategory !== "All") {
-      result = result.filter(
-        (e) => e.category.trim().toLowerCase().includes(searchCategory.trim().toLowerCase())
-      );
-    }
-    setFilteredEvents(result);
-  }, [events, searchTitle, searchLocation, searchCategory]);
-
+  // Sync state to URL search parameters whenever debounced inputs or category changes
   useEffect(() => {
-    handleFindEvents();
-  }, [handleFindEvents]);
+    const params = new URLSearchParams();
+    if (debouncedTitle.trim()) params.set("search", debouncedTitle.trim());
+    if (debouncedLocation.trim()) params.set("location", debouncedLocation.trim());
+    if (searchCategory && searchCategory !== "All") params.set("category", searchCategory);
+    setSearchParams(params, { replace: true });
+  }, [debouncedTitle, debouncedLocation, searchCategory, setSearchParams]);
+
+  // API-driven search execution
+  useEffect(() => {
+    let isMounted = true;
+
+    const executeSearch = async () => {
+      setIsLoading(true);
+      try {
+        const res = await searchCustomerEvents({
+          search: debouncedTitle,
+          location: debouncedLocation,
+          category: searchCategory,
+        });
+
+        const rawList = Array.isArray(res)
+          ? res
+          : (Array.isArray(res?.data) ? res.data : (Array.isArray(res?.events) ? res.events : []));
+
+        if (!isMounted) return;
+
+        // Filter out concluded events whose date has passed
+        const activeList = rawList.filter((e) => !isEventConcluded(e));
+
+        const formatted = activeList.map((e, index) => {
+          const passFee = e.pass_fee ?? e.price ?? e.price_inr ?? (e.booking?.priceINR || e.booking?.price_inr || 0);
+          const isDonation = e.entry_type === "Donation" || String(passFee).toLowerCase() === "donation";
+          const isFree = e.entry_type === "Free" || (!isDonation && (!passFee || Number(passFee) === 0));
+
+          return {
+            id: e.id,
+            title: e.event_name || e.name || "Live Event",
+            category: e.category || "General",
+            entry_type: isDonation ? "Donation" : isFree ? "Free" : "Paid",
+            price: isDonation || isFree ? "Free" : `₹${Number(passFee) || 0}`,
+            location: e.venue || "Chennai",
+            fullLocation: `${e.venue || ''}, ${e.address || e.city || ''}`,
+            date: e.start_date || "Upcoming",
+            likes: `${(120 + index * 18).toFixed(1)}K+`,
+            rating: (8.6 + (index % 12) * 0.1).toFixed(1),
+            image: e.banner_url || e.banner || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800",
+            status: (e.status || "APPROVED").toUpperCase(),
+          };
+        });
+
+        setEvents(formatted);
+      } catch (err) {
+        console.error("API search failed:", err);
+        if (isMounted) setEvents([]);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    executeSearch();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedTitle, debouncedLocation, searchCategory]);
 
   const handleResetFilters = () => {
     setSearchTitle("");
     setSearchLocation("");
     setSearchCategory("All");
-    setFilteredEvents(events);
+    setSearchParams({}, { replace: true });
   };
 
   return (
@@ -140,7 +149,7 @@ export default function AllEvents() {
           </div>
 
           <Badge className="bg-orange-50 text-orange-600 border-orange-200 font-bold text-[11px]">
-            {filteredEvents.length} Events Available
+            {events.length} Events Available
           </Badge>
         </div>
       </div>
@@ -164,7 +173,7 @@ export default function AllEvents() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Search event title, artist..."
+                placeholder="Search event title, artist, keywords..."
                 value={searchTitle}
                 onChange={(e) => setSearchTitle(e.target.value)}
                 className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 text-xs font-semibold outline-none focus:ring-2 focus:ring-orange-500"
@@ -226,13 +235,22 @@ export default function AllEvents() {
               </Card>
             ))}
           </div>
-        ) : filteredEvents.length === 0 ? (
-          <div className="p-12 sm:p-16 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 font-semibold text-xs sm:text-sm">
-            No events found matching your search criteria.
+        ) : events.length === 0 ? (
+          <div className="p-12 sm:p-16 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 font-semibold text-xs sm:text-sm flex flex-col items-center justify-center gap-3">
+            <Search size={32} className="text-slate-300" />
+            <p>No events found matching your search criteria.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="rounded-xl text-xs font-bold text-orange-600 border-orange-200 hover:bg-orange-50"
+            >
+              Clear all filters
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-4 md:gap-5">
-            {filteredEvents.map((ev) => (
+            {events.map((ev) => (
               <UserEventCard
                 key={ev.id}
                 event={ev}

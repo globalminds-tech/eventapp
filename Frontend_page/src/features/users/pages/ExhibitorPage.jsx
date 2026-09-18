@@ -533,7 +533,7 @@ export default function ExhibitorDirectoryPage() {
                 <div>
                   <span className="text-slate-400 font-medium">Address:</span>
                   <p className="font-bold text-slate-900">
-                    {[selectedCompany.address, selectedCompany.city, selectedCompany.state, selectedCompany.country, selectedCompany.pin_code].filter(Boolean).join(", ") || "Address on record"}
+                    {[selectedCompany.address, selectedCompany.city, selectedCompany.state, selectedCompany.country, selectedCompany.pin_code].filter(Boolean).join(", ") || "—"}
                   </p>
                 </div>
                 {selectedCompany.company_website && (
@@ -552,7 +552,7 @@ export default function ExhibitorDirectoryPage() {
                 )}
                 <div>
                   <span className="text-slate-400 font-medium">Products / Services:</span>
-                  <p className="font-bold text-slate-800">{selectedCompany.products || "Exhibition products & showcase"}</p>
+                  <p className="font-bold text-slate-800">{selectedCompany.products || "—"}</p>
                 </div>
               </div>
 

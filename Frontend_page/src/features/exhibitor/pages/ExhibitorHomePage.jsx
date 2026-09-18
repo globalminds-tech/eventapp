@@ -3,13 +3,13 @@ import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
   Users, TrendingUp, CheckCircle, QrCode, Store, ArrowRight,
-  RotateCw, Clock, IndianRupee, Sparkles, Building, Calendar, FileText
+  RotateCw, Clock, IndianRupee, Sparkles, Building, Calendar, FileText, CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { StatCardSkeleton } from "@/components/ui/StatCardSkeleton";
-import { getAuthUserId } from "@/shared/services/authHelper";
+import { getAuthUserId, getEffectiveTenantUserId } from "@/shared/services/authHelper";
 import {
   fetchExhibitorBookings,
   fetchExhibitorEvents,
@@ -21,7 +21,10 @@ export const ExhibitorHome = () => {
   const dispatch = useDispatch();
   const reduxAuthUser = useSelector((state) => state.auth?.user);
   const reduxUser = useSelector((state) => state.user);
-  const effectiveUserId = getAuthUserId(reduxAuthUser || reduxUser);
+  const effectiveUserId = getEffectiveTenantUserId(reduxAuthUser || reduxUser);
+  const isTeamMember = Boolean(reduxAuthUser?.is_team_member || reduxUser?.is_team_member);
+  const teamRoleName = reduxAuthUser?.team_role_name || reduxUser?.team_role_name || "Team Member";
+  const organizationName = reduxAuthUser?.organization_name || reduxUser?.organization_name || "";
 
   const {
     bookings,
@@ -36,7 +39,7 @@ export const ExhibitorHome = () => {
 
   const displayUser = {
     id: effectiveUserId,
-    name: reduxAuthUser?.name || reduxUser?.name || sessionStorage.getItem("userName"),
+    name: organizationName || reduxAuthUser?.name || reduxUser?.name || sessionStorage.getItem("userName"),
   };
 
   useEffect(() => {
@@ -58,10 +61,27 @@ export const ExhibitorHome = () => {
     const bookingList = bookings.list || [];
     const eventList = upcomingEvents.list || [];
 
-    const activeBooths = bookingList.length;
-    const stallSpend = bookingList.reduce((sum, b) => {
-      return sum + (Number(b.price_paid || b.price) || 0);
-    }, 0);
+    // Only confirmed or paid bookings count as active stalls
+    const activeBooths = bookingList.filter(b => {
+      const st = (b.status || "").toLowerCase();
+      return st === "confirmed" || st === "paid";
+    }).length;
+
+    // Applications awaiting organizer approval
+    const pendingBooths = bookingList.filter(b => {
+      const st = (b.status || "").toLowerCase();
+      return st === "pending";
+    }).length;
+
+    // Stall spend only reflects settled (confirmed / paid) bookings
+    const stallSpend = bookingList
+      .filter(b => {
+        const st = (b.status || "").toLowerCase();
+        return st === "confirmed" || st === "paid";
+      })
+      .reduce((sum, b) => {
+        return sum + (Number(b.price_paid || b.price) || 0);
+      }, 0);
 
     const paymentLockInvoices = bookingList.filter(b => {
       const st = (b.status || "").toLowerCase();
@@ -84,20 +104,15 @@ export const ExhibitorHome = () => {
       qualifiedCount += items.filter(l => (l.intent || "").toLowerCase() === "warm" || (l.intent || "").toLowerCase() === "hot").length;
     });
 
-    // Approximate representative staff passes from active bookings
-    const staffPasses = bookingList.reduce((sum, b) => {
-      return sum + (Number(b.stall_pass_count) || 2);
-    }, 0);
-
     return {
       activeBooths,
+      pendingBooths,
       stallSpend,
       paymentLockInvoices,
       upcomingExpos,
       totalLeads: totalLeadsCount,
       hotLeads: hotLeadsCount,
       qualifiedInquiries: qualifiedCount,
-      staffPasses
     };
   }, [bookings.list, upcomingEvents.list, leadsByEvent]);
 
@@ -113,16 +128,21 @@ export const ExhibitorHome = () => {
       {/* ── PAGE HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-1">
         <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
               Exhibitor Executive Dashboard
             </h1>
             <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 px-2.5 py-0.5 font-bold text-[11px]">
               Governance & Lead Portal
             </Badge>
+            {isTeamMember && (
+              <Badge className="bg-sky-50 text-sky-800 border-sky-200 px-2.5 py-0.5 font-bold text-[11px]">
+                Team Member: {teamRoleName}
+              </Badge>
+            )}
           </div>
           <p className="text-xs sm:text-sm font-medium text-slate-500">
-            Real-time booth reservations, visitor lead intelligence, and staff pass governance for {displayUser.name || "Exhibitor"}.
+            Real-time booth reservations, visitor lead intelligence, and booking governance for {displayUser.name || "Exhibitor"}.
           </p>
         </div>
 
@@ -173,7 +193,11 @@ export const ExhibitorHome = () => {
                         metrics.activeBooths
                       )} <span className="text-sm font-bold text-slate-400">Stalls</span>
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">Booked exhibition spaces</p>
+                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                      {metrics.pendingBooths > 0
+                        ? `${metrics.pendingBooths} pending approval`
+                        : (metrics.activeBooths > 0 ? "Confirmed exhibition spaces" : "No active stalls")}
+                    </p>
                   </div>
 
                   <div className="flex items-center justify-end text-[11px] pt-2 border-t border-slate-100">
@@ -288,12 +312,12 @@ export const ExhibitorHome = () => {
         </div>
       </div>
 
-      {/* ── SECTION 2: ● STAFF & FINANCIAL OVERVIEW ── */}
+      {/* ── SECTION 2: ● BOOKINGS & FINANCIAL OVERVIEW ── */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-teal-500" />
           <h2 className="text-xs font-extrabold tracking-wider uppercase text-slate-500">
-            STAFF & FINANCIAL OVERVIEW
+            BOOKINGS & FINANCIAL OVERVIEW
           </h2>
         </div>
 
@@ -302,16 +326,16 @@ export const ExhibitorHome = () => {
             <StatCardSkeleton count={4} />
           ) : (
             <>
-              {/* Card 1: Staff Passes */}
+              {/* Card 1: Pending Approvals */}
               <Card
-                onClick={() => navigate("/exhibitor/team")}
-                className="group border border-slate-200/90 shadow-xs hover:shadow-md hover:border-teal-300 transition-all duration-200 cursor-pointer rounded-2xl bg-white p-4.5 flex flex-col justify-between h-full"
+                onClick={() => navigate("/exhibitor/my-bookings")}
+                className="group border border-slate-200/90 shadow-xs hover:shadow-md hover:border-amber-300 transition-all duration-200 cursor-pointer rounded-2xl bg-white p-4.5 flex flex-col justify-between h-full"
               >
                 <CardContent className="p-0 flex flex-col justify-between h-full space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">STAFF PASSES</span>
-                    <div className="p-1.5 bg-teal-50 text-teal-600 rounded-xl border border-teal-100/80">
-                      <QrCode size={16} />
+                    <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">PENDING APPROVALS</span>
+                    <div className="p-1.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100/80">
+                      <Clock size={16} />
                     </div>
                   </div>
 
@@ -320,15 +344,15 @@ export const ExhibitorHome = () => {
                       {isRefreshing && bookings.list.length === 0 ? (
                         <span className="inline-block h-8 w-16 bg-slate-200 animate-pulse rounded-md" />
                       ) : (
-                        metrics.staffPasses
-                      )} <span className="text-sm font-bold text-slate-400">Active</span>
+                        metrics.pendingBooths
+                      )} <span className="text-sm font-bold text-amber-600">Review</span>
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">QR passes allocated</p>
+                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">Awaiting organizer review</p>
                   </div>
 
                   <div className="flex items-center justify-end text-[11px] pt-2 border-t border-slate-100">
                     <span className="font-extrabold text-emerald-600 group-hover:translate-x-0.5 flex items-center gap-1 transition">
-                      <span>Manage Team</span>
+                      <span>Track Bookings</span>
                       <ArrowRight size={12} />
                     </span>
                   </div>
@@ -338,23 +362,23 @@ export const ExhibitorHome = () => {
               {/* Card 2: 24h Invoices Active */}
               <Card
                 onClick={() => navigate("/exhibitor/billing")}
-                className="group border border-slate-200/90 shadow-xs hover:shadow-md hover:border-amber-300 transition-all duration-200 cursor-pointer rounded-2xl bg-white p-4.5 flex flex-col justify-between h-full"
+                className="group border border-slate-200/90 shadow-xs hover:shadow-md hover:border-sky-300 transition-all duration-200 cursor-pointer rounded-2xl bg-white p-4.5 flex flex-col justify-between h-full"
               >
                 <CardContent className="p-0 flex flex-col justify-between h-full space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">PAYMENT LOCK INVOICES</span>
-                    <div className="p-1.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100/80">
-                      <Clock size={16} />
+                    <div className="p-1.5 bg-sky-50 text-sky-600 rounded-xl border border-sky-100/80">
+                      <CreditCard size={16} />
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-2xl sm:text-3xl font-black text-amber-900 tracking-tight flex items-center gap-2">
+                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                       {isRefreshing && bookings.list.length === 0 ? (
                         <span className="inline-block h-8 w-16 bg-slate-200 animate-pulse rounded-md" />
                       ) : (
                         metrics.paymentLockInvoices
-                      )} <span className="text-sm font-bold text-amber-600">Active</span>
+                      )} <span className="text-sm font-bold text-sky-600">Active</span>
                     </h3>
                     <p className="text-[11px] font-medium text-slate-400 mt-0.5">24h payment lock</p>
                   </div>
@@ -389,7 +413,7 @@ export const ExhibitorHome = () => {
                         formatCurrency(metrics.stallSpend)
                       )}
                     </h3>
-                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">Total layout investment</p>
+                    <p className="text-[11px] font-medium text-slate-400 mt-0.5">Total settled spend</p>
                   </div>
 
                   <div className="flex items-center justify-end text-[11px] pt-2 border-t border-slate-100">

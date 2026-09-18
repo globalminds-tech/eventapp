@@ -285,9 +285,9 @@ CREATE TABLE dbo.[event_details_table] (
 [updated_at] DATETIME2 NULL,
 [deleted_at] DATETIME2 NULL,
 [deleted_by] UNIQUEIDENTIFIER NULL,
-    CONSTRAINT [fk_event_details_table_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_event_details_table_user_id] FOREIGN KEY ([user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_event_details_table_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_event_details_table_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_event_details_table_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -297,14 +297,16 @@ CREATE TABLE dbo.[exhibitor_profiles] (
 [company_name] NVARCHAR(255) NOT NULL,
 [vendor_category] NVARCHAR(100) NULL,
 [gstin] NVARCHAR(50) NULL,
-[pan_number] NVARCHAR(50) NULL,
+[pan_number] NVARCHAR(255) NULL,
+[pan_hash] NVARCHAR(64) NULL,
 [business_address] NVARCHAR(MAX) NULL,
 [city] NVARCHAR(100) NULL,
 [state] NVARCHAR(100) NULL,
 [pincode] NVARCHAR(20) NULL,
 [website_url] NVARCHAR(255) NULL,
 [bank_name] NVARCHAR(150) NULL,
-[account_number] NVARCHAR(100) NULL,
+[account_number] NVARCHAR(255) NULL,
+[account_hash] NVARCHAR(64) NULL,
 [ifsc_code] NVARCHAR(50) NULL,
 [account_holder] NVARCHAR(150) NULL,
 [upi_id] NVARCHAR(100) NULL,
@@ -320,6 +322,15 @@ CREATE TABLE dbo.[exhibitor_profiles] (
     CONSTRAINT [fk_exhibitor_profiles_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_exhibitor_profiles_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_exhibitor_profiles_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
+);
+GO
+
+CREATE TABLE dbo.[food_counter_presets] (
+[id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+[name] NVARCHAR(150) NOT NULL,
+[organizer_id] UNIQUEIDENTIFIER NOT NULL,
+[created_at] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [fk_food_counter_presets_organizer_id] FOREIGN KEY ([organizer_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -361,14 +372,16 @@ CREATE TABLE dbo.[organizer_profiles] (
 [slug] NVARCHAR(255) NULL,
 [business_type] NVARCHAR(100) NULL,
 [gstin] NVARCHAR(50) NULL,
-[pan_number] NVARCHAR(50) NULL,
+[pan_number] NVARCHAR(255) NULL,
+[pan_hash] NVARCHAR(64) NULL,
 [business_address] NVARCHAR(MAX) NULL,
 [city] NVARCHAR(100) NULL,
 [state] NVARCHAR(100) NULL,
 [pincode] NVARCHAR(20) NULL,
 [website_url] NVARCHAR(255) NULL,
 [bank_name] NVARCHAR(150) NULL,
-[account_number] NVARCHAR(100) NULL,
+[account_number] NVARCHAR(255) NULL,
+[account_hash] NVARCHAR(64) NULL,
 [ifsc_code] NVARCHAR(50) NULL,
 [account_holder] NVARCHAR(150) NULL,
 [upi_id] NVARCHAR(100) NULL,
@@ -381,10 +394,10 @@ CREATE TABLE dbo.[organizer_profiles] (
 [updated_by] UNIQUEIDENTIFIER NULL,
 [deleted_at] DATETIME2 NULL,
 [deleted_by] UNIQUEIDENTIFIER NULL,
+    CONSTRAINT [fk_organizer_profiles_user_id] FOREIGN KEY ([user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_organizer_profiles_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_organizer_profiles_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_organizer_profiles_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_organizer_profiles_user_id] FOREIGN KEY ([user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_organizer_profiles_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -440,8 +453,8 @@ CREATE TABLE dbo.[audit_logs] (
 [ip_address] NVARCHAR(45) NULL,
 [user_agent] NVARCHAR(MAX) NULL,
 [created_at] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT [fk_audit_logs_organization_id] FOREIGN KEY ([organization_id]) REFERENCES dbo.[organizations]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_audit_logs_user_id] FOREIGN KEY ([user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_audit_logs_user_id] FOREIGN KEY ([user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_audit_logs_organization_id] FOREIGN KEY ([organization_id]) REFERENCES dbo.[organizations]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -498,8 +511,8 @@ CREATE TABLE dbo.[event_booking_details] (
 [updated_at] DATETIME2 NULL,
 [deleted_at] DATETIME2 NULL,
 [deleted_by] UNIQUEIDENTIFIER NULL,
-    CONSTRAINT [fk_event_booking_details_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_event_booking_details_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_event_booking_details_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_event_booking_details_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -611,10 +624,10 @@ CREATE TABLE dbo.[event_stalls] (
 [updated_by] UNIQUEIDENTIFIER NULL,
 [deleted_at] DATETIME2 NULL,
 [deleted_by] UNIQUEIDENTIFIER NULL,
-    CONSTRAINT [fk_event_stalls_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_event_stalls_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_event_stalls_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_event_stalls_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_event_stalls_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_event_stalls_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_event_stalls_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -690,6 +703,10 @@ CREATE TABLE dbo.[exhibitor_stall_bookings] (
 [event_name] NVARCHAR(100) NULL,
 [designation] NVARCHAR(150) NULL,
 [company_name] NVARCHAR(150) NULL,
+[company_type] NVARCHAR(100) NULL,
+[industry_type] NVARCHAR(100) NULL,
+[company_website] NVARCHAR(255) NULL,
+[business_description] NVARCHAR(MAX) NULL,
 [country] NVARCHAR(100) NULL,
 [state] NVARCHAR(100) NULL,
 [city] NVARCHAR(100) NULL,
@@ -755,9 +772,9 @@ CREATE TABLE dbo.[organizer_payouts] (
 [approved_by] UNIQUEIDENTIFIER NULL,
 [settled_at] DATETIME2 NULL,
 [created_at] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [fk_organizer_payouts_approved_by] FOREIGN KEY ([approved_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_organizer_payouts_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_organizer_payouts_organizer_user_id] FOREIGN KEY ([organizer_user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_organizer_payouts_approved_by] FOREIGN KEY ([approved_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_organizer_payouts_organizer_user_id] FOREIGN KEY ([organizer_user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -775,10 +792,10 @@ CREATE TABLE dbo.[roles] (
 [updated_by] UNIQUEIDENTIFIER NULL,
 [deleted_at] DATETIME2 NULL,
 [deleted_by] UNIQUEIDENTIFIER NULL,
-    CONSTRAINT [fk_roles_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_roles_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_roles_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_roles_organization_id] FOREIGN KEY ([organization_id]) REFERENCES dbo.[organizations]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_roles_organization_id] FOREIGN KEY ([organization_id]) REFERENCES dbo.[organizations]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_roles_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -829,9 +846,9 @@ CREATE TABLE dbo.[user_booking_details] (
 [updated_by] UNIQUEIDENTIFIER NULL,
 [deleted_at] DATETIME2 NULL,
 [deleted_by] UNIQUEIDENTIFIER NULL,
+    CONSTRAINT [fk_user_booking_details_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_user_booking_details_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_user_booking_details_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_user_booking_details_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_user_booking_details_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -875,9 +892,9 @@ CREATE TABLE dbo.[event_transactions] (
 [status] NVARCHAR(30) NOT NULL,
 [escrow_status] NVARCHAR(30) NOT NULL,
 [created_at] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
-    CONSTRAINT [fk_event_transactions_booking_id] FOREIGN KEY ([booking_id]) REFERENCES dbo.[user_booking_details]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_event_transactions_organizer_user_id] FOREIGN KEY ([organizer_user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_event_transactions_stall_booking_id] FOREIGN KEY ([stall_booking_id]) REFERENCES dbo.[exhibitor_stall_bookings]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_event_transactions_booking_id] FOREIGN KEY ([booking_id]) REFERENCES dbo.[user_booking_details]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_event_transactions_payer_user_id] FOREIGN KEY ([payer_user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_event_transactions_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION
 );
@@ -918,12 +935,12 @@ CREATE TABLE dbo.[organization_members] (
 [updated_by] UNIQUEIDENTIFIER NULL,
 [deleted_at] DATETIME2 NULL,
 [deleted_by] UNIQUEIDENTIFIER NULL,
+    CONSTRAINT [fk_organization_members_role_id] FOREIGN KEY ([role_id]) REFERENCES dbo.[roles]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_organization_members_user_id] FOREIGN KEY ([user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_organization_members_deleted_by] FOREIGN KEY ([deleted_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_organization_members_organization_id] FOREIGN KEY ([organization_id]) REFERENCES dbo.[organizations]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_organization_members_updated_by] FOREIGN KEY ([updated_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_organization_members_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_organization_members_role_id] FOREIGN KEY ([role_id]) REFERENCES dbo.[roles]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_organization_members_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
@@ -933,8 +950,8 @@ CREATE TABLE dbo.[role_permissions] (
 [permission_id] UNIQUEIDENTIFIER NOT NULL,
 [created_at] DATETIME2 NULL DEFAULT GETUTCDATE(),
 [created_by] UNIQUEIDENTIFIER NULL,
-    CONSTRAINT [fk_role_permissions_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_role_permissions_permission_id] FOREIGN KEY ([permission_id]) REFERENCES dbo.[permissions]([id]) ON DELETE NO ACTION,
+    CONSTRAINT [fk_role_permissions_created_by] FOREIGN KEY ([created_by]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_role_permissions_role_id] FOREIGN KEY ([role_id]) REFERENCES dbo.[roles]([id]) ON DELETE NO ACTION
 );
 GO
@@ -958,11 +975,59 @@ CREATE TABLE dbo.[financial_invoices] (
 [pdf_url] NVARCHAR(MAX) NULL,
 [status] NVARCHAR(30) NOT NULL,
 [created_at] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [fk_financial_invoices_transaction_id] FOREIGN KEY ([transaction_id]) REFERENCES dbo.[event_transactions]([id]) ON DELETE NO ACTION,
     CONSTRAINT [fk_financial_invoices_event_id] FOREIGN KEY ([event_id]) REFERENCES dbo.[event_details_table]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_financial_invoices_recipient_user_id] FOREIGN KEY ([recipient_user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION,
-    CONSTRAINT [fk_financial_invoices_transaction_id] FOREIGN KEY ([transaction_id]) REFERENCES dbo.[event_transactions]([id]) ON DELETE NO ACTION
+    CONSTRAINT [fk_financial_invoices_recipient_user_id] FOREIGN KEY ([recipient_user_id]) REFERENCES dbo.[users]([id]) ON DELETE NO ACTION
 );
 GO
 
-PRINT '01_schema_tables_and_constraints.sql completed successfully with 100% column alignment!';
+-- ============================================================================
+-- 3. Core Performance, Search & Integrity Indexes
+-- ============================================================================
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_users_email')
+    CREATE UNIQUE NONCLUSTERED INDEX ix_users_email ON dbo.[users]([email]) WHERE [deleted_at] IS NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_permissions_code')
+    CREATE UNIQUE NONCLUSTERED INDEX ix_permissions_code ON dbo.[permissions]([code]);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_organizer_profiles_pan_hash')
+    CREATE NONCLUSTERED INDEX ix_organizer_profiles_pan_hash ON dbo.[organizer_profiles]([pan_hash]) WHERE [pan_hash] IS NOT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_organizer_profiles_account_hash')
+    CREATE NONCLUSTERED INDEX ix_organizer_profiles_account_hash ON dbo.[organizer_profiles]([account_hash]) WHERE [account_hash] IS NOT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_exhibitor_profiles_pan_hash')
+    CREATE NONCLUSTERED INDEX ix_exhibitor_profiles_pan_hash ON dbo.[exhibitor_profiles]([pan_hash]) WHERE [pan_hash] IS NOT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_exhibitor_profiles_account_hash')
+    CREATE NONCLUSTERED INDEX ix_exhibitor_profiles_account_hash ON dbo.[exhibitor_profiles]([account_hash]) WHERE [account_hash] IS NOT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_organizer_profiles_slug')
+    CREATE UNIQUE NONCLUSTERED INDEX ix_organizer_profiles_slug ON dbo.[organizer_profiles]([slug]) WHERE [slug] IS NOT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_event_details_event_code')
+    CREATE NONCLUSTERED INDEX ix_event_details_event_code ON dbo.[event_details_table]([event_code]) WHERE [event_code] IS NOT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_organizer_payouts_payout_ref')
+    CREATE UNIQUE NONCLUSTERED INDEX ix_organizer_payouts_payout_ref ON dbo.[organizer_payouts]([payout_ref]);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_event_transactions_transaction_ref')
+    CREATE UNIQUE NONCLUSTERED INDEX ix_event_transactions_transaction_ref ON dbo.[event_transactions]([transaction_ref]);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'ix_financial_invoices_invoice_number')
+    CREATE UNIQUE NONCLUSTERED INDEX ix_financial_invoices_invoice_number ON dbo.[financial_invoices]([invoice_number]);
+GO
+
+PRINT '01_schema_tables_and_constraints.sql completed successfully with 100% column alignment and core indexes!';
 GO

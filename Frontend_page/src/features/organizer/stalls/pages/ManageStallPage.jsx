@@ -426,8 +426,8 @@ export const ManageStall = () => {
                                 {(app.company_name || 'C').charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0">
-                                <div className="truncate font-extrabold text-slate-900">{app.company_name || 'Independent Vendor'}</div>
-                                <div className="text-[11px] font-medium text-slate-400 truncate">{app.company_type || 'Exhibitor'}</div>
+                                <div className="truncate font-extrabold text-slate-900">{app.company_name || app.name || '—'}</div>
+                                <div className="text-[11px] font-medium text-slate-400 truncate">{app.company_type || ''}</div>
                               </div>
                             </div>
                           </td>
@@ -522,15 +522,10 @@ export const ManageStall = () => {
                               )}
 
                               {isApproved && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleUpdateStatus(app.id, 'Confirmed')}
-                                  className="h-8 px-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold gap-1 cursor-pointer shadow-2xs"
-                                  title="Confirm Payment & Mark Paid"
-                                >
-                                  <UserCheck size={13} />
-                                  <span>Mark Paid</span>
-                                </Button>
+                                <span className="h-8 px-2.5 rounded-xl bg-sky-50 border border-sky-200/80 text-sky-700 text-xs font-bold gap-1 inline-flex items-center">
+                                  <Clock size={12} className="text-sky-500 animate-pulse" />
+                                  <span>Awaiting Payment</span>
+                                </span>
                               )}
                             </div>
                           </td>
@@ -550,7 +545,7 @@ export const ManageStall = () => {
               return (
                 <MobileDataCard key={app.id}>
                   <MobileDataCard.Header
-                    title={app.company_name || 'Independent Vendor'}
+                    title={app.company_name || app.name || '—'}
                     subtitle={`${app.name} • ${app.mobile || app.email || ''}`}
                     statusBadge={
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
@@ -649,11 +644,11 @@ export const ManageStall = () => {
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Business Entity:</span>
-                  <p className="font-bold text-slate-900">{selectedApp.company_name} ({selectedApp.company_type || 'Private Limited'})</p>
+                  <p className="font-bold text-slate-900">{selectedApp.company_name || '—'} {selectedApp.company_type ? `(${selectedApp.company_type})` : ''}</p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Industry Sector:</span>
-                  <p className="font-bold text-slate-800">{selectedApp.industry_type || 'Exhibitions & Events'}</p>
+                  <p className="font-bold text-slate-800">{selectedApp.industry_type || selectedApp.products || '—'}</p>
                 </div>
                 {selectedApp.company_website && (
                   <div>
@@ -685,8 +680,8 @@ export const ManageStall = () => {
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Name & Title:</span>
-                  <p className="font-bold text-slate-900">{selectedApp.title} {selectedApp.name}</p>
-                  <p className="text-[11px] text-slate-500 font-medium">{selectedApp.designation || 'Exhibitor Contact'}</p>
+                  <p className="font-bold text-slate-900">{[selectedApp.title, selectedApp.name].filter(Boolean).join(" ") || '—'}</p>
+                  <p className="text-[11px] text-slate-500 font-medium">{selectedApp.designation || '—'}</p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">Email Address:</span>
@@ -736,7 +731,7 @@ export const ManageStall = () => {
                 <div>
                   <span className="text-slate-400 font-medium">Products & Solutions to Exhibit:</span>
                   <p className="font-semibold text-slate-800 mt-0.5 bg-white p-3 rounded-xl border border-slate-200/70">
-                    {selectedApp.products || selectedApp.business_description || 'General exhibition showcase and brand promotion.'}
+                    {selectedApp.products || selectedApp.business_description || '—'}
                   </p>
                 </div>
 
@@ -782,13 +777,21 @@ export const ManageStall = () => {
                 )}
 
                 {(selectedApp.status || '').toLowerCase() === 'approved' && (
-                  <Button
-                    onClick={() => handleUpdateStatus(selectedApp.id, 'Confirmed')}
-                    className="text-xs font-extrabold rounded-xl h-10 px-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:brightness-110 text-white cursor-pointer shadow-xs"
-                  >
-                    <UserCheck size={14} className="mr-1.5" />
-                    Confirm Payment & Lock Booth
-                  </Button>
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full p-3 bg-sky-50 border border-sky-200 rounded-2xl">
+                    <div className="flex items-center gap-2 text-xs text-sky-800 font-bold">
+                      <Clock size={15} className="text-sky-600 shrink-0 animate-pulse" />
+                      <span>Approved (24h Lock Active) — Waiting for Exhibitor payment checkout.</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUpdateStatus(selectedApp.id, 'Confirmed')}
+                      className="text-[11px] font-bold rounded-xl border-slate-300 bg-white hover:bg-slate-50 text-slate-700 cursor-pointer h-8 px-3 shrink-0"
+                      title="Only click if payment was received directly offline via cash or bank transfer"
+                    >
+                      Record Offline Payment
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

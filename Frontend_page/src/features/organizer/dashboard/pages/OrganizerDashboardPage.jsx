@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchEventsThunk } from "@/app/store/eventSlice";
@@ -6,8 +6,9 @@ import { eventApi } from "@/features/events/api/event.api";
 import {
   Eye, Pencil, Search, PlusCircle, Calendar,
   QrCode, RefreshCw, ShieldCheck, PlayCircle,
-  AlertCircle, CheckCircle2, Clock, ArrowUpRight, FileEdit
+  AlertCircle, CheckCircle2, Clock, ArrowUpRight, FileEdit, Store
 } from "lucide-react";
+import apiClient from "@/Services/client";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -40,6 +41,34 @@ export default function OrganizerDashboardPage() {
   const hasLoadedOnceRef = useRef(false);
   const latestRequestIdRef = useRef(0);
   const searchTimerRef = useRef(null);
+
+  // ── Stall Applications state ──
+  const [stallApplications, setStallApplications] = useState([]);
+  const [loadingStalls, setLoadingStalls] = useState(true);
+
+  const fetchStallApplications = useCallback(async () => {
+    try {
+      setLoadingStalls(true);
+      const res = await apiClient.get('/api/v1/organizer/stalls/applications');
+      const data = res?.data;
+      if (data?.success && Array.isArray(data.data)) {
+        setStallApplications(data.data);
+      } else if (Array.isArray(data)) {
+        setStallApplications(data);
+      } else {
+        setStallApplications([]);
+      }
+    } catch (err) {
+      console.error("Error fetching stall applications for dashboard:", err);
+      setStallApplications([]);
+    } finally {
+      setLoadingStalls(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStallApplications();
+  }, [fetchStallApplications]);
 
   // Fetch all events for KPI cards on mount
   useEffect(() => {
@@ -133,8 +162,13 @@ export default function OrganizerDashboardPage() {
   const nextEventName = nextEvent ? (nextEvent.name || nextEvent.event_name) : null;
   const nextEventDate = nextEvent ? (nextEvent.start_date || nextEvent.event_date) : null;
   const daysUntilNext = nextEventDate ? Math.max(0, Math.ceil((new Date(nextEventDate).setHours(0,0,0,0) - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24))) : null;
+  const pendingStallsCount = useMemo(() => {
+    return stallApplications.filter(a => (a.status || '').toLowerCase() === 'pending').length;
+  }, [stallApplications]);
 
-  const kycVerified = ["VERIFIED", "APPROVED", "ACTIVE"].includes(organizerKycStatus?.toUpperCase());
+  const approvedStallsCount = useMemo(() => {
+    return stallApplications.filter(a => (a.status || '').toLowerCase() === 'approved').length;
+  }, [stallApplications]);
 
   // ── Table helpers ──
   const formatDate = (dateString) => {
@@ -213,6 +247,7 @@ export default function OrganizerDashboardPage() {
             onClick={() => {
               dispatch(fetchEventsThunk({ organizerId: userId, force: true }));
               fetchTableEvents();
+              fetchStallApplications();
             }}
             variant="outline"
             className="bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs gap-1.5 cursor-pointer"
@@ -225,13 +260,13 @@ export default function OrganizerDashboardPage() {
         </div>
       </div>
 
-      {/* ── 2. ORGANIZER-LEVEL COMMON STAT CARDS (4 cards) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ── 2. ORGANIZER-LEVEL COMMON STAT CARDS (4 cards - Equally Aligned) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
         
         {/* CARD 1 — TOTAL EVENTS */}
         <Card 
           onClick={() => setSelectedTab("all")}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-cyan-300 transition-all group"
+          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden cursor-pointer hover:border-cyan-300 transition-all group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Events</span>
@@ -239,28 +274,37 @@ export default function OrganizerDashboardPage() {
               <Calendar size={18} />
             </div>
           </div>
-          <div className="text-3xl font-black text-slate-900">{totalEventsCount}</div>
-          <div className="flex flex-wrap gap-1.5">
-            {activeEventsCount > 0 && (
-              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md">
-                {activeEventsCount} Live
-              </span>
-            )}
-            {upcomingEventsCount > 0 && (
-              <span className="text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 px-1.5 py-0.5 rounded-md">
-                {upcomingEventsCount} Upcoming
-              </span>
-            )}
-            {pastEventsCount > 0 && (
-              <span className="text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md">
-                {pastEventsCount} Past
-              </span>
-            )}
-            {draftEventsCount > 0 && (
-              <span className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md">
-                {draftEventsCount} Draft
-              </span>
-            )}
+          <div className="my-auto">
+            <div className="text-3xl font-black text-slate-900 leading-none">{totalEventsCount}</div>
+            <div className="h-5 flex items-center flex-wrap gap-1.5 mt-2 overflow-hidden">
+              {activeEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {activeEventsCount} Live
+                </span>
+              )}
+              {upcomingEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {upcomingEventsCount} Upcoming
+                </span>
+              )}
+              {pastEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {pastEventsCount} Past
+                </span>
+              )}
+              {draftEventsCount > 0 && (
+                <span className="text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-md leading-none">
+                  {draftEventsCount} Draft
+                </span>
+              )}
+              {totalEventsCount === 0 && (
+                <span className="text-[11px] font-medium text-slate-400">No events yet</span>
+              )}
+            </div>
+          </div>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-cyan-600 group-hover:text-cyan-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>View all events</span>
           </div>
         </Card>
 
@@ -270,7 +314,7 @@ export default function OrganizerDashboardPage() {
             if (nextEvent) handleView(nextEvent);
             else navigate("/OrganizerHome/CreateEvent");
           }}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-indigo-300 transition-all group"
+          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden cursor-pointer hover:border-indigo-300 transition-all group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Next Upcoming</span>
@@ -278,35 +322,42 @@ export default function OrganizerDashboardPage() {
               <Clock size={18} />
             </div>
           </div>
-          {nextEvent ? (
-            <>
-              <div className="text-sm font-black text-slate-900 truncate" title={nextEventName}>
-                {nextEventName}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-indigo-600">
-                  {daysUntilNext === 0 ? "Starts today!" : daysUntilNext === 1 ? "Starts tomorrow" : `Starts in ${daysUntilNext} days`}
-                </span>
-                <span className="text-[10px] text-slate-400">·</span>
-                <span className="text-[10px] font-semibold text-slate-500">{formatDate(nextEventDate)}</span>
-              </div>
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-indigo-500">
-                <ArrowUpRight size={11} />
-                <span>View details</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="text-sm font-bold text-slate-500">No upcoming events</div>
-              <p className="text-[11px] font-semibold text-cyan-600">Create your next event →</p>
-            </>
-          )}
+          <div className="my-auto">
+            {nextEvent ? (
+              <>
+                <div className="text-sm font-black text-slate-900 truncate leading-tight" title={nextEventName}>
+                  {nextEventName}
+                </div>
+                <div className="h-5 flex items-center gap-1.5 text-[11px] text-slate-500 mt-2 overflow-hidden">
+                  <span className="font-bold text-indigo-600">
+                    {daysUntilNext === 0 ? "Starts today!" : daysUntilNext === 1 ? "Starts tomorrow" : `In ${daysUntilNext} days`}
+                  </span>
+                  <span className="text-slate-300">·</span>
+                  <span className="text-slate-500 font-medium truncate">{formatDate(nextEventDate)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-3xl font-black text-slate-400 leading-none">0</div>
+                <div className="h-5 flex items-center mt-2 text-[11px] font-medium text-slate-400">
+                  No upcoming events
+                </div>
+              </>
+            )}
+          </div>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-indigo-600 group-hover:text-indigo-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>{nextEvent ? "View details" : "Create event"}</span>
+          </div>
         </Card>
 
         {/* CARD 3 — PENDING ACTIONS */}
         <Card 
-          className={`border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden transition-all group ${
-            pendingActionsCount > 0 ? "hover:border-amber-400 ring-2 ring-amber-100" : "hover:border-slate-300"
+          onClick={() => {
+            if (draftEventsCount > 0) setSelectedTab("draft");
+          }}
+          className={`border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden transition-all group ${
+            pendingActionsCount > 0 ? "hover:border-amber-400 ring-2 ring-amber-100/70 cursor-pointer" : "hover:border-slate-300"
           }`}
         >
           <div className="flex items-center justify-between">
@@ -315,62 +366,58 @@ export default function OrganizerDashboardPage() {
               <AlertCircle size={18} />
             </div>
           </div>
-          <div className="text-3xl font-black text-slate-900">{pendingActionsCount}</div>
-          {pendingActionsCount > 0 ? (
-            <div className="space-y-1">
-              {draftEventsCount > 0 && (
-                <button
-                  onClick={() => setSelectedTab("draft")}
-                  className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-0.5 cursor-pointer hover:bg-amber-100 transition-colors flex items-center gap-1"
-                >
-                  <FileEdit size={10} />
-                  <span>{draftEventsCount} draft{draftEventsCount > 1 ? 's' : ''} to complete</span>
-                </button>
-              )}
-              {pendingApprovalCount > 0 && (
-                <p className="text-[11px] font-semibold text-slate-500">
-                  {pendingApprovalCount} awaiting admin approval
-                </p>
+          <div className="my-auto">
+            <div className="text-3xl font-black text-slate-900 leading-none">{pendingActionsCount}</div>
+            <div className="h-5 flex items-center mt-2 overflow-hidden">
+              {pendingActionsCount > 0 ? (
+                <span className="text-[11px] font-bold text-amber-700 truncate">
+                  {draftEventsCount > 0 ? `${draftEventsCount} draft${draftEventsCount > 1 ? 's' : ''} to complete` : `${pendingApprovalCount} awaiting approval`}
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> All caught up
+                </span>
               )}
             </div>
-          ) : (
-            <p className="text-[11px] font-bold text-emerald-600">You're all caught up ✓</p>
-          )}
+          </div>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-amber-600 group-hover:text-amber-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>{pendingActionsCount > 0 ? "Resolve pending" : "No pending items"}</span>
+          </div>
         </Card>
 
-        {/* CARD 4 — KYC & ACCOUNT STATUS */}
+        {/* CARD 4 — PENDING STALL REQUESTS */}
         <Card 
-          onClick={() => navigate("/OrganizerHome/Profile")}
-          className="border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 space-y-2.5 relative overflow-hidden cursor-pointer hover:border-emerald-300 transition-all group"
+          onClick={() => navigate("/OrganizerHome/Manage_Stall")}
+          className={`border-slate-200/80 shadow-xs bg-white rounded-2xl p-4 h-[162px] flex flex-col justify-between relative overflow-hidden cursor-pointer transition-all group ${
+            pendingStallsCount > 0 ? "hover:border-amber-400 ring-2 ring-amber-100/70" : "hover:border-cyan-300"
+          }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">KYC & Account</span>
-            <div className={`p-2 rounded-xl ${kycVerified ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"} group-hover:scale-105 transition-transform`}>
-              <ShieldCheck size={18} />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pending Stalls</span>
+            <div className={`p-2 rounded-xl ${pendingStallsCount > 0 ? "bg-amber-100 text-amber-700 animate-pulse" : "bg-cyan-50 text-cyan-600"} group-hover:scale-105 transition-transform`}>
+              <Store size={18} />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className={`px-2.5 py-1 rounded-full text-[11px] font-black inline-flex items-center gap-1.5 ${
-              kycVerified
-                ? "bg-emerald-50 text-emerald-800 border border-emerald-300"
-                : "bg-amber-50 text-amber-800 border border-amber-300"
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${kycVerified ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
-              {kycVerified ? "Verified" : "Pending"}
-            </span>
+          <div className="my-auto">
+            <div className="text-3xl font-black text-slate-900 leading-none">
+              {loadingStalls ? "..." : pendingStallsCount}
+            </div>
+            <div className="h-5 flex items-center mt-2 overflow-hidden">
+              {pendingStallsCount > 0 ? (
+                <span className="text-[11px] font-bold text-amber-700 truncate">
+                  {pendingStallsCount} waiting review · {stallApplications.length} total
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> All caught up ({stallApplications.length} total)
+                </span>
+              )}
+            </div>
           </div>
-          {kycVerified ? (
-            <p className="text-[11px] font-semibold text-emerald-600">
-              Account verified — all features unlocked
-            </p>
-          ) : (
-            <p className="text-[11px] font-semibold text-amber-700">
-              Complete KYC to unlock event publishing →
-            </p>
-          )}
-          <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-400">
-            <ArrowUpRight size={11} />
-            <span>Go to Profile</span>
+          <div className="pt-2 border-t border-slate-100/80 flex items-center gap-1 text-[10px] font-bold text-cyan-600 group-hover:text-cyan-700 transition-colors">
+            <ArrowUpRight size={12} />
+            <span>Manage Stalls</span>
           </div>
         </Card>
 

@@ -161,6 +161,7 @@ class EventRepository:
                     org_profile = db.session.scalar(select(OrganizerProfile).where(OrganizerProfile.user_id == org_user.id))
 
                 if org_user or org_profile:
+                    from app.utils.security_crypto import decrypt_field, mask_account_number, mask_pan_number
                     organizer_info = {
                         "id": str(org_user.id) if org_user else str(target_uid),
                         "name": getattr(org_user, "name", None) or "Event Organizer",
@@ -174,9 +175,9 @@ class EventRepository:
                         "country": getattr(org_user, "country", "India") or "India",
                         "kyc_status": (getattr(org_profile, "kyc_status", None) if org_profile else None) or "PENDING",
                         "gstin": (getattr(org_profile, "gstin", "") if org_profile else "") or "",
-                        "pan_number": (getattr(org_profile, "pan_number", "") if org_profile else "") or "",
+                        "pan_number": (mask_pan_number(decrypt_field(getattr(org_profile, "pan_number", ""))) if org_profile else "") or "",
                         "bank_name": (getattr(org_profile, "bank_name", "") if org_profile else "") or "",
-                        "account_number": (getattr(org_profile, "account_number", "") if org_profile else "") or "",
+                        "account_number": (mask_account_number(decrypt_field(getattr(org_profile, "account_number", ""))) if org_profile else "") or "",
                         "ifsc_code": (getattr(org_profile, "ifsc_code", "") if org_profile else "") or "",
                         "status": getattr(org_user, "status", "ACTIVE")
                     }

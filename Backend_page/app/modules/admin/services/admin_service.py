@@ -13,6 +13,7 @@ from app.models.event import EventDetails, EventBookingDetails, EventFile
 from app.models.user import User
 from app.models.organizer_profile import OrganizerProfile
 from app.models.exhibitor_profile import ExhibitorProfile
+from app.modules.rbac.services.tenant_service import TenantService
 
 class AdminService:
 
@@ -121,6 +122,9 @@ class AdminService:
         organizer_id: str = None,
         only_approved: bool = False,
         search: str = None,
+        category: str = None,
+        city: str = None,
+        location: str = None,
         status: str = None,
         page: int = None,
         limit: int = None,
@@ -181,23 +185,69 @@ class AdminService:
                     func.lower(func.coalesce(EventDetails.category, "")).like(clean_term),
                     func.lower(func.coalesce(EventDetails.sub_category, "")).like(clean_term),
                     func.lower(func.coalesce(EventDetails.venue, "")).like(clean_term),
-                    func.lower(func.coalesce(EventDetails.address, "")).like(clean_term)
+                    func.lower(func.coalesce(EventDetails.address, "")).like(clean_term),
+                    func.lower(func.coalesce(EventDetails.tags, "")).like(clean_term),
+                    func.lower(func.coalesce(EventDetails.description, "")).like(clean_term)
+                ))
+
+            if category and category.strip() and category.strip().lower() != "all":
+                cat_raw = category.strip().lower()
+                if cat_raw == "expos":
+                    stmt = stmt.where(or_(
+                        func.lower(func.coalesce(EventDetails.category, "")).like("%expo%"),
+                        func.lower(func.coalesce(EventDetails.category, "")).like("%tech%"),
+                        func.lower(func.coalesce(EventDetails.sub_category, "")).like("%expo%"),
+                        func.lower(func.coalesce(EventDetails.sub_category, "")).like("%tech%")
+                    ))
+                else:
+                    cat_term = f"%{cat_raw}%"
+                    stmt = stmt.where(or_(
+                        func.lower(func.coalesce(EventDetails.category, "")).like(cat_term),
+                        func.lower(func.coalesce(EventDetails.sub_category, "")).like(cat_term)
+                    ))
+
+            loc_filter = (city or location or "").strip().lower()
+            if loc_filter:
+                loc_term = f"%{loc_filter}%"
+                stmt = stmt.where(or_(
+                    func.lower(func.coalesce(EventDetails.venue, "")).like(loc_term),
+                    func.lower(func.coalesce(EventDetails.address, "")).like(loc_term)
                 ))
 
             if organizer_id:
                 org_str = str(organizer_id).strip()
-                org_uuid = None
+                tenant_uids = [org_str]
+                tenant_org_uuid = None
                 try:
-                    org_uuid = uuid.UUID(org_str)
-                except (ValueError, AttributeError):
+                    from app.modules.rbac.services.tenant_service import TenantService
+                    t_ctx = TenantService.resolve_tenant_context(org_str, "ORGANIZER")
+                    if t_ctx.get("organization_id"):
+                        try:
+                            tenant_org_uuid = uuid.UUID(str(t_ctx["organization_id"]))
+                        except Exception:
+                            pass
+                    for u in t_ctx.get("tenant_user_ids", []):
+                        if str(u) not in tenant_uids:
+                            tenant_uids.append(str(u))
+                except Exception:
                     pass
 
+                parsed_uuids = []
+                for u in tenant_uids:
+                    try:
+                        parsed_uuids.append(uuid.UUID(str(u)))
+                    except Exception:
+                        pass
+
                 filter_conds = [
-                    EventDetails.created_by == org_str
+                    EventDetails.created_by.in_(tenant_uids)
                 ]
-                if org_uuid:
-                    filter_conds.append(EventDetails.user_id == org_uuid)
-                    filter_conds.append(EventDetails.organization_id == org_uuid)
+                if parsed_uuids:
+                    filter_conds.append(EventDetails.user_id.in_(parsed_uuids))
+                if tenant_org_uuid:
+                    filter_conds.append(EventDetails.organization_id == tenant_org_uuid)
+                elif parsed_uuids:
+                    filter_conds.append(EventDetails.organization_id.in_(parsed_uuids))
 
                 stmt = stmt.where(or_(*filter_conds))
 
@@ -261,7 +311,29 @@ class AdminService:
                         func.lower(func.coalesce(EventDetails.category, "")).like(clean_term),
                         func.lower(func.coalesce(EventDetails.sub_category, "")).like(clean_term),
                         func.lower(func.coalesce(EventDetails.venue, "")).like(clean_term),
-                        func.lower(func.coalesce(EventDetails.address, "")).like(clean_term)
+                        func.lower(func.coalesce(EventDetails.address, "")).like(clean_term),
+                        func.lower(func.coalesce(EventDetails.tags, "")).like(clean_term),
+                        func.lower(func.coalesce(EventDetails.description, "")).like(clean_term)
+                    ))
+                if category and category.strip() and category.strip().lower() != "all":
+                    cat_raw = category.strip().lower()
+                    if cat_raw == "expos":
+                        count_stmt = count_stmt.where(or_(
+                            func.lower(func.coalesce(EventDetails.category, "")).like("%expo%"),
+                            func.lower(func.coalesce(EventDetails.category, "")).like("%tech%"),
+                            func.lower(func.coalesce(EventDetails.sub_category, "")).like("%expo%"),
+                            func.lower(func.coalesce(EventDetails.sub_category, "")).like("%tech%")
+                        ))
+                    else:
+                        cat_term = f"%{cat_raw}%"
+                        count_stmt = count_stmt.where(or_(
+                            func.lower(func.coalesce(EventDetails.category, "")).like(cat_term),
+                            func.lower(func.coalesce(EventDetails.sub_category, "")).like(cat_term)
+                        ))
+                if loc_filter:
+                    count_stmt = count_stmt.where(or_(
+                        func.lower(func.coalesce(EventDetails.venue, "")).like(loc_term),
+                        func.lower(func.coalesce(EventDetails.address, "")).like(loc_term)
                     ))
                 if organizer_id:
                     count_stmt = count_stmt.where(or_(*filter_conds))
@@ -424,8 +496,8 @@ class AdminService:
         return {"message": f"Event status updated to {status_upper}", "status": status_upper}
 
     @staticmethod
-    def get_categories() -> list[dict]:
-        cats = AdminRepository.get_all_categories()
+    def get_categories(search: str = None) -> list[dict]:
+        cats = AdminRepository.get_all_categories(search=search)
         return [c.to_dict() if hasattr(c, "to_dict") else {"id": str(c.id), "name": c.name, "subcategories": c.subcategories} for c in cats]
 
     @staticmethod
@@ -461,17 +533,22 @@ class AdminService:
     @staticmethod
     def get_pending_organizers() -> list[dict]:
         users = AdminRepository.get_pending_organizers()
+        from app.utils.security_crypto import decrypt_field, mask_account_number, mask_pan_number
         organizers_list = []
         for u in users:
             org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == u.id)).first()
+            masked_pan = mask_pan_number(decrypt_field(org_p.pan_number)) if (org_p and org_p.pan_number) else ""
+            masked_acc = mask_account_number(decrypt_field(org_p.account_number)) if (org_p and org_p.account_number) else ""
+            gst_pan_val = (f"{org_p.gstin or ''} / {masked_pan}".strip(" /") if org_p else None) or getattr(u, "gst_pan", "33ABCDE1234F1Z5")
+            bank_acc_val = masked_acc or getattr(u, "bank_account", "XXXX-XXXX-9876")
             organizers_list.append({
                 "id": str(u.id),
                 "name": u.name,
                 "email": u.email,
                 "mobile": getattr(u, "mobile", "") or "N/A",
                 "company_name": (org_p.company_name if org_p else None) or getattr(u, "organization_name", None) or getattr(u, "company_name", None) or "DIY Event Corp",
-                "gst_pan": (f"{org_p.gstin or ''} / {org_p.pan_number or ''}".strip(" /") if org_p else None) or getattr(u, "gst_pan", "33ABCDE1234F1Z5"),
-                "bank_account": (org_p.account_number if org_p else None) or getattr(u, "bank_account", "XXXX-XXXX-9876"),
+                "gst_pan": gst_pan_val,
+                "bank_account": bank_acc_val,
                 "ifsc": (org_p.ifsc_code if org_p else None) or getattr(u, "ifsc", "HDFC0001234"),
                 "kyc_status": (org_p.kyc_status if org_p else None) or getattr(u, "kyc_status", "VERIFIED") or "VERIFIED",
             })
@@ -571,10 +648,12 @@ class AdminService:
         from app.common.pagination import build_pagination_metadata
         from sqlalchemy import or_, func, desc, asc, String
 
+        pure_team_subq = TenantService.get_pure_team_member_ids_subquery()
         stmt = select(User).where(
             User.deleted_at.is_(None),
             func.lower(User.email) != "bookmyevent2026@gmail.com",
-            ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"])
+            ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"]),
+            ~User.id.in_(pure_team_subq)
         )
 
         if search and search.strip():
@@ -633,7 +712,8 @@ class AdminService:
             count_stmt = select(func.count(User.id)).where(
                 User.deleted_at.is_(None),
                 func.lower(User.email) != "bookmyevent2026@gmail.com",
-                ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"])
+                ~func.lower(func.coalesce(User.active_role, "")).in_(["superuser", "superadmin", "admin"]),
+                ~User.id.in_(pure_team_subq)
             )
             if search and search.strip():
                 clean_term = f"%{search.strip().lower()[:100]}%"
@@ -695,38 +775,8 @@ class AdminService:
             is_exhibitor = "exhibitor" in roles_lower or (u.active_role or "").lower() == "exhibitor"
             is_common_user = not is_organizer and not is_exhibitor
 
-            # Auto-create profile if missing for organizer/exhibitor role
-            if is_organizer and not org_p:
-                try:
-                    org_p = OrganizerProfile(
-                        user_id=u.id,
-                        company_name=u.organization_name or f"{u.name} Events",
-                        gstin="33ABCDE1234F1Z5",
-                        pan_number="ABCDE1234F",
-                        account_number="987654321098",
-                        ifsc_code="HDFC0001234",
-                        kyc_status="PENDING"
-                    )
-                    db.session.add(org_p)
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
-
-            if is_exhibitor and not exh_p:
-                try:
-                    exh_p = ExhibitorProfile(
-                        user_id=u.id,
-                        company_name=u.organization_name or f"{u.name} Expo Ltd",
-                        gstin="29ABCDE5678F1Z9",
-                        pan_number="ABCDE5678F",
-                        account_number="567812349012",
-                        ifsc_code="ICIC0002345",
-                        kyc_status="PENDING"
-                    )
-                    db.session.add(exh_p)
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
+            # Team members are excluded from this directory; primary accounts only
+            # No dummy profile creation is performed here. Real profiles exist when users complete onboarding.
 
             org_kyc = (org_p.kyc_status or "PENDING") if (is_organizer and org_p) else (org_p.kyc_status if org_p else None)
             exh_kyc = (exh_p.kyc_status or "PENDING") if (is_exhibitor and exh_p) else (exh_p.kyc_status if exh_p else None)
@@ -745,10 +795,22 @@ class AdminService:
                     combined_kyc = "PENDING"
 
             company = (org_p.company_name if org_p else None) or (exh_p.company_name if exh_p else None) or getattr(u, "organization_name", None) or getattr(u, "company_name", None) or ("Individual Account" if is_common_user else "Business Account")
-            gst_pan = (f"{org_p.gstin or ''} / {org_p.pan_number or ''}".strip(" /") if (org_p and (org_p.gstin or org_p.pan_number)) else None) or \
-                      (f"{exh_p.gstin or ''} / {exh_p.pan_number or ''}".strip(" /") if (exh_p and (exh_p.gstin or exh_p.pan_number)) else None) or \
-                      getattr(u, "gst_pan", "N/A")
-            bank_acc = (org_p.account_number if org_p else None) or (exh_p.account_number if exh_p else None) or getattr(u, "bank_account", "N/A")
+            raw_pan = (org_p.pan_number if org_p else None) or (exh_p.pan_number if exh_p else None)
+            raw_acc = (org_p.account_number if org_p else None) or (exh_p.account_number if exh_p else None)
+            gst_val = (org_p.gstin if org_p else None) or (exh_p.gstin if exh_p else None)
+
+            from app.utils.security_crypto import decrypt_field, mask_account_number, mask_pan_number
+            dec_pan = decrypt_field(raw_pan) if raw_pan else None
+            dec_acc = decrypt_field(raw_acc) if raw_acc else None
+            masked_pan = mask_pan_number(dec_pan) if dec_pan else None
+            masked_acc = mask_account_number(dec_acc) if dec_acc else None
+
+            if gst_val or masked_pan:
+                gst_pan = f"{gst_val or ''} / {masked_pan or ''}".strip(" /")
+            else:
+                gst_pan = getattr(u, "gst_pan", "N/A")
+
+            bank_acc = masked_acc or getattr(u, "bank_account", "N/A")
             ifsc = (org_p.ifsc_code if org_p else None) or (exh_p.ifsc_code if exh_p else None) or getattr(u, "ifsc", "N/A")
 
             user_list.append({
@@ -787,6 +849,7 @@ class AdminService:
         from app.models.exhibitor_profile import ExhibitorProfile
         from app.models.event import EventDetails
         from app.models.exhibitor import ExhibitorStallBooking
+        from app.utils.security_crypto import decrypt_field, mask_account_number, mask_pan_number
 
         u = db.session.get(User, user_id)
         if not u:
@@ -801,38 +864,7 @@ class AdminService:
         is_exhibitor = "exhibitor" in roles_lower or (u.active_role or "").lower() == "exhibitor"
         is_common_user = not is_organizer and not is_exhibitor
 
-        # Auto-provision profile defaults if user has role but no row yet
-        if is_organizer and not org_p:
-            try:
-                org_p = OrganizerProfile(
-                    user_id=u.id,
-                    company_name=u.organization_name or f"{u.name} Events",
-                    gstin="33ABCDE1234F1Z5",
-                    pan_number="ABCDE1234F",
-                    account_number="987654321098",
-                    ifsc_code="HDFC0001234",
-                    kyc_status="PENDING"
-                )
-                db.session.add(org_p)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-
-        if is_exhibitor and not exh_p:
-            try:
-                exh_p = ExhibitorProfile(
-                    user_id=u.id,
-                    company_name=u.organization_name or f"{u.name} Expo Ltd",
-                    gstin="29ABCDE5678F1Z9",
-                    pan_number="ABCDE5678F",
-                    account_number="567812349012",
-                    ifsc_code="ICIC0002345",
-                    kyc_status="PENDING"
-                )
-                db.session.add(exh_p)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
+        # Team members are excluded from independent KYC profiles. Real profiles exist when owners complete onboarding.
 
         # Fetch events created by this organizer
         user_events = []
@@ -906,16 +938,20 @@ class AdminService:
             "organizer_profile": {
                 "company_name": org_p.company_name if org_p else getattr(u, "organization_name", None),
                 "gstin": org_p.gstin if org_p else None,
-                "pan_number": org_p.pan_number if org_p else None,
-                "account_number": org_p.account_number if org_p else None,
+                "pan_number": decrypt_field(org_p.pan_number) if (org_p and org_p.pan_number) else None,
+                "pan_number_masked": mask_pan_number(decrypt_field(org_p.pan_number)) if (org_p and org_p.pan_number) else None,
+                "account_number": decrypt_field(org_p.account_number) if (org_p and org_p.account_number) else None,
+                "account_number_masked": mask_account_number(decrypt_field(org_p.account_number)) if (org_p and org_p.account_number) else None,
                 "ifsc_code": org_p.ifsc_code if org_p else None,
                 "kyc_status": org_kyc,
             } if (org_p or is_organizer) else None,
             "exhibitor_profile": {
                 "company_name": exh_p.company_name if exh_p else getattr(u, "organization_name", None),
                 "gstin": exh_p.gstin if exh_p else None,
-                "pan_number": exh_p.pan_number if exh_p else None,
-                "account_number": exh_p.account_number if exh_p else None,
+                "pan_number": decrypt_field(exh_p.pan_number) if (exh_p and exh_p.pan_number) else None,
+                "pan_number_masked": mask_pan_number(decrypt_field(exh_p.pan_number)) if (exh_p and exh_p.pan_number) else None,
+                "account_number": decrypt_field(exh_p.account_number) if (exh_p and exh_p.account_number) else None,
+                "account_number_masked": mask_account_number(decrypt_field(exh_p.account_number)) if (exh_p and exh_p.account_number) else None,
                 "ifsc_code": exh_p.ifsc_code if exh_p else None,
                 "kyc_status": exh_kyc,
             } if (exh_p or is_exhibitor) else None,

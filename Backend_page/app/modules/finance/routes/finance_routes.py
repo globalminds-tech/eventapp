@@ -41,12 +41,13 @@ async def get_organizer_ledger(request: Request, current_user = Depends(get_curr
 @root_finance_router.get("/superuser/api/payouts")
 @root_finance_router.get("/api/v1/finance/admin/payouts")
 @root_finance_router.get("/api/v1/finance/admin/payouts-queue")
-def get_admin_payouts():
+def get_admin_payouts(search: Optional[str] = None):
     """
     Super Admin endpoint to view all organizers eligible for payout, KYC status, and escrow balance.
+    Supports API-driven search query.
     """
     try:
-        queue = FinanceService.get_admin_payout_queue()
+        queue = FinanceService.get_admin_payout_queue(search=search)
         return {"success": True, "data": queue}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -92,36 +93,69 @@ async def get_exhibitor_invoices(request: Request, current_user = Depends(get_cu
         if not raw_uid:
             return {"success": True, "data": []}
 
-        user_id = uuid.UUID(str(raw_uid))
-        invoices = db.session.query(FinancialInvoice).filter(
-            FinancialInvoice.recipient_user_id == user_id,
+        from app.modules.rbac.services.tenant_service import TenantService
+        try:
+            tenant_uids = TenantService.resolve_tenant_user_ids(raw_uid, "EXHIBITOR")
+        except Exception:
+            tenant_uids = [raw_uid]
+
+        user_uuids = []
+        for u in tenant_uids:
+            try:
+                user_uuids.append(uuid.UUID(str(u)))
+            except Exception:
+                user_uuids.append(u)
+
+        from app.models.exhibitor import ExhibitorStallBooking
+        from app.models.event import EventDetails
+
+        invoice_rows = db.session.query(
+            FinancialInvoice,
+            EventTransaction.stall_booking_id,
+            EventDetails.event_name,
+            ExhibitorStallBooking.stall_area,
+            ExhibitorStallBooking.company_name
+        ).outerjoin(
+            EventTransaction, FinancialInvoice.transaction_id == EventTransaction.id
+        ).outerjoin(
+            EventDetails, FinancialInvoice.event_id == EventDetails.id
+        ).outerjoin(
+            ExhibitorStallBooking, EventTransaction.stall_booking_id == ExhibitorStallBooking.id
+        ).filter(
+            FinancialInvoice.recipient_user_id.in_(user_uuids),
             FinancialInvoice.invoice_type == "STALL_INVOICE"
         ).order_by(FinancialInvoice.created_at.desc()).all()
 
-        invoice_list = [inv.to_dict() for inv in invoices]
+        covered_booking_ids = set()
+        invoice_list = []
+        for inv, stall_booking_id, ev_name, st_area, comp_name in invoice_rows:
+            d = inv.to_dict()
+            if stall_booking_id:
+                covered_booking_ids.add(str(stall_booking_id))
+            d["event_name"] = ev_name or "Exhibition Expo"
+            d["stall_area"] = st_area or "Exhibition Stall"
+            if comp_name:
+                d["billing_name"] = comp_name
+            invoice_list.append(d)
 
-        # If no standalone invoice records generated yet, synthesize from exhibitor stall bookings
-        from app.models.exhibitor import ExhibitorStallBooking
-        from app.models.event import EventDetails
-        import re
-
+        # Synthesize invoices for stall bookings that do not yet have a formal FinancialInvoice record
         bookings = db.session.query(
             ExhibitorStallBooking,
             EventDetails.event_name
         ).outerjoin(
             EventDetails, ExhibitorStallBooking.event_id == EventDetails.id
         ).filter(
-            ExhibitorStallBooking.user_id == user_id
+            ExhibitorStallBooking.user_id.in_(user_uuids)
         ).order_by(ExhibitorStallBooking.created_at.desc()).all()
-
-        existing_inv_nums = {inv.get("invoice_number") for inv in invoice_list}
 
         for row in bookings:
             b = row[0]
+            # Prevent duplicate invoices for the same booking
+            if str(b.id) in covered_booking_ids:
+                continue
+
             event_name = row[1] or "Exhibition Expo"
             inv_num = f"INV-BME-{str(b.id).replace('-', '')[:6].upper()}"
-            if inv_num in existing_inv_nums:
-                continue
 
             from app.modules.exhibitors.repository.exhibitor_repository import ExhibitorRepository
             pricing = ExhibitorRepository.get_stall_pricing(b)

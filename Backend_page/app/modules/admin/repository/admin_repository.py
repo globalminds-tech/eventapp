@@ -73,10 +73,18 @@ class AdminRepository:
         return None
 
     @staticmethod
-    def get_all_categories():
+    def get_all_categories(search: str = None):
         from app.models.category import CategoryMaster
+        from sqlalchemy import or_, func
         try:
-            stmt = select(CategoryMaster).order_by(CategoryMaster.name.asc())
+            stmt = select(CategoryMaster)
+            if search and search.strip():
+                term = f"%{search.strip().lower()}%"
+                stmt = stmt.where(or_(
+                    func.lower(CategoryMaster.name).like(term),
+                    func.lower(CategoryMaster.subcategories).like(term)
+                ))
+            stmt = stmt.order_by(CategoryMaster.name.asc())
             return list(db.session.scalars(stmt).all())
         except Exception as e:
             print(f"[Error] CategoryMaster query error: {e}")
@@ -138,7 +146,12 @@ class AdminRepository:
 
     @staticmethod
     def get_pending_organizers():
-        stmt = select(User).where(User.roles.any('organizer')).order_by(desc(User.created_at))
+        from app.modules.rbac.services.tenant_service import TenantService
+        pure_team_subq = TenantService.get_pure_team_member_ids_subquery()
+        stmt = select(User).where(
+            User.roles.any('organizer'),
+            ~User.id.in_(pure_team_subq)
+        ).order_by(desc(User.created_at))
         return db.session.scalars(stmt).all()
 
     @staticmethod

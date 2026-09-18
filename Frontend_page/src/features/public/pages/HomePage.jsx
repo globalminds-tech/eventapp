@@ -31,7 +31,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import MediaRenderer from "@/components/MediaRenderer";
-import { getHomeEventshow } from "@/Services/api";
+import { getHomeEventshow, searchCustomerEvents } from "@/Services/api";
+import useDebounce from "@/shared/hooks/useDebounce";
 import { getRedirectPathForUser, performLogout, getUserInitials, getUserAvailableRoles, hasProfile, isSuperUser } from "@/shared/services/authHelper";
 import { authApi } from "@/features/auth/api/auth.api";
 import { setUser } from "@/app/store/userSlice";
@@ -372,10 +373,71 @@ const App = () => {
     }
   };
 
-  const fetchEvents = async () => {
+  // Live API-driven Search Suggestions
+  const debouncedHomeSearch = useDebounce(searchQuery, 300);
+  const [liveSuggestions, setLiveSuggestions] = useState([]);
+  const [isSearchingLive, setIsSearchingLive] = useState(false);
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const searchContainerRef = useRef(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setIsSearchDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Fetch live suggestions from backend API
+  useEffect(() => {
+    if (!debouncedHomeSearch.trim()) {
+      setLiveSuggestions([]);
+      setIsSearchDropdownOpen(false);
+      return;
+    }
+
+    let isMounted = true;
+    const fetchSuggestions = async () => {
+      setIsSearchingLive(true);
+      try {
+        const res = await searchCustomerEvents({
+          search: debouncedHomeSearch.trim(),
+          limit: 6,
+        });
+        const rawList = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+        if (isMounted) {
+          setLiveSuggestions(formatEventsList(rawList).slice(0, 6));
+          setIsSearchDropdownOpen(true);
+        }
+      } catch (err) {
+        if (isMounted) setLiveSuggestions([]);
+      } finally {
+        if (isMounted) setIsSearchingLive(false);
+      }
+    };
+
+    fetchSuggestions();
+    return () => {
+      isMounted = false;
+    };
+  }, [debouncedHomeSearch]);
+
+  const handleSearchSubmit = () => {
+    setIsSearchDropdownOpen(false);
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.append("search", searchQuery.trim());
+    if (selectedCategory && selectedCategory !== "All") params.append("category", selectedCategory);
+    if (selectedCity) params.append("location", selectedCity);
+    navigate(`/all-events${params.toString() ? `?${params.toString()}` : ""}`);
+  };
+
+  const fetchEvents = async (cityParam = selectedCity) => {
     try {
       if (events.length === 0) setIsLoading(true);
-      const res = await getHomeEventshow();
+      const res = await getHomeEventshow({ city: cityParam });
       const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
       const formatted = formatEventsList(list);
       setEvents(formatted);
@@ -549,10 +611,10 @@ const App = () => {
         .curved-header {
           border-bottom-left-radius: 36px;
           border-bottom-right-radius: 36px;
-          overflow: hidden;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
           padding-bottom: 24px;
           position: relative;
+          z-index: 40;
         }
 
         .category-pill {
@@ -585,44 +647,46 @@ const App = () => {
       <div className="absolute top-[1500px] -left-24 w-[500px] h-[500px] bg-amber-200/20 rounded-full pointer-events-none -z-0 blur-3xl" />
 
       {/* CURVED HEADER WITH BG TRANSITION */}
-      <div className="curved-header min-h-[250px] md:min-h-[270px] flex flex-col justify-between relative overflow-hidden">
-        {/* Layer 0: Dynamic category background layers */}
-        {prevTheme?.background && (
-          <img
-            src={prevTheme.background}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-            style={{ zIndex: 0 }}
-          />
-        )}
-        {currentTheme?.background && (
-          <img
-            src={currentTheme.background}
-            alt={currentTheme.label || "Category Banner"}
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-300 ease-in-out"
-            style={{ opacity: opacity, zIndex: 0 }}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = "/backgrounds/1.png";
+      <div className="curved-header min-h-[250px] md:min-h-[270px] flex flex-col justify-between relative">
+        {/* Layer 0 & 1: Clipped Background Container */}
+        <div className="absolute inset-0 overflow-hidden rounded-b-[36px] pointer-events-none -z-0">
+          {prevTheme?.background && (
+            <img
+              src={prevTheme.background}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              style={{ zIndex: 0 }}
+            />
+          )}
+          {currentTheme?.background && (
+            <img
+              src={currentTheme.background}
+              alt={currentTheme.label || "Category Banner"}
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-300 ease-in-out"
+              style={{ opacity: opacity, zIndex: 0 }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = "/backgrounds/1.png";
+              }}
+            />
+          )}
+
+          {/* Layer 1: Solid Dark Shade for Row 1 Contrast (NO GLASSMORPHISM) */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "100px",
+              background: "linear-gradient(to bottom, rgba(9, 13, 22, 0.85) 0%, rgba(9, 13, 22, 0) 100%)",
+              zIndex: 1,
             }}
           />
-        )}
-
-        {/* Layer 1: Solid Dark Shade for Row 1 Contrast (NO GLASSMORPHISM) */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "100px",
-            background: "linear-gradient(to bottom, rgba(9, 13, 22, 0.85) 0%, rgba(9, 13, 22, 0) 100%)",
-            zIndex: 1,
-          }}
-        />
+        </div>
 
         {/* Layer 2: Header Content Container */}
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 pt-5 pb-4 flex flex-col justify-between h-full gap-5">
+        <div className="relative z-20 max-w-7xl mx-auto w-full px-4 sm:px-6 pt-5 pb-4 flex flex-col justify-between h-full gap-5">
 
           {/* LINE 1 (TOP BAR): Clean, Solid Surfaces - Zero Glassmorphism */}
           <div className="flex items-center justify-between gap-4 w-full relative z-20">
@@ -751,16 +815,26 @@ const App = () => {
             </div>
           </div>
 
-          {/* LINE 2: Interactive Dynamic Search Bar with TextType */}
-          <div className="w-full my-auto py-2">
-            <div className="w-full max-w-xl mx-auto">
-              <div className="bg-white p-1.5 pl-4 rounded-full shadow-2xl border border-slate-200/90 flex items-center gap-3 relative">
+          {/* LINE 2: Interactive Dynamic Search Bar with TextType & Live API Suggestions */}
+          <div className="w-full my-auto py-2 relative z-50">
+            <div className="w-full max-w-xl mx-auto relative z-50" ref={searchContainerRef}>
+              <div className="bg-white p-1.5 pl-4 rounded-full shadow-2xl border border-slate-200/90 flex items-center gap-3 relative z-30">
                 <Search size={18} className="text-orange-500 shrink-0" />
                 <div className="relative w-full flex items-center">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => {
+                      if (liveSuggestions.length > 0 && searchQuery.trim()) {
+                        setIsSearchDropdownOpen(true);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearchSubmit();
+                      }
+                    }}
                     className="w-full h-10 border-none outline-none font-bold text-xs md:text-sm text-slate-900 bg-transparent relative z-10"
                   />
                   {!searchQuery && (
@@ -783,23 +857,99 @@ const App = () => {
                 </div>
 
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="p-1 hover:bg-slate-100 rounded-full shrink-0 z-10 cursor-pointer border-none bg-transparent">
+                  <button
+                    onClick={() => {
+                      setSearchQuery("");
+                      setLiveSuggestions([]);
+                      setIsSearchDropdownOpen(false);
+                    }}
+                    className="p-1 hover:bg-slate-100 rounded-full shrink-0 z-10 cursor-pointer border-none bg-transparent"
+                  >
                     <X size={14} className="text-slate-400" />
                   </button>
                 )}
 
                 <button
-                  onClick={() => navigate("/all-events")}
+                  onClick={handleSearchSubmit}
                   className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:brightness-110 active:scale-95 text-white font-extrabold text-xs px-5 py-2.5 rounded-full border-none cursor-pointer shadow-md shadow-orange-500/25 transition-all shrink-0 uppercase tracking-wider z-10"
                 >
                   Search
                 </button>
               </div>
+
+              {/* Live API-driven search suggestions dropdown */}
+              {isSearchDropdownOpen && searchQuery.trim() && (
+                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] border border-slate-200 overflow-hidden z-[100] animate-fadeIn">
+                  <div className="p-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                      {isSearchingLive ? "Searching live events..." : `Matches for "${searchQuery}"`}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">API Verified</span>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 no-scrollbar">
+                    {isSearchingLive && liveSuggestions.length === 0 && (
+                      <div className="p-6 text-center text-xs font-bold text-slate-400 flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
+                        <span>Fetching live results...</span>
+                      </div>
+                    )}
+
+                    {!isSearchingLive && liveSuggestions.length === 0 && (
+                      <div className="p-6 text-center text-xs font-semibold text-slate-400">
+                        No matching events found. Press Enter to explore all events.
+                      </div>
+                    )}
+
+                    {liveSuggestions.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          setIsSearchDropdownOpen(false);
+                          handleEventClick(item);
+                        }}
+                        className="p-3 hover:bg-orange-50/60 cursor-pointer transition-colors flex items-center gap-3"
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-12 h-12 rounded-xl object-cover shrink-0 border border-slate-100"
+                          onError={(e) => {
+                            e.target.src = "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800";
+                          }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-black text-slate-900 truncate">{item.title}</h4>
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-700 shrink-0">
+                              {item.category}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
+                            📍 {item.location} • 📅 {item.date}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-black text-slate-900">{item.price}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={handleSearchSubmit}
+                    className="w-full p-2.5 bg-gradient-to-r from-orange-50 to-amber-50 hover:bg-orange-100 text-orange-600 text-xs font-extrabold text-center cursor-pointer border-t border-orange-100 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <span>View all results for &ldquo;{searchQuery}&rdquo;</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* LINE 3: Category Pills */}
-          <div className="w-full overflow-x-auto no-scrollbar pt-2 pb-1">
+          <div className="w-full overflow-x-auto no-scrollbar pt-2 pb-1 relative z-10">
             <div className="flex items-center gap-2.5 sm:justify-center">
               <button
                 onClick={() => handleCategorySwitch("All")}
@@ -987,7 +1137,7 @@ const App = () => {
                 icon={Music}
                 events={musicEvents}
                 onEventClick={handleEventClick}
-                onViewAll={() => navigate("/all-events")}
+                onViewAll={() => navigate("/all-events?category=Music")}
               />
             )}
 
@@ -998,7 +1148,7 @@ const App = () => {
                 icon={Ticket}
                 events={expoEvents}
                 onEventClick={handleEventClick}
-                onViewAll={() => navigate("/all-events")}
+                onViewAll={() => navigate("/all-events?category=Expos")}
               />
             )}
 
@@ -1009,7 +1159,7 @@ const App = () => {
                 icon={Mic}
                 events={comedyEvents}
                 onEventClick={handleEventClick}
-                onViewAll={() => navigate("/all-events")}
+                onViewAll={() => navigate("/all-events?category=Comedy")}
               />
             )}
 

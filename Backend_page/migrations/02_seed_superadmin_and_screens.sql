@@ -30,7 +30,7 @@ BEGIN
         N'Super Administrator',
         N'bookmyevent2026@gmail.com',
         -- Werkzeug scrypt hash for 'admin@#$123'
-        N'scrypt:32768:8:1$1h3jUoyOeR2NFZCU$580ea862728565de952218863a0b09876d3666ddae29bdeedd0386d59762f56b5766b2769d8b363894b5416bb437863f7005d3f127ee241d27c03a3840263459',
+        N'scrypt:32768:8:1$tpaOlynRaGfhbM4H$3cc0afaf1a10432a147b0a47d72ac192542b7acc1f0cf698ab49e34f1e32ac4ee8a18efa5add0d4ed61cdf6581b00a5ccf1086e65a9a3684bdda4b112de365c6',
         N'["superuser", "superadmin"]',
         N'superuser',
         N'ACTIVE',
@@ -153,14 +153,46 @@ INSERT INTO @Perms VALUES
 
 -- Dashboard & Executive Analytics
 (N'dashboard', N'view', N'dashboard.view', N'View Executive Dashboard', N'Can access executive analytics, revenue KPIs, and event statistics', N'ORGANIZER'),
-(N'exhibitor_dashboard', N'view', N'exhibitor.dashboard.view', N'View Booth Dashboard', N'Can view stall booking metrics, lead counters, and booth overview', N'EXHIBITOR');
+
+-- ============================================================================
+-- Exhibitor Suite Modules (18 Granular Permissions)
+-- ============================================================================
+-- Executive Dashboard
+(N'exhibitor_dashboard', N'view', N'exhibitor.dashboard.view', N'View Booth Dashboard', N'Can access booth KPIs, spend summary, active reservations, and lead counters', N'EXHIBITOR'),
+
+-- Upcoming Expos & Floorplans
+(N'exhibitor_events', N'browse', N'exhibitor.events.browse', N'Browse Upcoming Expos', N'Can browse upcoming expos, event dates, venues, and registration deadlines', N'EXHIBITOR'),
+(N'exhibitor_events', N'floorplan', N'exhibitor.events.floorplan', N'View Floor Plans & Layouts', N'Can inspect expo hall floor plans, stall dimensions, and layout blueprints', N'EXHIBITOR'),
+
+-- Stall Reservations & Amenities
+(N'exhibitor_stalls', N'view', N'exhibitor.stalls.view', N'View My Bookings', N'Can inspect booked stalls, application status, stall number, and approvals', N'EXHIBITOR'),
+(N'exhibitor_stalls', N'book', N'exhibitor.stalls.book', N'Book Exhibition Stalls', N'Can submit stall booking applications, select stall categories, and upload credentials', N'EXHIBITOR'),
+(N'exhibitor_stalls', N'manage', N'exhibitor.stalls.manage', N'Manage Stall Preferences', N'Can request corner booth preferences, custom dimensions, and power amenities', N'EXHIBITOR'),
+(N'exhibitor_stalls', N'cancel', N'exhibitor.stalls.cancel', N'Cancel Stall Application', N'Can withdraw or cancel pending stall reservation applications before approval', N'EXHIBITOR'),
+
+-- Visitor Leads & Buyer Inquiries
+(N'exhibitor_leads', N'view', N'exhibitor.leads.view', N'View Visitor Leads', N'Can browse visitor contacts, inquiries, and leads captured at the stall', N'EXHIBITOR'),
+(N'exhibitor_leads', N'create', N'exhibitor.leads.create', N'Capture & Log Spot Leads', N'Can log new on-site buyer inquiries, set buying intent, and record discussion notes', N'EXHIBITOR'),
+(N'exhibitor_leads', N'export', N'exhibitor.leads.export', N'Export Visitor Leads', N'Can download collected attendee leads into CSV/Excel spreadsheets', N'EXHIBITOR'),
+
+-- Billings, Invoices & Finance
+(N'exhibitor_billing', N'view', N'exhibitor.billing.view', N'View Stall Invoices & Ledgers', N'Can view stall rental payment ledgers, payment lock status, and fee breakdowns', N'EXHIBITOR'),
+(N'exhibitor_billing', N'download', N'exhibitor.billing.download', N'Download GST Tax Invoices', N'Can print and download official 18% GST tax invoices and payment receipts', N'EXHIBITOR'),
+
+-- Organization & Booth Team Governance
+(N'exhibitor_team', N'view', N'exhibitor.team.view', N'View Booth Team', N'Can view list of active booth representatives, designations, and staff roster', N'EXHIBITOR'),
+(N'exhibitor_team', N'invite', N'exhibitor.team.invite', N'Invite Booth Members', N'Can send email invitations to new booth staff and product demo hosts', N'EXHIBITOR'),
+(N'exhibitor_team', N'edit', N'exhibitor.team.edit', N'Edit Team Members', N'Can update staff designations, contact details, and reassign roles', N'EXHIBITOR'),
+(N'exhibitor_team', N'remove', N'exhibitor.team.remove', N'Remove Booth Members', N'Can deactivate or remove booth staff accounts from the organization', N'EXHIBITOR'),
+(N'exhibitor_team', N'roles_view', N'exhibitor.roles.view', N'View Roles', N'Can view available system and custom booth roles', N'EXHIBITOR'),
+(N'exhibitor_team', N'roles_manage', N'exhibitor.roles.manage', N'Manage Custom Roles', N'Can create, edit, and configure custom booth roles and permission sets', N'EXHIBITOR');
 
 INSERT INTO dbo.permissions (id, module, action, code, name, description, scope)
 SELECT NEWID(), p.module, p.action, p.code, p.name, p.description, p.scope
 FROM @Perms p
 WHERE NOT EXISTS (SELECT 1 FROM dbo.permissions WHERE code = p.code);
 
-PRINT 'Screen and RBAC permissions seeded successfully.';
+PRINT 'Screen and RBAC permissions seeded successfully (48 total permissions).';
 GO
 
 -- ============================================================================
@@ -172,7 +204,7 @@ INSERT INTO dbo.role_permissions (id, role_id, permission_id)
 SELECT NEWID(), r.id, p.id
 FROM dbo.roles r
 CROSS JOIN dbo.permissions p
-WHERE r.code = 'superuser'
+WHERE r.code IN ('superuser', 'superadmin')
   AND NOT EXISTS (
       SELECT 1 FROM dbo.role_permissions rp 
       WHERE rp.role_id = r.id AND rp.permission_id = p.id
@@ -196,7 +228,7 @@ SELECT NEWID(), r.id, p.id
 FROM dbo.roles r
 CROSS JOIN dbo.permissions p
 WHERE r.code = 'exhibitor'
-  AND (p.code IN ('stalls.view', 'exhibitor.dashboard.view'))
+  AND (p.scope = 'EXHIBITOR' OR p.code LIKE 'exhibitor.%' OR p.code = 'stalls.view')
   AND NOT EXISTS (
       SELECT 1 FROM dbo.role_permissions rp 
       WHERE rp.role_id = r.id AND rp.permission_id = p.id

@@ -66,11 +66,11 @@ const MASTER_NAVIGATION_ITEMS = {
   ],
 
   organizer: [
-    { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: "dashboard.view" },
+    { label: "Dashboard", path: "/OrganizerHome/Organizerdashboard", icon: LayoutDashboard, permission: ["dashboard.view", "events.view"] },
     { label: "Gate Scanner", path: "/OrganizerHome/EventCheckIn", icon: QrCode, permission: ["checkin.scan", "checkin.view"] },
     { label: "Food Check-In", path: "/OrganizerHome/FoodCheckIn", icon: Utensils, permission: ["checkin.scan", "checkin.view"] },
     { label: "Manage Stalls", path: "/OrganizerHome/Manage_Stall", icon: Store, permission: "stalls.view" },
-    { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users, permission: ["stalls.view", "events.view"] },
+    { label: "Exhibitor Directory", path: "/OrganizerHome/Exhibitor", icon: Users, permission: "stalls.view" },
     { label: "Team & Roles", path: "/OrganizerHome/TeamManagement", icon: Shield, permission: ["team.view", "roles.view", "roles.manage"] },
     { label: "Billings & Receipts", path: "/OrganizerHome/Receipt", icon: Receipt, permission: "finance.view" },
     { label: "Master Data", path: "/OrganizerHome/MasterData", icon: Database, permission: "master_data.view" },
@@ -178,8 +178,8 @@ export default function WebSidebar({ role }) {
   const mainDashboardPath = useMemo(() => {
     if (activeRoleKey === "superuser") return "/superuser/dashboard";
     if (activeRoleKey === "organizer") {
-      if (hasPermission("dashboard.view")) return "/OrganizerHome/Organizerdashboard";
-      return visibleNavigationItems[0]?.path || "/OrganizerHome/EventCheckIn";
+      if (hasPermission(["dashboard.view", "events.view"])) return "/OrganizerHome/Organizerdashboard";
+      return visibleNavigationItems[0]?.path || "/OrganizerHome/Organizerdashboard";
     }
     if (activeRoleKey === "exhibitor") {
       if (hasPermission("exhibitor.dashboard.view")) return "/exhibitor/dashboard";

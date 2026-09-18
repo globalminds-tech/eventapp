@@ -22,14 +22,19 @@ import {
   fetchExhibitorLeads,
   createExhibitorLead
 } from "@/app/store/exhibitorSlice";
-import { getAuthUserId } from "@/shared/services/authHelper";
+import { getAuthUserId, getEffectiveTenantUserId } from "@/shared/services/authHelper";
+import { usePermissions } from "@/shared/context/PermissionContext";
 import { ResponsiveTableView, MobileDataCard } from "@/components/ui/ResponsiveTableView";
 
 export const ExhibitorLeadsPage = () => {
   const dispatch = useDispatch();
+  const { hasPermission } = usePermissions();
   const reduxAuthUser = useSelector((state) => state.auth?.user);
   const reduxUser = useSelector((state) => state.user);
-  const effectiveUserId = getAuthUserId(reduxAuthUser || reduxUser);
+  const effectiveUserId = getEffectiveTenantUserId(reduxAuthUser || reduxUser);
+
+  const canCreateLead = hasPermission(["exhibitor.leads.create", "exhibitor.*"]);
+  const canExportLead = hasPermission(["exhibitor.leads.export", "exhibitor.*"]);
 
   const bookingsList = useSelector((state) => state.exhibitor.bookings.list);
   const loadingBookings = useSelector((state) => state.exhibitor.bookings.loading);
@@ -349,22 +354,26 @@ export const ExhibitorLeadsPage = () => {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <Button
-            variant="outline"
-            onClick={handleExportCSV}
-            disabled={leads.length === 0}
-            className="bg-white hover:bg-slate-50 border-slate-200 rounded-xl text-xs font-bold gap-2 cursor-pointer shadow-xs disabled:opacity-50"
-          >
-            <Download size={14} className="text-slate-600" />
-            <span>Export CSV</span>
-          </Button>
-          <Button
-            onClick={() => setIsAddLeadModalOpen(true)}
-            className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-4 py-2.5 rounded-xl shadow-md shadow-emerald-900/20 border-none cursor-pointer gap-2"
-          >
-            <PlusCircle size={18} />
-            <span>Add Spot Lead</span>
-          </Button>
+          {canExportLead && (
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              disabled={leads.length === 0}
+              className="bg-white hover:bg-slate-50 border-slate-200 rounded-xl text-xs font-bold gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              <Download size={14} className="text-slate-600" />
+              <span>Export CSV</span>
+            </Button>
+          )}
+          {canCreateLead && (
+            <Button
+              onClick={() => setIsAddLeadModalOpen(true)}
+              className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-4 py-2.5 rounded-xl shadow-md shadow-emerald-900/20 border-none cursor-pointer gap-2"
+            >
+              <PlusCircle size={18} />
+              <span>Add Spot Lead</span>
+            </Button>
+          )}
         </div>
       </div>
 

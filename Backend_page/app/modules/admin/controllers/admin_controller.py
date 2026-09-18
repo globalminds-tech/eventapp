@@ -7,6 +7,9 @@ class AdminController:
         organizer_id: str = None,
         only_approved: bool = False,
         search: str = None,
+        category: str = None,
+        city: str = None,
+        location: str = None,
         status: str = None,
         page: int = None,
         limit: int = None,
@@ -18,6 +21,9 @@ class AdminController:
             organizer_id=organizer_id,
             only_approved=only_approved,
             search=search,
+            category=category,
+            city=city,
+            location=location,
             status=status,
             page=page,
             limit=limit,
@@ -44,8 +50,8 @@ class AdminController:
         }
 
     @staticmethod
-    def get_categories():
-        categories = AdminService.get_categories()
+    def get_categories(search: str = None):
+        categories = AdminService.get_categories(search=search)
         return {
             "success": True,
             "data": categories

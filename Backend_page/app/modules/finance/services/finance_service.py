@@ -9,6 +9,7 @@ from app.extensions.database import db
 from app.models.financial import EventTransaction, OrganizerPayout, FinancialInvoice
 from app.models.event import EventDetails
 from app.models.user import User
+from app.models.organizer_profile import OrganizerProfile
 from app.models.booking import UserBookingDetails
 from app.models.exhibitor import ExhibitorStallBooking
 
@@ -98,6 +99,15 @@ class FinanceService:
         billing_name = payer.name if payer and payer.name else "Guest Attendee"
         billing_email = payer.email if payer and payer.email else None
 
+        if stall_booking_id:
+            from app.models.exhibitor import ExhibitorStallBooking
+            st_b = db.session.get(ExhibitorStallBooking, stall_booking_id)
+            if st_b:
+                if st_b.company_name:
+                    billing_name = st_b.company_name
+                if getattr(st_b, "email", None) and not billing_email:
+                    billing_email = st_b.email
+
         invoice = FinancialInvoice(
             invoice_number=inv_number,
             invoice_type=inv_type,
@@ -172,22 +182,57 @@ class FinanceService:
         }
 
     @classmethod
-    def get_admin_payout_queue(cls) -> List[Dict[str, Any]]:
+    def get_admin_payout_queue(cls, search: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Fetches all organizers with their current escrow balances, bank details, and KYC status.
+        Supports API-driven search across name, email, and company name.
         """
         from app.models.organizer_profile import OrganizerProfile
+        from app.models.organization import Organization
+        from app.modules.rbac.services.tenant_service import TenantService
+        from sqlalchemy import or_
 
-        users = db.session.scalars(select(User)).all()
-        organizers = [u for u in users if "organizer" in [str(r).lower() for r in (u.roles or [])]]
+        pure_team_subq = TenantService.get_pure_team_member_ids_subquery()
 
+        # Only Organization Owners who own an ORGANIZER organization or have actual event earnings/transactions
+        owned_org_owner_ids = select(Organization.owner_id).where(
+            Organization.org_type == 'ORGANIZER',
+            Organization.deleted_at.is_(None)
+        )
+        txn_organizer_ids = select(EventTransaction.organizer_user_id)
+
+        stmt = select(User).where(
+            User.deleted_at.is_(None),
+            ~User.id.in_(pure_team_subq),
+            or_(
+                User.id.in_(owned_org_owner_ids),
+                User.id.in_(txn_organizer_ids)
+            )
+        )
+
+        if search and search.strip():
+            clean_term = f"%{search.strip().lower()}%"
+            stmt = stmt.outerjoin(OrganizerProfile, OrganizerProfile.user_id == User.id).where(
+                or_(
+                    func.lower(func.coalesce(User.name, "")).like(clean_term),
+                    func.lower(func.coalesce(User.email, "")).like(clean_term),
+                    func.lower(func.coalesce(User.organization_name, "")).like(clean_term),
+                    func.lower(func.coalesce(OrganizerProfile.company_name, "")).like(clean_term)
+                )
+            )
+
+        organizers = db.session.scalars(stmt).all()
+
+        from app.utils.security_crypto import decrypt_field, mask_account_number
         queue = []
         for org in organizers:
             summary = cls.get_organizer_financial_summary(org.id)
             org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == org.id)).first()
 
             company = (org_p.company_name if org_p else None) or org.organization_name or getattr(org, "company_name", None) or org.name
-            bank_acc = (org_p.account_number if org_p else None) or getattr(org, "bank_account", None) or "Not Provided"
+            raw_acc = (org_p.account_number if org_p else None) or getattr(org, "bank_account", None)
+            dec_acc = decrypt_field(raw_acc) if raw_acc else None
+            bank_acc = mask_account_number(dec_acc) or "Not Provided"
             ifsc = (org_p.ifsc_code if org_p else None) or getattr(org, "ifsc", None) or "Not Provided"
             kyc_status = (org_p.kyc_status if org_p else None) or getattr(org, "kyc_status", "VERIFIED") or "VERIFIED"
 
@@ -246,15 +291,21 @@ class FinanceService:
             mode = "MANUAL_UTR" if manual_utr else "SIMULATED_API"
             utr = manual_utr or f"UTR{datetime.utcnow().strftime('%y%m%d')}{uuid.uuid4().hex[:8].upper()}"
 
+        org_p = db.session.scalars(select(OrganizerProfile).where(OrganizerProfile.user_id == organizer_id)).first()
+        from app.utils.security_crypto import decrypt_field, mask_account_number
+        raw_acc = (org_p.account_number if org_p else None) or getattr(org, "bank_account", "") or "409210002910"
+        decrypted_acc = decrypt_field(raw_acc) if raw_acc else "409210002910"
+        masked_acc = mask_account_number(decrypted_acc)
+
         payout = OrganizerPayout(
             payout_ref=payout_ref,
             organizer_user_id=organizer_id,
             amount=amount,
             currency="INR",
-            bank_name="Primary Registered Bank",
-            account_number=getattr(org, "bank_account", "") or "409210002910",
-            ifsc_code=getattr(org, "ifsc", "") or "HDFC0001234",
-            beneficiary_name=org.name or "Organizer Beneficiary",
+            bank_name=(org_p.bank_name if org_p else None) or "Primary Registered Bank",
+            account_number=masked_acc or "••••••••2910",
+            ifsc_code=(org_p.ifsc_code if org_p else None) or getattr(org, "ifsc", "") or "HDFC0001234",
+            beneficiary_name=(org_p.account_holder if org_p else None) or org.name or "Organizer Beneficiary",
             disbursement_mode=mode,
             utr_number=utr,
             status="SETTLED",

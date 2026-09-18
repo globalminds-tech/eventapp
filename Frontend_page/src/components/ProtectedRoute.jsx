@@ -124,6 +124,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   );
 
   if (!isValidToken) {
+    const isExplicitlyLoggedOut = localStorage.getItem("is_logged_out") === "true" || sessionStorage.getItem("is_logged_out") === "true";
+    if (isExplicitlyLoggedOut) {
+      return <Navigate to="/" replace />;
+    }
     const returnUrl = encodeURIComponent(location.pathname + location.search);
     console.warn(`[ProtectedRoute] Unauthenticated access to "${location.pathname}". Redirecting to /login?returnUrl=${returnUrl}`);
     return <Navigate to={`/login?returnUrl=${returnUrl}`} replace />;

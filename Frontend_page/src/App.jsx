@@ -121,7 +121,7 @@ function OrganizerIndexRedirect() {
     );
   }
 
-  if (hasPermission("dashboard.view")) {
+  if (hasPermission(["dashboard.view", "events.view"])) {
     return <Organizerdashboard />;
   }
 
