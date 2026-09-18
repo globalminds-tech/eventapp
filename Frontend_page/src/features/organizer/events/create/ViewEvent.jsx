@@ -209,15 +209,16 @@ const ViewEvent = ({ formData, onEdit, onBack }) => {
 
         {/* Row 2: Event Performance Stats Bar */}
         {(() => {
-          const stats = formData?.individual_stats || formData?.individualStats || {};
+          const stats = formData?.individual_stats || formData?.individualStats || formData || {};
           const bk = formData?.booking || {};
-          const pSold = Number(stats.passes_sold ?? stats.passesSold ?? 0);
-          const tCap = Number(stats.total_capacity ?? stats.totalCapacity ?? bk.capacity ?? bk.totalCapacity ?? 0);
-          const gScans = Number(stats.gate_scans ?? stats.gateScans ?? 0);
-          const tStalls = Number(stats.total_stalls ?? 0);
-          const sBooked = Number(stats.stalls_booked ?? stats.stallsBooked ?? 0);
-          const tRevenue = Number(stats.ticket_revenue ?? stats.ticketRevenue ?? 0);
-          const gRevenue = Number(stats.gross_revenue ?? stats.grossRevenue ?? 0);
+          const pSold = Number(stats.passes_sold ?? stats.passesSold ?? formData.passes_sold ?? formData.passesSold ?? 0);
+          const tCap = Number(stats.total_capacity ?? stats.totalCapacity ?? bk.capacity ?? bk.totalCapacity ?? formData.capacity ?? formData.totalCapacity ?? 0);
+          const gScans = Number(stats.gate_scans ?? stats.gateScans ?? formData.gate_scans ?? formData.gateScans ?? 0);
+          const tStalls = Number(stats.total_stalls ?? stats.totalStalls ?? formData.total_stalls ?? (stalls.length > 0 ? stalls.length : 0));
+          const sBooked = Number(stats.stalls_booked ?? stats.stallsBooked ?? formData.stalls_booked ?? formData.stallsBooked ?? 0);
+          const tRevenue = Number(stats.ticket_revenue ?? stats.ticketRevenue ?? formData.ticket_revenue ?? formData.ticketRevenue ?? (pSold * Number(bk.price_inr || bk.price || bk.priceINR || 0)));
+          const sRevenue = Number(stats.stall_revenue ?? stats.stallRevenue ?? formData.stall_revenue ?? formData.stallRevenue ?? 0);
+          const gRevenue = Number(stats.gross_revenue ?? stats.grossRevenue ?? stats.total_earnings ?? formData.gross_revenue ?? formData.total_earnings ?? (tRevenue + sRevenue));
           const ticketPct = tCap > 0 ? Math.min(100, Math.round((pSold / tCap) * 100)) : 0;
           const stallPct = tStalls > 0 ? Math.min(100, Math.round((sBooked / tStalls) * 100)) : 0;
           const checkinPct = pSold > 0 ? Math.min(100, Math.round((gScans / pSold) * 100)) : 0;

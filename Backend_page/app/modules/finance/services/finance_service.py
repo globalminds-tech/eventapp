@@ -99,6 +99,15 @@ class FinanceService:
         billing_name = payer.name if payer and payer.name else "Guest Attendee"
         billing_email = payer.email if payer and payer.email else None
 
+        if booking_id:
+            from app.models.booking import UserBookingDetails
+            ub = db.session.get(UserBookingDetails, booking_id)
+            if ub:
+                if ub.name:
+                    billing_name = ub.name
+                if ub.email:
+                    billing_email = ub.email
+
         if stall_booking_id:
             from app.models.exhibitor import ExhibitorStallBooking
             st_b = db.session.get(ExhibitorStallBooking, stall_booking_id)
@@ -151,6 +160,25 @@ class FinanceService:
         for t in sorted(txns, key=lambda x: x.created_at or datetime.min, reverse=True):
             event = db.session.get(EventDetails, t.event_id) if t.event_id else None
             payer = db.session.get(User, t.payer_user_id) if t.payer_user_id else None
+            billing_display_name = payer.name if (payer and payer.name) else (payer.email if payer else "")
+            if not billing_display_name and t.booking_id:
+                try:
+                    from app.models.booking import UserBookingDetails
+                    ub = db.session.get(UserBookingDetails, t.booking_id)
+                    if ub:
+                        billing_display_name = ub.name or ub.email or ""
+                except Exception:
+                    pass
+            if not billing_display_name and t.stall_booking_id:
+                try:
+                    from app.models.exhibitor import ExhibitorStallBooking
+                    st = db.session.get(ExhibitorStallBooking, t.stall_booking_id)
+                    if st:
+                        billing_display_name = st.company_name or st.contact_person or ""
+                except Exception:
+                    pass
+            if not billing_display_name:
+                billing_display_name = "Attendee" if t.transaction_type == "TICKET_SALE" else "Exhibitor"
 
             ledger_items.append({
                 "id": str(t.id),
@@ -158,7 +186,9 @@ class FinanceService:
                 "invoiceNo": t.transaction_ref,
                 "date": t.created_at.strftime("%Y-%m-%d") if t.created_at else "",
                 "personType": "Attendee" if t.transaction_type == "TICKET_SALE" else "Exhibitor",
-                "billingName": payer.name if (payer and payer.name) else (payer.email if payer else "Attendee"),
+                "transactionType": t.transaction_type,
+                "billingName": billing_display_name,
+                "eventId": str(t.event_id) if t.event_id else None,
                 "eventName": (event.event_name if event and event.event_name else "General Event"),
                 "grossAmount": float(t.gross_amount or 0),
                 "platformFee": float(t.platform_fee or 0),

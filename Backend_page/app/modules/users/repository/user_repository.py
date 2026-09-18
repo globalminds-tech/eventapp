@@ -52,17 +52,28 @@ class UserRepository:
     @staticmethod
     def get_event_total_booked_seats(event_id) -> int:
         import uuid
-        from sqlalchemy import func
         try:
             eid = uuid.UUID(str(event_id))
         except Exception:
             eid = event_id
-        res = db.session.scalar(
-            select(func.coalesce(func.sum(func.coalesce(UserBookingDetails.group_size, UserBookingDetails.ticket_count, 1)), 0))
-            .where(UserBookingDetails.event_id == eid)
-            .where(UserBookingDetails.deleted_at.is_(None))
-        )
-        return int(res or 0)
+        try:
+            user_bookings = list(db.session.scalars(
+                select(UserBookingDetails).where(
+                    UserBookingDetails.event_id == eid,
+                    UserBookingDetails.deleted_at.is_(None)
+                )
+            ).all())
+            total_seats = 0
+            for ub in user_bookings:
+                t_count = int(getattr(ub, "ticket_count", 1) or 1)
+                g_size = int(getattr(ub, "group_size", 1) or 1)
+                p_type = str(getattr(ub, "pass_type", "") or "").lower()
+                seats = (t_count * g_size) if ("group" in p_type and g_size > 1) else t_count
+                total_seats += seats
+            return total_seats
+        except Exception as e:
+            print(f"[get_event_total_booked_seats] Error: {e}")
+            return 0
 
     @staticmethod
     def get_user_booked_passes_count(event_id, user_id=None, email: str = "") -> int:

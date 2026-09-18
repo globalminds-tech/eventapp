@@ -529,7 +529,7 @@ export default function OrganizerDashboardPage() {
                     const stallsBooked = Number(evt.stalls_booked || evt.stallsBooked || 0);
                     const stallsTotal = Number(evt.total_stalls || 50);
                     const price = Number(evt.price_inr || evt.priceINR || evt.price || evt.pass_fee || 0);
-                    const earnings = price * sold;
+                    const earnings = Number(evt.total_earnings ?? evt.totalEarnings ?? evt.gross_revenue ?? evt.grossRevenue ?? evt.ticket_revenue ?? (price * sold));
 
                     const rawSt = (evt.status || evt.approval_status || "PENDING").toUpperCase();
                     const isApproved = ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"].includes(rawSt);
@@ -669,7 +669,7 @@ export default function OrganizerDashboardPage() {
             const sold = Number(evt.passesSold || evt.passes_sold || 0);
             const capacity = Number(evt.totalCapacity || evt.capacity || evt.total_capacity || 500);
             const price = Number(evt.price_inr || evt.priceINR || evt.price || evt.pass_fee || 0);
-            const earnings = price * sold;
+            const earnings = Number(evt.total_earnings ?? evt.totalEarnings ?? evt.gross_revenue ?? evt.grossRevenue ?? evt.ticket_revenue ?? (price * sold));
 
             const rawSt = (evt.status || evt.approval_status || "PENDING").toUpperCase();
             const isApproved = ["APPROVED", "ACTIVE", "LIVE", "PUBLISHED"].includes(rawSt);

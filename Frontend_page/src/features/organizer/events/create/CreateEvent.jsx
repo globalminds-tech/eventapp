@@ -302,6 +302,35 @@ const CreateEvent = ({ onBack, editData, isView }) => {
         })),
         guests: raw.vendorSponsor?.guests || raw.guests || [],
       },
+      individual_stats: raw.individual_stats || raw.individualStats || {
+        passes_sold: raw.passes_sold ?? raw.passesSold ?? 0,
+        passesSold: raw.passes_sold ?? raw.passesSold ?? 0,
+        total_capacity: raw.total_capacity ?? raw.totalCapacity ?? raw.capacity ?? 0,
+        totalCapacity: raw.total_capacity ?? raw.totalCapacity ?? raw.capacity ?? 0,
+        gate_scans: raw.gate_scans ?? raw.gateScans ?? 0,
+        gateScans: raw.gate_scans ?? raw.gateScans ?? 0,
+        total_stalls: raw.total_stalls ?? raw.totalStalls ?? (raw.layout?.stalls?.length || 0),
+        stalls_booked: raw.stalls_booked ?? raw.stallsBooked ?? 0,
+        stallsBooked: raw.stalls_booked ?? raw.stallsBooked ?? 0,
+        ticket_revenue: raw.ticket_revenue ?? raw.ticketRevenue ?? 0,
+        ticketRevenue: raw.ticket_revenue ?? raw.ticketRevenue ?? 0,
+        stall_revenue: raw.stall_revenue ?? raw.stallRevenue ?? 0,
+        stallRevenue: raw.stall_revenue ?? raw.stallRevenue ?? 0,
+        gross_revenue: raw.gross_revenue ?? raw.grossRevenue ?? raw.total_earnings ?? 0,
+        grossRevenue: raw.gross_revenue ?? raw.grossRevenue ?? raw.total_earnings ?? 0,
+      },
+      individualStats: raw.individual_stats || raw.individualStats || null,
+      passes_sold: raw.passes_sold ?? raw.passesSold ?? raw.individual_stats?.passes_sold ?? 0,
+      passesSold: raw.passes_sold ?? raw.passesSold ?? raw.individual_stats?.passes_sold ?? 0,
+      total_capacity: raw.total_capacity ?? raw.totalCapacity ?? raw.individual_stats?.total_capacity ?? 0,
+      totalCapacity: raw.total_capacity ?? raw.totalCapacity ?? raw.individual_stats?.total_capacity ?? 0,
+      stalls_booked: raw.stalls_booked ?? raw.stallsBooked ?? raw.individual_stats?.stalls_booked ?? 0,
+      stallsBooked: raw.stalls_booked ?? raw.stallsBooked ?? raw.individual_stats?.stalls_booked ?? 0,
+      total_stalls: raw.total_stalls ?? raw.totalStalls ?? raw.individual_stats?.total_stalls ?? 0,
+      ticket_revenue: raw.ticket_revenue ?? raw.ticketRevenue ?? raw.individual_stats?.ticket_revenue ?? 0,
+      stall_revenue: raw.stall_revenue ?? raw.stallRevenue ?? raw.individual_stats?.stall_revenue ?? 0,
+      gross_revenue: raw.gross_revenue ?? raw.grossRevenue ?? raw.individual_stats?.gross_revenue ?? 0,
+      total_earnings: raw.total_earnings ?? raw.individual_stats?.gross_revenue ?? 0,
       status: raw.status || details.status || raw.approval_status || "",
     };
   };
@@ -366,11 +395,23 @@ const CreateEvent = ({ onBack, editData, isView }) => {
 
   const fetchEventDetails = async (id) => {
     try {
-      const res = await axios.get(`http://localhost:5001/superadmin/api/event-detail/${encodeURIComponent(id)}`);
-      const data = res.data?.data || res.data;
+      let data = null;
+      try {
+        const res = await axiosClient.get(`/superadmin/api/event-detail/${encodeURIComponent(id)}`);
+        data = res.data?.data || res.data;
+      } catch (e1) {
+        const res = await axios.get(`http://localhost:5001/superadmin/api/event-detail/${encodeURIComponent(id)}`);
+        data = res.data?.data || res.data;
+      }
       if (data) {
         const normalized = normalizeInitialFormData(data);
         if (normalized) {
+          const remoteStats = data.individual_stats || data.individualStats || {};
+          normalized.individual_stats = {
+            ...normalized.individual_stats,
+            ...remoteStats
+          };
+          normalized.individualStats = normalized.individual_stats;
           setFormData(normalized);
         }
       }
